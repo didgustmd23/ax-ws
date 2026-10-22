@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>robotiq_description</name>
+  <version>0.0.1</version>
+  <description>AX model-only vendor subset of PickNik Robotiq 2F-85 description.</description>
+  <author>Cory Crean</author>
+  <maintainer email="yhs@todo.todo">AX workspace maintainer</maintainer>
+  <license>BSD-3-Clause</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>xacro</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

@@ -1,0 +1,47 @@
+# ROS/colcon generated output and archived build trees (workspace root).
+/build/
+/install/
+/log/
+/legacy_before_rename/
+
+# Python caches and local test output.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+/.venv/
+/venv/
+
+# Local backups, editor temporary files, and OS metadata.
+*.bak
+*.swp
+*.swo
+*~
+*:Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Credentials and local runtime configuration.
+/.aws/
+/.codex/
+/.agents/
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.pem
+*.key
+
+# Raw recordings, if created later.
+/bags/
+/recordings/
+
+# Intentionally keep robot model assets (*.obj, *.mtl, *.dae, *.stl), maps,
+# upstream provenance (*.original / LICENSE / manifests), and reviewed
+# docs/evidence files. Do not add a blanket *.obj, *.log, or *.original rule.

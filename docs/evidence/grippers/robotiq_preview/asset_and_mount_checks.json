@@ -1,0 +1,43 @@
+{
+  "upstream_commit": "a74d007d8f2f06dc6a503ad21038ba869d4999a6",
+  "upstream_files_verified": 23,
+  "assimp_loaded_meshes": [
+    "package://robotiq_description/meshes/visual/2f_85/robotiq_base.dae",
+    "package://robotiq_description/meshes/collision/2f_85/robotiq_base.stl",
+    "package://robotiq_description/meshes/visual/2f_85/left_knuckle.dae",
+    "package://robotiq_description/meshes/collision/2f_85/left_knuckle.stl",
+    "package://robotiq_description/meshes/visual/2f_85/right_knuckle.dae",
+    "package://robotiq_description/meshes/collision/2f_85/right_knuckle.stl",
+    "package://robotiq_description/meshes/visual/2f_85/left_finger.dae",
+    "package://robotiq_description/meshes/collision/2f_85/left_finger.stl",
+    "package://robotiq_description/meshes/visual/2f_85/right_finger.dae",
+    "package://robotiq_description/meshes/collision/2f_85/right_finger.stl",
+    "package://robotiq_description/meshes/visual/2f_85/left_inner_knuckle.dae",
+    "package://robotiq_description/meshes/collision/2f_85/left_inner_knuckle.stl",
+    "package://robotiq_description/meshes/visual/2f_85/right_inner_knuckle.dae",
+    "package://robotiq_description/meshes/collision/2f_85/right_inner_knuckle.stl",
+    "package://robotiq_description/meshes/visual/2f_85/left_finger_tip.dae",
+    "package://robotiq_description/meshes/collision/2f_85/left_finger_tip.stl",
+    "package://robotiq_description/meshes/visual/2f_85/right_finger_tip.dae",
+    "package://robotiq_description/meshes/collision/2f_85/right_finger_tip.stl"
+  ],
+  "robotiq_links": 9,
+  "mimic_joints": 5,
+  "base_positive_z_points_downward": true,
+  "tip_frame_samples": [
+    {
+      "master_rad": 0,
+      "tip_frame_separation_m": 0.13551727999999996
+    },
+    {
+      "master_rad": 0.4,
+      "tip_frame_separation_m": 0.09583253047761103
+    },
+    {
+      "master_rad": 0.8,
+      "tip_frame_separation_m": 0.050680425854954636
+    }
+  ],
+  "primitive_branch_preserved": true,
+  "scope": "model/mesh/kinematic checks; no GUI render or Gazebo dynamics"
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot name="structure_demo">
+  <!-- 연습용만: AX 실제 치수나 제어 코드가 아닙니다. -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.10" rpy="0 0 0"/>
+      <geometry><box size="0.60 0.40 0.20"/></geometry>
+      <material name="demo_blue"><color rgba="0.20 0.50 0.85 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.10" rpy="0 0 0"/>
+      <geometry><box size="0.60 0.40 0.20"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.10" rpy="0 0 0"/>
+      <mass value="10.0"/>
+      <inertia ixx="0.1666667" ixy="0" ixz="0" iyy="0.3333333" iyz="0" izz="0.4333333"/>
+    </inertial>
+  </link>
+  <link name="arm_link">
+    <visual>
+      <origin xyz="0 0 0.20" rpy="0 0 0"/>
+      <geometry><box size="0.10 0.10 0.40"/></geometry>
+      <material name="demo_pink"><color rgba="0.90 0.35 0.60 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.20" rpy="0 0 0"/>
+      <geometry><box size="0.10 0.10 0.40"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.20" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.0141667" ixy="0" ixz="0" iyy="0.0141667" iyz="0" izz="0.0016667"/>
+    </inertial>
+  </link>
+  <joint name="shoulder_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="arm_link"/>
+    <origin xyz="0 0 0.20" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="2" velocity="1"/>
+  </joint>
+</robot>

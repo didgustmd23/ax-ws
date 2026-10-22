@@ -1,0 +1,120 @@
+[INFO] [launch]: All log files can be found below /home/yhs/.ros/log/2026-10-15-14-40-38-540315-YHS-24534
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [gazebo-1]: process started with pid [24551]
+[INFO] [xacro-2]: process started with pid [24552]
+[INFO] [gripper_controller-3]: process started with pid [24553]
+[INFO] [parameter_bridge-4]: process started with pid [24555]
+[INFO] [parameter_bridge-5]: process started with pid [24556]
+[INFO] [parameter_bridge-6]: process started with pid [24557]
+[INFO] [parameter_bridge-7]: process started with pid [24558]
+[INFO] [parameter_bridge-8]: process started with pid [24559]
+[INFO] [parameter_bridge-9]: process started with pid [24560]
+[INFO] [parameter_bridge-10]: process started with pid [24561]
+[INFO] [parameter_bridge-11]: process started with pid [24562]
+[INFO] [robot_state_publisher-12]: process started with pid [24563]
+[robot_state_publisher-12] [WARN] [1792042839.013736032] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[robot_state_publisher-12] [WARN] [1792042839.013761519] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-11] [WARN] [1792042839.046710520] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-11] [WARN] [1792042839.047590338] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-8] [WARN] [1792042839.065746367] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-8] [WARN] [1792042839.065766007] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[robot_state_publisher-12] [WARN] [1792042839.066233208] [kdl_parser]: The root link base_link has an inertia specified in the URDF, but KDL does not support a root link with an inertia.  As a workaround, you can add an extra dummy link to your URDF.
+[robot_state_publisher-12] [INFO] [1792042839.066437451] [robot_state_publisher]: Robot initialized
+[INFO] [xacro-2]: process has finished cleanly [pid 24552]
+[parameter_bridge-10] [WARN] [1792042839.071400294] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-10] [WARN] [1792042839.071412821] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [create-13]: process started with pid [24609]
+[parameter_bridge-7] [WARN] [1792042839.072431570] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-7] [WARN] [1792042839.072447918] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-5] [WARN] [1792042839.074347288] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-5] [WARN] [1792042839.074808087] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-4] [WARN] [1792042839.081113642] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-4] [WARN] [1792042839.081133420] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-11] [INFO] [1792042839.084943241] [lidar_bridge]: Creating GZ->ROS Bridge: [/scan (gz.msgs.LaserScan) -> /scan (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-9] [WARN] [1792042839.085185793] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-9] [WARN] [1792042839.085198288] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-6] [WARN] [1792042839.089542045] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[parameter_bridge-6] [WARN] [1792042839.090101552] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-10] [INFO] [1792042839.104710723] [gripper_rotation_bridge]: Creating ROS->GZ Bridge: [/model/ax1/gripper_rotation_joint/position (std_msgs/msg/Float64) -> /model/ax1/gripper_rotation_joint/position (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-8] [INFO] [1792042839.112494345] [elbow_bridge]: Creating ROS->GZ Bridge: [/model/ax1/elbow_joint/position (std_msgs/msg/Float64) -> /model/ax1/elbow_joint/position (gz.msgs.Double)] (Lazy 0)
+[create-13] [WARN] [1792042839.114053463] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[create-13] [WARN] [1792042839.114071710] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[parameter_bridge-5] [INFO] [1792042839.116479750] [right_finger_bridge]: Creating ROS->GZ Bridge: [/model/ax1/right_finger_joint/position (std_msgs/msg/Float64) -> /model/ax1/right_finger_joint/position (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-7] [INFO] [1792042839.118743492] [shoulder_bridge]: Creating ROS->GZ Bridge: [/model/ax1/shoulder_joint/position (std_msgs/msg/Float64) -> /model/ax1/shoulder_joint/position (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1792042839.123583317] [left_finger_bridge]: Creating ROS->GZ Bridge: [/model/ax1/left_finger_joint/position (std_msgs/msg/Float64) -> /model/ax1/left_finger_joint/position (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-6] [INFO] [1792042839.129519778] [arm_yaw_bridge]: Creating ROS->GZ Bridge: [/model/ax1/arm_yaw_joint/position (std_msgs/msg/Float64) -> /model/ax1/arm_yaw_joint/position (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-9] [INFO] [1792042839.133793401] [wrist_bridge]: Creating ROS->GZ Bridge: [/model/ax1/wrist_joint/position (std_msgs/msg/Float64) -> /model/ax1/wrist_joint/position (gz.msgs.Double)] (Lazy 0)
+[gripper_controller-3] [WARN] [1792042839.276695372] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[gripper_controller-3] [WARN] [1792042839.276726463] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[gripper_controller-3] [INFO] [1792042839.369459808] [gripper_controller]: AX-1 Gripper Controller started
+[create-13] [INFO] [1792042839.780357574] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-13]: process has finished cleanly [pid 24609]
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="ax1"]/link[@name="base_link"]/sensor[@name="ax1_lidar"]/gz_frame_id:/tmp/ax1.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="ax1"]/link[@name="base_link"]/sensor[@name="ax1_lidar"]/gz_frame_id:<data-string>:L123]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[parameter_bridge-10] [INFO] [1792042842.816151025] [gripper_rotation_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-8] [INFO] [1792042842.816168899] [elbow_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-9] [INFO] [1792042842.816168888] [wrist_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-7] [INFO] [1792042842.816168804] [shoulder_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-6] [INFO] [1792042842.816175212] [arm_yaw_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-4] [INFO] [1792042842.816519528] [left_finger_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-5] [INFO] [1792042842.816726996] [right_finger_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[gripper_controller-3] [INFO] [1792042848.377833593] [gripper_controller]: Gripper target: 0.015 m
+[INFO] [gazebo-1]: process has finished cleanly [pid 24551]
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[robot_state_publisher-12] [INFO] [1792042860.991923266] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-7] [INFO] [1792042860.991942379] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-8] [INFO] [1792042860.991957390] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-10] [INFO] [1792042860.991988332] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-4] [INFO] [1792042860.991915052] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-9] [INFO] [1792042860.992102799] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-11] [INFO] [1792042860.992153866] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[gripper_controller-3] Traceback (most recent call last):
+[gripper_controller-3]   File "/home/yhs/ax1_ws/install/ax1_control/lib/ax1_control/gripper_controller", line 33, in <module>
+[gripper_controller-3]     sys.exit(load_entry_point('ax1-control', 'console_scripts', 'gripper_controller')())
+[gripper_controller-3]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[gripper_controller-3]   File "/home/yhs/ax1_ws/build/ax1_control/ax1_control/gripper_controller.py", line 43, in main
+[gripper_controller-3]     rclpy.spin(node)
+[gripper_controller-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", line 247, in spin
+[gripper_controller-3]     executor.spin_once()
+[gripper_controller-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 926, in spin_once
+[gripper_controller-3]     self._spin_once_impl(timeout_sec)
+[gripper_controller-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 907, in _spin_once_impl
+[gripper_controller-3]     handler, entity, node = self.wait_for_ready_callbacks(
+[gripper_controller-3]                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[gripper_controller-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 877, in wait_for_ready_callbacks
+[gripper_controller-3]     return next(self._cb_iter)
+[gripper_controller-3]            ^^^^^^^^^^^^^^^^^^^
+[gripper_controller-3]   File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 781, in _wait_for_ready_callbacks
+[gripper_controller-3]     wait_set.wait(timeout_nsec)
+[gripper_controller-3] KeyboardInterrupt
+[parameter_bridge-6] [INFO] [1792042860.992321354] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [robot_state_publisher-12]: sending signal 'SIGINT' to process[robot_state_publisher-12]
+[INFO] [parameter_bridge-11]: sending signal 'SIGINT' to process[parameter_bridge-11]
+[INFO] [parameter_bridge-10]: sending signal 'SIGINT' to process[parameter_bridge-10]
+[INFO] [parameter_bridge-9]: sending signal 'SIGINT' to process[parameter_bridge-9]
+[INFO] [parameter_bridge-8]: sending signal 'SIGINT' to process[parameter_bridge-8]
+[INFO] [parameter_bridge-7]: sending signal 'SIGINT' to process[parameter_bridge-7]
+[INFO] [parameter_bridge-6]: sending signal 'SIGINT' to process[parameter_bridge-6]
+[INFO] [parameter_bridge-5]: sending signal 'SIGINT' to process[parameter_bridge-5]
+[INFO] [parameter_bridge-4]: sending signal 'SIGINT' to process[parameter_bridge-4]
+[INFO] [gripper_controller-3]: sending signal 'SIGINT' to process[gripper_controller-3]
+[parameter_bridge-5] [INFO] [1792042860.994090899] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[robot_state_publisher-12] [INFO] [1792042860.999200887] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-11] [INFO] [1792042861.000603608] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-10] [INFO] [1792042861.002285923] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-9] [INFO] [1792042861.003778164] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-8] [INFO] [1792042861.004953599] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-7] [INFO] [1792042861.005991143] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-6] [INFO] [1792042861.006742784] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-5] [INFO] [1792042861.007356012] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-4] [INFO] [1792042861.007957440] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[ERROR] [gripper_controller-3]: process has died [pid 24553, exit code -2, cmd '/home/yhs/ax1_ws/install/ax1_control/lib/ax1_control/gripper_controller --ros-args -r __node:=gripper_controller'].
+[INFO] [parameter_bridge-6]: process has finished cleanly [pid 24557]
+[INFO] [parameter_bridge-7]: process has finished cleanly [pid 24558]
+[INFO] [parameter_bridge-10]: process has finished cleanly [pid 24561]
+[INFO] [parameter_bridge-11]: process has finished cleanly [pid 24562]
+[INFO] [parameter_bridge-4]: process has finished cleanly [pid 24555]
+[INFO] [parameter_bridge-5]: process has finished cleanly [pid 24556]
+[INFO] [parameter_bridge-9]: process has finished cleanly [pid 24560]
+[INFO] [parameter_bridge-8]: process has finished cleanly [pid 24559]
+[INFO] [robot_state_publisher-12]: process has finished cleanly [pid 24563]

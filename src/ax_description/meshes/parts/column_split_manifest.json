@@ -1,0 +1,321 @@
+{
+  "source": "arm_01_fixed.obj",
+  "source_sha256": "5e7c7f8ddb70cd62245d38ecbc54f5fbc1dcd9ea2c2c629a6b9b3f084e3a9225",
+  "classification": "Central cylindrical surface and 3 collars rotate; all other components remain fixed. Geometry-based assignment; mechanical confirmation required.",
+  "components": [
+    {
+      "bounds_mm": [
+        [
+          60.0,
+          40.0,
+          612.0
+        ],
+        [
+          290.0,
+          330.0,
+          780.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          167.0,
+          298.0718,
+          780.0
+        ],
+        [
+          183.0,
+          311.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          167.0,
+          58.0718,
+          780.0
+        ],
+        [
+          183.0,
+          71.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          270.923,
+          118.0718,
+          780.0
+        ],
+        [
+          286.923,
+          131.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          63.077,
+          118.0718,
+          780.0
+        ],
+        [
+          79.077,
+          131.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          63.077,
+          238.0718,
+          780.0
+        ],
+        [
+          79.077,
+          251.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          270.923,
+          238.0718,
+          780.0
+        ],
+        [
+          286.923,
+          251.9282,
+          788.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          80.0,
+          85.0,
+          780.0
+        ],
+        [
+          280.0,
+          285.0,
+          1500.0
+        ]
+      ],
+      "assignment": "column"
+    },
+    {
+      "bounds_mm": [
+        [
+          278.0,
+          30.0,
+          800.0
+        ],
+        [
+          290.0,
+          110.0,
+          1480.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          80.0,
+          30.0,
+          800.0
+        ],
+        [
+          92.0,
+          110.0,
+          1480.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          92.0,
+          26.0,
+          1340.0
+        ],
+        [
+          108.0,
+          31.8687,
+          1440.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          50.0,
+          70.0,
+          780.0
+        ],
+        [
+          130.0,
+          300.0,
+          1470.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          76.0,
+          81.0,
+          1340.0
+        ],
+        [
+          284.0,
+          289.0,
+          1354.0
+        ]
+      ],
+      "assignment": "column"
+    },
+    {
+      "bounds_mm": [
+        [
+          76.0,
+          81.0,
+          900.0
+        ],
+        [
+          284.0,
+          289.0,
+          914.0
+        ]
+      ],
+      "assignment": "column"
+    },
+    {
+      "bounds_mm": [
+        [
+          76.0,
+          81.0,
+          1120.0
+        ],
+        [
+          284.0,
+          289.0,
+          1134.0
+        ]
+      ],
+      "assignment": "column"
+    },
+    {
+      "bounds_mm": [
+        [
+          80.0,
+          30.0,
+          800.0
+        ],
+        [
+          290.0,
+          64.0,
+          1480.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          45.0,
+          290.0,
+          1150.0
+        ],
+        [
+          85.0,
+          330.0,
+          1170.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          45.0,
+          290.0,
+          900.0
+        ],
+        [
+          85.0,
+          330.0,
+          920.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          51.0,
+          296.0,
+          790.0
+        ],
+        [
+          79.0,
+          324.0,
+          1470.0
+        ]
+      ],
+      "assignment": "support"
+    },
+    {
+      "bounds_mm": [
+        [
+          90.0,
+          29.0,
+          860.0
+        ],
+        [
+          290.0,
+          29.0,
+          1460.0
+        ]
+      ],
+      "assignment": "support"
+    }
+  ],
+  "outputs": [
+    {
+      "part": "column",
+      "file": "arm_01_column.obj",
+      "faces": 800,
+      "vertices": 560
+    },
+    {
+      "part": "support",
+      "file": "arm_01_support.obj",
+      "faces": 1776,
+      "vertices": 938
+    }
+  ]
+}

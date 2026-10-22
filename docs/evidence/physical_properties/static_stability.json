@@ -1,0 +1,231 @@
+{
+  "scope": "Static level-ground COM only. Sampled joint poses NOT filtered for self/ground collision or reachability. No dynamic or grasp validation.",
+  "seed": 42,
+  "random_samples": 20000,
+  "required_margin_m": 0.05,
+  "payload_assumption": "2 kg rigidly attached at declared point; suction box COM 150 mm beyond cup plane. Tool grasp force not tested.",
+  "models": {
+    "suction": {
+      "payload_frame": "suction_grasp_frame",
+      "payload_center_local_m": [
+        0,
+        0,
+        0.15
+      ],
+      "scenarios_payload_kg": {
+        "0.0": {
+          "total_mass_kg": 27.109999999999992,
+          "nominal_com_base_link_m": [
+            0.17641465536195353,
+            0.16028378948204575,
+            0.6009222658268946
+          ],
+          "nominal_com_ground_height_m": 0.9900055158268946,
+          "nominal_margin_m": 0.15071621051795425,
+          "nominal_restoring_moment_nearest_edge_Nm": 40.082840542660456,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.012557620121716684,
+          "outside_support_samples": 46,
+          "below_50mm_samples": 554,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        },
+        "2.0": {
+          "total_mass_kg": 29.109999999999992,
+          "nominal_com_base_link_m": [
+            0.1958296567111838,
+            0.193242649703135,
+            0.6167453152376198
+          ],
+          "nominal_com_ground_height_m": 1.0058285652376198,
+          "nominal_margin_m": 0.11775735029686499,
+          "nominal_restoring_moment_nearest_edge_Nm": 33.62786054266046,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.11736057849899928,
+          "outside_support_samples": 665,
+          "below_50mm_samples": 1774,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        }
+      }
+    },
+    "parallel_wide": {
+      "payload_frame": "wide_grasp_frame",
+      "payload_center_local_m": [
+        0,
+        0,
+        0
+      ],
+      "scenarios_payload_kg": {
+        "0.0": {
+          "total_mass_kg": 27.849999999999998,
+          "nominal_com_base_link_m": [
+            0.18392320670960713,
+            0.17303028843297164,
+            0.6095134801280828
+          ],
+          "nominal_com_ground_height_m": 0.9985967301280828,
+          "nominal_margin_m": 0.13796971156702836,
+          "nominal_restoring_moment_nearest_edge_Nm": 37.69449794266047,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.05071534195422045,
+          "outside_support_samples": 195,
+          "below_50mm_samples": 946,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        },
+        "2.0": {
+          "total_mass_kg": 29.849999999999998,
+          "nominal_com_base_link_m": [
+            0.20235381262521135,
+            0.20431804130178427,
+            0.6278527276906903
+          ],
+          "nominal_com_ground_height_m": 1.0169359776906903,
+          "nominal_margin_m": 0.10668195869821573,
+          "nominal_restoring_moment_nearest_edge_Nm": 31.239517942660466,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.14701768798967396,
+          "outside_support_samples": 961,
+          "below_50mm_samples": 2260,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        }
+      }
+    },
+    "primitive": {
+      "payload_frame": "gripper_base_link",
+      "payload_center_local_m": [
+        0.07,
+        0,
+        0
+      ],
+      "scenarios_payload_kg": {
+        "0.0": {
+          "total_mass_kg": 26.65,
+          "nominal_com_base_link_m": [
+            0.17153700963836993,
+            0.15200350967573206,
+            0.5935489051244691
+          ],
+          "nominal_com_ground_height_m": 0.9826321551244691,
+          "nominal_margin_m": 0.15899649032426794,
+          "nominal_restoring_moment_nearest_edge_Nm": 41.567485942660475,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": 0.010508809511414974,
+          "outside_support_samples": 0,
+          "below_50mm_samples": 288,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        },
+        "2.0": {
+          "total_mass_kg": 28.65,
+          "nominal_com_base_link_m": [
+            0.1916042340964244,
+            0.18606958229871762,
+            0.621449627279829
+          ],
+          "nominal_com_ground_height_m": 1.010532877279829,
+          "nominal_margin_m": 0.12493041770128238,
+          "nominal_restoring_moment_nearest_edge_Nm": 35.112505942660476,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.08672686793476758,
+          "outside_support_samples": 483,
+          "below_50mm_samples": 1428,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        }
+      }
+    },
+    "robotiq": {
+      "payload_frame": "robotiq_85_base_link",
+      "payload_center_local_m": [
+        0,
+        0,
+        0.17
+      ],
+      "scenarios_payload_kg": {
+        "0.0": {
+          "total_mass_kg": 27.470864273039997,
+          "nominal_com_base_link_m": [
+            0.18012708327320634,
+            0.1665840245993924,
+            0.6055782916635357
+          ],
+          "nominal_com_ground_height_m": 0.9946615416635357,
+          "nominal_margin_m": 0.1444159754006076,
+          "nominal_restoring_moment_nearest_edge_Nm": 38.91854257566089,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.03102962389573838,
+          "outside_support_samples": 103,
+          "below_50mm_samples": 746,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        },
+        "2.0": {
+          "total_mass_kg": 29.470864273039997,
+          "nominal_com_base_link_m": [
+            0.1990524133309276,
+            0.1987117539401087,
+            0.6237418891649033
+          ],
+          "nominal_com_ground_height_m": 1.0128251391649032,
+          "nominal_margin_m": 0.1122882460598913,
+          "nominal_restoring_moment_nearest_edge_Nm": 32.46356257566088,
+          "sample_count": 23126,
+          "minimum_sampled_margin_m": -0.13055853178238597,
+          "outside_support_samples": 800,
+          "below_50mm_samples": 2023,
+          "worst_joint_angles_rad": {
+            "column_yaw_joint": 0.28112679108344585,
+            "shoulder_joint": -1.396487298595696,
+            "elbow_joint": 1.808970337397319,
+            "wrist_joint": 1.187880443909554,
+            "gripper_rotation_joint": 3.0994623848322043
+          }
+        }
+      }
+    }
+  },
+  "support_rectangle_base_link_m": [
+    -0.443,
+    0.437,
+    -0.311,
+    0.311
+  ]
+}

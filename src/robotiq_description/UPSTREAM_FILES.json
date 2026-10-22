@@ -1,0 +1,144 @@
+{
+  "repository": "https://github.com/PickNikRobotics/ros2_robotiq_gripper",
+  "commit": "a74d007d8f2f06dc6a503ad21038ba869d4999a6",
+  "files": [
+    {
+      "source_path": "LICENSE",
+      "destination": "src/robotiq_description/LICENSE",
+      "sha": "4cff3dc4ae1bd9aa6cdcd2e530de850ad3a3ce11",
+      "size": 1524
+    },
+    {
+      "source_path": "robotiq_description/CMakeLists.txt",
+      "destination": "src/robotiq_description/upstream/CMakeLists.txt.original",
+      "sha": "8bf4be4394908bb9191d5b7e728c1d4a90015a99",
+      "size": 381
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/left_finger.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/left_finger.stl",
+      "sha": "8cc5e5caab20e6aa5ff64ab621edf61e5831a076",
+      "size": 19684
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/left_finger_tip.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/left_finger_tip.stl",
+      "sha": "907d97130eb9da75ce3a02ac23b4b29f4254c184",
+      "size": 11284
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/left_inner_knuckle.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/left_inner_knuckle.stl",
+      "sha": "3ad9302c1f9de605543d1d9246cf0e02b14b8c57",
+      "size": 17984
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/left_knuckle.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/left_knuckle.stl",
+      "sha": "ca9c48f0043f026b8de8a3ce04e1c41efd4b6139",
+      "size": 4384
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/right_finger.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/right_finger.stl",
+      "sha": "992dcc556a0b832e6d5e6a88df30fe2a235eda4b",
+      "size": 19684
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/right_finger_tip.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/right_finger_tip.stl",
+      "sha": "4ed27f453bce5b3753aac62531f8f4748f18cbf7",
+      "size": 11284
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/right_inner_knuckle.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/right_inner_knuckle.stl",
+      "sha": "bcb16a1a0bfdc3937097eec73690de6bb49248a1",
+      "size": 17784
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/right_knuckle.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/right_knuckle.stl",
+      "sha": "92dbfda6986b29761ce7e63be98d2fcc371cb508",
+      "size": 4384
+    },
+    {
+      "source_path": "robotiq_description/meshes/collision/2f_85/robotiq_base.stl",
+      "destination": "src/robotiq_description/meshes/collision/2f_85/robotiq_base.stl",
+      "sha": "6b3498c1bd002295fcd958b83fc1a7201e5b8aa4",
+      "size": 20084
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/left_finger.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/left_finger.dae",
+      "sha": "a29253a6d5b73ec690e693794ec6f94b44cbf2e9",
+      "size": 191399
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/left_finger_tip.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/left_finger_tip.dae",
+      "sha": "4eef71eb97eae1d65ec2d808bec176afa88e6963",
+      "size": 174578
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/left_inner_knuckle.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/left_inner_knuckle.dae",
+      "sha": "73e503611ffc68c3acb9888ab7e737b7e152e5db",
+      "size": 110219
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/left_knuckle.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/left_knuckle.dae",
+      "sha": "3e4145f5d134f6e6dce6dfa658c1e3268d76cca0",
+      "size": 78865
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/right_finger.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/right_finger.dae",
+      "sha": "7e36470f83130be8b07ff13e1dee2008b3590597",
+      "size": 190861
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/right_finger_tip.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/right_finger_tip.dae",
+      "sha": "bd06f8bac66aca5fccdbbd1adf3c50be41989177",
+      "size": 173460
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/right_inner_knuckle.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/right_inner_knuckle.dae",
+      "sha": "95bc480dae6211f2e8e46ac7015977ca16de01da",
+      "size": 111109
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/right_knuckle.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/right_knuckle.dae",
+      "sha": "d34c9cdb3f791b6f98a39f136a23077c703bfe45",
+      "size": 79122
+    },
+    {
+      "source_path": "robotiq_description/meshes/visual/2f_85/robotiq_base.dae",
+      "destination": "src/robotiq_description/meshes/visual/2f_85/robotiq_base.dae",
+      "sha": "a50da3e3912bdb143aa61a171ce520fd47f70cfe",
+      "size": 2159533
+    },
+    {
+      "source_path": "robotiq_description/package.xml",
+      "destination": "src/robotiq_description/upstream/package.xml.original",
+      "sha": "09c55f7c4803fa9f9b473cd328c8cf6d5746c95f",
+      "size": 1236
+    },
+    {
+      "source_path": "robotiq_description/urdf/2f_85.ros2_control.xacro",
+      "destination": "src/robotiq_description/urdf/2f_85.ros2_control.xacro",
+      "sha": "1ad6cd9df6e2b8a8d7e4b91111cb112b2ae07adc",
+      "size": 5138
+    },
+    {
+      "source_path": "robotiq_description/urdf/robotiq_2f_85_macro.urdf.xacro",
+      "destination": "src/robotiq_description/urdf/robotiq_2f_85_macro.urdf.xacro",
+      "sha": "3fd70b538ae12c59d388cc6f25aa65efdd5e78e1",
+      "size": 13885
+    }
+  ]
+}

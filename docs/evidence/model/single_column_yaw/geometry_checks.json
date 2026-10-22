@@ -1,0 +1,8 @@
+{
+  "single_horizontal_arm_rotation_joint": "column_yaw_joint",
+  "upper_fixed_joint": "arm_upper_mount_joint",
+  "zero_and_rotated_link_poses_preserved": true,
+  "column_to_upper_relative_pose_constant": true,
+  "duplicate_plugin_and_bridge_removed": true,
+  "scope": "URDF, FK, build and source syntax; no physical/Gazebo motion test"
+}

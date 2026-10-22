@@ -1,0 +1,30 @@
+{
+  "primitive": {
+    "urdf_to_sdf_conversion": true,
+    "total_mass_kg": 26.65,
+    "sdf_total_mass_kg": 26.65,
+    "sdf_inertias_positive": true,
+    "warnings": "\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_camera\"]/gz_frame_id:/tmp/ax_physics_primitive.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_lidar\"]/gz_frame_id:/tmp/ax_physics_primitive.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor]."
+  },
+  "robotiq": {
+    "urdf_to_sdf_conversion": true,
+    "total_mass_kg": 27.47086427304,
+    "sdf_total_mass_kg": 27.47086427304,
+    "sdf_inertias_positive": true,
+    "warnings": "\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_camera\"]/gz_frame_id:/tmp/ax_physics_robotiq.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_lidar\"]/gz_frame_id:/tmp/ax_physics_robotiq.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor]."
+  },
+  "parallel_wide": {
+    "urdf_to_sdf_conversion": true,
+    "total_mass_kg": 27.85,
+    "sdf_total_mass_kg": 27.85,
+    "sdf_inertias_positive": true,
+    "warnings": "\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_camera\"]/gz_frame_id:/tmp/ax_physics_parallel_wide.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_lidar\"]/gz_frame_id:/tmp/ax_physics_parallel_wide.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor]."
+  },
+  "suction": {
+    "urdf_to_sdf_conversion": true,
+    "total_mass_kg": 27.11,
+    "sdf_total_mass_kg": 27.11,
+    "sdf_inertias_positive": true,
+    "warnings": "\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_camera\"]/gz_frame_id:/tmp/ax_physics_suction.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"ax\"]/link[@name=\"base_link\"]/sensor[@name=\"ax_lidar\"]/gz_frame_id:/tmp/ax_physics_suction.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor]."
+  }
+}

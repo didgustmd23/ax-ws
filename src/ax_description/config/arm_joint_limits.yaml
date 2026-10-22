@@ -1,0 +1,30 @@
+# AX 5-axis v0.1 planning limits (rad, rad/s, rad/s^2).
+# Velocity is also applied in ax.urdf.xacro. The current Float64-to-Gazebo
+# bridge does not load this file or enforce acceleration / TCP speed limits.
+# A future trajectory planner must load joint_limits and time-parameterize paths.
+joint_limits:
+  column_yaw_joint:
+    has_velocity_limits: true
+    max_velocity: 0.35
+    has_acceleration_limits: true
+    max_acceleration: 0.50
+  shoulder_joint:
+    has_velocity_limits: true
+    max_velocity: 0.50
+    has_acceleration_limits: true
+    max_acceleration: 0.50
+  elbow_joint:
+    has_velocity_limits: true
+    max_velocity: 0.50
+    has_acceleration_limits: true
+    max_acceleration: 0.70
+  wrist_joint:
+    has_velocity_limits: true
+    max_velocity: 0.70
+    has_acceleration_limits: true
+    max_acceleration: 1.00
+  gripper_rotation_joint:
+    has_velocity_limits: true
+    max_velocity: 0.70
+    has_acceleration_limits: true
+    max_acceleration: 1.00

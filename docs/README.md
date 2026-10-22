@@ -37,7 +37,7 @@ docs/
 | [INTERFACES](guides/INTERFACES.md) | 프레임·관절·제어 토픽·피드백 제공 상태 | 현재 코드 인터페이스 |
 | [AX_5DOF_ARM_SPEC](design/AX_5DOF_ARM_SPEC.md) | 5축 구조·질량·속도·하중 목표·검증 순서 | 질량·속도는 반영, 2 kg 운반은 미검증 목표 |
 | [PHYSICAL_PROPERTIES_REVIEW](validation/PHYSICAL_PROPERTIES_REVIEW.md) | 부품별 충돌 상자·가상 질량 분포·관성·정적 지지 여유 | 동적 전도·충돌 없는 작업 범위의 검증과 다름 |
-| [GRIPPER_COMPARISON](guides/GRIPPER_COMPARISON.md) | 집게 4종 선택과 RViz 개폐 조작 | RViz 모델 비교. Gazebo 파지 구현 완료가 아님 |
+| [GRIPPER_COMPARISON](guides/GRIPPER_COMPARISON.md) | 집게 4종 선택(RViz 기본 가상 흡착 헤드)과 RViz 개폐 조작, 흡착 구현 제약, EPick 도입 계획 | RViz 모델 비교. Gazebo 흡착·파지 구현 완료가 아님 |
 | [GIT_UPLOAD_POLICY](management/GIT_UPLOAD_POLICY.md) | 포함·제외 파일과 확인 방법 | build/install/log 제외, 모델 자산·외부 LICENSE 포함 |
 | [PREUPLOAD_REVIEW](validation/PREUPLOAD_REVIEW.md) | 업로드 전 소스·빌드·보안 패턴·문서·라이선스 점검 | 점검 범위와 미확정 사항 포함 |
 
@@ -45,7 +45,7 @@ docs/
 
 | 문서 | 내용 | 상태 |
 |---|---|---|
-| [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 2대 운반 시스템, A/B/C/D 역할, 상태 머신·통신·검증 목표 | 원문 기반 목표 설계. 현재 구현 전체를 뜻하지 않음 |
+| [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 흡착 팔 로봇·적재함 로봇의 협업 그룹, A/B/C/D 역할, 상태 머신·통신·검증 목표 | 원문과 2026-10-22 결정 기반 목표 설계. 현재 구현 전체를 뜻하지 않음 |
 | [A_DETAILED_SCHEDULE](management/A_DETAILED_SCHEDULE.md) | A 담당 16주 상대 일정, 협업·완료 관문 | 계획 문서. 시작 당시 상태와 현재 진행 상태를 구분 |
 | [EXTERNAL_REPOSITORY_REVIEW](design/EXTERNAL_REPOSITORY_REVIEW.md) | Robotiq·UR5e·ROSbot의 적용 검토 | 도입 당시 비교 자료. Robotiq 모델 일부는 이후 도입됨 |
 | [plan.pdf](design/plan.pdf) | 최초 통합 상세설계 원문 | 원문 보관 |

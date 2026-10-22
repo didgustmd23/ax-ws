@@ -1,10 +1,10 @@
 # 팀 연결 인터페이스
 
-기준 소스: `ax.urdf.xacro`, `simulation.launch.py`, `arm_control.launch.py`, `gripper_controller.py`. 길이 m, 각도 rad. 축은 joint 좌표계, xyz/rpy는 부모 링크 기준이다. 아래는 개발용 설정이며 실측 사양이 아니다. [AX 5축 사양안](../design/AX_5DOF_ARM_SPEC.md)의 v0.1 질량·URDF 속도 설정을 반영했다. 팔 조립체 질량은 받침·기둥·공통 어댑터 포함 16.2 kg이다. 충돌 상자와 가상 모터·하우징 질량 분포를 보완했고, [정적 지지 여유 계산](../validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 일부 미필터링 관절 샘플의 지지 영역 이탈을 확인했다. 전 가동 범위의 하중 운반은 검증되지 않았다. 가속도는 `arm_joint_limits.yaml`의 계획값으로, 현재 Float64 브리지에서 강제하지 않는다.
+기준 소스: `ax.urdf.xacro`, `simulation.launch.py`, `arm_control.launch.py`, `gripper_controller.py`. 이 문서는 **현재 코드의 단일 `ax` 모델 인터페이스**만 다룬다. 팔 로봇 `robot_1`·적재함 로봇 `robot_2`의 협업 그룹, ros2_control 전환, 그룹·하위 Action과 보완된 `SafetyState`는 [통합 상세설계](../design/DETAILED_DESIGN.md)의 목표 계약이며 아직 구현되지 않았다. 길이 m, 각도 rad. 축은 joint 좌표계, xyz/rpy는 부모 링크 기준이다. 아래는 개발용 설정이며 실측 사양이 아니다. [AX 5축 사양안](../design/AX_5DOF_ARM_SPEC.md)의 v0.1 질량·URDF 속도 설정을 반영했다. 팔 조립체 질량은 받침·기둥·공통 어댑터 포함 16.2 kg이다. 충돌 상자와 가상 모터·하우징 질량 분포를 보완했고, [정적 지지 여유 계산](../validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 일부 미필터링 관절 샘플의 지지 영역 이탈을 확인했다. 전 가동 범위의 하중 운반은 검증되지 않았다. 가속도는 `arm_joint_limits.yaml`의 계획값으로, 현재 Float64 브리지에서 강제하지 않는다.
 
 ## 링크와 관절
 
-루트는 `base_link`. 현재 원통 회전·카메라·광학 프레임을 포함하여 `primitive` 집게 선택은 관절 16개·링크 17개, RViz 기본 `robotiq` 선택은 관절 23개·링크 24개다. 추가된 `parallel_wide`는 관절 18개·링크 19개, `suction`은 관절 20개·링크 21개다. 신규 집게의 관절·선택 방법은 [집게 비교 안내](GRIPPER_COMPARISON.md)를 참고한다. 몸통·바퀴·팔은 분리 OBJ를 연결했으며, 팔 관절 위치·축은 형상에서 추정했다. 관절각 0은 원본 OBJ 조립 자세다. 아래 표의 임시 손가락은 `primitive`에만 해당한다.
+루트는 `base_link`. 현재 원통 회전·카메라·광학 프레임을 포함하여 `primitive` 집게 선택(Gazebo·공통 Xacro 기본값)은 관절 16개·링크 17개, `robotiq` 선택은 관절 23개·링크 24개다. `parallel_wide`는 관절 18개·링크 19개, RViz 기본값인 기준 공구 `suction`은 관절 20개·링크 21개다. 신규 집게의 관절·선택 방법은 [집게 비교 안내](GRIPPER_COMPARISON.md)를 참고한다. 몸통·바퀴·팔은 분리 OBJ를 연결했으며, 팔 관절 위치·축은 형상에서 추정했다. 관절각 0은 원본 OBJ 조립 자세다. 아래 표의 임시 손가락은 `primitive`에만 해당한다.
 
 | 관절 | 부모 → 자식 | 종류 | xyz (m) | rpy (rad) | 축 | 위치 범위 |
 |---|---|---|---|---|---|---|
@@ -33,7 +33,7 @@
 
 ## ROS 입력 → Gazebo 명령
 
-이 절의 집게 명령은 기존 `primitive` Gazebo 구성용이다. RViz 기본 Robotiq은 `robotiq_85_left_knuckle_joint`의 0~0.8 rad 입력과 mimic 5개로 개폐하며, `/gripper/command`의 손가락 변위(m)를 그대로 적용하지 않는다. [집게 비교 안내](GRIPPER_COMPARISON.md)를 참고한다.
+이 절의 집게 명령은 기존 `primitive` Gazebo 구성용이다. RViz 비교용 Robotiq은 `robotiq_85_left_knuckle_joint`의 0~0.8 rad 입력과 mimic 5개로 개폐하며, `/gripper/command`의 손가락 변위(m)를 그대로 적용하지 않는다. [집게 비교 안내](GRIPPER_COMPARISON.md)를 참고한다.
 
 모든 입력 타입은 `std_msgs/msg/Float64`, Gazebo 타입은 `gz.msgs.Double`. 속도가 아닌 위치 목표이며 ROS → Gazebo 단방향이다.
 
@@ -59,9 +59,11 @@
 | /tf | tf2_msgs/msg/TFMessage | 이동 관절 TF에는 joint_states 입력 필요. 현재 시뮬레이션 상태 공급 없음 |
 | /joint_states | sensor_msgs/msg/JointState | 현재 Gazebo 피드백 발행·브리지 없음. display GUI 값은 실제 상태가 아님 |
 | /clock | rosgraph_msgs/msg/Clock | ROS 브리지 없음, use_sim_time 설정도 없음 |
-| ROS /cmd_vel, /odom | 미확정 | ROS 브리지 없음 |
+| /cmd_vel | geometry_msgs/msg/Twist | ROS → Gazebo `/model/ax/cmd_vel` 단방향 브리지. linear.x m/s, angular.z rad/s. 구동 차단 게이트·watchdog 없음 |
+| /odom | 미확정 | ROS 수신 브리지 없음 |
+| /camera/image_raw, /camera/camera_info | sensor_msgs/msg/Image, CameraInfo / camera_optical_frame | Gazebo → ROS. RGB 640×480, 30 Hz 설정, 수평 시야각 약 60도. 깊이 출력 없음. 실제 수신은 재검증하지 않음 |
 | odom → base_link | TF | ROS 전달 구성 없음 |
 
 DiffDrive는 네 바퀴를 좌우 쌍으로 사용한다. 분리 OBJ 장착 후 반지름 0.19631 m, 폭 0.144 m, 좌우 간격 0.622 m로 변경했다. 이는 mm 단위 가정하에 메시 외곽으로 추정한 값으로 실제 접지 반지름·주행 보정값은 아니다. 이전 실제 실행에서 Gazebo `/model/ax/cmd_vel`, `/model/ax/odometry`, `/model/ax/tf`가 발견되었다. 바퀴 교체 후 물리 주행은 재검증하지 않았다. Gazebo 토픽 존재와 ROS 브리지 제공은 별개이며 Nav2 연결 완료를 의미하지 않는다.
 
-카메라·인식 토픽·팔 자세 목표 API·집기 결과 API는 아직 없다. 지도 YAML과 PGM은 함께 전달한다.
+현재 센서는 전방 라이다 1개와 RGB 카메라 1개다. 설계에서 확정한 전·후방 라이다, RGB-D 카메라, IMU, robot_2 적재함 접촉 센서는 아직 모델에 없다. 인식 토픽·팔 자세 목표 API·흡착·집기 결과 API는 아직 없다. 지도 YAML과 PGM은 함께 전달한다.

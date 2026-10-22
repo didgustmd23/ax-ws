@@ -28,11 +28,14 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
             'gripper_model',
-            default_value='robotiq',
-            choices=['robotiq', 'primitive', 'parallel_wide', 'suction'],
+            # 기준 공구 EPick 도입 전까지 비교용 가상 4컵 suction을 RViz 기본값으로 둔다.
+            # 흡착 부착·해제 구현을 뜻하지 않으며,
+            # 공통 Xacro와 Gazebo simulation의 기본 공구(primitive)는 변경하지 않는다.
+            default_value='suction',
+            choices=['suction', 'robotiq', 'primitive', 'parallel_wide'],
             description=(
                 'Tool for RViz shape/kinematic comparison; '
-                'physical grasping is not enabled.'
+                'suction attach/release and physical grasping are not enabled.'
             )
         ),
 

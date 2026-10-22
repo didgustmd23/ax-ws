@@ -22,11 +22,15 @@ htmlcov/
 *.swp
 *.swo
 *~
-*:Zone.Identifier
+# Windows download metadata, including names with a remapped colon.
+*Zone.Identifier
 .DS_Store
 Thumbs.db
 
 # Credentials and local runtime configuration.
+# Claude harness files are local-only and never committed.
+/.claude/
+/CLAUDE.md
 /.aws/
 /.codex/
 /.agents/

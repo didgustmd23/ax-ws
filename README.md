@@ -1,10 +1,12 @@
 # ax-ws
 
-가상 AX 로봇의 개발용 모델이다. 차체·바퀴·팔은 분리 OBJ를 사용하고, 집게는 네 종류를 선택할 수 있다. 관절축·질량·충돌 형상은 개발용 근삿값이며 JSON 생성기 대신 Xacro를 사용한다.
+가상 AX 로봇의 개발용 모델이다. 차체·바퀴·팔은 분리 OBJ를 사용하고, 집게는 네 종류를 선택할 수 있다. 목표 구성은 흡착 팔 로봇 `robot_1`과 적재함 운송 로봇 `robot_2`의 협업 그룹([통합 상세설계](docs/design/DETAILED_DESIGN.md))이며, 현재 코드는 팔이 달린 단일 `ax` 모델과 Gazebo 플러그인 제어 구성이다. ros2_control 전환은 결정 사항이며 아직 적용하지 않았다. 관절축·질량·충돌 형상은 개발용 근삿값이며 JSON 생성기 대신 Xacro를 사용한다.
 
 프로젝트·GitHub 저장소 이름: **`ax-ws`**. ROS 모델 이름은 `ax`, 패키지 이름은 기존 값을 유지한다. 로컬 작업공간은 `~/ax_ws`로 사용한다. 저장소를 받을 때 대상 폴더를 `~/ax_ws`로 지정하면 아래 명령을 그대로 사용할 수 있다.
 
 [전체 문서 안내](docs/README.md) · [GitHub 업로드 전 점검](docs/validation/PREUPLOAD_REVIEW.md)
+
+Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용이며 Git에 포함하지 않는다.
 
 ## 구성
 
@@ -43,7 +45,9 @@ colcon build --symlink-install --packages-up-to ax_description ax_control
 source install/setup.bash
 ```
 
-실행 의존성은 각 `package.xml`에 선언한다. Gazebo 시스템 플러그인은 Jazzy vendor 환경을 사용하므로 ROS setup을 먼저 적용한다. 설치 오류는 해결한 뒤 다음 단계로 진행한다.
+실행 의존성은 각 `package.xml`에 선언한다. Gazebo 시스템 플러그인은 Jazzy vendor 환경을 사용하므로 ROS setup을 먼저 적용한다.
+
+ros2_control 전환은 아직 적용 전이므로 현재 빌드·실행에는 아래 패키지가 필요 없다. 전환 작업에서는 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`, `joint_state_broadcaster`, `diff_drive_controller` 등을 `package.xml`에 선언하고 이 절의 설치 명령을 함께 갱신한다. 2026-10-22 작업 PC 확인 기준으로 `diff_drive_controller`, `joint_state_broadcaster`, `hardware_interface`는 설치되어 있고 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`는 설치되어 있지 않다. 다른 PC에서는 `ros2 pkg prefix <패키지>`로 다시 확인한다. 설치 오류는 해결한 뒤 다음 단계로 진행한다.
 
 ## 실행
 
@@ -64,7 +68,7 @@ RViz 구조만 별도로 확인할 때:
 ros2 launch ax_description display.launch.py
 ```
 
-RViz 기본 집게는 오픈소스 Robotiq 2F-85다. GUI의 `robotiq_85_left_knuckle_joint` 하나로 연동 개폐를 확인한다. 기존 임시 집게는 `gripper_model:=primitive`, 최대 450 mm 가상 평행 집게는 `gripper_model:=parallel_wide`, 4컵 흡착 헤드는 `gripper_model:=suction`으로 선택한다. 실행을 종료한 뒤 다른 인자로 다시 시작한다. [집게 비교 안내](docs/guides/GRIPPER_COMPARISON.md)를 참고한다. Gazebo 실행은 기존 임시 집게를 사용하며 Robotiq 물리 제어·파지 통합은 별도다. Robotiq 원본·라이선스는 [패키지 안내](src/robotiq_description/README.md)를 참고한다.
+설계 기준 공구는 Robotiq EPick(컵 구성 미정)이며 아직 도입하지 않았다. RViz 기본 공구는 비교용 가상 4컵 흡착 헤드(`suction`)다. 표시 기본값일 뿐 흡착 부착·해제는 구현되지 않았다. 오픈소스 Robotiq 2F-85는 `gripper_model:=robotiq`(GUI의 `robotiq_85_left_knuckle_joint` 하나로 연동 개폐), 기존 임시 집게는 `gripper_model:=primitive`, 최대 450 mm 가상 평행 집게는 `gripper_model:=parallel_wide`로 선택한다. 실행을 종료한 뒤 다른 인자로 다시 시작한다. [집게 비교 안내](docs/guides/GRIPPER_COMPARISON.md)를 참고한다. Gazebo 실행은 기존 임시 집게(`primitive`)를 사용하며 공구 선택·흡착·Robotiq 물리 제어 통합은 별도 작업이다. Robotiq 원본·라이선스는 [패키지 안내](src/robotiq_description/README.md)를 참고한다.
 
 Fixed Frame을 `base_link`로 설정하고 RobotModel을 추가한다. 이 GUI 관절값은 Gazebo 실측값이 아니다. 시뮬레이션 상태 확인을 위해 두 launch를 동시에 실행하지 않는다.
 
@@ -85,7 +89,7 @@ ros2 topic pub --once /column_yaw/command std_msgs/msg/Float64 '{data: 0.3}'
 
 - B: `/scan`, `lidar_link`, `base_link` 사용. `/clock`, 시뮬레이션 시간, 이동 관절 `/joint_states` 피드백을 후속 연결한다.
 - C: 팔·집게 Float64 명령 사용. 자세 피드백·역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
-- D: ROS `/cmd_vel`, `/odom`, `odom → base_link` 연결은 현재 제공되지 않는다. 브리지와 프레임 규칙을 먼저 확정한다.
+- D: ROS `/cmd_vel` → Gazebo 단방향 브리지는 있으나 구동 차단 게이트는 없다. `/odom`, `odom → base_link`는 현재 제공되지 않는다. 로봇별 이름·프레임 규칙을 먼저 확정한다.
 - A: 실제 OBJ·단위·원점·관절 축표 확보 후 모델을 교체하고 재검증한다. 질량·관성·제어값·관절 제한은 실측 검증 전이다.
 
 ## 전달 파일

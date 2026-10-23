@@ -1,12 +1,83 @@
 # ax-ws
 
-가상 AX 로봇의 개발용 모델이다. 차체·바퀴·팔은 분리 OBJ를 사용하고, 집게는 네 종류를 선택할 수 있다. 목표 구성은 흡착 팔 로봇 `robot_1`과 적재함 운송 로봇 `robot_2`의 협업 그룹([통합 상세설계](docs/design/DETAILED_DESIGN.md))이며, 현재 코드는 팔이 달린 단일 `ax` 모델과 Gazebo 플러그인 제어 구성이다. ros2_control 전환은 결정 사항이며 아직 적용하지 않았다. 관절축·질량·충돌 형상은 개발용 근삿값이며 JSON 생성기 대신 Xacro를 사용한다.
+**ax-ws는 중앙 운영 AI 에이전트의 상황 판단과 계획 제안을 중심으로, 가상 창고에서 두 로봇의 공동 운반을 조정하는 시스템을 개발하는 프로젝트다.** ROS 2 Jazzy와 Gazebo Harmonic을 기반으로 흡착 팔 로봇 `robot_1`이 물체를 집어 적재함 운송 로봇 `robot_2`에 싣고, 두 로봇이 목적지로 이동한 뒤 `robot_1`이 하역·배치하는 시나리오를 구현한다.
+
+에이전트는 Fleet이 제공하는 로봇·작업·통로 상태와 예측 데이터를 종합해 상황을 요약하고, 작업 우선순위·통로 통과 순서·작업 보류·실패 복구 방안을 제안한다. 초기에는 협업 중인 두 로봇 중 누가 먼저 통로를 통과해야 공동 작업이 빨리 끝나는지 판단하는 데 초점을 둔다. Fleet은 제안의 유효성과 현재 상태를 검증해 운영에 반영하고, 로봇별 Task Executor와 제어부가 실행 및 최종 구동 차단을 담당하도록 설계한다.
+
+개발 범위는 에이전트의 운영 판단을 로봇 모델·제어, 위치 추정·환경 인지, 물체 인식·조작, Fleet 작업 배정·자율주행과 연결하는 것이다. 규칙 기반 공동 운반을 먼저 검증하고, 에이전트 제안을 기록·평가하는 `ADVISORY` 단계를 거쳐 검증된 제안을 반영하는 `ASSISTED` 단계로 확장한다. AI 응답 지연·오류나 제안 검증 실패 시에는 규칙 기반 운영으로 복귀하도록 설계한다. 목표 구성과 역할별 계약은 [통합 상세설계](docs/design/DETAILED_DESIGN.md)에 정리한다.
+
+현재 저장소는 팔이 달린 단일 `ax` 모델과 Gazebo 플러그인 기반 기본 제어를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·ros2_control 전환은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
 
 프로젝트·GitHub 저장소 이름: **`ax-ws`**. ROS 모델 이름은 `ax`, 패키지 이름은 기존 값을 유지한다. 로컬 작업공간은 `~/ax_ws`로 사용한다. 저장소를 받을 때 대상 폴더를 `~/ax_ws`로 지정하면 아래 명령을 그대로 사용할 수 있다.
 
 [전체 문서 안내](docs/README.md) · [GitHub 업로드 전 점검](docs/validation/PREUPLOAD_REVIEW.md)
 
 Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용이며 Git에 포함하지 않는다.
+
+## 전체 시스템 구성도
+
+### 목표 구성
+
+아래는 두 로봇이 협업하는 **목표 설계**다. 각 블록의 현재 구현 범위는 아래 표를 참고한다.
+
+```mermaid
+flowchart TD
+    User[사용자 요청] --> Fleet["D: Fleet Manager<br/>그룹 작업 배정·합류·인계 관리"]
+    Fleet -->|상태·예측 데이터| Agent[중앙 운영 AI 에이전트]
+    Agent -->|운영 계획 제안| Fleet
+    Fleet -->|검증 후 로봇별 작업 배정| Executor["A: 로봇별 Task Executor"]
+    Fleet --> Corridor["D: 통로 허가 관리"]
+    Corridor -->|진입 허가| Nav["D: Nav2 주행"]
+    Executor -->|이동 요청| Nav
+    Executor -->|집기·놓기 요청| Manip["C: 물체 인식·조작"]
+    Perception["B: 위치 추정·환경 인지·안전 판단"] -->|위치·통로 관측| Fleet
+    Perception -->|위치·환경 정보| Nav
+    Perception -->|안전 판단| Executor
+    Executor -->|실행 허용·정지 관리| Gate["A: 최종 구동 차단"]
+    Nav -->|주행 명령| Gate
+    Manip -->|팔·흡착 실행 요청| Gate
+
+    subgraph Simulation["Gazebo 시뮬레이션 · ros_gz 센서·상태 브리지"]
+        Control["ros2_control 바퀴·팔 제어<br/>흡착 실행은 별도 구현"]
+        R1["robot_1: 흡착 팔 로봇<br/>집기·적재·하역"]
+        R2["robot_2: 적재함 운송 로봇<br/>상자 지지·운송"]
+        Control --> R1
+        Control --> R2
+    end
+
+    Gate -->|허용된 구동 요청| Control
+    Simulation -->|센서·상태| Perception
+    Simulation -->|카메라·공구 보유 상태| Manip
+    Simulation -->|관절·구동·적재 상태| Executor
+```
+
+AI는 운영 방안을 제안하고 D가 검증·배정한다. A는 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. B는 위치·환경·안전 판단을 제공하고 C는 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
+
+### 공동 운반 흐름
+
+```mermaid
+flowchart LR
+    Source["station_src<br/>두 로봇 정차"] --> Pick["robot_1 집기<br/>robot_2 적재함에 적재"]
+    Pick --> Check["적재 확인<br/>흡착 해제·팔 후퇴"]
+    Check --> Move["두 로봇 이동<br/>상자는 robot_2가 지지"]
+    Move --> Ready["station_dst 정차<br/>하역 준비 확인"]
+    Ready --> Place["robot_1 하역<br/>작업대에 배치"]
+    Place --> Complete["흡착 해제·팔 후퇴<br/>적재함 EMPTY 확인·완료"]
+```
+
+팔 동작 중 `robot_1` 주행과 적재·하역 중 `robot_2` 주행을 차단하는 것이 목표다. 두 로봇의 대형 유지 이동 여부는 미정이다.
+
+### 현재 구현 상태
+
+| 영역 | 현재 코드 | 목표·후속 구현 |
+|---|---|---|
+| 로봇 모델 | 팔이 달린 단일 `ax`, RViz 집게 4종 선택 | `robot_1`·`robot_2` 분리 및 로봇별 물리 특성 산정 |
+| 기본 제어 | Gazebo 플러그인, 팔·집게 Float64 명령, `/cmd_vel` 입력 브리지 | ros2_control 전환, 로봇별 제어·최종 구동 차단 |
+| 센서·상태 | `/scan`, `/camera/image_raw`, `/camera/camera_info` 브리지 구성 | `/odom`·이동 TF·Gazebo `/joint_states` 피드백·`/clock`·`use_sim_time` 연결 |
+| 공구·조작 | Gazebo 기본 `primitive`, RViz 기본 비교용 `suction` 외형 | EPick 도입, 인식·집기 계획·실제 부착/해제·보유 판정 |
+| 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·Fleet·Nav2·통로 허가·중앙 운영 AI |
+
+센서 브리지 구성은 수신·성능 검증 완료를 뜻하지 않으며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
 
 ## 구성
 
@@ -18,6 +89,8 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 | `src/ax_description/launch/display.launch.py` | RViz 수동 관절 표시 |
 | `src/ax_control/launch/simulation.launch.py` | Gazebo 생성, 명령·센서 브리지, robot_state_publisher |
 | `src/ax_control/ax_control/gripper_controller.py` | 집게 공통 명령을 양쪽 손가락으로 분배 |
+| `tools/generate_physical_properties.py` | 질량·COM·관성·충돌 상자의 원본 계산 및 Xacro·JSON 생성 |
+| `tools/check_static_stability.py` | 자세·공구·하중 가정에 따른 정적 COM 바닥 투영·지지 여유 계산 |
 | `maps/warehouse_map.yaml`, `.pgm` | 기존 지도. 대응하는 창고 월드는 포함하지 않음 |
 | [docs/guides/INTERFACES.md](docs/guides/INTERFACES.md) | 팀 연결용 링크·관절·토픽 표 |
 | [docs/guides/GRIPPER_COMPARISON.md](docs/guides/GRIPPER_COMPARISON.md) | 집게 4종 선택·개폐 조작·시험 범위 |

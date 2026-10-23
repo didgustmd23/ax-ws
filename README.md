@@ -22,15 +22,25 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 ```mermaid
 flowchart TD
-    User[사용자 요청] --> Fleet["D: Fleet Manager<br/>그룹 작업 배정·합류·인계 관리"]
-    Fleet -->|상태·예측 데이터| Agent[중앙 운영 AI 에이전트]
-    Agent -->|운영 계획 제안| Fleet
+    User[사용자 요청] --> Context["D: 요청 접수·운영 상태 수집<br/>FleetSnapshot·예측 데이터"]
+
+    subgraph Agent["중앙 운영 AI 에이전트 · 운영 판단의 중심"]
+        direction TB
+        Summary["상황 요약<br/>로봇·작업·통로 상태 파악"]
+        Reason["운영 판단<br/>작업 우선순위·통로 통과 순서 검토"]
+        Proposal["계획 제안<br/>우선순위 변경·보류·재시도·복구 방안"]
+        Summary --> Reason --> Proposal
+    end
+
+    Context -->|상태·예측 데이터| Summary
+    Proposal -->|운영 계획 제안| Fleet["D: Fleet Manager<br/>제안 검증·그룹 작업 배정·합류·인계 관리"]
+    Fleet -.->|운영 상태 갱신| Context
     Fleet -->|검증 후 로봇별 작업 배정| Executor["A: 로봇별 Task Executor"]
     Fleet --> Corridor["D: 통로 허가 관리"]
     Corridor -->|진입 허가| Nav["D: Nav2 주행"]
     Executor -->|이동 요청| Nav
     Executor -->|집기·놓기 요청| Manip["C: 물체 인식·조작"]
-    Perception["B: 위치 추정·환경 인지·안전 판단"] -->|위치·통로 관측| Fleet
+    Perception["B: 위치 추정·환경 인지·안전 판단"] -->|위치·통로 관측| Context
     Perception -->|위치·환경 정보| Nav
     Perception -->|안전 판단| Executor
     Executor -->|실행 허용·정지 관리| Gate["A: 최종 구동 차단"]
@@ -49,9 +59,14 @@ flowchart TD
     Simulation -->|센서·상태| Perception
     Simulation -->|카메라·공구 보유 상태| Manip
     Simulation -->|관절·구동·적재 상태| Executor
+    Executor -->|작업 진행·로봇 상태| Context
+
+    classDef agentStep fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#1e1b4b
+    class Summary,Reason,Proposal agentStep
+    style Agent fill:#f5f3ff,stroke:#6d28d9,stroke-width:3px,color:#1e1b4b
 ```
 
-AI는 운영 방안을 제안하고 D가 검증·배정한다. A는 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. B는 위치·환경·안전 판단을 제공하고 C는 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
+중앙 운영 AI 에이전트는 D가 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. D는 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. A는 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. B는 위치·환경·안전 판단을 제공하고 C는 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
 
 ### 공동 운반 흐름
 

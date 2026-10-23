@@ -28,9 +28,11 @@ htmlcov/
 Thumbs.db
 
 # Credentials and local runtime configuration.
-# Claude harness files are local-only and never committed.
+# AI harness files are local-only and never committed.
 /.claude/
 /CLAUDE.md
+/AGENTS.md
+/.codex-harness/
 /.aws/
 /.codex/
 /.agents/

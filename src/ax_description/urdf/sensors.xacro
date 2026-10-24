@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Ideal development sensors. Rendering / IMU / contact systems are loaded
+       once by the world; these macros only attach model-local sensor entities. -->
+  <xacro:macro name="ax_sensor_body" params="name parent xyz rpy mass sx sy sz">
+    <link name="${name}_link">
+      <visual>
+        <geometry>
+          <box size="${sx} ${sy} ${sz}"/>
+        </geometry>
+        <material name="${name}_dark">
+          <color rgba="0.08 0.10 0.14 1"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${sx} ${sy} ${sz}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia
+            ixx="${mass*(sy*sy+sz*sz)/12}"
+            iyy="${mass*(sx*sx+sz*sz)/12}"
+            izz="${mass*(sx*sx+sy*sy)/12}"
+            ixy="0"
+            ixz="0"
+            iyz="0"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+  <xacro:macro name="ax_lidar" params="name xyz rpy topic_prefix frame_prefix">
+    <xacro:ax_sensor_body
+        name="${name}"
+        parent="base_link"
+        xyz="${xyz}"
+        rpy="${rpy}"
+        mass="0.2"
+        sx="0.06"
+        sy="0.06"
+        sz="0.04"/>
+    <gazebo reference="${name}_link">
+      <sensor name="${name}" type="gpu_lidar">
+        <topic>${topic_prefix}/${name}/scan</topic>
+        <gz_frame_id>${frame_prefix}${name}_link</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>10</update_rate>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>181</samples>
+              <resolution>1</resolution>
+              <min_angle>${-pi/2}</min_angle>
+              <max_angle>${pi/2}</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.12</min>
+            <max>10</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+  <xacro:macro name="ax_camera" params="name parent xyz rpy depth topic_prefix frame_prefix">
+    <xacro:ax_sensor_body
+        name="${name}"
+        parent="${parent}"
+        xyz="${xyz}"
+        rpy="${rpy}"
+        mass="0.15"
+        sx="0.05"
+        sy="0.06"
+        sz="0.04"/>
+    <link name="${name}_optical_frame"/>
+    <joint name="${name}_optical_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+    <gazebo reference="${name}_link">
+      <sensor name="${name}" type="${'rgbd_camera' if depth else 'camera'}">
+        <topic>${topic_prefix}/${name}${'' if depth else '/image_raw'}</topic>
+        <gz_frame_id>${frame_prefix}${name}_optical_frame</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>15</update_rate>
+        <camera>
+          <optical_frame_id>${frame_prefix}${name}_optical_frame</optical_frame_id>
+          <camera_info_topic>${topic_prefix}/${name}/camera_info</camera_info_topic>
+          <horizontal_fov>${pi/3}</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>10</far>
+          </clip>
+          <xacro:if value="${depth}">
+            <depth_camera>
+              <clip>
+                <near>0.05</near>
+                <far>5</far>
+              </clip>
+            </depth_camera>
+          </xacro:if>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+  <xacro:macro name="ax_sensor_suite" params="profile robot_id frame_prefix">
+    <xacro:property name="mounts" value="${xacro.load_yaml('../config/sensor_mounts.yaml')[profile]}"/>
+    <xacro:property name="topics" value="${'/ax/' + robot_id + '/sensors'}"/>
+    <xacro:ax_lidar
+        name="front_lidar"
+        xyz="${mounts['front_lidar']['xyz']}"
+        rpy="${mounts['front_lidar']['rpy']}"
+        topic_prefix="${topics}"
+        frame_prefix="${frame_prefix}"/>
+    <xacro:ax_lidar
+        name="rear_lidar"
+        xyz="${mounts['rear_lidar']['xyz']}"
+        rpy="${mounts['rear_lidar']['rpy']}"
+        topic_prefix="${topics}"
+        frame_prefix="${frame_prefix}"/>
+    <xacro:ax_camera
+        name="front_rgbd"
+        parent="base_link"
+        depth="${True}"
+        xyz="${mounts['front_rgbd']['xyz']}"
+        rpy="${mounts['front_rgbd']['rpy']}"
+        topic_prefix="${topics}"
+        frame_prefix="${frame_prefix}"/>
+    <xacro:ax_camera
+        name="front_rgb"
+        parent="base_link"
+        depth="${False}"
+        xyz="${mounts['front_rgb']['xyz']}"
+        rpy="${mounts['front_rgb']['rpy']}"
+        topic_prefix="${topics}"
+        frame_prefix="${frame_prefix}"/>
+    <xacro:ax_sensor_body
+        name="imu"
+        parent="base_link"
+        xyz="${mounts['imu']['xyz']}"
+        rpy="${mounts['imu']['rpy']}"
+        mass="0.05"
+        sx="0.035"
+        sy="0.025"
+        sz="0.015"/>
+    <gazebo reference="imu_link">
+      <sensor name="imu" type="imu">
+        <topic>${topics}/imu</topic>
+        <gz_frame_id>${frame_prefix}imu_link</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <imu/>
+      </sensor>
+    </gazebo>
+    <xacro:if value="${profile == 'ax1'}">
+      <xacro:ax_camera
+          name="arm_rgbd"
+          parent="wrist_link"
+          depth="${True}"
+          xyz="${mounts['arm_rgbd']['xyz']}"
+          rpy="${mounts['arm_rgbd']['rpy']}"
+          topic_prefix="${topics}"
+          frame_prefix="${frame_prefix}"/>
+      <xacro:ax_camera
+          name="arm_rgb"
+          parent="wrist_link"
+          depth="${False}"
+          xyz="${mounts['arm_rgb']['xyz']}"
+          rpy="${mounts['arm_rgb']['rpy']}"
+          topic_prefix="${topics}"
+          frame_prefix="${frame_prefix}"/>
+    </xacro:if>
+  </xacro:macro>
+</robot>

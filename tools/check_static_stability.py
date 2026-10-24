@@ -88,6 +88,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=20000)
     parser.add_argument('--before-dir', type=Path)
+    parser.add_argument('--output-dir', type=Path,
+                        default=ROOT / 'docs/evidence/physical_properties')
     args = parser.parse_args()
     assert args.samples > 0
     share = Path(get_package_share_directory('ax_description'))
@@ -110,7 +112,7 @@ def main():
                 collisions = root.findall(f"link[@name='{name}']/collision")
                 assert len(collisions) == prop['collision_count']
                 # Verify every unrounded mesh vertex lies in at least one installed collision box.
-                vertices = np.array([[float(x) for x in line.split()[1:4]] for line in (ROOT/'src/ax_description/meshes/parts'/prop['mesh']).read_text().splitlines() if line.startswith('v ')])*.001 - prop['pivot_m']
+                vertices = np.array([[float(x) for x in line.split()[1:4]] for line in (share/properties['mesh_directory']/prop['mesh']).read_text().splitlines() if line.startswith('v ')])*.001 - prop['pivot_m']
                 covered = np.zeros(len(vertices), dtype=bool)
                 for collision in collisions:
                     transform = origin(collision.find('origin'))
@@ -155,7 +157,7 @@ def main():
             print(model, 'mass/2kg=', round(scenarios['2.0']['total_mass_kg'],3),
                   'nominal margin=', round(scenarios['2.0']['nominal_margin_m'],4),
                   'worst unfiltered margin=', round(scenarios['2.0']['minimum_sampled_margin_m'],4))
-    destination = ROOT / 'docs/evidence/physical_properties'
+    destination = args.output_dir
     destination.mkdir(parents=True, exist_ok=True)
     (destination/'static_stability.json').write_text(json.dumps(results, indent=2)+'\n')
     import matplotlib
@@ -174,7 +176,7 @@ def main():
     fig.suptitle('AX static COM projections: 2 kg attached payload\nSelf/ground collisions and dynamic stability NOT evaluated')
     fig.tight_layout(rect=(0,0,1,.95))
     fig.savefig(destination/'com_projection.png', dpi=160)
-    print('Saved report and plot to', destination.relative_to(ROOT))
+    print('Saved report and plot to', destination)
 
 
 if __name__ == '__main__':

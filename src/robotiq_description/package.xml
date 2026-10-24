@@ -8,5 +8,9 @@
   <license>BSD-3-Clause</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <exec_depend>xacro</exec_depend>
-  <export><build_type>ament_cmake</build_type></export>
+  <export>
+    <build_type>ament_cmake</build_type>
+    <!-- 설치 위치를 기준으로 Robotiq의 model:// 메시 경로를 해석한다. -->
+    <gazebo_ros gazebo_model_path="${prefix}/../"/>
+  </export>
 </package>

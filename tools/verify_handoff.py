@@ -130,7 +130,7 @@ try:
                           'range_min': msg.range_min, 'range_max': msg.range_max,
                           'finite_ranges': sum(math.isfinite(v) for v in msg.ranges)})
 
-    subscriptions = [node.create_subscription(LaserScan, '/scan', scan_cb, qos_profile_sensor_data),
+    subscriptions = [node.create_subscription(LaserScan, '/ax/robot_1/sensors/front_lidar/scan', scan_cb, qos_profile_sensor_data),
                      node.create_subscription(TFMessage, '/tf_static',
                          lambda m: static_frames.update(t.child_frame_id for t in m.transforms),
                          QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))]
@@ -212,7 +212,7 @@ try:
     RESULT['checks']['tf_static'] = sorted(static_frames)
     RESULT['checks']['ros_topics'] = node.get_topic_names_and_types()
     RESULT['checks']['ros_publisher_counts'] = {
-        topic: node.count_publishers(topic) for topic in ('/joint_states', '/clock', '/odom', '/scan')}
+        topic: node.count_publishers(topic) for topic in ('/joint_states', '/clock', '/odom', '/ax/robot_1/sensors/front_lidar/scan')}
     run('gz_topics', ['gz', 'topic', '-l'])
     run('ros_nodes', ['ros2', 'node', 'list', '--no-daemon'])
     RESULT['launch_alive_at_end'] = launch.poll() is None

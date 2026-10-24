@@ -1,0 +1,83 @@
+{
+  "source": "../../AX_2.obj",
+  "source_sha256": "eecb4762a0941df0bc274c0f0a31ffc174490e338ea7ef8849fb895603a53a35",
+  "coordinate_policy": "Original assembled coordinates, orientation, scale and units preserved; no recentering. Source units assumed mm.",
+  "material_libraries": {
+    "AX_2.mtl": "5d9fb230b6fe42b721cd239fdaf2050aeb015fc2263f25a494898a06cb9fbd42"
+  },
+  "excluded_objects": [],
+  "parts": [
+    {
+      "source_object": "AX_2_Shelf",
+      "file": "ax_shelf.obj",
+      "vertices": 5335,
+      "texture_coordinates": 2573,
+      "normals": 303,
+      "faces": 10300,
+      "sha256": "1c6046e03e94c652c28a8591cd0caaf29620782a5023147dd1aef11d96e6c300"
+    },
+    {
+      "source_object": "AX_2_Body",
+      "file": "ax_body.obj",
+      "vertices": 2508,
+      "texture_coordinates": 2967,
+      "normals": 544,
+      "faces": 4796,
+      "sha256": "3ed8b6747380e9c843317b6fe6d5599454d6c1c1ff170d0cdf1bfb5979b2980e"
+    },
+    {
+      "source_object": "AX_2_Tire_01",
+      "file": "ax_tire_01.obj",
+      "vertices": 3855,
+      "texture_coordinates": 3843,
+      "normals": 3243,
+      "faces": 6946,
+      "sha256": "f9df23ef701b696674cdda3153ead9719633cb78fe56717ee38e38d4fbe784de"
+    },
+    {
+      "source_object": "AX_2_Tire_04",
+      "file": "ax_tire_04.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3213,
+      "faces": 6948,
+      "sha256": "1563ef2d4a83b9e3d58680523cc71efd31df46bf534d544ebe2d8280b1bb36d6"
+    },
+    {
+      "source_object": "AX_2_Tire_03",
+      "file": "ax_tire_03.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3209,
+      "faces": 6948,
+      "sha256": "ea257b6185743ea5e4dab16f083471e7e429b2d63702ad2398521006a3447768"
+    },
+    {
+      "source_object": "AX_2_Tire_02",
+      "file": "ax_tire_02.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3215,
+      "faces": 6948,
+      "sha256": "91d6fe0ff9f9d44de6aa1ebc19ed7194041ed58127dcb5cddb5e85c76bdaf571"
+    },
+    {
+      "source_object": "AX_2_Right",
+      "file": "ax_right.obj",
+      "vertices": 321,
+      "texture_coordinates": 321,
+      "normals": 127,
+      "faces": 516,
+      "sha256": "4909eba920f42678d7ef3eae64ea073f8b4e335f1bb452d584a44d42af57fa9c"
+    },
+    {
+      "source_object": "AX_2_Top_lidar",
+      "file": "ax_top_lidar.obj",
+      "vertices": 960,
+      "texture_coordinates": 980,
+      "normals": 651,
+      "faces": 1578,
+      "sha256": "8b0d8136c1ebacfbf1437cccb7aec52496ba4c485ef1c9d51bb6a2b8543bbb6c"
+    }
+  ]
+}

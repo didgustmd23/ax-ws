@@ -1,0 +1,173 @@
+{
+  "source": "../../AX_1.obj",
+  "source_sha256": "c29803e32396c18d755df515798dc0ddf1d54be0b98b1ee8f6eeef37158f58e4",
+  "coordinate_policy": "Original assembled coordinates, orientation, scale and units preserved; no recentering. Source units assumed mm.",
+  "material_libraries": {
+    "AX_1.mtl": "75f59434de6cc2d42bfc38c99ece3b1afde1a17c7d74a491665b791cc72afd02"
+  },
+  "excluded_objects": [],
+  "parts": [
+    {
+      "source_object": "AX1_Body",
+      "file": "ax_body.obj",
+      "vertices": 8885,
+      "texture_coordinates": 7453,
+      "normals": 1353,
+      "faces": 16337,
+      "sha256": "d44de941a64a45ebb9b2ff9d21fdb8bce61ee173baf8a8d31ca4cb387c9e200b"
+    },
+    {
+      "source_object": "AX1_Tire_01",
+      "file": "ax_tire_01.obj",
+      "vertices": 3855,
+      "texture_coordinates": 3843,
+      "normals": 3243,
+      "faces": 6946,
+      "sha256": "4aee842877a9bb694094ff453b944731785ff70f5539acf8606c433d1c37caaa"
+    },
+    {
+      "source_object": "AX1_Tire_04",
+      "file": "ax_tire_04.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3213,
+      "faces": 6948,
+      "sha256": "3040d3856b01ae046a86df76cabef98081d50cf65b36442d69b4abe06a2ef690"
+    },
+    {
+      "source_object": "AX1_Tire_03",
+      "file": "ax_tire_03.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3209,
+      "faces": 6948,
+      "sha256": "a66c1d49adcb502c9d14374a560f75146c142bc319910531eee204ab84acbb11"
+    },
+    {
+      "source_object": "AX1_Tire_02",
+      "file": "ax_tire_02.obj",
+      "vertices": 3856,
+      "texture_coordinates": 3844,
+      "normals": 3215,
+      "faces": 6948,
+      "sha256": "1582ee6730ef8307c5f65097f8bf39d0b171b5058c3080ae3351908ee9c4cc2f"
+    },
+    {
+      "source_object": "Arm_01_Fixed",
+      "file": "arm_01_fixed.obj",
+      "vertices": 1498,
+      "texture_coordinates": 1713,
+      "normals": 852,
+      "faces": 2576,
+      "sha256": "a5b9d899c75a3357f2b147bcb1a309c2e4e47a97d4d805e86f37e05c21ab719d"
+    },
+    {
+      "source_object": "Arm_03_UpperArm",
+      "file": "arm_03_upperarm.obj",
+      "vertices": 2546,
+      "texture_coordinates": 2675,
+      "normals": 1359,
+      "faces": 4656,
+      "sha256": "3cc23d9ef813731f27b8e03341141235b13e6b8f257bbc8ec85fdf3f620b1de4"
+    },
+    {
+      "source_object": "Arm_04_Forearm",
+      "file": "arm_04_forearm.obj",
+      "vertices": 2461,
+      "texture_coordinates": 2562,
+      "normals": 1328,
+      "faces": 4484,
+      "sha256": "649b21fc8588600249a7e45b586c947d73e94002dcf165c52b5608bb42e60026"
+    },
+    {
+      "source_object": "Gripper_CenterPad",
+      "file": "gripper_centerpad.obj",
+      "vertices": 1063,
+      "texture_coordinates": 1181,
+      "normals": 256,
+      "faces": 1942,
+      "sha256": "d1987664c8c963e4121a9402a3c61210a1b979eb8a0c742bb653117587eb5195"
+    },
+    {
+      "source_object": "Gripper_Finger_02",
+      "file": "gripper_finger_02.obj",
+      "vertices": 412,
+      "texture_coordinates": 490,
+      "normals": 150,
+      "faces": 768,
+      "sha256": "33fbfc5f67fa1fab2d6d7169e34c609908af35c99dbf12cf2d8767b889c39b22"
+    },
+    {
+      "source_object": "Gripper_Finger_01",
+      "file": "gripper_finger_01.obj",
+      "vertices": 412,
+      "texture_coordinates": 486,
+      "normals": 150,
+      "faces": 768,
+      "sha256": "670c53c828af9be5a899baf6975e08bd8b2e6fd45584d9fee49baf3725f90521"
+    },
+    {
+      "source_object": "Gripper_LinkPair_01",
+      "file": "gripper_linkpair_01.obj",
+      "vertices": 944,
+      "texture_coordinates": 887,
+      "normals": 254,
+      "faces": 1840,
+      "sha256": "b66ac33b5a3eb44b041b1eff64fb732fcf45b5736e05490f5ac8955d91f5f49c"
+    },
+    {
+      "source_object": "Gripper_LinkPair_02",
+      "file": "gripper_linkpair_02.obj",
+      "vertices": 944,
+      "texture_coordinates": 774,
+      "normals": 250,
+      "faces": 1840,
+      "sha256": "4784ffe68e7d840d31ccef899fd672a2b77c4aa43280480d2510c989761fdb09"
+    },
+    {
+      "source_object": "Gripper_WristHousing",
+      "file": "gripper_wristhousing.obj",
+      "vertices": 3409,
+      "texture_coordinates": 3635,
+      "normals": 3182,
+      "faces": 6562,
+      "sha256": "c24932e17463d46f490ec6cc6a2eb94f154cb51e67389f16d5f64a6eebd5cae5"
+    },
+    {
+      "source_object": "AX1_Right_01",
+      "file": "ax_right_01.obj",
+      "vertices": 420,
+      "texture_coordinates": 369,
+      "normals": 142,
+      "faces": 658,
+      "sha256": "15c6492bb8eac330605f77fa063c12b2508585bf86fc495bea548c1ef6155fd5"
+    },
+    {
+      "source_object": "AX1_Right_03",
+      "file": "ax_right_03.obj",
+      "vertices": 321,
+      "texture_coordinates": 321,
+      "normals": 127,
+      "faces": 516,
+      "sha256": "3b9647ea5cd3f803c02ee6fbe5934839912f5d8e8b33c94cb034d11195351a86"
+    },
+    {
+      "source_object": "AX1_Right_02",
+      "file": "ax_right_02.obj",
+      "vertices": 420,
+      "texture_coordinates": 405,
+      "normals": 143,
+      "faces": 658,
+      "sha256": "ee727648fc1a58c6bea2e69ffc65a430cf2109c6e27d9396eb0063e179951535"
+    },
+    {
+      "source_object": "Arm_02_Movie",
+      "file": "arm_02_movie.obj",
+      "vertices": 1434,
+      "texture_coordinates": 1228,
+      "normals": 1116,
+      "faces": 2492,
+      "sha256": "ab7d6596966f718ec4b0e6dc204ea20449cf663d07c0d78d63998f1e63bc6d76"
+    }
+  ]
+}

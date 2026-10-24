@@ -1,0 +1,8 @@
+# Model assets are hashed byte-for-byte (meshes/parts/*/manifest.json,
+# robotiq_description/UPSTREAM_FILES.json). Never convert their line endings
+# on checkout or commit; keep the bytes produced by tools/split_robot_meshes.py
+# or the pinned upstream source. AX_1.obj/.mtl intentionally keep CRLF.
+*.obj -text
+*.mtl -text
+*.dae -text
+*.stl -text

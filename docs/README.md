@@ -34,6 +34,7 @@ docs/
 | 문서 | 내용 | 읽을 때 구분할 점 |
 |---|---|---|
 | [README](../README.md) | 작업공간 설치·실행·공통 모델 인계 | 실행 입구 |
+| [tools/sim](../tools/sim/README.md) | 변경 유형별 검증, 격리 Gazebo 실행·기본 통신 smoke, 물리 생성 파일 비교 | smoke는 메시지 수신만 확인. 제어기 활성·추종·정지 검증이 아님 |
 | [INTERFACES](guides/INTERFACES.md) | 프레임·관절·제어 토픽·피드백 제공 상태 | 현재 코드 인터페이스 |
 | [AX_5DOF_ARM_SPEC](design/AX_5DOF_ARM_SPEC.md) | 5축 구조·질량·속도·하중 목표·검증 순서 | 질량·속도는 반영, 2 kg 운반은 미검증 목표 |
 | [PHYSICAL_PROPERTIES_REVIEW](validation/PHYSICAL_PROPERTIES_REVIEW.md) | 부품별 충돌 상자·가상 질량 분포·관성·정적 지지 여유 | 동적 전도·충돌 없는 작업 범위의 검증과 다름 |

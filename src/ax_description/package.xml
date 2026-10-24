@@ -17,5 +17,10 @@
   <exec_depend>rviz2</exec_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
-  <export><build_type>ament_cmake</build_type></export>
+  <export>
+    <build_type>ament_cmake</build_type>
+    <!-- model://ax_description/... 해석에는 패키지 share 폴더의 부모가 필요하다.
+         ros_gz_sim이 이 경로를 서버·GUI의 GZ_SIM_RESOURCE_PATH에 전달한다. -->
+    <gazebo_ros gazebo_model_path="${prefix}/../"/>
+  </export>
 </package>

@@ -1,158 +1,110 @@
+"""Run AX_1, AX_2, or both with isolated model topics and real state feedback."""
 import os
+from pathlib import Path
+import tempfile
 
 from ament_index_python.packages import get_package_share_directory
+from ax_control.model_contracts import ARM_CHANNELS, sensor_bridges
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, LogInfo, RegisterEventHandler
-from launch.event_handlers import OnProcessExit
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
+import xacro
 
 
-# Gazebo 모델 생성과 팔·집게·LiDAR·카메라·주행 명령 브리지를 함께 실행한다.
-# 모델 이름 ax는 Xacro의 제어 토픽과 각 브리지의 /model/ax/... 경로에 맞춘다.
+def bridge(name, specs, remappings=()):
+    """Create a Gazebo-to-ROS bridge; sensor topics are robot-specific."""
+    return Node(package='ros_gz_bridge', executable='parameter_bridge', name=name,
+                arguments=[f'{topic}@{ros_type}[{gz_type}'
+                           for topic, ros_type, gz_type in specs],
+                remappings=list(remappings), parameters=[{'use_sim_time': True}],
+                output='screen')
+
+
+def launch_models(context):
+    """Expand each model once; use the same description for Gazebo and TF."""
+    selection = LaunchConfiguration('robot_model').perform(context)
+    gui = LaunchConfiguration('gui').perform(context) == 'true'
+    share = Path(get_package_share_directory('ax_description'))
+    world = share / 'worlds/ax_empty.sdf'
+    # 렌더링·IMU·접촉 시스템은 두 모델이 공유하는 월드에서 한 번 로드한다.
+    args = f'-r "{world}"' if gui else f'-s -r --headless-rendering "{world}"'
+    actions = [IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')),
+        launch_arguments={'gz_args': args}.items()),
+        bridge('clock_bridge', [('/clock', 'rosgraph_msgs/msg/Clock', 'gz.msgs.Clock')])]
+    # 실행마다 다른 폴더를 사용하여 이전 실행의 URDF를 재사용하지 않는다.
+    folder = Path(tempfile.mkdtemp(prefix='ax_sim_'))
+    robots = ('ax1', 'ax2') if selection == 'both' else (selection,)
+    for kind in robots:
+        is_arm = kind == 'ax1'
+        robot_id = 'robot_1' if is_arm else 'robot_2'
+        # Preserve the existing single-AX_1 command interface. Two-model mode
+        # uses robot-specific commands, joint states, odometry and TF frame IDs.
+        legacy = is_arm and selection == 'ax1'
+        model = 'ax' if legacy else robot_id
+        namespace = '' if legacy else f'/ax/{robot_id}'
+        frames = '' if legacy else f'{robot_id}/'
+        filename = 'ax.urdf.xacro' if is_arm else 'ax_2.urdf.xacro'
+        document = xacro.process_file(str(share / 'urdf' / filename), mappings={
+            'robot_name': model, 'frame_prefix': frames, 'sensor_robot_id': robot_id})
+        document.documentElement.setAttribute('name', model)
+        description = document.toxml()
+        urdf = folder / f'{robot_id}.urdf'
+        urdf.write_text(description)
+
+        # 3 m 간격의 초기 배치는 충돌 방지용 개발 설정이며 인계 위치가 아니다.
+        actions.append(Node(
+            package='ros_gz_sim', executable='create', name=f'{robot_id}_spawn',
+            arguments=['-world', 'empty', '-file', str(urdf), '-name', model,
+                       '-x', '3' if selection == 'both' and not is_arm else '0',
+                       '-y', '0', '-z', '0.42' if is_arm else '0.30'], output='screen'))
+
+        # Gazebo와 TF에 같은 description을 주고, GUI JointState는 사용하지 않는다.
+        actions.append(Node(
+            package='robot_state_publisher', executable='robot_state_publisher',
+            namespace=namespace, parameters=[{'robot_description': description,
+                                             'frame_prefix': frames, 'use_sim_time': True}],
+            output='screen'))
+        actions.append(bridge(f'{robot_id}_sensor_bridge', sensor_bridges(robot_id)))
+
+        # 관절 상태는 각 RSP로 보내고, TF는 고유 프레임 이름으로 공통 토픽에 합친다.
+        actions.append(bridge(f'{robot_id}_state_bridge', [
+            (f'/model/{model}/joint_states', 'sensor_msgs/msg/JointState', 'gz.msgs.Model'),
+            (f'/model/{model}/odometry', 'nav_msgs/msg/Odometry', 'gz.msgs.Odometry'),
+            (f'/model/{model}/tf', 'tf2_msgs/msg/TFMessage', 'gz.msgs.Pose_V')], [
+                (f'/model/{model}/joint_states', f'{namespace}/joint_states'),
+                (f'/model/{model}/odometry', f'{namespace}/odom'),
+                (f'/model/{model}/tf', '/tf')]))
+
+        # 명령은 ROS→Gazebo 단방향이며 robot_2에는 팔 채널을 만들지 않는다.
+        arguments = [f'/model/{model}/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist']
+        remappings = [(f'/model/{model}/cmd_vel', f'{namespace}/cmd_vel')]
+        if is_arm:
+            for joint, channel in ARM_CHANNELS:
+                topic = f'/model/{model}/{joint}/position'
+                arguments.append(f'{topic}@std_msgs/msg/Float64]gz.msgs.Double')
+                remappings.append((topic, f'{namespace}/{channel}/command'))
+            actions.append(Node(
+                package='ax_control', executable='gripper_controller', namespace=namespace,
+                parameters=[{'use_sim_time': True}], remappings=[
+                    (f'/{channel}/command', f'{namespace}/{channel}/command')
+                    for channel in ('gripper', 'left_finger', 'right_finger')],
+                output='screen'))
+        actions.append(Node(package='ros_gz_bridge', executable='parameter_bridge',
+                            name=f'{robot_id}_command_bridge', arguments=arguments,
+                            remappings=remappings, parameters=[{'use_sim_time': True}],
+                            output='screen'))
+    return actions
+
 
 def generate_launch_description():
-    # ros_gz_sim의 기본 launch 재사용. '-r'은 empty.sdf를 시작부터 재생한다.
-    gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('ros_gz_sim'),
-                'launch',
-                'gz_sim.launch.py'
-            )
-        ),
-        launch_arguments={'gz_args': '-r empty.sdf'}.items()
-    )
-
-    # 변환된 URDF를 empty 월드에 ax라는 이름으로 생성한다. z=0.42 m는 몸통 원점과 바퀴 외곽 기준 지면 위 초기 생성 높이다.
-    # 이 액션은 아래 OnProcessExit 콜백에서만 실행된다.
-    robot_spawn = Node(
-        package='ros_gz_sim',
-        executable='create',
-        arguments=[
-            '-world', 'empty',
-            '-file', '/tmp/ax.urdf',
-            '-name', 'ax',
-            '-x', '0',
-            '-y', '0',
-            '-z', '0.42'
-        ],
-        output='screen'
-    )
-
-    # 현재 터미널 위치나 사용자 홈 경로 대신 설치된 ROS 패키지에서 모델 파일을 찾는다.
-    xacro_file = os.path.join(
-        get_package_share_directory('ax_description'),
-        'urdf',
-        'ax.urdf.xacro'
-    )
-
-    # Gazebo 생성용 URDF를 먼저 저장한다. /tmp/ax.urdf는 동일 PC의 동시 실행에서 공유된다.
-    xacro_convert = ExecuteProcess(
-        cmd=['xacro', xacro_file, '-o', '/tmp/ax.urdf'],
-        output='screen'
-    )
-
-    # Xacro가 성공한 경우만 생성 요청을 보낸다. 변환 실패 시 이전 임시 파일을 생성에 사용하지 않는다.
-    # 이 이벤트는 Xacro 종료를 기준으로 하며 Gazebo 준비 완료를 직접 검사하지는 않는다.
-    spawn_after_xacro = RegisterEventHandler(
-        OnProcessExit(
-            target_action=xacro_convert,
-            on_exit=lambda event, context: (
-                [robot_spawn]
-                if event.returncode == 0
-                else [LogInfo(msg='AX Xacro conversion failed. Skipping robot spawn.')]
-            )
-        )
-    )
-
-    # 집게 명령 분배 노드와 원통·팔·손가락 7개 위치 명령 브리지를 포함한다.
-    arm_control = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('ax_control'),
-                'launch',
-                'arm_control.launch.py'
-            )
-        )
-    )
-
-    # '['는 Gazebo → ROS 단방향: /scan을 sensor_msgs/LaserScan으로 전달한다.
-    lidar_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='lidar_bridge',
-        arguments=[
-            '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'
-        ],
-        output='screen'
-    )
-
-    # ROS용 robot_description은 같은 Xacro를 별도로 변환해 문자열 파라미터로 전달한다.
-    # 고정 관절 TF를 발행하며, 이동 관절 TF에는 별도의 /joint_states 입력이 필요하다.
-    # 현재 launch는 /joint_states 피드백과 /clock 브리지, use_sim_time을 구성하지 않는다.
-    robot_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        name='robot_state_publisher',
-        parameters=[{
-            'robot_description': ParameterValue(
-                Command(['xacro ', xacro_file]),
-                value_type=str
-            )
-        }],
-        output='screen'
-    )
-
-    # 카메라 원본 영상을 Gazebo에서 ROS Image로 전달한다. 광학 프레임은 모델에서 지정한다.
-    camera_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='camera_bridge',
-        arguments=[
-            '/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image'
-        ],
-        output='screen'
-    )
-
-    # 카메라 내부 파라미터를 CameraInfo로 전달한다. Gazebo 출력 토픽과 이 이름이 일치해야 한다.
-    camera_info_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='camera_info_bridge',
-        arguments=[
-            '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'
-        ],
-        output='screen'
-    )
-
-    # ROS /cmd_vel을 Gazebo DiffDrive의 /model/ax/cmd_vel로 전달한다.
-    # Twist의 linear.x는 전후 속도(m/s), angular.z는 회전 속도(rad/s)이다.
-    # 이 브리지는 명령 방향만 제공하며 odometry/TF의 ROS 수신 브리지는 별도로 필요하다.
-    cmd_vel_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='cmd_vel_bridge',
-        arguments=[
-            '/model/ax/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist'
-        ],
-        remappings=[
-            ('/model/ax/cmd_vel', '/cmd_vel')
-        ],
-        output='screen'
-    )
-
-    # 변환 시작 전에 종료 이벤트를 등록한다. 나머지 노드의 나열 순서는 준비 완료를 보장하지 않는다.
+    """Expose explicit model selection without starting a second world."""
     return LaunchDescription([
-        gazebo,
-        spawn_after_xacro,
-        xacro_convert,
-        arm_control,
-        lidar_bridge,
-        robot_state_publisher,
-        camera_bridge,
-        camera_info_bridge,
-        cmd_vel_bridge,
+        DeclareLaunchArgument('robot_model', default_value='ax1', choices=['ax1', 'ax2', 'both'],
+                              description='AX_1 arm robot, AX_2 shelf robot, or both.'),
+        DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
+        OpaqueFunction(function=launch_models),
     ])

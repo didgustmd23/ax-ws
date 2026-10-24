@@ -4,6 +4,7 @@
 Run from any directory with Python, numpy and scipy. Meshes remain unchanged.
 Masses describe an assumed virtual design, not measurements of real hardware.
 """
+import hashlib
 import json
 import itertools
 import warnings
@@ -16,7 +17,7 @@ from scipy.sparse.csgraph import connected_components
 from scipy.spatial.transform import Rotation
 
 ROOT = Path(__file__).resolve().parents[1]
-PARTS = ROOT / 'src/ax_description/meshes/parts'
+PARTS = ROOT / 'src/ax_description/meshes/parts/AX_1'
 OUT = ROOT / 'src/ax_description/urdf/physical_properties.xacro'
 XACRO = 'http://www.ros.org/wiki/xacro'
 ET.register_namespace('xacro', XACRO)
@@ -25,10 +26,10 @@ LINKS = {
     'base_link': ('ax_body', [.003, 0, .38277325], 8.),
     'arm_mount_link': ('arm_01_support', [.18, .185, .612], 3.),
     'column_link': ('arm_01_column', [.18, .185, .780], 4.),
-    'arm_rotating_base_link': ('arm_02_movie', [.18, .185, 1.5], 1.),
-    'upper_arm_link': ('arm_03_upperarm', [.240, .185, 1.6], 4.),
-    'forearm_link': ('arm_04_forearm', [.372, .185, 2.160], 3.),
-    'wrist_link': ('gripper_wristhousing', [.462, .640, 1.720], 1.),
+    'arm_rotating_base_link': ('arm_02_movie', [.18, .185, 1.3553438], 1.),
+    'upper_arm_link': ('arm_03_upperarm', [.2944427, .185, 1.4553438], 4.),
+    'forearm_link': ('arm_04_forearm', [.4264427, .185, 2.0153438], 3.),
+    'wrist_link': ('gripper_wristhousing', [.5164427, .640, 1.5753438], 1.),
 }
 
 
@@ -36,7 +37,7 @@ def numbers(v):
     return ' '.join(f'{x:.12g}' for x in v)
 
 
-def mesh_components(path, pivot):
+def mesh_components(path, pivot, split_large_surfaces=False):
     vertices, faces = [], []
     for line in path.read_text().splitlines():
         if line.startswith('v '):
@@ -53,7 +54,38 @@ def mesh_components(path, pivot):
     edges = np.array([(inverse[f[0]], inverse[i]) for f in faces for i in f[1:]])
     graph = coo_matrix((np.ones(len(edges)), edges.T), shape=(len(unique), len(unique)))
     count, labels = connected_components(graph.tocsr(), directed=False)
-    return vertices, [unique[labels == i] for i in range(count)]
+    components = []
+    for i in range(count):
+        points = unique[labels == i]
+        if not split_large_surfaces or not np.all(np.ptp(points, axis=0) > .2):
+            components.append(points)
+            continue
+        # A connected rack frame must not become one solid box across its cargo
+        # cavity. Split large 3D pieces into connected, approximately coplanar
+        # surfaces before fitting boxes. These remain conservative proxies.
+        planes = {}
+        for face in faces:
+            indices = inverse[face]
+            if labels[indices[0]] != i:
+                continue
+            pts = unique[indices]
+            normal = np.cross(pts[1] - pts[0], pts[2] - pts[0])
+            norm = np.linalg.norm(normal)
+            if norm < 1e-14:
+                raise ValueError(f'Degenerate rack face in {path}')
+            normal /= norm
+            if normal[np.argmax(np.abs(normal))] < 0:
+                normal *= -1
+            key = (*np.round(normal, 4), round(float(normal @ pts[0]), 4))
+            planes.setdefault(key, []).append(indices)
+        for group in planes.values():
+            ids = np.unique(np.concatenate(group))
+            edge = np.array([(np.searchsorted(ids, face[0]), np.searchsorted(ids, j))
+                             for face in group for j in face[1:]])
+            graph = coo_matrix((np.ones(len(edge)), edge.T), shape=(len(ids), len(ids)))
+            n, sublabels = connected_components(graph.tocsr(), directed=False)
+            components.extend(unique[ids[sublabels == j]] for j in range(n))
+    return vertices, components
 
 
 def box_for_points(points):
@@ -123,10 +155,12 @@ def virtual_mass_parts(name, boxes):
     if name == 'arm_mount_link':
         return [mass_box(1.8, [-.005, 0, .084], [.23, .29, .168], label='fixed_base_budget')] + distribute(1.2, boxes)
     if name == 'column_link':
+        # Axial extent of the shortened source tube; preserve the mass budget.
+        length = json.loads((PARTS / 'column_split_manifest.json').read_text())['tube_length_m']
         return [mass_cylinder(1.6, [0, 0, .05], .08, .10),
-                mass_cylinder(2.4, [0, 0, .36], .1, .72, inner=.095, label='column_tube_budget')]
+                mass_cylinder(2.4, [0, 0, length/2], .1, length, inner=.095, label='column_tube_budget')]
     if name == 'arm_rotating_base_link':
-        return [mass_cylinder(.6, [0, 0, .10], .065, .06, [0, np.pi/2, 0])] + distribute(.4, boxes)
+        return [mass_cylinder(.6, [.0544427, 0, .10], .065, .06, [0, np.pi/2, 0])] + distribute(.4, boxes)
     if name == 'upper_arm_link':
         return [mass_cylinder(1.6, [.04, 0, 0], .075, .06, [0, np.pi/2, 0])] + distribute(2.4, boxes)
     if name == 'forearm_link':
@@ -153,42 +187,176 @@ def aggregate(parts):
     return mass, center, inertia
 
 
-def generate():
-    robot = ET.Element('robot', {'xmlns:xacro': XACRO})
-    # Namespace declaration is supplied by registered macro tags below.
-    del robot.attrib['xmlns:xacro']
-    report = {'assumptions': 'Virtual mass budgets and volume-weighted box proxies, not measured hardware. Component boxes fill internal cavities; not convex decomposition.', 'links': {}}
-    for name, (mesh, pivot, budget) in LINKS.items():
-        vertices, components = mesh_components(PARTS / (mesh + '.obj'), np.array(pivot))
+def generate(
+    links=LINKS,
+    parts_dir=PARTS,
+    output=OUT,
+    report_name='physical_properties.json',
+    macro_prefix='ax_physics_',
+    surface_meshes=(),
+):
+    """Generate collision proxies and complete mass tensors for one robot."""
+    robot = ET.Element('robot')
+    report = {
+        'assumptions': (
+            'Virtual mass budgets and volume-weighted box proxies, not measured hardware. '
+            'Component boxes fill internal cavities; not convex decomposition.'
+        ),
+        'mesh_directory': str(parts_dir.relative_to(ROOT / 'src/ax_description')),
+        'links': {},
+    }
+
+    for name, (mesh, pivot, budget) in links.items():
+        source = parts_dir / (mesh + '.obj')
+        split_surfaces = mesh in surface_meshes
+        vertices, components = mesh_components(source, np.array(pivot), split_surfaces)
+
+        # 선반의 연결 성분 수와 충돌 상자용 면 패치 수를 구분해 기록한다.
+        raw_count = (
+            len(mesh_components(source, np.array(pivot))[1])
+            if split_surfaces else len(components)
+        )
         boxes = remove_contained_boxes([box_for_points(c) for c in components])
-        parts = virtual_mass_parts(name, boxes)
+
+        # AX_1의 명시적 가상 부품 배치와 AX_2의 독립 질량 예산을 구분한다.
+        parts = (
+            virtual_mass_parts(name, boxes)
+            if macro_prefix == 'ax_physics_' else distribute(budget, boxes)
+        )
         mass, center, inertia = aggregate(parts)
         assert abs(mass - budget) < 1e-10
-        macro = ET.SubElement(robot, '{'+XACRO+'}macro', name='ax_physics_'+name)
+
+        macro = ET.SubElement(robot, '{'+XACRO+'}macro', name=macro_prefix+name)
         for i, box in enumerate(boxes):
             collision = ET.SubElement(macro, 'collision', name=f'{name}_part_{i:02d}')
-            ET.SubElement(collision, 'origin', xyz=numbers(box['center']), rpy=numbers(box['rpy']))
-            ET.SubElement(ET.SubElement(collision, 'geometry'), 'box', size=numbers(box['size']))
+            ET.SubElement(
+                collision, 'origin', xyz=numbers(box['center']), rpy=numbers(box['rpy']),
+            )
+            geometry = ET.SubElement(collision, 'geometry')
+            ET.SubElement(geometry, 'box', size=numbers(box['size']))
+
+        # 관성은 링크 COM 기준 전체 텐서이며 비대각 성분도 직렬화한다.
         inertial = ET.SubElement(macro, 'inertial')
         ET.SubElement(inertial, 'origin', xyz=numbers(center), rpy='0 0 0')
         ET.SubElement(inertial, 'mass', value=f'{mass:.12g}')
-        ET.SubElement(inertial, 'inertia', **{key: f'{inertia[i,j]:.12g}' for key, i, j in [('ixx',0,0),('iyy',1,1),('izz',2,2),('ixy',0,1),('ixz',0,2),('iyz',1,2)]})
-        aabb_volume = float(np.prod(np.ptp(vertices, axis=0)))
-        report['links'][name] = dict(mesh=mesh+'.obj', pivot_m=pivot,
-            mesh_bounds_link_m=[vertices.min(0).tolist(), vertices.max(0).tolist()],
-            mesh_connected_components=len(components), collision_count=len(boxes), all_component_vertices_enclosed=True,
-            collision_box_volume_sum_m3=sum(float(np.prod(b['size'])) for b in boxes),
-            old_single_aabb_volume_m3=aabb_volume,
-            mass_kg=mass, center_of_mass_m=center.tolist(), inertia_kg_m2=inertia.tolist(),
-            mass_parts=parts, collision_boxes=boxes)
+        entries = (
+            ('ixx', 0, 0), ('iyy', 1, 1), ('izz', 2, 2),
+            ('ixy', 0, 1), ('ixz', 0, 2), ('iyz', 1, 2),
+        )
+        ET.SubElement(
+            inertial, 'inertia',
+            **{key: f'{inertia[i, j]:.12g}' for key, i, j in entries},
+        )
+
+        report['links'][name] = {
+            'mesh': mesh + '.obj',
+            'pivot_m': pivot,
+            'mesh_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+            'mesh_bounds_link_m': [vertices.min(0).tolist(), vertices.max(0).tolist()],
+            'mesh_connected_components': raw_count,
+            'collision_fit_groups': len(components),
+            'collision_count': len(boxes),
+            'all_component_vertices_enclosed': True,
+            'collision_box_volume_sum_m3': sum(float(np.prod(b['size'])) for b in boxes),
+            'old_single_aabb_volume_m3': float(np.prod(np.ptp(vertices, axis=0))),
+            'mass_kg': mass,
+            'center_of_mass_m': center.tolist(),
+            'inertia_kg_m2': inertia.tolist(),
+            'mass_parts': parts,
+            'collision_boxes': boxes,
+        }
+
+    # XML과 JSON은 같은 계산 결과에서 생성하며 수동 수정하지 않는다.
     ET.indent(robot, space='  ')
-    OUT.write_text('<?xml version="1.0"?>\n<!-- Generated by tools/generate_physical_properties.py; do not edit manually. -->\n'+ET.tostring(robot, encoding='unicode')+'\n')
-    destination = ROOT / 'src/ax_description/config/physical_properties.json'
-    destination.write_text(json.dumps(report, indent=2)+'\n')
-    print('Generated', OUT.relative_to(ROOT))
+    output.write_text(
+        '<?xml version="1.0"?>\n'
+        '<!-- Generated by tools/generate_physical_properties.py; do not edit manually. -->\n'
+        + ET.tostring(robot, encoding='unicode') + '\n'
+    )
+    destination = ROOT / 'src/ax_description/config' / report_name
+    destination.write_text(json.dumps(report, indent=2) + '\n')
+    print('Generated', output.relative_to(ROOT))
     for name, link in report['links'].items():
-        print(name, 'collisions', link['collision_count'], 'COM', np.round(link['center_of_mass_m'], 4))
+        print(
+            name, 'collisions', link['collision_count'],
+            'COM', np.round(link['center_of_mass_m'], 4),
+        )
+
+
+def generate_ax2():
+    """Separate virtual budgets; infer only geometric bounds from AX_2 meshes."""
+    directory = PARTS.parent / 'AX_2'
+    geometry = {}
+
+    # 원본 CAD 좌표를 보존하고 계산에만 mm→m 변환을 적용한다.
+    for path in sorted(directory.glob('*.obj')):
+        vertices = np.array([
+            [float(x) for x in line.split()[1:4]]
+            for line in path.read_text().splitlines()
+            if line.startswith('v ')
+        ]) * .001
+        lo, hi = vertices.min(0), vertices.max(0)
+        geometry[path.stem] = dict(pivot=(lo+hi)/2, vertices=vertices, size=hi-lo)
+
+    # AX_1과 독립된 가상 질량 예산이다. 실측 제품 질량이 아니다.
+    budgets = (
+        ('base_link', 'ax_body', 12.),
+        ('shelf_link', 'ax_shelf', 5.),
+        ('front_trim_link', 'ax_right', .05),
+        ('top_lidar_housing_link', 'ax_top_lidar', .4),
+    )
+    links = {
+        name: (mesh, geometry[mesh]['pivot'].tolist(), mass)
+        for name, mesh, mass in budgets
+    }
+    generate(
+        links,
+        directory,
+        OUT.with_name('ax_2_physical_properties.xacro'),
+        'ax_2_physical_properties.json',
+        'ax2_physics_',
+        ('ax_shelf',),
+    )
+
+    # 메시 원점과 바퀴 치수를 Xacro에 전달하여 visual·관절·구동이 공유한다.
+    robot = ET.Element('robot')
+    for name, data in geometry.items():
+        ET.SubElement(
+            robot,
+            '{'+XACRO+'}property',
+            name=f'ax2_{name}_pivot',
+            value='${' + repr(data['pivot'].tolist()) + '}',
+        )
+
+    # 바퀴 축은 CAD +Y다. X/Z 평면의 최대 반경과 Y 폭에 1 µm 여유를 둔다.
+    wheels = [geometry[f'ax_tire_{i:02d}'] for i in range(1, 5)]
+    radius = max(
+        float(np.linalg.norm((w['vertices'] - w['pivot'])[:, [0, 2]], axis=1).max())
+        for w in wheels
+    ) + .000001
+    width = max(float(w['size'][1]) for w in wheels) + .000001
+    separation = float(wheels[1]['pivot'][1] - wheels[0]['pivot'][1])
+
+    for name, value in (
+        ('wheel_radius', radius),
+        ('wheel_width', width),
+        ('wheel_separation', separation),
+        ('wheel_mass', .4),
+    ):
+        ET.SubElement(
+            robot,
+            '{'+XACRO+'}property',
+            name='ax2_'+name,
+            value=f'{value:.12g}',
+        )
+
+    ET.indent(robot, space='  ')
+    OUT.with_name('ax_2_geometry.xacro').write_text(
+        '<?xml version="1.0"?>\n<!-- Generated by tools/generate_physical_properties.py; '
+        'CAD coordinates in meters. Masses are virtual assumptions. -->\n'
+        + ET.tostring(robot, encoding='unicode') + '\n')
 
 
 if __name__ == '__main__':
     generate()
+    generate_ax2()

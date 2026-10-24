@@ -2,6 +2,12 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ax">
     <!-- RViz display selects robotiq; the existing simulation defaults to the primitive gripper. -->
     <xacro:arg name="gripper_model" default="primitive"/>
+    <xacro:arg name="robot_name" default="ax"/>
+    <xacro:arg name="frame_prefix" default=""/>
+    <xacro:arg name="sensor_robot_id" default="robot_1"/>
+    <xacro:property name="model_name" value="$(arg robot_name)"/>
+    <xacro:property name="frames" value="$(arg frame_prefix)"/>
+    <xacro:include filename="sensors.xacro"/>
     <xacro:property name="gripper_model_ids" value="${dict(primitive=0, robotiq=1, parallel_wide=2, suction=3)}"/>
     <xacro:property name="gripper_model_id" value="${gripper_model_ids['$(arg gripper_model)']}"/>
     <xacro:property name="use_robotiq_gripper" value="${gripper_model_id == 1}"/>
@@ -121,7 +127,7 @@
             <!-- 원본 경계 중심 (3, 0, 382.77325)을 base_link 원점에 맞춘 임시 외형 보정이다. -->
             <origin xyz="-0.003 0 -0.38277325" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/ax_body.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/ax_body.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
             <!-- 색상은 OBJ가 참조하는 MTL을 사용한다. -->
@@ -136,7 +142,7 @@
             <!-- 원본 조립 좌표에서 바퀴 중심을 빼고 로컬 Z 회전축에 맞춘다. -->
             <origin xyz="-0.440000 0.190000 -0.311000" rpy="${pi / 2} 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/ax_tire_02.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_02.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -158,7 +164,7 @@
             <!-- 원본 조립 좌표에서 바퀴 중심을 빼고 로컬 Z 회전축에 맞춘다. -->
             <origin xyz="-0.440000 0.190000 0.311000" rpy="${pi / 2} 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/ax_tire_01.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -180,7 +186,7 @@
             <!-- 원본 조립 좌표에서 바퀴 중심을 빼고 로컬 Z 회전축에 맞춘다. -->
             <origin xyz="0.440000 0.190000 -0.311000" rpy="${pi / 2} 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/ax_tire_04.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_04.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -202,7 +208,7 @@
             <!-- 원본 조립 좌표에서 바퀴 중심을 빼고 로컬 Z 회전축에 맞춘다. -->
             <origin xyz="0.440000 0.190000 0.311000" rpy="${pi / 2} 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/ax_tire_03.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_03.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -224,7 +230,7 @@
         <visual>
             <origin xyz="-0.18 -0.185 -0.612" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/arm_01_support.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_support.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="ax_support_dark_gray">
@@ -235,11 +241,11 @@
         <xacro:ax_physics_arm_mount_link/>
     </link>
 
-    <!-- 차체와 고정 기둥 연결: 원본 기둥 하단 기준점을 몸통 좌표로 변환 -->
+    <!-- 차체와 고정 기둥 연결: 기둥 회전축을 base_link의 X/Y 중심에 배치, 높이 유지 -->
     <joint name="arm_mount_joint" type="fixed">
         <parent link="base_link"/>
         <child link="arm_mount_link"/>
-        <origin xyz="0.177 0.185 0.22922675" rpy="0 0 0"/>
+        <origin xyz="0 0 0.22922675" rpy="0 0 0"/>
     </joint>
 
     <!-- 중앙 원통과 3개 링은 함께 회전한다. 바깥 받침·지지 구조는 고정이다. -->
@@ -247,7 +253,7 @@
         <visual>
             <origin xyz="-0.18 -0.185 -0.78" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/arm_01_column.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_column.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
             <material name="ax_column_orange">
@@ -272,9 +278,9 @@
     <link name="arm_rotating_base_link">
         <!-- 원본 조립 자세를 q=0으로 사용. 메시 좌표에서 추정 관절 원점을 제거한다. -->
         <visual>
-            <origin xyz="-0.18 -0.185 -1.5" rpy="0 0 0"/>
+            <origin xyz="-0.18 -0.185 -1.3553438" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/arm_02_movie.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/arm_02_movie.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -286,7 +292,7 @@
     <joint name="arm_upper_mount_joint" type="fixed">
         <parent link="column_link"/>
         <child link="arm_rotating_base_link"/>
-        <origin xyz="0 0 0.72" rpy="0 0 0"/>
+        <origin xyz="0 0 0.5753438" rpy="0 0 0"/>
     </joint>
 
     <!-- 로봇팔 상완 -->
@@ -294,9 +300,9 @@
     <link name="upper_arm_link">
         <!-- 원본 조립 자세를 q=0으로 사용. 메시 좌표에서 추정 관절 원점을 제거한다. -->
         <visual>
-            <origin xyz="-0.24 -0.185 -1.6" rpy="0 0 0"/>
+            <origin xyz="-0.2944427 -0.185 -1.4553438" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/arm_03_upperarm.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/arm_03_upperarm.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -309,7 +315,7 @@
         <parent link="arm_rotating_base_link"/>
         <child link="upper_arm_link"/>
         
-        <origin xyz="0.06 0 0.1" rpy="0 0 0"/>
+        <origin xyz="0.1144427 0 0.1" rpy="0 0 0"/>
         <!-- 원형 축 형상에서 추정한 X축 회전. 확정 기구 사양은 별도 확인한다. -->
         <axis xyz="1 0 0"/>
 
@@ -323,9 +329,9 @@
     <link name="forearm_link">
         <!-- 원본 조립 자세를 q=0으로 사용. 메시 좌표에서 추정 관절 원점을 제거한다. -->
         <visual>
-            <origin xyz="-0.372 -0.185 -2.16" rpy="0 0 0"/>
+            <origin xyz="-0.4264427 -0.185 -2.0153438" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/arm_04_forearm.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/arm_04_forearm.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -351,9 +357,9 @@
     <link name="wrist_link">
         <!-- 원본 조립 자세를 q=0으로 사용. 메시 좌표에서 추정 관절 원점을 제거한다. -->
         <visual>
-            <origin xyz="-0.462 -0.64 -1.72" rpy="0 0 0"/>
+            <origin xyz="-0.5164427 -0.64 -1.5753438" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="package://ax_description/meshes/parts/gripper_wristhousing.obj"
+                <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wristhousing.obj"
                       scale="0.001 0.001 0.001"/>
             </geometry>
         </visual>
@@ -534,164 +540,10 @@
         </xacro:ax_suction_gripper>
     </xacro:if>
 
-    <!-- LiDAR 본체의 시각 형상, 충돌 형상 및 관성 정의 -->
-    <link name="lidar_link">
-        <visual>
-            <geometry>
-                <cylinder radius="0.04" length="0.05"/>
-            </geometry>
-            <material name="lidar_black">
-                <color rgba="0.1 0.1 0.1 1.0"/>
-            </material>
-        </visual>
-
-        <collision>
-            <geometry>
-                <cylinder radius="0.04" length="0.05"/>
-            </geometry>
-        </collision>
-
-        <xacro:cylinder_inertial
-            mass="0.2"
-            radius="0.04"
-            length="0.05"
-            />
-    </link>
-
-    <!-- LiDAR를 차체에 고정: 차체 원점에서 전방 0.20 m, 위쪽 0.16 m에 배치 -->
-    <joint name="lidar_joint" type="fixed">
-        <parent link="base_link"/>
-        <child link="lidar_link"/>
-        <origin xyz="0.20 0 0.16" rpy="0 0 0"/>
-        
-    </joint>
-
-    <!-- 카메라 본체: 표시·충돌용 상자와 0.15 kg의 임시 질량·관성을 정의한다. -->
-    <link name="camera_link">
-        <visual>
-            <geometry>
-                <box size="0.05 0.06 0.04"/>
-            </geometry>
-            <material name="camera_black">
-                <color rgba="0.1 0.1 0.1 1.0"/>
-            </material>
-        </visual>
-
-        <collision>
-            <geometry>
-                <box size="0.05 0.06 0.04"/>
-            </geometry>
-        </collision>
-
-        <xacro:box_inertial
-            mass="0.15"
-            length="0.05"
-            width="0.06"
-            height="0.04"
-            cx="0"
-            cy="0"
-            cz="0"/>
-    </link>
-
-    <!-- 카메라를 차체에 고정: 차체 원점에서 전방 0.20 m, 위쪽 0.20 m에 배치 -->
-    <joint name="camera_joint" type="fixed">
-        <parent link="base_link"/>
-        <child link="camera_link"/>
-        <origin xyz="0.20 0 0.20" rpy="0 0 0"/>
-    </joint>
-
-    <!-- 영상 좌표용 프레임: +Z=시선 전방, +X=영상 오른쪽, +Y=영상 아래쪽. 별도 외형·질량은 없다. -->
-    <link name="camera_optical_frame"/>
-
-    <!-- camera_link의 전방 +X를 광학 프레임의 +Z로 맞추는 고정 회전. 이동 위치는 동일하다. -->
-    <joint name="camera_optical_joint" type="fixed">
-        <parent link="camera_link"/>
-        <child link="camera_optical_frame"/>
-        <origin
-            xyz="0 0 0"
-            rpy="-1.570796 0 -1.570796"/>
-    </joint>
-
-    <!-- 카메라 센서 설정 -->
-    <gazebo reference="camera_link">
-        <sensor name="ax_camera" type="camera">
-            <!-- Gazebo 영상 출력과 메시지 frame_id. ROS로 전달하는 브리지는 simulation.launch.py에 있다. -->
-            <topic>/camera/image_raw</topic>
-            <gz_frame_id>camera_optical_frame</gz_frame_id>
-            <!-- 목표 촬영 주기 30 Hz. 실제 수신률은 렌더링 성능과 시뮬레이션 속도의 영향을 받는다. -->
-            <update_rate>30</update_rate>
-            <always_on>true</always_on>
-
-            <camera>
-                <!-- 수평 시야각 약 60도(rad), 영상 크기 640×480, 픽셀당 RGB 각 8비트. -->
-                <horizontal_fov>1.0472</horizontal_fov>
-                <image>
-                    <width>640</width>
-                    <height>480</height>
-                    <format>R8G8B8</format>
-                </image>
-                <!-- 렌더링 범위: 카메라에서 0.1~10 m. 깊이 영상이나 거리 측정 출력 설정은 아니다. -->
-                <clip>
-                    <near>0.1</near>
-                    <far>10.0</far>
-                </clip>
-            </camera>
-        </sensor>
-    </gazebo>
-
-    <!-- 라이다 센서 설정 -->
-    <gazebo reference="lidar_link">
-        <sensor name="ax_lidar" type="gpu_lidar">
-            <!-- 센서 측정 좌표를 lidar_link 원점 및 방향과 일치시킴 -->
-            <pose>0 0 0 0 0 0</pose>
-            <!-- Gazebo 센서 출력 토픽: ROS에서 사용하려면 별도의 브리지 필요 -->
-            <topic>/scan</topic>
-            <!-- 고정 관절 병합 후에도 ROS 스캔 메시지의 frame_id를 lidar_link로 지정한다. -->
-            <gz_frame_id>lidar_link</gz_frame_id>
-            <!-- 초당 10회 측정하며 센서를 항상 활성화하고 스캔 시각화 사용 -->
-            <update_rate>10</update_rate>
-            <always_on>true</always_on>
-            <visualize>true</visualize>
-
-            <lidar>
-                <scan>
-                    <!-- 참고용 360도 스캔 설정: 현재 비활성화 -->
-                    <!-- <horizontal>
-                        <samples>360</samples>
-                        <resolution>1</resolution>
-                        <min_angle>-3.141592</min_angle>
-                        <max_angle>3.141592</max_angle>
-                    </horizontal> -->
-                    <!-- 현재 수평 스캔: 전방 180도(-90도~+90도), 181개 샘플, 샘플 해상도 배율 1 -->
-                    <horizontal>
-                        <samples>181</samples>
-                        <resolution>1</resolution>
-                        <min_angle>-1.570796</min_angle>
-                        <max_angle>1.570796</max_angle>
-                    </horizontal>                    
-                </scan>
-
-                <!-- 거리 측정 범위 0.12~10.0 m, 거리 해상도 0.01 m -->
-                <range>
-                    <min>0.12</min>
-                    <max>10.0</max>
-                    <resolution>0.01</resolution>
-                </range>
-            </lidar>
-        </sensor>
-    </gazebo>
-
-    <!-- GPU LiDAR와 카메라에 필요한 Gazebo 센서 시스템: Ogre2 렌더링 엔진 사용 -->
-    <gazebo>
-        <plugin
-            filename="gz-sim-sensors-system"
-            name="gz::sim::systems::Sensors">
-            <render_engine>ogre2</render_engine>
-        </plugin>
-    </gazebo>
+    <xacro:ax_sensor_suite profile="ax1" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"/>
 
     <!-- 4개 바퀴를 좌우 쌍으로 구동하는 차동 구동 시스템: 바퀴 간격과 반지름으로 주행 계산 -->
-    <!-- 모델 ax의 기본 명령 토픽은 /model/ax/cmd_vel. ROS /cmd_vel과의 연결은 launch 브리지가 담당한다. -->
+    <!-- 모델 ax의 기본 명령 토픽은 /model/${model_name}/cmd_vel. ROS /cmd_vel과의 연결은 launch 브리지가 담당한다. -->
     <!-- 기본 odometry/TF 출력은 Gazebo 토픽이며, ROS에서 쓰려면 별도의 수신 브리지가 필요하다. -->
     <gazebo>
         <plugin filename="gz-sim-diff-drive-system" 
@@ -702,6 +554,11 @@
             <right_joint>rear_right_wheel_joint</right_joint>
             <wheel_separation>${wheel_separation}</wheel_separation>
             <wheel_radius>${wheel_radius}</wheel_radius>
+            <topic>/model/${model_name}/cmd_vel</topic>
+            <odom_topic>/model/${model_name}/odometry</odom_topic>
+            <tf_topic>/model/${model_name}/tf</tf_topic>
+            <frame_id>${frames}odom</frame_id>
+            <child_frame_id>${frames}base_link</child_frame_id>
         </plugin>
     </gazebo>
     
@@ -714,7 +571,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>shoulder_joint</joint_name>
-            <topic>/model/ax/shoulder_joint/position</topic>
+            <topic>/model/${model_name}/shoulder_joint/position</topic>
             <!-- 위치 오차에 대한 비례 이득: 값이 클수록 오차에 대한 제어 출력 증가 -->
             <p_gain>10</p_gain>
         </plugin>
@@ -727,7 +584,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>elbow_joint</joint_name>
-            <topic>/model/ax/elbow_joint/position</topic>
+            <topic>/model/${model_name}/elbow_joint/position</topic>
             <p_gain>10</p_gain>
         </plugin>
     </gazebo>
@@ -739,7 +596,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>wrist_joint</joint_name>
-            <topic>/model/ax/wrist_joint/position</topic>
+            <topic>/model/${model_name}/wrist_joint/position</topic>
             <p_gain>5</p_gain>
         </plugin>
     </gazebo>
@@ -753,7 +610,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>left_finger_joint</joint_name>
-            <topic>/model/ax/left_finger_joint/position</topic>
+            <topic>/model/${model_name}/left_finger_joint/position</topic>
             <p_gain>100</p_gain>
         </plugin>
     </gazebo>
@@ -767,7 +624,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>right_finger_joint</joint_name>
-            <topic>/model/ax/right_finger_joint/position</topic>
+            <topic>/model/${model_name}/right_finger_joint/position</topic>
             <p_gain>100</p_gain>
         </plugin>
     </gazebo>
@@ -780,7 +637,7 @@
             name="gz::sim::systems::JointPositionController">
 
             <joint_name>gripper_rotation_joint</joint_name>
-            <topic>/model/ax/gripper_rotation_joint/position</topic>
+            <topic>/model/${model_name}/gripper_rotation_joint/position</topic>
             <p_gain>5</p_gain>
         </plugin>
     </gazebo>
@@ -792,9 +649,12 @@
         <plugin filename="gz-sim-joint-position-controller-system"
                 name="gz::sim::systems::JointPositionController">
             <joint_name>column_yaw_joint</joint_name>
-            <topic>/model/ax/column_yaw_joint/position</topic>
+            <topic>/model/${model_name}/column_yaw_joint/position</topic>
             <p_gain>3</p_gain>
         </plugin>
     </gazebo>
 
+    <gazebo><plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+        <topic>/model/${model_name}/joint_states</topic>
+    </plugin></gazebo>
 </robot>

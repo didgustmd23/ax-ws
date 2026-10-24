@@ -3,7 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import Command, LaunchConfiguration
+from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -13,18 +13,25 @@ def generate_launch_description():
     pkg_path = get_package_share_directory('ax_description')
     gripper_model = LaunchConfiguration('gripper_model')
 
-    xacro_file = os.path.join(
-        pkg_path,
-        'urdf',
-        'ax.urdf.xacro'
-    )
+    # AX_2에는 팔이 없으므로 gripper_model 인자는 외형 선택에 사용되지 않는다.
+    xacro_file = [
+        os.path.join(pkg_path, 'urdf', ''),
+        PythonExpression([
+            "'ax_2.urdf.xacro' if '",
+            LaunchConfiguration('robot_model'),
+            "' == 'ax2' else 'ax.urdf.xacro'",
+        ]),
+    ]
 
     robot_description = ParameterValue(
-        Command(['xacro ', xacro_file, ' gripper_model:=', gripper_model]),
+        Command(['xacro ', *xacro_file, ' gripper_model:=', gripper_model]),
         value_type=str
     )
 
     return LaunchDescription([
+
+        DeclareLaunchArgument('robot_model', default_value='ax1', choices=['ax1', 'ax2'],
+                              description='Robot mesh model to display.'),
 
         DeclareLaunchArgument(
             'gripper_model',

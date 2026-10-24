@@ -1,0 +1,56 @@
+{
+  "source": "../../AX_Box.obj",
+  "source_sha256": "d68b5cadf9686b0a3b43313894c59294b95e51067f0aaad5e97e8a76ca5fae8a",
+  "coordinate_policy": "Original assembled coordinates, orientation, scale and units preserved; no recentering. Source units assumed mm.",
+  "material_libraries": {
+    "AX_Box.mtl": "38f1ef7d855811a628317599075969613dd6d6f34b1c1c12f610bb4f6ffd8658"
+  },
+  "excluded_objects": [],
+  "parts": [
+    {
+      "source_object": "AX1_Box_01",
+      "file": "ax_box_01.obj",
+      "vertices": 112,
+      "texture_coordinates": 180,
+      "normals": 109,
+      "faces": 214,
+      "sha256": "349d1f1268175b2684e308b7e497fd1e1c535c6688246e74b69e96b10b7c94a6"
+    },
+    {
+      "source_object": "AX1_Box_02",
+      "file": "ax_box_02.obj",
+      "vertices": 128,
+      "texture_coordinates": 196,
+      "normals": 110,
+      "faces": 230,
+      "sha256": "671e0dfd6474316aae03e78402e9f39a5476f4bf7dbb3dffce431d4396ced201"
+    },
+    {
+      "source_object": "AX1_Box_03",
+      "file": "ax_box_03.obj",
+      "vertices": 128,
+      "texture_coordinates": 196,
+      "normals": 110,
+      "faces": 230,
+      "sha256": "86af603e0314120e1e74e6990ae2c9848a469cc10cd579ce0f52f738d29981ab"
+    },
+    {
+      "source_object": "AX1_Box_04",
+      "file": "ax_box_04.obj",
+      "vertices": 128,
+      "texture_coordinates": 196,
+      "normals": 110,
+      "faces": 230,
+      "sha256": "1a6841f6c9ada7fec09c6efc96c7fa2aff78bd116c2eabf2d4b7766b30d2d4ef"
+    },
+    {
+      "source_object": "AX1_Box_05",
+      "file": "ax_box_05.obj",
+      "vertices": 128,
+      "texture_coordinates": 196,
+      "normals": 110,
+      "faces": 230,
+      "sha256": "62ed3867cc4c50b3567fdf989102cc0d7b87459277c912ea20361dae12cbb43c"
+    }
+  ]
+}

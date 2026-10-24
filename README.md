@@ -6,7 +6,7 @@
 
 개발 범위는 에이전트의 운영 판단을 로봇 모델·제어, 위치 추정·환경 인지, 물체 인식·조작, Fleet 작업 배정·자율주행과 연결하는 것이다. 규칙 기반 공동 운반을 먼저 검증하고, 에이전트 제안을 기록·평가하는 `ADVISORY` 단계를 거쳐 검증된 제안을 반영하는 `ASSISTED` 단계로 확장한다. AI 응답 지연·오류나 제안 검증 실패 시에는 규칙 기반 운영으로 복귀하도록 설계한다. 목표 구성과 역할별 계약은 [통합 상세설계](docs/design/DETAILED_DESIGN.md)에 정리한다.
 
-현재 저장소는 팔이 달린 단일 `ax` 모델과 Gazebo 플러그인 기반 기본 제어를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·ros2_control 전환은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
+현재 저장소는 AX_1 팔 로봇·AX_2 선반 로봇의 URDF와 Gazebo 플러그인 기반 기본 제어·센서를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·ros2_control 전환은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
 
 프로젝트·GitHub 저장소 이름: **`ax-ws`**. ROS 모델 이름은 `ax`, 패키지 이름은 기존 값을 유지한다. 로컬 작업공간은 `~/ax_ws`로 사용한다. 저장소를 받을 때 대상 폴더를 `~/ax_ws`로 지정하면 아래 명령을 그대로 사용할 수 있다.
 
@@ -86,19 +86,22 @@ flowchart LR
 
 | 영역 | 현재 코드 | 목표·후속 구현 |
 |---|---|---|
-| 로봇 모델 | 팔이 달린 단일 `ax`, RViz 집게 4종 선택 | `robot_1`·`robot_2` 분리 및 로봇별 물리 특성 산정 |
+| 로봇 모델 | AX_1·AX_2 URDF, 단독/두 모델 생성, AX_1 RViz 집게 4종 선택 | 로봇별 가상 질량·충돌·최종 적재 공간 검증 |
 | 기본 제어 | Gazebo 플러그인, 팔·집게 Float64 명령, `/cmd_vel` 입력 브리지 | ros2_control 전환, 로봇별 제어·최종 구동 차단 |
-| 센서·상태 | `/scan`, `/camera/image_raw`, `/camera/camera_info` 브리지 구성 | `/odom`·이동 TF·Gazebo `/joint_states` 피드백·`/clock`·`use_sim_time` 연결 |
+| 센서·상태 | 로봇별 전·후방 LiDAR·RGB/RGB-D·IMU, AX_2 접촉 센서 및 상태·시간 브리지 구성 | 작업 자세별 시야·접촉·주기·물리 동작 검증, 적재 판정 |
 | 공구·조작 | Gazebo 기본 `primitive`, RViz 기본 비교용 `suction` 외형 | EPick 도입, 인식·집기 계획·실제 부착/해제·보유 판정 |
 | 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·Fleet·Nav2·통로 허가·중앙 운영 AI |
 
-센서 브리지 구성은 수신·성능 검증 완료를 뜻하지 않으며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
+격리된 headless Gazebo에서 두 모델의 센서·상태·시간 토픽 30개 수신과 0.2 kg 검증 상자의 선반 접촉 전달을 확인했다. 작업 자세별 시야·측정 정확도·주기·하중 성능의 검증 완료는 아니며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
 
 ## 구성
 
 | 경로 | 용도 |
 |---|---|
 | `src/ax_description/urdf/ax.urdf.xacro` | 차체·바퀴·팔·집게·라이다, v0.1 팔 질량·관절 속도 설정 |
+| `src/ax_description/urdf/ax_2.urdf.xacro` | AX_2 차체·바퀴·선반·센서와 독립 가상 물리 특성 |
+| `src/ax_description/urdf/sensors.xacro`, `config/sensor_mounts.yaml` | 두 로봇의 센서 구성과 개발용 장착 좌표 |
+| `src/ax_description/worlds/ax_empty.sdf` | 센서·IMU·접촉 시스템을 공유하는 개발 월드 |
 | `src/ax_description/config/arm_joint_limits.yaml` | 5축 속도·가속도 계획값. 현재 브리지의 가속도 제한 기능은 아님 |
 | `src/ax_description/urdf/structure_demo.urdf` | 몸체와 팔만 있는 별도 연습 모델 |
 | `src/ax_description/launch/display.launch.py` | RViz 수동 관절 표시 |
@@ -135,6 +138,8 @@ source install/setup.bash
 
 실행 의존성은 각 `package.xml`에 선언한다. Gazebo 시스템 플러그인은 Jazzy vendor 환경을 사용하므로 ROS setup을 먼저 적용한다.
 
+Gazebo 메시 검색 경로는 `ax_description`·`robotiq_description`의 `package.xml` export에서 설치된 share 경로를 기준으로 등록한다. `model://...` 메시를 찾지 못하면 두 패키지를 다시 빌드하고 `install/setup.bash`를 적용한 뒤 simulation을 재시작한다. 사용자 홈 절대 경로를 환경 변수에 직접 넣을 필요는 없다.
+
 ros2_control 전환은 아직 적용 전이므로 현재 빌드·실행에는 아래 패키지가 필요 없다. 전환 작업에서는 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`, `joint_state_broadcaster`, `diff_drive_controller` 등을 `package.xml`에 선언하고 이 절의 설치 명령을 함께 갱신한다. 2026-10-22 작업 PC 확인 기준으로 `diff_drive_controller`, `joint_state_broadcaster`, `hardware_interface`는 설치되어 있고 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`는 설치되어 있지 않다. 다른 PC에서는 `ros2 pkg prefix <패키지>`로 다시 확인한다. 설치 오류는 해결한 뒤 다음 단계로 진행한다.
 
 ## 실행
@@ -148,12 +153,22 @@ source install/setup.bash
 ros2 launch ax_control simulation.launch.py
 ```
 
-월드 `empty`, 모델 `ax`. 설치된 패키지의 Xacro를 `/tmp/ax.urdf`로 변환한다. 이 파일은 동시 실행 시 공유되므로 병렬 실행하지 않는다. Ctrl+C로 종료한다.
+기본값은 월드 `empty`, AX_1 모델 `ax`와 기존 루트 명령 토픽이다. AX_2 또는 두 모델을 선택할 수 있다.
+
+```bash
+ros2 launch ax_control simulation.launch.py robot_model:=ax2
+ros2 launch ax_control simulation.launch.py robot_model:=both
+# GUI 없는 검증: 같은 명령에 gui:=false 추가
+```
+
+두 모델 모드는 `robot_1`·`robot_2`를 한 월드에 만들며 ROS 명령·상태는 `/ax/robot_i/`, TF 프레임은 `robot_i/`로 구분한다. 센서는 모든 모드에서 `/ax/robot_i/sensors/`를 사용한다. URDF는 `/tmp/ax_sim_*/`에 개별 생성한다. 별도 시뮬레이션을 동시에 실행할 때에는 ROS domain과 Gazebo partition을 함께 격리해야 한다. Ctrl+C로 종료한다.
 
 RViz 구조만 별도로 확인할 때:
 
 ```bash
 ros2 launch ax_description display.launch.py
+# AX_2 외형·센서 확인
+ros2 launch ax_description display.launch.py robot_model:=ax2
 ```
 
 설계 기준 공구는 Robotiq EPick(컵 구성 미정)이며 아직 도입하지 않았다. RViz 기본 공구는 비교용 가상 4컵 흡착 헤드(`suction`)다. 표시 기본값일 뿐 흡착 부착·해제는 구현되지 않았다. 오픈소스 Robotiq 2F-85는 `gripper_model:=robotiq`(GUI의 `robotiq_85_left_knuckle_joint` 하나로 연동 개폐), 기존 임시 집게는 `gripper_model:=primitive`, 최대 450 mm 가상 평행 집게는 `gripper_model:=parallel_wide`로 선택한다. 실행을 종료한 뒤 다른 인자로 다시 시작한다. [집게 비교 안내](docs/guides/GRIPPER_COMPARISON.md)를 참고한다. Gazebo 실행은 기존 임시 집게(`primitive`)를 사용하며 공구 선택·흡착·Robotiq 물리 제어 통합은 별도 작업이다. Robotiq 원본·라이선스는 [패키지 안내](src/robotiq_description/README.md)를 참고한다.
@@ -166,7 +181,7 @@ Fixed Frame을 `base_link`로 설정하고 RobotModel을 추가한다. 이 GUI �
 xacro "$(ros2 pkg prefix --share ax_description)/urdf/ax.urdf.xacro" -o /tmp/ax_check.urdf
 check_urdf /tmp/ax_check.urdf
 ros2 topic list -t
-ros2 topic echo /scan --once --qos-reliability best_effort
+ros2 topic echo /ax/robot_1/sensors/front_lidar/scan --once --qos-reliability best_effort
 ros2 topic pub --once /gripper/command std_msgs/msg/Float64 '{data: 0.015}'
 ros2 topic pub --once /column_yaw/command std_msgs/msg/Float64 '{data: 0.3}'
 ```
@@ -175,9 +190,9 @@ ros2 topic pub --once /column_yaw/command std_msgs/msg/Float64 '{data: 0.3}'
 
 ## 팀별 후속 연결
 
-- B: `/scan`, `lidar_link`, `base_link` 사용. `/clock`, 시뮬레이션 시간, 이동 관절 `/joint_states` 피드백을 후속 연결한다.
+- B: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU, 시간·상태 브리지를 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
 - C: 팔·집게 Float64 명령 사용. 자세 피드백·역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
-- D: ROS `/cmd_vel` → Gazebo 단방향 브리지는 있으나 구동 차단 게이트는 없다. `/odom`, `odom → base_link`는 현재 제공되지 않는다. 로봇별 이름·프레임 규칙을 먼저 확정한다.
+- D: 로봇별 cmd_vel·odom·이동 TF 브리지를 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
 - A: 실제 OBJ·단위·원점·관절 축표 확보 후 모델을 교체하고 재검증한다. 질량·관성·제어값·관절 제한은 실측 검증 전이다.
 
 ## 전달 파일

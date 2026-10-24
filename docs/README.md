@@ -54,7 +54,7 @@ docs/
 
 | 문서 | 용도 |
 |---|---|
-| [분리 메시 README](../src/ax_description/meshes/parts/README.md) | OBJ 분리·좌표·원통 분리 이력. 초기 작업 시점의 설명 포함 |
+| [분리 메시 README](../src/ax_description/meshes/parts/README.md) | AX_1·AX_2·상자별 OBJ 분리, 재생성·좌표·원통 분리 규칙 |
 | [Robotiq README](../src/robotiq_description/README.md) | 도입 commit·모델 전용 범위·원본 파일 해시·라이선스 |
 
 ## 검증 자료를 읽는 방법

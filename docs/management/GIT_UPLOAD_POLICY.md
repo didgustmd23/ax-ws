@@ -138,7 +138,7 @@ git diff --cached --name-status
 git diff --cached --stat
 
 # 모델 파일이 실수로 제외되지 않았는지 확인
-git check-ignore -v src/ax_description/meshes/parts/ax_body.obj
+git check-ignore -v src/ax_description/meshes/parts/AX_1/ax_body.obj
 git check-ignore -v src/robotiq_description/meshes/visual/2f_85/robotiq_base.dae
 ```
 

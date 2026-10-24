@@ -1,6 +1,7 @@
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float64MultiArray
 
 
 class GripperController(Node):
@@ -16,23 +17,19 @@ class GripperController(Node):
             10                      # 메시지 대기 큐의 깊이
         )
 
-        self.left_pub = self.create_publisher(
-            Float64,
-            '/left_finger/command',
-            10
-        )
-
-        self.right_pub = self.create_publisher(
-            Float64,
-            '/right_finger/command',
+        # finger_controller(JointGroupPositionController) 입력: [left, right] 목표 변위(m).
+        # 이 노드가 손가락 명령의 유일한 발행 주체다. 범위 검사·집기 완료 판정은 하지 않는다.
+        self.finger_pub = self.create_publisher(
+            Float64MultiArray,
+            '/finger_controller/commands',
             10
         )
 
     def gripper_callback(self, msg):
         self.get_logger().info(f'Gripper target: {msg.data:.3f} m')
 
-        self.left_pub.publish(msg)
-        self.right_pub.publish(msg)
+        # 두 손가락의 양의 축 방향이 반대이므로 같은 값이면 함께 벌어진다.
+        self.finger_pub.publish(Float64MultiArray(data=[msg.data, msg.data]))
 
 
 def main(args=None):
@@ -40,10 +37,14 @@ def main(args=None):
 
     node = GripperController()
 
-    rclpy.spin(node)
-
-    node.destroy_node()
-    rclpy.shutdown()
+    # launch 종료(SIGINT) 시 Jazzy rclpy가 context를 먼저 내려도 예외 없이 끝낸다.
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

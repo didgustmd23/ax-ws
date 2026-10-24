@@ -252,5 +252,73 @@ class RobotModelTests(unittest.TestCase):
             self.assertIsNotNone(parent.find(f"collision[@name='{collision}']"))
 
 
+    def test_ros2_control_is_the_only_drive_and_state_source(self):
+        # 같은 관절을 두 제어 경로가 구동하지 않도록 이전 Gazebo 제어·상태 플러그인이 없어야 한다.
+        legacy = ('gz-sim-diff-drive-system', 'gz-sim-joint-position-controller-system',
+                  'gz-sim-joint-state-publisher-system')
+        wheels = {f'{side}_wheel_joint' for side in
+                  ('front_left', 'front_right', 'rear_left', 'rear_right')}
+        from ax_control.model_contracts import ARM_JOINTS, FINGER_JOINTS
+        variants = [('ax.urdf.xacro', tool) for tool in
+                    ('primitive', 'robotiq', 'parallel_wide', 'suction')] + [('ax_2.urdf.xacro', None)]
+        for filename, tool in variants:
+            with self.subTest(model=filename, tool=tool):
+                arguments = [f'gripper_model:={tool}'] if tool else []
+                robot = expand(filename, *arguments, 'ros_namespace:=/ax/robot_x',
+                               'ros2_control_params:=/tmp/ax_params.yaml')
+                plugins = [p.get('filename') for p in robot.findall('gazebo/plugin')]
+                self.assertFalse(set(plugins) & set(legacy))
+                self.assertEqual(plugins.count('gz_ros2_control-system'), 1)
+                plugin = robot.find("gazebo/plugin[@filename='gz_ros2_control-system']")
+                self.assertEqual(plugin.findtext('parameters'), '/tmp/ax_params.yaml')
+                self.assertEqual(plugin.findtext('ros/namespace'), '/ax/robot_x')
+
+                systems = robot.findall('ros2_control')
+                self.assertEqual(len(systems), 1)
+                commands = {j.get('name'): [c.get('name') for c in j.findall('command_interface')]
+                            for j in systems[0].findall('joint')}
+                expected = {name: ['velocity'] for name in wheels}
+                if tool:
+                    expected.update({name: ['position'] for name in ARM_JOINTS})
+                if tool == 'primitive':
+                    expected.update({name: ['position'] for name in FINGER_JOINTS})
+                self.assertEqual(commands, expected)
+                # 모든 명령 관절은 모델에 실제로 존재하는 비고정 관절이다.
+                movable = {j.get('name') for j in robot.findall('joint') if j.get('type') != 'fixed'}
+                self.assertLessEqual(set(commands), movable)
+
+                # 설정 파일이 없으면(RViz 표시·정적 검사) Gazebo 플러그인을 만들지 않는다.
+                plain = expand(filename, *arguments)
+                self.assertIsNone(plain.find("gazebo/plugin[@filename='gz_ros2_control-system']"))
+
+    def test_controller_config_matches_model_and_contract(self):
+        # 제어기 설정의 바퀴 치수·관절 순서가 모델과 계약 모듈과 같아야 한다.
+        from ax_control.model_contracts import ARM_JOINTS, controllers, FINGER_JOINTS
+        config = ROOT / 'src/ax_control/config'
+        cases = [('ax1', 'ax.urdf.xacro', 'robot_1'), ('ax2', 'ax_2.urdf.xacro', 'robot_2')]
+        for kind, filename, robot_id in cases:
+            with self.subTest(robot=robot_id):
+                params = yaml.safe_load((config / f'{kind}_controllers.yaml').read_text())
+                manager = params['/**/controller_manager']['ros__parameters']
+                spawned = controllers(robot_id)
+                self.assertLessEqual(set(spawned), set(manager) - {'update_rate'})
+                drive = params['/**/diff_drive_controller']['ros__parameters']
+                robot = expand(filename)
+                wheel = robot.find("link[@name='front_left_wheel']/collision/geometry/cylinder")
+                self.assertAlmostEqual(drive['wheel_radius'], float(wheel.get('radius')), places=6)
+                left = zero_transforms(robot)['front_left_wheel'][1, 3]
+                right = zero_transforms(robot)['front_right_wheel'][1, 3]
+                self.assertAlmostEqual(drive['wheel_separation'], left - right, places=4)
+                # 정지 동작은 diff_drive_controller의 명령 시간 초과에 의존한다.
+                self.assertGreater(drive['cmd_vel_timeout'], 0)
+        params = yaml.safe_load((config / 'ax1_controllers.yaml').read_text())
+        arm = params['/**/arm_controller']['ros__parameters']
+        self.assertEqual(tuple(arm['joints']), ARM_JOINTS)
+        self.assertEqual(arm['command_interfaces'], ['position'])
+        fingers = params['/**/finger_controller']['ros__parameters']
+        self.assertEqual(tuple(fingers['joints']), FINGER_JOINTS)
+        self.assertNotIn('finger_controller', controllers('robot_1', tool='suction'))
+
+
 if __name__ == '__main__':
     unittest.main()

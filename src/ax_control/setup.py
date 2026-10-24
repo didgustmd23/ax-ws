@@ -14,12 +14,14 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='yhs',
     maintainer_email='yhs@todo.todo',
-    description='AX Gazebo simulation, ROS bridges, and gripper command distribution.',
+    description='AX Gazebo simulation, ros2_control controllers, sensor bridges, '
+                'and command relays.',
     license='TODO: License declaration',
     extras_require={
         'test': [
@@ -29,6 +31,7 @@ setup(
     entry_points={
         'console_scripts': [
             'gripper_controller = ax_control.gripper_controller:main',
+            'cmd_vel_relay = ax_control.cmd_vel_relay:main',
         ],
     },
 )

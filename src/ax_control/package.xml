@@ -3,7 +3,7 @@
 <package format="3">
   <name>ax_control</name>
   <version>0.0.0</version>
-  <description>AX Gazebo simulation, ROS bridges, and gripper command distribution.</description>
+  <description>AX Gazebo simulation, ros2_control controllers, sensor bridges, and command relays.</description>
   <maintainer email="yhs@todo.todo">yhs</maintainer>
   <license>TODO: License declaration</license>
   <depend>rclpy</depend>
@@ -22,6 +22,14 @@
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>rosgraph_msgs</exec_depend>
   <exec_depend>ros_gz_interfaces</exec_depend>
+  <!-- ros2_control: Gazebo 하드웨어 플러그인, 제어기 관리자와 사용하는 제어기 -->
+  <exec_depend>gz_ros2_control</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>diff_drive_controller</exec_depend>
+  <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>position_controllers</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

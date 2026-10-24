@@ -1,0 +1,28 @@
+# AX_2(robot_2) ros2_control 설정. 팔이 없으므로 상태 방송과 차동 구동만 둔다.
+# simulation.launch.py가 '/**'를 실행 namespace로 바꾸고 프레임 이름을 채운 사본을 넘긴다.
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+/**/diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
+    # ax_2_geometry.xacro의 ax2_wheel_separation·ax2_wheel_radius와 같아야 한다.
+    wheel_separation: 0.836695
+    wheel_radius: 0.149900663548
+    odom_frame_id: odom
+    base_frame_id: base_link
+    tf_frame_prefix_enable: false
+    enable_odom_tf: true
+    open_loop: false
+    position_feedback: true
+    publish_rate: 50.0
+    # 새 속도 명령이 이 시간 동안 없으면 바퀴 목표 속도를 0으로 만든다(안전 기능 아님).
+    cmd_vel_timeout: 0.5
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]

@@ -1,12 +1,24 @@
 """ROS/Gazebo sensor and command contracts for the development models."""
 
 
-ARM_CHANNELS = (
-    ('column_yaw_joint', 'column_yaw'), ('shoulder_joint', 'shoulder'),
-    ('elbow_joint', 'elbow'), ('wrist_joint', 'wrist'),
-    ('gripper_rotation_joint', 'gripper_rotation'),
-    ('left_finger_joint', 'left_finger'), ('right_finger_joint', 'right_finger'),
-)
+# ros2_control 명령 계약. 팔은 arm_controller(JointTrajectoryController) 하나가,
+# primitive 손가락은 finger_controller 하나가 명령한다. 관절 순서는 제어기 설정과 같다.
+ARM_JOINTS = ('column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint',
+              'gripper_rotation_joint')
+FINGER_JOINTS = ('left_finger_joint', 'right_finger_joint')
+
+
+def controllers(robot_id, tool='primitive'):
+    """Return the controllers to spawn, in activation order."""
+    # 상태 방송을 먼저 켜서 다른 제어기 활성화 전후의 관절 상태를 남긴다.
+    names = ['joint_state_broadcaster', 'diff_drive_controller']
+    if robot_id == 'robot_1':
+        names.append('arm_controller')
+        if tool == 'primitive':
+            names.append('finger_controller')
+    elif robot_id != 'robot_2':
+        raise ValueError(f'Unknown robot: {robot_id}')
+    return names
 
 
 def sensor_bridges(robot_id, tool='primitive'):

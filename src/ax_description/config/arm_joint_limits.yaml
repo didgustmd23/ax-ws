@@ -1,7 +1,12 @@
-# AX 5-axis v0.1 planning limits (rad, rad/s, rad/s^2).
-# Velocity is also applied in ax.urdf.xacro. The current Float64-to-Gazebo
-# bridge does not load this file or enforce acceleration / TCP speed limits.
-# A future trajectory planner must load joint_limits and time-parameterize paths.
+# AX 5-axis v0.1 planning limits (rad, rad/s, rad/s^2). Configured values only.
+# Velocity is also written to the joint <limit> in ax.urdf.xacro.
+# Current ros2_control path (arm_controller -> gz_ros2_control): no node loads this
+# file, so acceleration and TCP speed are not enforced. arm_controller follows the
+# caller's trajectory timing, and controller_manager enforce_command_limits is unset
+# (Jazzy default false), so URDF velocity is not clamped by ros2_control either.
+# Enforced in simulation: URDF position range (Gazebo joint stops) and URDF effort
+# as the force cap of the velocity command. Gazebo's own use of URDF velocity is
+# unverified. A future planner must load joint_limits and time-parameterize paths.
 joint_limits:
   column_yaw_joint:
     has_velocity_limits: true

@@ -95,6 +95,7 @@ Claude 하네스 파일은 팀 공용 지침으로도 Git에 올리지 않는다
 - **`*.obj`를 전역 제외하지 않는다.** 일반 C/C++ 프로젝트의 오브젝트 파일 제외 예시를 복사하면 AX의 3D 모델까지 누락된다.
 - **`*.mtl`을 제외하지 않는다.** OBJ가 참조하는 재질이다. 예: `parts/ax_column_colors.mtl`.
 - **`*.dae`, `*.stl`을 제외하지 않는다.** Robotiq 미리보기의 시각·충돌 메시다.
+- **모델 자산의 줄끝을 변환하지 않는다.** `.gitattributes`가 `*.obj`, `*.mtl`, `*.dae`, `*.stl`을 `-text`로 지정한다. manifest·`UPSTREAM_FILES.json`이 바이트 SHA-256을 기록하므로 Windows 편집기·`core.autocrlf` 체크아웃으로 CRLF가 되면 해시 검사가 실패한다. `AX_1.obj`·`AX_1.mtl`은 원본 CRLF를 유지하고, 파생 OBJ는 `tools/split_robot_meshes.py`로만 다시 만든다.
 - **`*.original`을 일괄 제외하지 않는다.** 현재 Robotiq 패키지의 원본 보존 파일에 사용한다.
 - **`*.json`, `*.yaml`, `*.pgm`을 일괄 제외하지 않는다.** 메타데이터·설정·지도까지 누락된다.
 - **`*.log`를 일괄 제외하지 않는다.** 일반 로그는 `/log/`로 제외하고 검증 근거 로그는 선별 보관한다.

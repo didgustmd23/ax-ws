@@ -540,7 +540,9 @@
         </xacro:ax_suction_gripper>
     </xacro:if>
 
-    <xacro:ax_sensor_suite profile="ax1" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"/>
+    <!-- tool selects the arm_rgbd mount (plate centre for suction, wrist otherwise). -->
+    <xacro:ax_sensor_suite profile="ax1" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"
+                           tool="$(arg gripper_model)"/>
 
     <!-- 4개 바퀴를 좌우 쌍으로 구동하는 차동 구동 시스템: 바퀴 간격과 반지름으로 주행 계산 -->
     <!-- 모델 ax의 기본 명령 토픽은 /model/${model_name}/cmd_vel. ROS /cmd_vel과의 연결은 launch 브리지가 담당한다. -->

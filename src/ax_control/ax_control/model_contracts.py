@@ -9,8 +9,9 @@ ARM_CHANNELS = (
 )
 
 
-def sensor_bridges(robot_id):
+def sensor_bridges(robot_id, tool='primitive'):
     """Return (Gazebo topic, ROS type, Gazebo type) without global aliases."""
+    # tool은 AX_1 gripper_model이며 'suction'에만 흡착판 중앙 ToF가 있다.
     if robot_id not in ('robot_1', 'robot_2'):
         raise ValueError(f'Unknown sensor robot: {robot_id}')
 
@@ -35,6 +36,12 @@ def sensor_bridges(robot_id):
             result.extend([(f'{topic}/depth_image', 'sensor_msgs/msg/Image', 'gz.msgs.Image'),
                            (f'{topic}/points', 'sensor_msgs/msg/PointCloud2',
                             'gz.msgs.PointCloudPacked')])
+    if robot_id == 'robot_1' and tool == 'suction':
+        # 1빔 LaserScan(ranges[0], m, 센서 원점 기준)으로 전달해 원시 무효값 inf를 보존한다.
+        # 설치된 브리지의 LaserScan->Range 변환은 +inf를 max_range + 1(범위 밖 유한값)로
+        # 바꾸므로 쓰지 않는다. 구독 계약은 docs/guides/INTERFACES.md를 따른다.
+        result.append((f'{prefix}/suction_tof/scan', 'sensor_msgs/msg/LaserScan',
+                       'gz.msgs.LaserScan'))
     if robot_id == 'robot_2':
         # 접촉 원시값이며 적재 완료/상자 보유 판정은 별도 구현 대상이다.
         result.append((f'{prefix}/cargo_contact', 'ros_gz_interfaces/msg/Contacts',

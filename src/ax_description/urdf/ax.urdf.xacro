@@ -5,9 +5,14 @@
     <xacro:arg name="robot_name" default="ax"/>
     <xacro:arg name="frame_prefix" default=""/>
     <xacro:arg name="sensor_robot_id" default="robot_1"/>
+    <!-- ros2_control: controller_manager namespace와 launch가 만든 제어기 설정 파일(절대 경로). -->
+    <!-- 설정 파일이 비어 있으면 gz_ros2_control 플러그인 없이 표시·정적 검사용 모델만 만든다. -->
+    <xacro:arg name="ros_namespace" default=""/>
+    <xacro:arg name="ros2_control_params" default=""/>
     <xacro:property name="model_name" value="$(arg robot_name)"/>
     <xacro:property name="frames" value="$(arg frame_prefix)"/>
     <xacro:include filename="sensors.xacro"/>
+    <xacro:include filename="ros2_control.xacro"/>
     <xacro:property name="gripper_model_ids" value="${dict(primitive=0, robotiq=1, parallel_wide=2, suction=3)}"/>
     <xacro:property name="gripper_model_id" value="${gripper_model_ids['$(arg gripper_model)']}"/>
     <xacro:property name="use_robotiq_gripper" value="${gripper_model_id == 1}"/>
@@ -114,7 +119,7 @@
 
     <!-- 로봇 크기 -->
     <!-- 바퀴 OBJ의 반경 외곽 약 196.309 mm와 폭 144 mm에 맞춘 원통 근사. -->
-    <!-- 실제 접지 반지름·질량·관성은 별도 검증 대상이며 DiffDrive도 이 근삿값을 사용한다. -->
+    <!-- 실제 접지 반지름·질량·관성은 별도 검증 대상이며 diff_drive_controller 설정도 이 근삿값을 사용한다. -->
     <xacro:property name="wheel_radius" value="0.19631"/>
     <xacro:property name="wheel_width" value="0.144"/>
 
@@ -522,7 +527,7 @@
         <!-- AX v0.1 속도 제한 적용. 위치 범위 유지, effort는 토크 산정 전의 미검증 기존값. -->
         <!-- 직선 관절 제한: 변위 -0.01~0.02 m, 최대 힘 20 N, 최대 속도 0.05 m/s -->
         <limit lower="-0.01" upper="0.02" effort="20.0" velocity="0.05"/>
-        <!-- mimic 설정은 비활성 상태이며 두 손가락은 각각의 위치 제어기로 구동 -->
+        <!-- mimic 설정은 비활성 상태이며 두 손가락은 finger_controller(위치 그룹 제어기)가 각각 구동 -->
         <!-- <mimic joint="left_finger_joint" multiplier="1.0" offset="0.0"/> -->
         <dynamics damping="1.0" friction="0.0"/>
     </joint>
@@ -544,119 +549,28 @@
     <xacro:ax_sensor_suite profile="ax1" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"
                            tool="$(arg gripper_model)"/>
 
-    <!-- 4개 바퀴를 좌우 쌍으로 구동하는 차동 구동 시스템: 바퀴 간격과 반지름으로 주행 계산 -->
-    <!-- 모델 ax의 기본 명령 토픽은 /model/${model_name}/cmd_vel. ROS /cmd_vel과의 연결은 launch 브리지가 담당한다. -->
-    <!-- 기본 odometry/TF 출력은 Gazebo 토픽이며, ROS에서 쓰려면 별도의 수신 브리지가 필요하다. -->
-    <gazebo>
-        <plugin filename="gz-sim-diff-drive-system" 
-                name="gz::sim::systems::DiffDrive">
-            <left_joint>front_left_wheel_joint</left_joint>
-            <right_joint>front_right_wheel_joint</right_joint>
-            <left_joint>rear_left_wheel_joint</left_joint>
-            <right_joint>rear_right_wheel_joint</right_joint>
-            <wheel_separation>${wheel_separation}</wheel_separation>
-            <wheel_radius>${wheel_radius}</wheel_radius>
-            <topic>/model/${model_name}/cmd_vel</topic>
-            <odom_topic>/model/${model_name}/odometry</odom_topic>
-            <tf_topic>/model/${model_name}/tf</tf_topic>
-            <frame_id>${frames}odom</frame_id>
-            <child_frame_id>${frames}base_link</child_frame_id>
-        </plugin>
-    </gazebo>
-    
-    <!-- 어깨 관절 위치 제어: Gazebo 명령 토픽으로 목표 각도(rad) 수신 -->
-    <!-- 아래 위치 제어기는 관절마다 독립 실행된다. 토픽의 ax 이름은 생성 모델 및 브리지와 일치해야 한다. -->
-    <!-- p_gain은 위치 오차에 대한 비례 이득이며, 값 지정만으로 중력 보상이나 목표 추종 정확도를 보장하지 않는다. -->
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>shoulder_joint</joint_name>
-            <topic>/model/${model_name}/shoulder_joint/position</topic>
-            <!-- 위치 오차에 대한 비례 이득: 값이 클수록 오차에 대한 제어 출력 증가 -->
-            <p_gain>10</p_gain>
-        </plugin>
-    </gazebo>
-
-    <!-- 팔꿈치 관절 위치 제어: Gazebo 명령 토픽으로 목표 각도(rad) 수신 -->
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>elbow_joint</joint_name>
-            <topic>/model/${model_name}/elbow_joint/position</topic>
-            <p_gain>10</p_gain>
-        </plugin>
-    </gazebo>
-
-    <!-- 손목 관절 위치 제어: Gazebo 명령 토픽으로 목표 각도(rad) 수신 -->
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>wrist_joint</joint_name>
-            <topic>/model/${model_name}/wrist_joint/position</topic>
-            <p_gain>5</p_gain>
-        </plugin>
-    </gazebo>
-
-    <!-- 왼쪽 손가락 위치 제어: Gazebo 명령 토픽으로 목표 변위(m) 수신 -->
-    <!-- prismatic 관절이므로 입력은 각도(rad)가 아니라 변위(m)다. 양쪽에 같은 값을 주는 것은 ROS 노드가 담당한다. -->
-    <xacro:if value="${use_primitive_gripper}">
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>left_finger_joint</joint_name>
-            <topic>/model/${model_name}/left_finger_joint/position</topic>
-            <p_gain>100</p_gain>
-        </plugin>
-    </gazebo>
-    </xacro:if>
-
-    <!-- 오른쪽 손가락 위치 제어: Gazebo 명령 토픽으로 목표 변위(m) 수신 -->
-    <xacro:if value="${use_primitive_gripper}">
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>right_finger_joint</joint_name>
-            <topic>/model/${model_name}/right_finger_joint/position</topic>
-            <p_gain>100</p_gain>
-        </plugin>
-    </gazebo>
-    </xacro:if>
-
-    <!-- 그리퍼 회전 관절 위치 제어: Gazebo 명령 토픽으로 목표 각도(rad) 수신 -->
-    <gazebo>
-        <plugin
-            filename="gz-sim-joint-position-controller-system"
-            name="gz::sim::systems::JointPositionController">
-
-            <joint_name>gripper_rotation_joint</joint_name>
-            <topic>/model/${model_name}/gripper_rotation_joint/position</topic>
-            <p_gain>5</p_gain>
-        </plugin>
-    </gazebo>
-
-
-
-    <!-- 회전 원통 명령 경로: ROS /column_yaw/command → Gazebo 위치 목표(rad). -->
-    <gazebo>
-        <plugin filename="gz-sim-joint-position-controller-system"
-                name="gz::sim::systems::JointPositionController">
-            <joint_name>column_yaw_joint</joint_name>
-            <topic>/model/${model_name}/column_yaw_joint/position</topic>
-            <p_gain>3</p_gain>
-        </plugin>
-    </gazebo>
-
-    <gazebo><plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
-        <topic>/model/${model_name}/joint_states</topic>
-    </plugin></gazebo>
+    <!-- 구동·상태는 ros2_control 하나로 처리한다. 바퀴 4개는 diff_drive_controller,
+         팔 5축은 joint_trajectory_controller, primitive 손가락은 위치 그룹 제어기가 명령한다.
+         제어기 이름·주기·바퀴 간격(0.622 m)·반경(0.19631 m)은 ax_control/config/ax1_controllers.yaml이 기준이다. -->
+    <ros2_control name="${model_name}_gz_system" type="system">
+        <hardware>
+            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </hardware>
+        <xacro:ax_velocity_joint name="front_left_wheel_joint"/>
+        <xacro:ax_velocity_joint name="front_right_wheel_joint"/>
+        <xacro:ax_velocity_joint name="rear_left_wheel_joint"/>
+        <xacro:ax_velocity_joint name="rear_right_wheel_joint"/>
+        <!-- 팔 위치 범위·속도·effort 상한은 각 joint의 limit을 따른다(effort는 토크 산정 전 미검증 값). -->
+        <xacro:ax_position_joint name="column_yaw_joint"/>
+        <xacro:ax_position_joint name="shoulder_joint"/>
+        <xacro:ax_position_joint name="elbow_joint"/>
+        <xacro:ax_position_joint name="wrist_joint"/>
+        <xacro:ax_position_joint name="gripper_rotation_joint"/>
+        <!-- 손가락 직선 관절(m)은 primitive 집게에만 있다. 다른 공구 관절은 구동하지 않는다. -->
+        <xacro:if value="${use_primitive_gripper}">
+            <xacro:ax_position_joint name="left_finger_joint"/>
+            <xacro:ax_position_joint name="right_finger_joint"/>
+        </xacro:if>
+    </ros2_control>
+    <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"/>
 </robot>

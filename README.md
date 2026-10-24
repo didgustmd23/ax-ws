@@ -6,7 +6,7 @@
 
 개발 범위는 에이전트의 운영 판단을 로봇 모델·제어, 위치 추정·환경 인지, 물체 인식·조작, Fleet 작업 배정·자율주행과 연결하는 것이다. 규칙 기반 공동 운반을 먼저 검증하고, 에이전트 제안을 기록·평가하는 `ADVISORY` 단계를 거쳐 검증된 제안을 반영하는 `ASSISTED` 단계로 확장한다. AI 응답 지연·오류나 제안 검증 실패 시에는 규칙 기반 운영으로 복귀하도록 설계한다. 목표 구성과 역할별 계약은 [통합 상세설계](docs/design/DETAILED_DESIGN.md)에 정리한다.
 
-현재 저장소는 AX_1 팔 로봇·AX_2 선반 로봇의 URDF와 Gazebo 플러그인 기반 기본 제어·센서를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·ros2_control 전환은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
+현재 저장소는 AX_1 팔 로봇·AX_2 선반 로봇의 URDF와 ros2_control(gz_ros2_control) 기반 기본 제어, Gazebo 센서를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·최종 구동 차단은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
 
 프로젝트·GitHub 저장소 이름: **`ax-ws`**. ROS 모델 이름은 `ax`, 패키지 이름은 기존 값을 유지한다. 로컬 작업공간은 `~/ax_ws`로 사용한다. 저장소를 받을 때 대상 폴더를 `~/ax_ws`로 지정하면 아래 명령을 그대로 사용할 수 있다.
 
@@ -87,12 +87,12 @@ flowchart LR
 | 영역 | 현재 코드 | 목표·후속 구현 |
 |---|---|---|
 | 로봇 모델 | AX_1·AX_2 URDF, 단독/두 모델 생성, AX_1 RViz 집게 4종 선택 | 로봇별 가상 질량·충돌·최종 적재 공간 검증 |
-| 기본 제어 | Gazebo 플러그인, 팔·집게 Float64 명령, `/cmd_vel` 입력 브리지 | ros2_control 전환, 로봇별 제어·최종 구동 차단 |
-| 센서·상태 | 로봇별 전·후방 LiDAR·RGB/RGB-D·IMU, AX_2 접촉 센서 및 상태·시간 브리지 구성 | 작업 자세별 시야·접촉·주기·물리 동작 검증, 적재 판정 |
+| 기본 제어 | 로봇별 gz_ros2_control `controller_manager`, 바퀴 `diff_drive_controller`(`/cmd_vel` Twist 중계), 팔 `arm_controller`(JointTrajectoryController), primitive 손가락 위치 제어기 | 토크 정격·effort 확정, 안전 게이트·watchdog·최종 구동 차단 |
+| 센서·상태 | 로봇별 전·후방 LiDAR·RGB/RGB-D·IMU, AX_2 접촉 센서 브리지, ros2_control 관절 상태·odom·이동 TF, 시간 브리지 | 작업 자세별 시야·접촉·주기·물리 동작 검증, 적재 판정 |
 | 공구·조작 | Gazebo 기본 `primitive`, RViz 기본 비교용 `suction` 외형 | EPick 도입, 인식·집기 계획·실제 부착/해제·보유 판정 |
 | 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·Fleet·Nav2·통로 허가·중앙 운영 AI |
 
-격리된 headless Gazebo에서 두 모델의 센서·상태·시간 토픽 30개 수신과 0.2 kg 검증 상자의 선반 접촉 전달을 확인했다. 작업 자세별 시야·측정 정확도·주기·하중 성능의 검증 완료는 아니며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
+격리된 headless Gazebo에서 ros2_control 전환 전 구성으로 두 모델의 센서·상태·시간 토픽 30개 수신과 0.2 kg 검증 상자의 선반 접촉 전달을 확인했다. 전환 후에는 두 로봇의 제어기 활성, 관절별 명령 인터페이스 단일 점유, `joint_states`·`odom`·TF·`/clock` 발행과 주행 정지, 외부 하중 없이 자중에서의 자세 유지(단일 시험)를 확인했다(결과와 제한은 [인터페이스](docs/guides/INTERFACES.md) 참고). 현재 effort 제한에서는 작업 자세의 어깨 중력을 지탱하지 못한다. 작업 자세별 시야·측정 정확도·주기·하중 성능의 검증 완료는 아니며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
 
 ## 구성
 
@@ -102,7 +102,7 @@ flowchart LR
 | `src/ax_description/urdf/ax_2.urdf.xacro` | AX_2 차체·바퀴·선반·센서와 독립 가상 물리 특성 |
 | `src/ax_description/urdf/sensors.xacro`, `config/sensor_mounts.yaml` | 두 로봇의 센서 구성과 개발용 장착 좌표 |
 | `src/ax_description/worlds/ax_empty.sdf` | 센서·IMU·접촉 시스템을 공유하는 개발 월드 |
-| `src/ax_description/config/arm_joint_limits.yaml` | 5축 속도·가속도 계획값. 현재 브리지의 가속도 제한 기능은 아님 |
+| `src/ax_description/config/arm_joint_limits.yaml` | 5축 속도·가속도 계획값. 현재 `arm_controller` 경로는 이 파일을 읽지 않으며 가속도를 강제하지 않음 |
 | `src/ax_description/urdf/structure_demo.urdf` | 몸체와 팔만 있는 별도 연습 모델 |
 | `src/ax_description/launch/display.launch.py` | RViz 수동 관절 표시 |
 | `src/ax_control/launch/simulation.launch.py` | Gazebo 생성, 명령·센서 브리지, robot_state_publisher |
@@ -140,7 +140,15 @@ source install/setup.bash
 
 Gazebo 메시 검색 경로는 `ax_description`·`robotiq_description`의 `package.xml` export에서 설치된 share 경로를 기준으로 등록한다. `model://...` 메시를 찾지 못하면 두 패키지를 다시 빌드하고 `install/setup.bash`를 적용한 뒤 simulation을 재시작한다. 사용자 홈 절대 경로를 환경 변수에 직접 넣을 필요는 없다.
 
-ros2_control 전환은 아직 적용 전이므로 현재 빌드·실행에는 아래 패키지가 필요 없다. 전환 작업에서는 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`, `joint_state_broadcaster`, `diff_drive_controller` 등을 `package.xml`에 선언하고 이 절의 설치 명령을 함께 갱신한다. 2026-10-22 작업 PC 확인 기준으로 `diff_drive_controller`, `joint_state_broadcaster`, `hardware_interface`는 설치되어 있고 `gz_ros2_control`, `controller_manager`, `joint_trajectory_controller`는 설치되어 있지 않다. 다른 PC에서는 `ros2 pkg prefix <패키지>`로 다시 확인한다. 설치 오류는 해결한 뒤 다음 단계로 진행한다.
+simulation은 ros2_control 제어기를 사용하므로 아래 패키지가 필요하다(`ax_control/package.xml`에 선언). 2026-10-25 작업 PC에서 gz_ros2_control 1.2.20, ros2_control 4.48.1, ros2_controllers 4.42.1로 확인했다.
+
+```bash
+sudo apt install -y ros-jazzy-gz-ros2-control ros-jazzy-ros2-control ros-jazzy-ros2-controllers
+for p in gz_ros2_control controller_manager joint_state_broadcaster diff_drive_controller \
+         joint_trajectory_controller position_controllers; do ros2 pkg prefix $p; done
+```
+
+다른 PC에서는 `ros2 pkg prefix <패키지>`로 다시 확인한다. 설치 오류는 해결한 뒤 다음 단계로 진행한다.
 
 ## 실행
 
@@ -182,17 +190,21 @@ xacro "$(ros2 pkg prefix --share ax_description)/urdf/ax.urdf.xacro" -o /tmp/ax_
 check_urdf /tmp/ax_check.urdf
 ros2 topic list -t
 ros2 topic echo /ax/robot_1/sensors/front_lidar/scan --once --qos-reliability best_effort
+ros2 control list_controllers
 ros2 topic pub --once /gripper/command std_msgs/msg/Float64 '{data: 0.015}'
-ros2 topic pub --once /column_yaw/command std_msgs/msg/Float64 '{data: 0.3}'
+# 팔: 일부 관절만 담은 궤적도 허용한다(rad, 4 s 동안 이동).
+ros2 topic pub --once /arm_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory \
+  '{joint_names: [column_yaw_joint], points: [{positions: [0.3], time_from_start: {sec: 4}}]}'
+ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 0.2}}'
 ```
 
-명령 단위·범위는 [인터페이스 표](docs/guides/INTERFACES.md)를 따른다. 현재 명령 노드는 입력 범위를 검사하지 않는다.
+명령 단위·범위는 [인터페이스 표](docs/guides/INTERFACES.md)를 따른다. 현재 명령 경로는 목표 범위를 검사하지 않는다. `/cmd_vel` 발행을 멈추면 0.5 s 뒤 바퀴 목표 속도가 0이 되며, 이는 안전 정지 기능이 아니다.
 
 ## 팀별 후속 연결
 
-- B: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU, 시간·상태 브리지를 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
-- C: 팔·집게 Float64 명령 사용. 자세 피드백·역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
-- D: 로봇별 cmd_vel·odom·이동 TF 브리지를 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
+- B: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU·시간 브리지와 ros2_control 관절 상태·odom을 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
+- C: 팔은 `arm_controller` 궤적 토픽·`FollowJointTrajectory` action, primitive 집게는 `/gripper/command`(손가락 변위 m)를 사용한다. 관절 상태는 `joint_states`로 받는다. 역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
+- D: 로봇별 `cmd_vel`(Twist)·`odom`·이동 TF를 `diff_drive_controller`로 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
 - A: 실제 OBJ·단위·원점·관절 축표 확보 후 모델을 교체하고 재검증한다. 질량·관성·제어값·관절 제한은 실측 검증 전이다.
 
 ## 전달 파일

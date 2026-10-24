@@ -1,0 +1,60 @@
+# AX_1(robot_1) ros2_control 설정. simulation.launch.py가 프레임 이름을 채운 사본을 만들어
+# gz_ros2_control에 넘긴다. 사본에서는 '/**'를 실행 namespace(''나 /ax/robot_1)로 바꾼다.
+# 단위: 길이 m, 각도 rad, 시간 s. 값은 개발용이며 실기 사양이 아니다.
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz. gz_ros2_control 위치 명령 환산에도 쓰인다.
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    finger_controller:
+      type: position_controllers/JointGroupPositionController
+
+/**/diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
+    # ax.urdf.xacro의 wheel_separation·wheel_radius와 같아야 한다(test_robot_models.py가 비교).
+    wheel_separation: 0.622
+    wheel_radius: 0.19631
+    # launch가 단일 실행은 odom/base_link, 다중 실행은 robot_1/odom처럼 채운다.
+    odom_frame_id: odom
+    base_frame_id: base_link
+    tf_frame_prefix_enable: false
+    enable_odom_tf: true
+    open_loop: false
+    position_feedback: true
+    publish_rate: 50.0
+    # 이 시간 동안 새 속도 명령이 없으면 바퀴 목표 속도를 0으로 만든다(주행 정지, 안전 기능 아님).
+    cmd_vel_timeout: 0.5
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+
+/**/arm_controller:
+  ros__parameters:
+    joints: [column_yaw_joint, shoulder_joint, elbow_joint, wrist_joint, gripper_rotation_joint]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    # 일부 관절만 담은 목표를 허용한다. 빠진 관절은 현재 목표를 유지한다.
+    allow_partial_joints_goal: true
+    # 활성화 시 현재 측정 위치를 유지 목표로 삼아 이전 명령값으로 튀지 않게 한다.
+    set_last_command_interface_value_as_state_on_activation: false
+    # 0이면 명령 중단 후에도 마지막 목표를 계속 유지한다(watchdog 아님).
+    cmd_timeout: 0.0
+    constraints:
+      # 개발용 임시 허용값이다. 실패는 action 결과로 보고된다.
+      stopped_velocity_tolerance: 0.01
+      goal_time: 2.0
+      column_yaw_joint: {trajectory: 0.0, goal: 0.02}
+      shoulder_joint: {trajectory: 0.0, goal: 0.02}
+      elbow_joint: {trajectory: 0.0, goal: 0.02}
+      wrist_joint: {trajectory: 0.0, goal: 0.02}
+      gripper_rotation_joint: {trajectory: 0.0, goal: 0.02}
+
+/**/finger_controller:
+  ros__parameters:
+    # 명령 배열 순서: [left, right], 각 손가락 목표 변위(m, -0.01~0.02).
+    joints: [left_finger_joint, right_finger_joint]

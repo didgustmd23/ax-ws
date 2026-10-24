@@ -3,14 +3,18 @@
   <xacro:arg name="robot_name" default="robot_2"/>
   <xacro:arg name="frame_prefix" default=""/>
   <xacro:arg name="sensor_robot_id" default="robot_2"/>
+  <!-- ros2_control namespace와 launch가 만든 제어기 설정 파일. 비어 있으면 플러그인을 만들지 않는다. -->
+  <xacro:arg name="ros_namespace" default=""/>
+  <xacro:arg name="ros2_control_params" default=""/>
   <xacro:property name="model_name" value="$(arg robot_name)"/>
   <xacro:property name="frames" value="$(arg frame_prefix)"/>
   <xacro:include filename="ax_2_geometry.xacro"/>
   <xacro:include filename="ax_2_physical_properties.xacro"/>
   <xacro:include filename="sensors.xacro"/>
+  <xacro:include filename="ros2_control.xacro"/>
   <!-- CAD units mm; pivots are generated in m. +X forward, +Y left, +Z up.
        Independent virtual budgets: body 12 kg, shelf 5 kg, wheels 0.4 kg each.
-       No arm, suction tool, ros2_control or cargo-state classifier is implied. -->
+       No arm, suction tool or cargo-state classifier is implied. -->
   <xacro:macro name="ax2_visual" params="file pivot">
     <visual>
       <origin xyz="${-pivot[0]} ${-pivot[1]} ${-pivot[2]}"/>
@@ -133,24 +137,16 @@
       </contact>
     </sensor>
   </gazebo>
-  <gazebo>
-    <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
-      <left_joint>front_left_wheel_joint</left_joint>
-      <left_joint>rear_left_wheel_joint</left_joint>
-      <right_joint>front_right_wheel_joint</right_joint>
-      <right_joint>rear_right_wheel_joint</right_joint>
-      <wheel_separation>${ax2_wheel_separation}</wheel_separation>
-      <wheel_radius>${ax2_wheel_radius}</wheel_radius>
-      <topic>/model/${model_name}/cmd_vel</topic>
-      <odom_topic>/model/${model_name}/odometry</odom_topic>
-      <tf_topic>/model/${model_name}/tf</tf_topic>
-      <frame_id>${frames}odom</frame_id>
-      <child_frame_id>${frames}base_link</child_frame_id>
-    </plugin>
-  </gazebo>
-  <gazebo>
-    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
-      <topic>/model/${model_name}/joint_states</topic>
-    </plugin>
-  </gazebo>
+  <!-- 바퀴 4개는 ros2_control diff_drive_controller만 구동한다(Gazebo DiffDrive 미사용).
+       바퀴 간격·반경은 ax_control/config/ax2_controllers.yaml에 같은 값으로 둔다. -->
+  <ros2_control name="${model_name}_gz_system" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <xacro:ax_velocity_joint name="front_left_wheel_joint"/>
+    <xacro:ax_velocity_joint name="front_right_wheel_joint"/>
+    <xacro:ax_velocity_joint name="rear_left_wheel_joint"/>
+    <xacro:ax_velocity_joint name="rear_right_wheel_joint"/>
+  </ros2_control>
+  <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"/>
 </robot>

@@ -22,9 +22,18 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 ![AX 전체 시스템 구성도 — 양현승·이종수·엄승연·김성민 담당 영역과 구현 상태](docs/assets/diagrams/ax-system.webp)
 
-[인터랙티브 전체 시스템 구성도 열기 · HTML](docs/assets/diagrams/ax-system.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
+[인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [로봇 제어 구조](https://didgustmd23.github.io/ax-ws/internal.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
 
-GitHub에서는 HTML 파일을 내려받아 브라우저로 열면 인터랙티브 구성도를 볼 수 있다.
+웹 링크는 main 반영과 GitHub Pages 최초 배포 후 사용할 수 있다. 배포 전에는 [전체 구성도 HTML](docs/assets/diagrams/ax-system.html) 또는 [제어 구조 HTML](docs/assets/diagrams/ax-control.html)을 내려받아 브라우저로 연다.
+
+<details>
+<summary>구성도 웹 배포 설정</summary>
+
+저장소의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 선택한다. 이후 main에서 배포 파일이 변경되면 `Publish AX diagrams` 워크플로가 사이트를 갱신한다. 수동 실행은 main을 선택한다.
+
+공개 대상은 `docs/assets/diagrams/`의 지정 HTML 2개와 WebP 1개다. `.archify/`의 작업 원본·JSON·검증 자료·글꼴은 Git과 Pages 배포에서 제외한다.
+
+</details>
 
 중앙 운영 AI 에이전트는 김성민이 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. 김성민은 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. 양현승은 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. 이종수는 위치·환경·안전 판단을 제공하고 엄승연은 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
 

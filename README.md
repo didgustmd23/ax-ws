@@ -20,7 +20,7 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 아래는 두 로봇이 협업하는 **목표 설계**다. 각 블록의 현재 구현 범위는 아래 표를 참고한다.
 
-![AX 전체 시스템 구성도 — 중앙 운영 AI의 상황 요약·운영 판단·계획 제안과 담당 영역](docs/assets/diagrams/ax-system.webp)
+![AX 전체 시스템 구성도 — 중앙 운영 AI의 상황 요약·운영 판단·계획 제안과 담당 영역](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=31fd6e457416)
 
 [인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [로봇 제어 구조](https://didgustmd23.github.io/ax-ws/internal.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
 

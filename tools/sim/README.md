@@ -8,7 +8,7 @@
 | `ax_sim.py` | 격리 Gazebo `start`·`status`·`probe`·`stop`·`smoke` |
 | `ax_regen_physics.py` | 물리 특성 생성 파일 `check`(쓰기 없음)·`regen`(명시적 교체) |
 | `comm_probe.py` | 메시지 수신 확인(`ax_sim.py`가 호출) |
-| `owned_procs.sh`, `own_procs.py` | 소유 프로세스 추적·종료 도우미(기존 파일 그대로 복사) |
+| `owned_procs.sh`, `own_procs.py` | 소유 프로세스 추적·종료 도우미(기존 도우미를 복사해 동작은 그대로 두고 주석·서식만 정리) |
 | `test_owned_procs.sh`, `test_proc.py`, `owned_procs_v1_ppid.sh`, `tests/` | 회귀 시험. v1은 비교 시험용 이전 추적기다 |
 
 ## 검증

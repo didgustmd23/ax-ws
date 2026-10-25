@@ -109,6 +109,7 @@ flowchart LR
 | `src/ax_control/ax_control/gripper_controller.py` | 집게 공통 명령을 양쪽 손가락으로 분배 |
 | `tools/generate_physical_properties.py` | 질량·COM·관성·충돌 상자의 원본 계산 및 Xacro·JSON 생성 |
 | `tools/check_static_stability.py` | 자세·공구·하중 가정에 따른 정적 COM 바닥 투영·지지 여유 계산 |
+| `tools/check_joint_torques.py` | 개발 자세·경로의 팔 관절 정적 중력 토크(무부하·2 kg 가정)와 가속 참고치 계산. 모터 정격 아님 |
 | `maps/warehouse_map.yaml`, `.pgm` | 기존 지도. 대응하는 창고 월드는 포함하지 않음 |
 | [docs/guides/INTERFACES.md](docs/guides/INTERFACES.md) | 팀 연결용 링크·관절·토픽 표 |
 | [docs/guides/GRIPPER_COMPARISON.md](docs/guides/GRIPPER_COMPARISON.md) | 집게 4종 선택·개폐 조작·시험 범위 |

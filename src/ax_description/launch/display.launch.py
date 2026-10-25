@@ -8,6 +8,8 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+# 선택한 로봇·공구 모델을 RViz로 표시하는 launch 설명을 만든다(robot_state_publisher,
+# joint_state_publisher_gui, rviz2). GUI 관절값은 표시용이며 물리 상태가 아니다.
 def generate_launch_description():
 
     pkg_path = get_package_share_directory('ax_description')

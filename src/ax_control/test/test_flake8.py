@@ -16,6 +16,7 @@ from ament_flake8.main import main_with_errors
 import pytest
 
 
+# 패키지 코드가 ament_flake8 코드 형식 검사를 통과하는지 확인한다.
 @pytest.mark.flake8
 @pytest.mark.linter
 def test_flake8():

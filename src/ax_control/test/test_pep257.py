@@ -16,6 +16,7 @@ from ament_pep257.main import main
 import pytest
 
 
+# 패키지 코드가 ament_pep257 docstring 형식 검사를 통과하는지 확인한다.
 @pytest.mark.linter
 @pytest.mark.pep257
 def test_pep257():

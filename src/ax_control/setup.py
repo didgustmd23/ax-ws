@@ -32,6 +32,7 @@ setup(
         'console_scripts': [
             'gripper_controller = ax_control.gripper_controller:main',
             'cmd_vel_relay = ax_control.cmd_vel_relay:main',
+            'arm_command_guard = ax_control.arm_command_guard:main',
         ],
     },
 )

@@ -61,6 +61,18 @@ python3 tools/sim/ax_regen_physics.py regen   # 작업 트리 교체
 
 `regen`은 5개 출력이 모두 생성된 경우에만 교체한다. 기존 파일을 실행 폴더에 백업하고, 같은 폴더에 임시 파일로 준비한 뒤 교체한다. 도중에 실패하면 이미 교체한 파일을 백업으로 되돌리고 임시 파일을 지운다. 결과는 `regen.json`에 남는다.
 
+## 모델 인계 검증과의 차이
+
+`verify_handoff.py`는 제어기·인터페이스·구독자 준비 확인 뒤 AX_1의 팔·손가락 동작과 오차를 검사한다. 기본 통신 smoke의 상위 호환이나 안전 인증 시험이 아니다.
+
+```bash
+# 작업공간 setup을 적용한 사용자 터미널에서 실행한다.
+python3 tools/verify_handoff.py --dependencies-only
+python3 tools/verify_handoff.py --headless --domain-id auto --output-dir /tmp/ax_handoff_review
+```
+
+실행마다 새로운 출력 폴더를 지정한다. 이 도구는 Gazebo와 동작 명령을 실행한다. 종료 코드는 0 통과, 1 준비·조회·정리 실패 또는 미완료, 2 동작 후 목표 오차 초과다. `ax_verify.py`의 종료 코드 2(미완료)와 의미가 다르다. 통과해도 G1·하중·흡착 성공을 뜻하지 않는다.
+
 ## 회귀 시험
 
 ```bash

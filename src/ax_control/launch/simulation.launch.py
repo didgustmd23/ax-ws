@@ -108,9 +108,20 @@ def launch_models(context):
 
         names = controllers(robot_id)
         names.remove('diff_drive_controller')
+
+        # arm_controller의 공개 이름은 arm_command_guard가 받고, 실제 제어기는 내부 이름을 쓴다.
+        # 정상 팔 명령 경로를 보호 노드 → 내부 action 하나로 만들기 위함이며 접근 차단은 아니다.
+        arguments = []
+        for name in names:
+            arguments += ['--controller', name]
+            if name == 'arm_controller':
+                arguments += ['--controller-ros-args', ' '.join(
+                    f'-r ~/{entry}:=arm_controller/internal/{entry}'
+                    for entry in ('joint_trajectory', 'follow_joint_trajectory'))]
+
         actions.append(Node(
             package='controller_manager', executable='spawner', namespace=namespace,
-            name=f'{robot_id}_controller_spawner', arguments=[*names, *manager],
+            name=f'{robot_id}_controller_spawner', arguments=[*arguments, *manager],
             output='screen'))
 
         # diff_drive_controller의 ~/odom을 기존 계약 {namespace}/odom으로 옮긴다.
@@ -128,8 +139,15 @@ def launch_models(context):
             output='screen'))
 
         if is_arm:
-            # 팔 명령은 {namespace}/arm_controller/joint_trajectory 토픽이나
-            # follow_joint_trajectory action으로 arm_controller에 직접 보낸다.
+            # 팔 명령은 기존 이름 {namespace}/arm_controller/joint_trajectory 토픽이나
+            # follow_joint_trajectory action으로 보낸다. arm_command_guard가 명령 가능 범위·보간
+            # 경로를 검사해 내부 arm_controller action으로만 전달하고 관절 상태로 보호 정지한다.
+            share = Path(get_package_share_directory('ax_control'))
+            guard = share / 'config' / 'arm_command_guard.yaml'
+            actions.append(Node(
+                package='ax_control', executable='arm_command_guard', namespace=namespace,
+                parameters=[str(guard), {'use_sim_time': True}], output='screen'))
+
             actions.append(Node(
                 package='ax_control', executable='gripper_controller', namespace=namespace,
                 parameters=[{'use_sim_time': True}], remappings=[

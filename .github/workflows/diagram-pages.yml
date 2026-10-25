@@ -4,9 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/assets/diagrams/ax-system.html'
-      - 'docs/assets/diagrams/ax-control.html'
-      - 'docs/assets/diagrams/ax-system.webp'
+      - 'docs/assets/diagrams/*.html'
+      - 'docs/assets/diagrams/*.webp'
       - '.github/workflows/diagram-pages.yml'
   workflow_dispatch:
 
@@ -37,8 +36,17 @@ jobs:
           # 저장소 전체 대신 명시한 배포용 사본만 공개한다.
           # .archify 원본·JSON·검증 자료·글꼴은 배포하지 않는다.
           install -Dm644 docs/assets/diagrams/ax-system.html _site/overview.html
-          install -Dm644 docs/assets/diagrams/ax-control.html _site/internal.html
           install -Dm644 docs/assets/diagrams/ax-system.webp _site/ax-system.webp
+          install -Dm644 docs/assets/diagrams/ax-control.html _site/internal.html
+          install -Dm644 docs/assets/diagrams/ax-control.webp _site/ax-control.webp
+          install -Dm644 docs/assets/diagrams/ax-transfer.html _site/transfer.html
+          install -Dm644 docs/assets/diagrams/ax-transfer.webp _site/ax-transfer.webp
+          install -Dm644 docs/assets/diagrams/ax-safety.html _site/safety.html
+          install -Dm644 docs/assets/diagrams/ax-safety.webp _site/ax-safety.webp
+          install -Dm644 docs/assets/diagrams/ax-packages.html _site/packages.html
+          install -Dm644 docs/assets/diagrams/ax-packages.webp _site/ax-packages.webp
+          install -Dm644 docs/assets/diagrams/ax-docs.html _site/documents.html
+          install -Dm644 docs/assets/diagrams/ax-docs.webp _site/ax-docs.webp
           cp _site/overview.html _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

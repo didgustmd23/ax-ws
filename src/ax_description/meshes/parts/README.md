@@ -16,7 +16,9 @@
 
 ```bash
 python3 tools/split_robot_meshes.py
-python3 tools/generate_physical_properties.py
+python3 tools/sim/ax_regen_physics.py check
+# 생성 결과 교체가 필요할 때만 명시적으로 실행
+python3 tools/sim/ax_regen_physics.py regen
 python3 -m unittest discover -s tools/tests -v
 ```
 
@@ -28,7 +30,7 @@ python3 -m unittest discover -s tools/tests -v
 - 면의 정점·UV·법선 참조를 로컬 인덱스로 다시 매긴다. 원본 오브젝트별 면 순서·재질 선택·smoothing을 보존한다.
 - OBJ가 참조하는 원본 MTL을 같은 폴더에 복사한다. 원본 MTL은 변경하지 않는다.
 - AX_1 손가락·패드·링크 쌍도 모두 추출하되, 현재 URDF 집게에는 손목 하우징만 사용한다. 메시 분할은 가동부 관절 연결이나 파지 구현을 뜻하지 않는다.
-- AX_2는 원본의 장면상 이동·회전·배율을 그대로 보존한다. 로봇별 원점·관절·질량을 정의한 상태가 아니다.
+- AX_2는 원본의 장면상 이동·회전·배율을 그대로 보존한다. 분할 도구 자체는 로봇별 원점·관절·질량을 정의하지 않는다. 현재 AX_2의 모델 원점 보정·관절·독립 질량 특성은 Xacro와 물리 생성기가 별도로 적용한다.
 
 ## AX_1 받침·회전 기둥
 
@@ -39,7 +41,9 @@ python3 -m unittest discover -s tools/tests -v
 | `arm_01_support.obj` | 하단 받침·외측 지지대·브래킷·볼트 | `arm_mount_link` | 짙은 회색 |
 | `arm_01_column.obj` | 중앙 원통 표면과 동심 링 3개 | `column_link` | 주황색 |
 
-좌표가 같은 정점을 연결하여 면 연결 성분 20개를 구분하고, 기존 XY 경계 기준으로 중앙 원통과 링 4개 성분을 회전부에 배정한다. 받침 1,776면 + 회전부 800면 = 원본 2,576면이며, 모든 면은 한 파생 파츠에만 배정된다. 형상 기반 구분이며 링의 실제 기구 귀속은 미확정이다. 두 파생 OBJ만 `ax_column_colors.mtl`로 재질을 바꿔 기존 구분 색상을 유지한다. 상세 분류와 출처 해시는 `AX_1/column_split_manifest.json`에 기록한다.
+좌표가 같은 정점을 연결하여 면 연결 성분 20개를 구분하고, 기존 XY 경계 기준으로 중앙 원통과 링 4개 성분을 회전부에 배정한다. 받침 1,776면 + 회전부 800면 = 원본 2,576면이며, 모든 면은 한 파생 파츠에만 배정된다. 형상 기반 구분이며 링의 실제 기구 귀속은 미확정이다. 두 파생 OBJ만 `ax_column_colors.mtl`로 재질을 바꿔 기존 구분 색상을 유지한다.
+
+상세 분류와 출처 해시는 `AX_1/column_split_manifest.json`에 기록한다.
 
 새 원본의 원통은 Z=780~1346.6586 mm이며 상단 팔 베이스 기준점은 Z=1355.3438 mm다. 이 차이는 원본 조립 형상에 포함된다. `column_yaw_joint`의 축 원점 `(180, 185, 780) mm`는 유지하며, 상단 fixed 연결은 Z=575.3438 mm, 어깨 상대 위치는 `(114.4427, 0, 100) mm`로 맞췄다. 축과 기준점은 형상 추정값이다.
 

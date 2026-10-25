@@ -2,16 +2,20 @@
 
 `display.launch.py`의 `gripper_model` 인자로 네 종류를 선택한다. 실행당 하나만 장착하며, 교체할 때는 Ctrl+C로 종료하고 다른 인자로 다시 실행한다. 실행 중 교체와 여러 로봇의 동시 비교는 구현하지 않았다.
 
-설계상 robot_1의 **기준 공구는 Robotiq EPick**이며 최종 컵 구성은 미정이다. EPick 모델은 아직 도입하지 않았다. 아래 네 모델은 모두 외형·운동학 비교용이며, 가상 4컵 헤드 `suction`은 EPick 도입 전까지 RViz 기본값으로 둔다. 이 기본값은 흡착 부착·해제 구현 완료가 아니다. 공통 Xacro와 Gazebo simulation의 기본 공구는 계속 `primitive`이고, Gazebo 공구 선택과 제어 구성은 별도 전환 작업이다.
+설계상 robot_1의 **기준 공구는 Robotiq EPick**이며 최종 컵 구성은 미정이다. EPick 모델은 아직 도입하지 않았다. 아래 네 모델은 모두 외형·운동학 비교용이며, 가상 4컵 헤드 `suction`은 EPick 도입 전까지 RViz 기본값으로 둔다. 이 기본값은 흡착 부착·해제 구현 완료가 아니다.
+
+공통 Xacro와 Gazebo simulation의 기본 공구는 계속 `primitive`이고, Gazebo 공구 선택과 제어 구성은 별도 전환 작업이다.
 
 ## 선택 가능한 모델
 
 | 값 | 모델 | 개폐·크기 | 로봇 전체 링크 / 관절 |
 |---|---|---|---|
-| `robotiq` | 오픈소스 Robotiq 2F-85 | 최대 개구 85 mm, 연결기구 연동 | 24 / 23 |
-| `primitive` | 기존 임시 평행 집게 | 양쪽을 같은 변위로 움직이면 내부 간격 15~75 mm | 17 / 16 |
-| `parallel_wide` | AX 가상 대형 평행 집게 | 내부 간격 20~450 mm, 손가락 길이 220 mm | 19 / 18 |
-| `suction` (RViz 기본값, 비교용) | AX 가상 4컵 흡착 헤드 | 판 180×140 mm, 컵 지름 50 mm × 4개 | 21 / 20 |
+| `robotiq` | 오픈소스 Robotiq 2F-85 | 최대 개구 85 mm, 연결기구 연동 | 32 / 31 |
+| `primitive` | 기존 임시 평행 집게 | 양쪽을 같은 변위로 움직이면 내부 간격 15~75 mm | 25 / 24 |
+| `parallel_wide` | AX 가상 대형 평행 집게 | 내부 간격 20~450 mm, 손가락 길이 220 mm | 27 / 26 |
+| `suction` (RViz 기본값, 비교용) | AX 가상 4컵 흡착 헤드 | 판 180×140 mm, 컵 지름 50 mm × 4개 | 30 / 29 |
+
+표의 링크·관절 수는 2026-10-25 현행 Xacro를 펼쳐 센서·광학 프레임과 `suction` ToF까지 포함한 값이다. 과거 집게 최초 통합 기록의 수와 구분한다.
 
 두 신규 모델은 `src/ax_description/urdf/test_grippers.xacro`에 정의한다. 가상 설계의 질량·힘 설정은 시험용 값이며 파지 성능 검증 결과가 아니다. 기존 차체·바퀴·기둥·팔과 손목 회전 관절을 공통으로 사용한다. 집게 길이가 달라지므로 끝단 좌표는 달라진다.
 
@@ -61,9 +65,13 @@ Robotiq 2F-85는 공통 어댑터 `gripper_base_link`에 `xyz="0.02 0 0"`, `rpy=
 
 Robotiq 자체는 본체와 좌우 연결기구를 포함한 링크 9개이며, 회전 관절 6개 중 독립 입력 1개와 mimic 5개로 개폐한다. AX 원본 OBJ의 손가락·중앙 패드·링크 쌍은 이 모델에 사용하지 않는다. `include_ros2_control="false"`로 호출하므로 실물 드라이버·serial·ros2_control 제어기는 활성화하지 않는다.
 
-모델 전용 부분을 고정 commit에서 가져왔으며 원본·BSD-3-Clause 라이선스·23개 파일의 SHA 기록은 [Robotiq 패키지 안내](../../src/robotiq_description/README.md), [LICENSE](../../src/robotiq_description/LICENSE), [UPSTREAM_FILES.json](../../src/robotiq_description/UPSTREAM_FILES.json)에 보관한다. 같은 작업공간에 동명 `robotiq_description` 패키지를 중복 추가하지 않는다.
+모델 전용 부분을 고정 commit에서 가져왔으며 원본·BSD-3-Clause 라이선스·23개 파일의 SHA 기록은 [Robotiq 패키지 안내](../../src/robotiq_description/README.md), [LICENSE](../../src/robotiq_description/LICENSE), [UPSTREAM_FILES.json](../../src/robotiq_description/UPSTREAM_FILES.json)에 보관한다.
 
-최초 장착·메시 검사 기록은 [asset_and_mount_checks.json](../evidence/grippers/robotiq_preview/asset_and_mount_checks.json), 최초 mimic 출력 검사는 [joint_state_publisher_checks.json](../evidence/grippers/robotiq_preview/joint_state_publisher_checks.json)에 남아 있다. 당시 정적·프로세스 내부 검사 결과이며 GUI·DDS 통신·Gazebo 파지 성공 기록이 아니다.
+같은 작업공간에 동명 `robotiq_description` 패키지를 중복 추가하지 않는다.
+
+최초 장착·메시 검사 기록은 [asset_and_mount_checks.json](../evidence/grippers/robotiq_preview/asset_and_mount_checks.json), 최초 mimic 출력 검사는 [joint_state_publisher_checks.json](../evidence/grippers/robotiq_preview/joint_state_publisher_checks.json)에 남아 있다.
+
+당시 정적·프로세스 내부 검사 결과이며 GUI·DDS 통신·Gazebo 파지 성공 기록이 아니다.
 
 ## 현재 시험 범위
 
@@ -95,7 +103,7 @@ RViz에서 외형·개구 폭·관절 연동·팔 자세를 비교할 수 있다
 
 Gazebo에서 실제 들어 올리는 성능을 비교하려면 모델별 제어기, 접촉·마찰 또는 흡착 구현, 상자 질량·크기·배치와 성공 판정을 추가해야 한다. 이전에 확인한 팔의 바닥 도달 범위도 모델별 끝단 기준으로 다시 검토해야 한다. 집게 교체 자체로 바닥 도달 문제가 해결된 것은 아니다.
 
-## 확인 결과
+## 최초 통합 당시 확인 결과
 
 - 3개 패키지 빌드와 네 모델의 Xacro 변환·`check_urdf` 통과.
 - 공통 차체·팔 링크/관절 동일, 선택하지 않은 임시 손가락과 손가락 제어기 중복 없음.
@@ -103,4 +111,4 @@ Gazebo에서 실제 들어 올리는 성능을 비교하려면 모델별 제어�
 - 설치된 `joint_state_publisher`를 프로세스 내부에서 실행하여 넓은 집게 초기값과 세 개구 위치의 mimic 출력 확인: 20 / 235 / 450 mm.
 - 흡착 컵 4개의 고정 연결과 같은 접촉면 높이 확인.
 
-검증 환경의 DDS 소켓 권한 제한으로 GUI 표시·노드 간 통신·Gazebo 물리 파지는 검증하지 않았다. 수치 기록: [model_checks.json](../evidence/grippers/gripper_comparison/model_checks.json).
+아래 수치 기록을 만든 당시에는 DDS 소켓 권한 제한으로 GUI 표시·노드 간 통신·Gazebo 물리 파지를 검증하지 않았다. 이후 기본 제어·센서 시험은 [현재 인터페이스](INTERFACES.md)에 별도로 기록하며, 네 공구 모두의 물리 파지 성공을 뜻하지 않는다. 수치 기록: [model_checks.json](../evidence/grippers/gripper_comparison/model_checks.json).

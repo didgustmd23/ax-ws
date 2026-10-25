@@ -1,24 +1,34 @@
 # ax-ws 문서 안내
 
-정리 기준: 2026-10-22. 프로젝트 표시명과 GitHub 저장소 이름은 **`ax-ws`**다. ROS 패키지는 `ax_description`, `ax_control`, `robotiq_description`을 유지하고 로봇 모델 이름은 `ax`를 사용한다. 로컬 작업공간 경로 `~/ax_ws`는 유지한다.
+현행 문서 정리 기준: 2026-10-25(작업트리). 프로젝트 표시명과 GitHub 저장소 이름은 **`ax-ws`**다. ROS 패키지는 `ax_description`, `ax_control`, `robotiq_description`을 유지하고 로봇 모델 이름은 `ax`를 사용한다. 로컬 작업공간 경로 `~/ax_ws`는 유지한다.
+
+## 현재 상태와 문서 선택
+
+- 실행·공개 명령은 [프로젝트 README](../README.md)와 [현재 인터페이스](guides/INTERFACES.md)를 먼저 읽는다.
+- ros2_control·개발용 팔 보호는 구현됐지만 **G1은 미충족**이다. 현재 잔여 결함은 [인터페이스의 미해결 항목](guides/INTERFACES.md#알려진-제한과-미해결-항목)에 모은다.
+- [통합 상세설계](design/DETAILED_DESIGN.md)는 목표 계약, [A 일정](management/A_DETAILED_SCHEDULE.md)은 상대 주차별 계획·현재 진행 범위다.
+- 물리·집게·업로드의 과거 기록은 당시 모델과 조건에 한정된다. 과거 수치나 문서 수정 자체를 현재 시험 통과로 해석하지 않는다.
 
 ## 폴더 분류
 
-```text
-docs/
-├── README.md                 문서 안내
-├── design/                   통합 설계·팔 사양·외부 저장소 검토·원문 PDF
-├── guides/                   인터페이스·집게 사용법
-├── management/               A 담당 일정·Git 업로드 정책
-├── validation/               물리 특성·업로드 전 점검 보고서
-└── evidence/                 검증 원본 자료
-    ├── README.md             검증 자료 안내
-    ├── physical_properties/  무게중심 그림·정적 계산·SDF 검사
-    ├── preupload/            업로드 전 파일·모델 검사
-    ├── model/                팔·기둥·초기 사양 검사
-    ├── grippers/             집게 비교·Robotiq 검사
-    └── archive/              이전 모델의 날짜별 실행 기록
-```
+[![문서 폴더 구성 — 공유 이미지와 원본 보관 구분](assets/diagrams/ax-docs.webp)](https://didgustmd23.github.io/ax-ws/documents.html)
+
+[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/documents.html) · [HTML 내려받기](assets/diagrams/ax-docs.html) · [이미지 크게 보기 · WebP](assets/diagrams/ax-docs.webp)
+
+## 구성도 모음
+
+이미지를 누르면 GitHub Pages의 인터랙티브 구성도가 열린다. 배포 전에는 HTML을 내려받아 브라우저로 연다. WebP는 투명 배경이며, 아래 파일만 Git·Pages 공유 대상으로 사용한다. `.archify/`의 JSON·작업 원본·글꼴·검증 자료는 제외한다.
+
+| 구성도 | 범위 | HTML | 투명 이미지 | Pages |
+|---|---|---|---|---|
+| 전체 시스템 | 중앙 AI·담당별 목표 구조와 구현 상태 | [열기](assets/diagrams/ax-system.html) | [WebP](assets/diagrams/ax-system.webp) | [overview](https://didgustmd23.github.io/ax-ws/overview.html) |
+| 현재 로봇 제어 | 팔 명령 보호를 포함한 작업트리 개발 구성 | [열기](assets/diagrams/ax-control.html) | [WebP](assets/diagrams/ax-control.webp) | [internal](https://didgustmd23.github.io/ax-ws/internal.html) |
+| 공동 운반 | 정지·적재·해제 확인을 포함한 목표 흐름 | [열기](assets/diagrams/ax-transfer.html) | [WebP](assets/diagrams/ax-transfer.webp) | [transfer](https://didgustmd23.github.io/ax-ws/transfer.html) |
+| 최종 차단 권고 | 안전 게이트·공구별 실행의 목표 경로 | [열기](assets/diagrams/ax-safety.html) | [WebP](assets/diagrams/ax-safety.webp) | [safety](https://didgustmd23.github.io/ax-ws/safety.html) |
+| 패키지 구성 | 담당별 목표 패키지 · 구현 완료 아님 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
+| 문서 폴더 | 현재 문서 위치와 공유 자산 | [열기](assets/diagrams/ax-docs.html) | [WebP](assets/diagrams/ax-docs.webp) | [documents](https://didgustmd23.github.io/ax-ws/documents.html) |
+
+Pages 링크는 main 반영 및 배포 후 갱신된다. 현재 제어 구조는 미커밋 팔 보호 코드를 포함한 작업트리 설명이며, 고정 커밋의 동작 검증 결과를 뜻하지 않는다.
 
 ## 처음 읽는 순서
 
@@ -49,7 +59,7 @@ docs/
 | [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 흡착 팔 로봇·적재함 로봇의 협업 그룹, A/B/C/D 역할, 상태 머신·통신·검증 목표 | 원문과 2026-10-22 결정 기반 목표 설계. 현재 구현 전체를 뜻하지 않음 |
 | [A_DETAILED_SCHEDULE](management/A_DETAILED_SCHEDULE.md) | A 담당 16주 상대 일정, 협업·완료 관문 | 계획 문서. 시작 당시 상태와 현재 진행 상태를 구분 |
 | [EXTERNAL_REPOSITORY_REVIEW](design/EXTERNAL_REPOSITORY_REVIEW.md) | Robotiq·UR5e·ROSbot의 적용 검토 | 도입 당시 비교 자료. Robotiq 모델 일부는 이후 도입됨 |
-| [plan.pdf](design/plan.pdf) | 최초 통합 상세설계 원문 | 원문 보관 |
+| [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf) | 최초 통합 상세설계 원문 | 현재 작업트리에서 삭제 상태, 저장된 커밋 참조 |
 
 ## 모델 출처
 
@@ -60,7 +70,7 @@ docs/
 
 ## 검증 자료를 읽는 방법
 
-- [최신 물리 특성 검사 자료](evidence/physical_properties/): 정적 COM 분포, 수치 JSON, SDF 변환 결과. [분포 그림](evidence/physical_properties/com_projection.png)의 점은 집게 도달 위치가 아니라 전체 무게중심 투영점이다.
+- [교체 전 모델의 물리 특성 검사 자료](evidence/physical_properties/): 정적 COM 분포, 수치 JSON, SDF 변환 결과. [분포 그림](evidence/physical_properties/com_projection.png)의 점은 집게 도달 위치가 아니라 전체 무게중심 투영점이다.
 - [초기 팔 사양 적용 검사](evidence/model/arm_spec_v01/): 무게중심 보완 전 질량·속도 반영 기록.
 - [집게 비교 검사](evidence/grippers/gripper_comparison/), [Robotiq 최초 검사](evidence/grippers/robotiq_preview/): 당시 모델·mimic 검사 범위.
 - [업로드 전 점검 자료](evidence/preupload/): 이번 파일 분류·모델 검사 결과.

@@ -4,6 +4,19 @@
 
 작성일: 2026-10-21. 몸통 충돌 형상 → 팔 충돌 형상 → 가상 질량 분포·관성 → 전체 무게중심·정적 지지 여유 순서로 적용했다. 메시 외형·관절 배치·범위·속도·effort·PID는 이번 작업에서 변경하지 않았다.
 
+## 현재 모델을 확인하는 방법
+
+2026-10-25 기준 AX_1과 AX_2는 분리된 생성 물리 특성을 사용한다. 현재 질량·COM·관성·충돌 형상의 기준은 아래 파일이며, 이 문서의 과거 표와 일치한다고 가정하지 않는다.
+
+| 대상 | 현행 기준 |
+|---|---|
+| AX_1 | `src/ax_description/config/physical_properties.json`, `urdf/physical_properties.xacro` |
+| AX_2 | `src/ax_description/config/ax_2_physical_properties.json`, `urdf/ax_2_physical_properties.xacro`, `urdf/ax_2_geometry.xacro` |
+| 원본 계산 | `tools/generate_physical_properties.py` |
+| 쓰기 없는 일치 검사 | `python3 tools/sim/ax_regen_physics.py check` |
+
+새 COM 계산은 별도 출력 폴더를 지정해 과거 증거를 덮어쓰지 않는다. 무부하 제어 결과는 [팔 사양](../design/AX_5DOF_ARM_SPEC.md), 실제 운용 제한은 [인터페이스](../guides/INTERFACES.md)를 따른다.
+
 ## 1. 몸통 충돌 형상 수정
 
 기존 몸통 collision은 0.50×0.35×0.20 m였지만 OBJ 외곽은 약 1.366×0.774×0.606 m다. 기존 상자 하나를 제거하고, 메시의 연결된 부품별로 방향을 맞춘 상자를 생성했다. 몸통에는 58개 상자가 적용된다.
@@ -119,7 +132,7 @@ source /opt/ros/jazzy/setup.bash
 python3 tools/generate_physical_properties.py
 colcon build --symlink-install --packages-up-to ax_description ax_control
 source install/setup.bash
-python3 tools/check_static_stability.py
+python3 tools/check_static_stability.py --output-dir /tmp/ax_physical_review
 ```
 
 RViz에서는 `RobotModel`의 `Collision Enabled`를 켜고 `Visual Enabled`를 꺼 충돌 형상만 확인할 수 있다. RViz 표시는 접촉·전도 검증을 대신하지 않는다.

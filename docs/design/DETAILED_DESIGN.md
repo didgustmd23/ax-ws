@@ -1,12 +1,27 @@
 # AX 자동 운반 로봇 통합 상세설계
 
-> 출처: [plan.pdf](plan.pdf), 통합 상세설계서 v1.0, 총 10쪽.
+> 원문 PDF는 현재 작업트리에서 삭제 상태여서 저장된 커밋을 참조한다.
+> 출처: [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf), 통합 상세설계서 v1.0, 총 10쪽.
 > 원문을 기준으로 내용을 재구성했으며, 프로젝트 표기를 `AX`, 패키지·경로·네임스페이스 표기를 `ax`로 통일했다.
 > 이 문서는 목표 설계를 정리한 것으로 현재 코드의 구현 완료 상태를 의미하지 않는다. 인터페이스·수치·토픽 이름은 구현 검토용 초안이며, 실제 모델·센서·로봇 기구 검증 후 확정한다.
 
 > 2026-10-22 설계 보완 결정(역할이 다른 협업 로봇 그룹, 적재 확인, 흡착, ros2_control 전환, 인계 구동 차단)을 반영했다. 각 절의 **결정**은 설계 기준이며 구현·검증 완료를 뜻하지 않는다. 수치·타입·enum 값 중 정하지 않은 것은 14절 미정 항목으로 관리한다.
 
 현재 팔 형상을 바탕으로 작성한 후속 설계안은 [AX 자체 5축 로봇팔 설계 사양안](AX_5DOF_ARM_SPEC.md)을 참고한다. 해당 문서의 제안값은 현재 코드의 적용값·검증된 정격과 구분한다.
+
+## 현재 구현과 읽는 기준
+
+현행 정리: 2026-10-25. **결정**은 목표 계약, **구현**은 소스 반영, **검증**은 명시된 조건의 시험 결과다. 이 세 상태를 같은 뜻으로 쓰지 않는다.
+
+| 범위 | 현재 상태 |
+|---|---|
+| 모델·기본 제어 | AX_1·AX_2, 로봇별 ros2_control, 상태·센서·시간·TF 개발 구성 구현 |
+| 팔 제어 | 개발용 effort 10 / 100 / 65 / 25 / 5 N·m 적용. 무부하 대표 자세 추종·유지 확인 |
+| 관절 보호 | `arm_command_guard` 구현. 실제 순간 감속과 고장 해제 후 재개 경로의 잔여 문제 있음 |
+| 상위 운영·집기 | Task Executor·Fleet·Nav2·중앙 Agent, EPick 도입·흡착 부착/해제·적재 판정은 후속 구현 |
+| 완료 관문 | G1 미충족. 개발용 관절 보호는 시스템 안전 게이트·최종 구동 차단과 다름 |
+
+구체적인 공개 토픽과 잔여 결함은 [현재 인터페이스](../guides/INTERFACES.md), 일정 항목별 진행은 [A 일정](../management/A_DETAILED_SCHEDULE.md#현재-진행-상태--2026-10-25)을 따른다. 이 문서의 목표 토픽을 이미 동작하는 API로 사용하지 않는다.
 
 ## 1. 목표와 개발 범위
 
@@ -47,29 +62,18 @@ PPO/SAC 등 강화학습 기반 주행·배정은 4개월 핵심 범위 밖의 �
 
 ## 3. 아키텍처와 역할 분담
 
-```mermaid
-flowchart TD
-    User[사용자 요청] --> Fleet[D: Fleet Manager]
-    Fleet -->|FleetSnapshot·예측 데이터| Agent[중앙 운영 AI 에이전트]
-    Agent -->|계획 제안| Fleet
-    Fleet -->|검증 후 작업 배정| Executor[A: 로봇별 Task Executor]
-    Executor -->|이동 요청| Nav[D: Nav2 주행]
-    Executor -->|집기·놓기 요청| Manip[C: 물체 인식·조작]
-    Perception[B: 위치·환경·안전 관측] -->|안전 판단| Executor
-    Perception -->|위치·통로 관측| Fleet
-    Fleet --> Corridor[D: 통로 허가 관리]
-    Nav --> Sim[Gazebo · ros_gz · ros2_control]
-    Manip --> Sim
-    Executor -->|최종 안전 차단| Sim
-    Sim -->|센서·상태| Perception
-```
+[![전체 목표 구조 — 중앙 운영 AI와 담당 영역](../assets/diagrams/ax-system.webp)](https://didgustmd23.github.io/ax-ws/overview.html)
+
+[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [HTML 내려받기](../assets/diagrams/ax-system.html) · [이미지 크게 보기 · WebP](../assets/diagrams/ax-system.webp)
+
+목표 명령 경로는 주행·조작 실행 → A의 최종 구동 허용·차단 → 제어부다. Nav2·조작부가 제어부를 직접 구동하는 우회 연결로 읽지 않는다. 현재 기본 제어와 미구현 상위 기능은 그림의 태그로 구분한다.
 
 | 담당 | 소유 영역 | 주요 기능 | 권한 경계 |
 |---|---|---|---|
-| A | 로봇별 실행·최종 구동 차단 | 두 로봇 모델·기본 제어, 로봇별 Task Executor, 흡착 실행 허용 검사, robot_2 적재 확인 발행, 취소·오류 처리, 제어 이상 탐지 | 그룹 작업 배정·재배정 직접 수행 금지 |
-| B | 센서·환경·안전 판단 | SLAM/AMCL, TF, 장애물 인지, 통로 진입·완전 이탈 관측, 위치 이상 탐지 | 통로 진입 허가 금지 |
-| C | robot_1 조작 실행 결과 | YOLO 물체 인식, 깊이·TF 변환, 집기 계획, 흡착·해제 요청, 공구 보유 상태 | 그룹 작업 상태 직접 변경 금지 |
-| D | 전역 운영·주행·허가 | Nav2, 그룹 작업 배정, 이동·대기·합류 조정, `transfer_id`·인계 상태, 물체 상태, 통로 허가, ETA 예측, AI 검증 | 센서 관측값 임의 확정 금지 |
+| A · 양현승 | 로봇별 실행·최종 구동 차단 | 두 로봇 모델·기본 제어, 로봇별 Task Executor, 흡착 실행 허용 검사, robot_2 적재 확인 발행, 취소·오류 처리, 제어 이상 탐지 | 그룹 작업 배정·재배정 직접 수행 금지 |
+| B · 이종수 | 센서·환경·안전 판단 | SLAM/AMCL, TF, 장애물 인지, 통로 진입·완전 이탈 관측, 위치 이상 탐지 | 통로 진입 허가 금지 |
+| C · 엄승연 | robot_1 조작 실행 결과 | YOLO 물체 인식, 깊이·TF 변환, 집기 계획, 흡착·해제 요청, 공구 보유 상태 | 그룹 작업 상태 직접 변경 금지 |
+| D · 김성민 | 전역 운영·주행·허가 | Nav2, 그룹 작업 배정, 이동·대기·합류 조정, `transfer_id`·인계 상태, 물체 상태, 통로 허가, ETA 예측, AI 검증 | 센서 관측값 임의 확정 금지 |
 | Agent | 비구속적 운영 제안 | 상태 요약, 작업 우선순위·통로 통과 순서·복구 방안 제안, 원인 설명 | 속도·관절·흡착·안전 해제 명령, 점유 중인 통로 허가 회수 금지 |
 
 ### 3.1 협업 로봇 구성 — 결정
@@ -87,22 +91,19 @@ flowchart TD
 | ros2_control | 바퀴·팔 궤적 제어, 팔·바퀴 관절 상태 발행, 흡착은 별도 구현 | 바퀴 제어, 바퀴 관절 상태 발행 |
 | A 최종 구동 관리 | 적용 | 적용 |
 
-RGB-D는 카메라 개수에 포함한다. 흡착 공구 중앙 ToF는 최종 접근 간격 측정용 개발 센서로, Gazebo 단일 광선으로 근사했으며 최종 실물 센서 선정이나 성능 확정이 아니다. 토픽·좌표·측정 범위·구독 계약은 [인터페이스](../guides/INTERFACES.md)를 따른다. ToF 값은 접촉·흡착·보유 판정이 아니며, 이 판정들은 기존 계약대로 별도 구현 대상이다. 현재 개발 모델은 나머지 카메라를 RGB로 두고 `sensor_mounts.yaml`의 임시 장착 좌표·방향과 Xacro의 해상도·시야각·갱신율을 적용한다. 이는 최종 센서 상세 확정이 아니며, 특히 팔 카메라는 작업 자세별 시야·가림 검증 후 위치를 보정한다. robot_2는 AX_2 메시와 별도 가상 질량·관성을 사용하며 최종 차체·적재 공간·허용 하중은 검증 대상이다. 구현 토픽·프레임과 개발 가정은 [인터페이스](../guides/INTERFACES.md)를 따른다.
+RGB-D는 카메라 개수에 포함한다. 흡착 공구 중앙 ToF는 최종 접근 간격 측정용 개발 센서로, Gazebo 단일 광선으로 근사했으며 최종 실물 센서 선정이나 성능 확정이 아니다. 토픽·좌표·측정 범위·구독 계약은 [인터페이스](../guides/INTERFACES.md)를 따른다. ToF 값은 접촉·흡착·보유 판정이 아니며, 이 판정들은 기존 계약대로 별도 구현 대상이다.
+
+현재 개발 모델은 나머지 카메라를 RGB로 두고 `sensor_mounts.yaml`의 임시 장착 좌표·방향과 Xacro의 해상도·시야각·갱신율을 적용한다. 이는 최종 센서 상세 확정이 아니며, 특히 팔 카메라는 작업 자세별 시야·가림 검증 후 위치를 보정한다. robot_2는 AX_2 메시와 별도 가상 질량·관성을 사용하며 최종 차체·적재 공간·허용 하중은 검증 대상이다.
+
+구현 토픽·프레임과 개발 가정은 [인터페이스](../guides/INTERFACES.md)를 따른다.
 
 ros2_control 도입만으로 가속도·TCP 속도 제한, 안전 정지·watchdog, effort 피드백, 궤적 추종·하중 안정성이 완료됐다고 보지 않는다. 전환 시 기존 Gazebo 관절 제어 플러그인과 새 제어기가 같은 관절을 동시에 구동하지 않게 하고, 센서 브리지 전환과 구동 제어 전환을 구분한다.
 
 ### 3.2 공동 운반 흐름 — 결정
 
-```text
-station_src에서 두 로봇 정차
-→ robot_1이 상자를 집어 robot_2 적재함에 적재
-→ 적재 확인 · 흡착 해제 · 팔 후퇴
-→ 두 로봇이 station_dst로 이동
-→ 두 로봇 정차 · 하역 준비 확인
-→ robot_1이 robot_2의 상자를 집음
-→ station_dst에 내려놓기
-→ 공동 작업 완료
-```
+[![공동 운반 흐름 — 정지·적재·해제 확인 후 이동](../assets/diagrams/ax-transfer.webp)](https://didgustmd23.github.io/ax-ws/transfer.html)
+
+[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/transfer.html) · [HTML 내려받기](../assets/diagrams/ax-transfer.html) · [이미지 크게 보기 · WebP](../assets/diagrams/ax-transfer.webp)
 
 이동 중 상자는 robot_2 적재함이 지지하며 robot_1이 상자를 흡착한 채 주행하지 않는다. 초기에는 개별 경로로 이동해 지정 위치에서 합류하는 방식을 우선 검토하며, 대형 유지 이동 여부는 미정이다.
 
@@ -470,29 +471,11 @@ input_features, ground_truth, prediction, result
 
 원문의 패키지 구성을 `ax` 표기로 정리했다. 아래 트리는 목표 구조다.
 
-```text
-ax_ws/src/
-  ax_interfaces/                 # 공통 msg / srv / action
-  ax_description/                # A
-  ax_simulation/                 # A
-  ax_control/                    # A
-  ax_task_executor/              # A
-  ax_control_ml/                 # A
-  ax_localization/               # B
-  ax_environment_perception/     # B
-  ax_safety_monitor/             # B
-  ax_localization_ml/            # B
-  ax_vision/                     # C
-  ax_manipulation/               # C
-  ax_grasp_ml/                   # C
-  ax_navigation/                 # D
-  ax_fleet_manager/              # D
-  ax_corridor_manager/           # D
-  ax_travel_time_ml/             # D
-  ax_operations_agent/           # D 주도 / A 지원
-  ax_bringup/                    # 공통
-  ax_integration_tests/          # 공통
-```
+[![목표 패키지 구성 — 담당별 소유권](../assets/diagrams/ax-packages.webp)](https://didgustmd23.github.io/ax-ws/packages.html)
+
+[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/packages.html) · [HTML 내려받기](../assets/diagrams/ax-packages.html) · [이미지 크게 보기 · WebP](../assets/diagrams/ax-packages.webp)
+
+담당별 묶음은 소유권 표시이며 실제 중간 디렉터리를 뜻하지 않는다. 현재 존재하는 `robotiq_description`은 외부 모델 전용 subset으로 유지한다. 목표 패키지가 모두 생성됐다는 의미는 아니다.
 
 인터페이스 수정은 생산자와 소비자가 함께 승인한다. A↔B 안전, A↔C 조작, A↔D 작업, B↔D 통로, D↔Agent 제안·검증에는 코드 리뷰와 계약 테스트가 필요하다.
 

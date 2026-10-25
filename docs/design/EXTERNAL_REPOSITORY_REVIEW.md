@@ -18,9 +18,11 @@
 
 권고안은 AX 모델·작업 실행기를 유지하면서 표준 ros2_control 제어기로 저수준 제어를 정리하는 것이다. 외부 로봇 전체 패키지를 AX로 이름만 바꾸어 가져오는 방식은 기구·통신·센서 차이를 해결하지 못한다. 이 우선순위는 소스 비교에 따른 설계 판단이다.
 
-## 2. 현재 AX와 적용 출발점
+## 2. 최초 검토 당시 AX와 적용 출발점
 
-이번 검토에서 확인한 실제 소스:
+아래 표는 2026-10-21 당시의 소스 기록이다. 이후 ros2_control 전환·로봇별 namespace·상태 피드백·팔 명령 보호가 적용됐으므로 현재 동작은 [인터페이스](../guides/INTERFACES.md)를 따른다.
+
+당시 확인한 소스:
 
 | 파일 | 확인 내용 | 적용에 주는 의미 |
 |---|---|---|
@@ -37,9 +39,13 @@
 
 ### 3.1 확인한 구조
 
-`robotiq_driver`, `robotiq_controllers`, `robotiq_description`으로 실물 통신·제어·모델이 분리되어 있다. README의 지원 표는 Humble/Iron/Rolling 중심이지만, 확인한 컨트롤러 YAML에는 Jazzy 이후용 parallel gripper 설정이 들어 있다. README만으로 Jazzy 빌드 성공을 단정할 수 없다. [저장소 README](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/README.md), [컨트롤러 설정](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/config/robotiq_controllers.yaml).
+`robotiq_driver`, `robotiq_controllers`, `robotiq_description`으로 실물 통신·제어·모델이 분리되어 있다. README의 지원 표는 Humble/Iron/Rolling 중심이지만, 확인한 컨트롤러 YAML에는 Jazzy 이후용 parallel gripper 설정이 들어 있다. README만으로 Jazzy 빌드 성공을 단정할 수 없다.
 
-2F-85의 ros2_control 매크로는 Gazebo, mock, 실물 backend를 선택한다. Gazebo는 `gz_ros2_control/GazeboSimSystem`, 실물은 Robotiq 전용 hardware interface와 직렬 포트를 사용한다. AX 시뮬레이션에는 backend 분리 패턴을 적용할 수 있다. [2F-85 ros2_control 매크로](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/urdf/2f_85.ros2_control.xacro).
+[저장소 README](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/README.md), [컨트롤러 설정](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/config/robotiq_controllers.yaml).
+
+2F-85의 ros2_control 매크로는 Gazebo, mock, 실물 backend를 선택한다. Gazebo는 `gz_ros2_control/GazeboSimSystem`, 실물은 Robotiq 전용 hardware interface와 직렬 포트를 사용한다. AX 시뮬레이션에는 backend 분리 패턴을 적용할 수 있다.
+
+[2F-85 ros2_control 매크로](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/urdf/2f_85.ros2_control.xacro).
 
 ### 3.2 AX에 적용할 방안
 
@@ -49,7 +55,9 @@
 4. 현재 대칭 집게를 단일 구동축으로 취급할지, 양쪽 독립 구동으로 유지할지 기구 기준으로 결정한다.
 5. 단일 구동축 + mimic을 선택하면 현재 양쪽 독립 명령 분배를 제거하고 좌우 실제 변위를 검증한다.
 
-Jazzy 공식 문서의 권장 제어기는 `parallel_gripper_action_controller/GripperActionController`이며 Action 타입은 `control_msgs/action/ParallelGripperCommand`다. 기존 `GripperCommand`와 같은 타입으로 가정하지 않는다. 실제 설치 버전과 C/MoveIt 어댑터가 사용하는 타입을 맞춘다. [Parallel Gripper 공식 문서](https://control.ros.org/jazzy/doc/ros2_controllers/parallel_gripper_controller/doc/userdoc.html).
+Jazzy 공식 문서의 권장 제어기는 `parallel_gripper_action_controller/GripperActionController`이며 Action 타입은 `control_msgs/action/ParallelGripperCommand`다. 기존 `GripperCommand`와 같은 타입으로 가정하지 않는다. 실제 설치 버전과 C/MoveIt 어댑터가 사용하는 타입을 맞춘다.
+
+[Parallel Gripper 공식 문서](https://control.ros.org/jazzy/doc/ros2_controllers/parallel_gripper_controller/doc/userdoc.html).
 
 현재 AX 명령값은 전체 개구 폭이 아니라 손가락 각각의 변위다. 상위 인터페이스를 개구 폭 m로 정의한다면 실제 메시·패드 형상과 영점을 기준으로 변환을 보정해야 한다. Robotiq의 회전 관절값·닫힘 위치를 AX prismatic 값에 복사하지 않는다.
 
@@ -62,7 +70,9 @@ Jazzy 공식 문서의 권장 제어기는 `parallel_gripper_action_controller/G
 | 예제는 `allow_stalling: true` | 멈춤을 물체 보유 성공과 동일시하지 않음. C가 접촉·물체 상태를 별도로 검증 |
 | 전용 회전 링크·기구 치수·실물 통신 | AX 메시·관절·단위·통신 유지, 구조만 참고 |
 
-앞의 인터페이스 차이는 확인한 파일 조합에 대한 정적 검토 결과다. 실행 실패를 재현한 것은 아니며 실제 선택 launch·버전에서 확인해야 한다. [YAML](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/config/robotiq_controllers.yaml), [Xacro](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/urdf/2f_85.ros2_control.xacro).
+앞의 인터페이스 차이는 확인한 파일 조합에 대한 정적 검토 결과다. 실행 실패를 재현한 것은 아니며 실제 선택 launch·버전에서 확인해야 한다.
+
+[YAML](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/config/robotiq_controllers.yaml), [Xacro](https://github.com/PickNikRobotics/ros2_robotiq_gripper/blob/main/robotiq_description/urdf/2f_85.ros2_control.xacro).
 
 실제 Robotiq 집게를 채택할 때에만 전용 드라이버의 사용을 재검토한다. 현재 AX 자체 집게에는 필요하지 않다.
 
@@ -72,7 +82,9 @@ Jazzy 공식 문서의 권장 제어기는 `parallel_gripper_action_controller/G
 
 이 저장소는 UR5e와 125 Hz로 통신하는 Python 실험 코드다. 최소 jerk 궤적, PD·임피던스 기반 peg-in-hole, 나선 탐색을 포함하고, TensorFlow 기반 겹침 탐지는 README에서 미완성으로 설명한다. ROS 2 Jazzy용 패키지로 바로 사용하는 구조는 아니다. [README](https://github.com/danielstankw/UR5e-robot-control/blob/master/readme.md).
 
-`main.py`는 URBasic, OnRobot 힘·토크 센서, 실물 IP와 실험 pose에 의존한다. `Controller.py`에는 사용자 PC의 절대 CSV 경로가 있고, 힘·모멘트 피드백과 6차원 제어 상태를 사용한다. [main.py](https://github.com/danielstankw/UR5e-robot-control/blob/master/main.py), [Controller.py](https://github.com/danielstankw/UR5e-robot-control/blob/master/Controller.py).
+`main.py`는 URBasic, OnRobot 힘·토크 센서, 실물 IP와 실험 pose에 의존한다. `Controller.py`에는 사용자 PC의 절대 CSV 경로가 있고, 힘·모멘트 피드백과 6차원 제어 상태를 사용한다.
+
+[main.py](https://github.com/danielstankw/UR5e-robot-control/blob/master/main.py), [Controller.py](https://github.com/danielstankw/UR5e-robot-control/blob/master/Controller.py).
 
 ### 4.2 활용할 부분
 
@@ -122,29 +134,12 @@ ROSbot 실물용 MAVLink·STM32·Dynamixel·배터리·LED 기능은 AX 하드�
 
 아래는 AX 적용 제안이며 외부 저장소의 완성 기능을 나타내는 그림이 아니다.
 
-```mermaid
-flowchart TD
-    Fleet[D: Fleet Manager] --> Executor[A: Task Executor]
-    Executor --> Nav[D: Nav2]
-    Executor --> Manip[C: ManipulateObject]
-    Nav --> Arb[주행 명령 중재]
-    Manual[수동 입력] --> Arb
-    Arb --> DriveGate[A: 주행 안전 게이트]
-    Manip --> ArmGate[A: 조작 실행 허가·취소·유지]
-    Safety[B: SafetyState] --> DriveGate
-    Safety --> ArmGate
-    DriveGate --> Diff[diff_drive_controller]
-    ArmGate --> Arm[joint_trajectory_controller]
-    ArmGate --> Grip[parallel gripper 제어기·AX 어댑터]
-    Diff --> Backend[gz_ros2_control / AX 실물 backend]
-    Arm --> Backend
-    Grip --> Backend
-    Backend --> Feedback[실제 관절·속도 피드백]
-    Feedback --> Stop[A: 정지 확인·actuation_state]
-    Feedback --> JS[joint_state_broadcaster]
-    JS --> TF[robot_state_publisher]
-```
+[![최종 차단을 거치는 권고 제어 구조 — 목표 설계](../assets/diagrams/ax-safety.webp)](https://didgustmd23.github.io/ax-ws/safety.html)
 
+[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/safety.html) · [HTML 내려받기](../assets/diagrams/ax-safety.html) · [이미지 크게 보기 · WebP](../assets/diagrams/ax-safety.webp)
+
+- 그림의 backend는 현재 Gazebo·gz_ros2_control만 나타낸다. 실물 backend는 구현되지 않았으며 실물 로봇 구성이 있는 것으로 해석하지 않는다.
+- 팔·공구는 공구별 실행 경로로 구분한다. 흡착 부착·해제는 별도 구현 대상이며 parallel gripper 제어기만으로 대신하지 않는다.
 - C는 조작 목표·집기 결과를 소유한다. A는 실행 허가·중단·구동 차단을 소유한다.
 - Action 요청을 거절하는 것만으로 이미 실행 중인 궤적이 정지하지는 않는다. 활성 goal 취소·유지·실측 정지 확인까지 구현한다.
 - 정상 클라이언트가 안전 계층을 우회해 제어기 Action·Topic에 명령하지 않도록 연결을 정리한다. 더 낮은 계층의 watchdog·실물 비상정지는 backend 별로 검증한다.
@@ -155,17 +150,21 @@ flowchart TD
 
 ### 7.1 제어기 중복 제거
 
-같은 관절에 기존 Gazebo JointPositionController와 ros2_control 제어기를 동시에 적용하지 않는다. 바퀴를 전환할 때도 기존 Gazebo DiffDrive를 비활성화한다. launch 인자로 기존 방식·새 방식 중 하나만 선택하도록 제안한다.
+같은 관절에 기존 Gazebo JointPositionController와 ros2_control 제어기를 동시에 적용하지 않는다. 바퀴를 전환할 때도 기존 Gazebo DiffDrive를 비활성화한다. 최초 검토에서는 launch로 이전·새 방식을 선택하는 안을 제안했다. 현재 소스는 이전 제어 플러그인을 제거하고 ros2_control을 사용하며, 정상 실행에서 이전 방식으로 전환하는 인자는 제공하지 않는다.
 
 ### 7.2 Gazebo 연결
 
-Jazzy의 gz_ros2_control은 Harmonic 조합을 지원하며 `<ros2_control>`의 command/state interface와 Gazebo 플러그인이 필요하다. mimic 종속 관절에는 command interface를 선언하지 않는 것이 공식 지침이다. AX가 mimic을 선택할 때 기존 두 손가락 명령 경로를 함께 바꾼다. [공식 연결·mimic 문서](https://control.ros.org/jazzy/doc/gz_ros2_control/doc/index.html).
+Jazzy의 gz_ros2_control은 Harmonic 조합을 지원하며 `<ros2_control>`의 command/state interface와 Gazebo 플러그인이 필요하다. mimic 종속 관절에는 command interface를 선언하지 않는 것이 공식 지침이다. AX가 mimic을 선택할 때 기존 두 손가락 명령 경로를 함께 바꾼다.
+
+[공식 연결·mimic 문서](https://control.ros.org/jazzy/doc/gz_ros2_control/doc/index.html).
 
 Gazebo가 호스팅하는 manager와 같은 관절을 대상으로 별도 ros2_control_node를 중복 기동하지 않는다. mock 성공과 물리 접촉·파지 성공은 별도로 검증한다.
 
 ### 7.3 주행 메시지·TF
 
-AX의 현 브리지는 `Twist`를 사용한다. Jazzy diff_drive_controller 문서의 입력은 `TwistStamped`이므로 Nav2·수동 입력·중재·안전 게이트의 타입과 timestamp를 일치시킨다. odom TF는 제어기 또는 B의 필터 중 한 곳만 발행하게 한다. [공식 diff drive 인터페이스](https://control.ros.org/jazzy/doc/ros2_controllers/diff_drive_controller/doc/userdoc.html).
+현재 공개 주행 입력은 `Twist`이며 `cmd_vel_relay`가 `TwistStamped`로 바꿔 전달한다. 최초 검토 당시에는 Gazebo Twist 브리지를 사용했다. Jazzy diff_drive_controller 문서의 입력은 `TwistStamped`이므로 Nav2·수동 입력·중재·안전 게이트의 타입과 timestamp를 일치시킨다. odom TF는 제어기 또는 B의 필터 중 한 곳만 발행하게 한다.
+
+[공식 diff drive 인터페이스](https://control.ros.org/jazzy/doc/ros2_controllers/diff_drive_controller/doc/userdoc.html).
 
 토픽 namespace와 `frame_id`는 별도다. `/ax/robot_1` 아래 노드를 띄워도 `base_link` 문자열이 자동으로 `robot_1/base_link`가 된다고 가정하지 않는다. AX의 `map → robot_N/odom → robot_N/base_link` 규칙으로 TF·메시지를 일관되게 맞춘다.
 
@@ -192,7 +191,9 @@ OBJ 외형 교체와 제어 구조 전환은 별도 작업이다. AX 전체 메�
 | `ax_manipulation` | 조작 Action에서 팔·그리퍼 Action 연결 | C |
 | `ax_control_ml` | 실제 피드백 기반 특징 수집 | A |
 
-현재 `ax_control/package.xml`에는 로봇 제어 프레임워크 의존성이 선언되어 있지 않다. 실제 선택 패키지에 맞춰 `controller_manager`, `joint_state_broadcaster`, `diff_drive_controller`, `joint_trajectory_controller`, parallel gripper, `control_msgs`, `trajectory_msgs`, `gz_ros2_control` 등 필요한 의존성을 정확히 선언한다. 배포판별 패키지 이름·설치 버전은 도입 시 확인한다.
+현재 `ax_control/package.xml`에는 로봇 제어 프레임워크 의존성이 선언되어 있지 않다.
+
+실제 선택 패키지에 맞춰 `controller_manager`, `joint_state_broadcaster`, `diff_drive_controller`, `joint_trajectory_controller`, parallel gripper, `control_msgs`, `trajectory_msgs`, `gz_ros2_control` 등 필요한 의존성을 정확히 선언한다. 배포판별 패키지 이름·설치 버전은 도입 시 확인한다.
 
 ## 9. 적용 순서와 예상 작업량
 

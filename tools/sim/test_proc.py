@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Exact-process helper for the regression test: never searches by command line.
+"""회귀 시험용 정확한 프로세스 도우미. 명령줄로 프로세스를 찾지 않는다.
 
-usage: test_proc.py stamp PID            -> prints the kernel start time (exit 1 if gone)
-       test_proc.py alive PID START      -> exit 0 only if PID is alive AND has that start time
-       test_proc.py kill PID START SIG   -> pidfd signal, only if the start time still matches
-A zombie counts as not alive (it has already terminated)."""
+사용법: test_proc.py stamp PID            -> 커널 시작 시각 출력(없으면 종료 코드 1)
+        test_proc.py alive PID START      -> PID가 살아 있고 그 시작 시각일 때만 종료 코드 0
+        test_proc.py kill PID START SIG   -> 시작 시각이 여전히 같을 때만 pidfd로 신호
+좀비는 이미 종료됐으므로 살아 있지 않은 것으로 센다."""
 import os, signal, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from own_procs import start_time
 
 
+# /proc의 한 글자 프로세스 상태를 돌려준다. PID가 없으면 None.
 def state(pid):
     try:
         stat = Path(f'/proc/{pid}/stat').read_text()
@@ -19,6 +20,7 @@ def state(pid):
     return stat[stat.rindex(')') + 2]
 
 
+# 하위 명령(stamp·alive·kill)을 실행한다.
 cmd, pid = sys.argv[1], int(sys.argv[2])
 if cmd == 'stamp':
     s = start_time(pid)

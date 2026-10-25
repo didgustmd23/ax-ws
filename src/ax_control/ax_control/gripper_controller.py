@@ -4,7 +4,10 @@ from rclpy.node import Node
 from std_msgs.msg import Float64, Float64MultiArray
 
 
+# primitive 집게 명령(/gripper/command, 손가락 각각의 목표 변위 m)을 finger_controller 입력으로
+# 바꿔 전달하는 노드.
 class GripperController(Node):
+    # 집게 명령 구독과 finger_controller 명령 발행을 만든다.
     def __init__(self):
         super().__init__('gripper_controller')
 
@@ -25,6 +28,7 @@ class GripperController(Node):
             10
         )
 
+    # 받은 목표 변위를 좌우 손가락 [left, right]에 같은 값으로 보낸다.
     def gripper_callback(self, msg):
         self.get_logger().info(f'Gripper target: {msg.data:.3f} m')
 
@@ -32,6 +36,7 @@ class GripperController(Node):
         self.finger_pub.publish(Float64MultiArray(data=[msg.data, msg.data]))
 
 
+# 노드를 실행하고 종료(SIGINT·외부 종료) 시 정리한다.
 def main(args=None):
     rclpy.init(args=args)
 

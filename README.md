@@ -20,53 +20,11 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 아래는 두 로봇이 협업하는 **목표 설계**다. 각 블록의 현재 구현 범위는 아래 표를 참고한다.
 
-```mermaid
-flowchart TD
-    User[사용자 요청] --> Context["D: 요청 접수·운영 상태 수집<br/>FleetSnapshot·예측 데이터"]
+![AX 전체 시스템 구성도 — 양현승·이종수·엄승연·김성민 담당 영역과 구현 상태](docs/assets/diagrams/ax-system.webp)
 
-    subgraph Agent["중앙 운영 AI 에이전트 · 운영 판단의 중심"]
-        direction TB
-        Summary["상황 요약<br/>로봇·작업·통로 상태 파악"]
-        Reason["운영 판단<br/>작업 우선순위·통로 통과 순서 검토"]
-        Proposal["계획 제안<br/>우선순위 변경·보류·재시도·복구 방안"]
-        Summary --> Reason --> Proposal
-    end
+[전체 구성도 크게 보기 · 투명 배경 WebP](docs/assets/diagrams/ax-system.webp)
 
-    Context -->|상태·예측 데이터| Summary
-    Proposal -->|운영 계획 제안| Fleet["D: Fleet Manager<br/>제안 검증·그룹 작업 배정·합류·인계 관리"]
-    Fleet -.->|운영 상태 갱신| Context
-    Fleet -->|검증 후 로봇별 작업 배정| Executor["A: 로봇별 Task Executor"]
-    Fleet --> Corridor["D: 통로 허가 관리"]
-    Corridor -->|진입 허가| Nav["D: Nav2 주행"]
-    Executor -->|이동 요청| Nav
-    Executor -->|집기·놓기 요청| Manip["C: 물체 인식·조작"]
-    Perception["B: 위치 추정·환경 인지·안전 판단"] -->|위치·통로 관측| Context
-    Perception -->|위치·환경 정보| Nav
-    Perception -->|안전 판단| Executor
-    Executor -->|실행 허용·정지 관리| Gate["A: 최종 구동 차단"]
-    Nav -->|주행 명령| Gate
-    Manip -->|팔·흡착 실행 요청| Gate
-
-    subgraph Simulation["Gazebo 시뮬레이션 · ros_gz 센서·상태 브리지"]
-        Control["ros2_control 바퀴·팔 제어<br/>흡착 실행은 별도 구현"]
-        R1["robot_1: 흡착 팔 로봇<br/>집기·적재·하역"]
-        R2["robot_2: 적재함 운송 로봇<br/>상자 지지·운송"]
-        Control --> R1
-        Control --> R2
-    end
-
-    Gate -->|허용된 구동 요청| Control
-    Simulation -->|센서·상태| Perception
-    Simulation -->|카메라·공구 보유 상태| Manip
-    Simulation -->|관절·구동·적재 상태| Executor
-    Executor -->|작업 진행·로봇 상태| Context
-
-    classDef agentStep fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#1e1b4b
-    class Summary,Reason,Proposal agentStep
-    style Agent fill:#f5f3ff,stroke:#6d28d9,stroke-width:3px,color:#1e1b4b
-```
-
-중앙 운영 AI 에이전트는 D가 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. D는 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. A는 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. B는 위치·환경·안전 판단을 제공하고 C는 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
+중앙 운영 AI 에이전트는 김성민이 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. 김성민은 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. 양현승은 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. 이종수는 위치·환경·안전 판단을 제공하고 엄승연은 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
 
 ### 공동 운반 흐름
 
@@ -92,7 +50,7 @@ flowchart LR
 | 공구·조작 | Gazebo 기본 `primitive`, RViz 기본 비교용 `suction` 외형 | EPick 도입, 인식·집기 계획·실제 부착/해제·보유 판정 |
 | 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·Fleet·Nav2·통로 허가·중앙 운영 AI |
 
-격리된 headless Gazebo에서 ros2_control 전환 전 구성으로 두 모델의 센서·상태·시간 토픽 30개 수신과 0.2 kg 검증 상자의 선반 접촉 전달을 확인했다. 전환 후에는 두 로봇의 제어기 활성, 관절별 명령 인터페이스 단일 점유, `joint_states`·`odom`·TF·`/clock` 발행과 주행 정지, 외부 하중 없이 자중에서의 자세 유지(단일 시험)를 확인했다(결과와 제한은 [인터페이스](docs/guides/INTERFACES.md) 참고). 현재 effort 제한에서는 작업 자세의 어깨 중력을 지탱하지 못한다. 작업 자세별 시야·측정 정확도·주기·하중 성능의 검증 완료는 아니며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
+격리된 headless Gazebo에서 ros2_control 전환 전 구성으로 두 모델의 센서·상태·시간 토픽 30개 수신과 0.2 kg 검증 상자의 선반 접촉 전달을 확인했다. 전환 후에는 두 로봇의 제어기 활성, 관절별 명령 인터페이스 단일 점유, `joint_states`·`odom`·TF·`/clock` 발행과 주행 정지, 외부 하중 없이 자중에서의 자세 유지(단일 시험)를 확인했다(결과와 제한은 [인터페이스](docs/guides/INTERFACES.md) 참고). 어깨·팔꿈치·손목 effort를 개발용 잠정값(100·65·25 N·m)으로 올린 뒤 무부하 대표 자세는 정착·유지되지만, 실물 정격이 아니며 하한에 닿은 관절이 복귀하지 못하는 외부 물리 엔진 동작이 남아 있다. 작업 자세별 시야·측정 정확도·주기·하중 성능의 검증 완료는 아니며, RViz GUI 관절값은 Gazebo 물리 상태가 아니다. 2 kg 상자 운반은 검증 목표다. 현재 정적 COM 계산에는 지지 영역을 벗어나는 자세가 있으며, 충돌 없는 작업 범위·동적 안정성·실제 파지는 검증하지 않는다. [현재 인터페이스](docs/guides/INTERFACES.md)와 [물리 검사](docs/validation/PHYSICAL_PROPERTIES_REVIEW.md)에서 제공 범위와 계산 조건을 확인한다.
 
 ## 구성
 
@@ -109,6 +67,7 @@ flowchart LR
 | `src/ax_control/ax_control/gripper_controller.py` | 집게 공통 명령을 양쪽 손가락으로 분배 |
 | `tools/generate_physical_properties.py` | 질량·COM·관성·충돌 상자의 원본 계산 및 Xacro·JSON 생성 |
 | `tools/check_static_stability.py` | 자세·공구·하중 가정에 따른 정적 COM 바닥 투영·지지 여유 계산 |
+| `tools/check_joint_torques.py` | 개발 자세·경로의 팔 관절 정적 중력 토크(무부하·2 kg 가정)와 가속 참고치 계산. 모터 정격 아님 |
 | `maps/warehouse_map.yaml`, `.pgm` | 기존 지도. 대응하는 창고 월드는 포함하지 않음 |
 | [docs/guides/INTERFACES.md](docs/guides/INTERFACES.md) | 팀 연결용 링크·관절·토픽 표 |
 | [docs/guides/GRIPPER_COMPARISON.md](docs/guides/GRIPPER_COMPARISON.md) | 집게 4종 선택·개폐 조작·시험 범위 |
@@ -202,10 +161,10 @@ ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 0.2}}'
 
 ## 팀별 후속 연결
 
-- B: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU·시간 브리지와 ros2_control 관절 상태·odom을 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
-- C: 팔은 `arm_controller` 궤적 토픽·`FollowJointTrajectory` action, primitive 집게는 `/gripper/command`(손가락 변위 m)를 사용한다. 관절 상태는 `joint_states`로 받는다. 역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
-- D: 로봇별 `cmd_vel`(Twist)·`odom`·이동 TF를 `diff_drive_controller`로 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
-- A: 실제 OBJ·단위·원점·관절 축표 확보 후 모델을 교체하고 재검증한다. 질량·관성·제어값·관절 제한은 실측 검증 전이다.
+- 이종수: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU·시간 브리지와 ros2_control 관절 상태·odom을 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
+- 엄승연: 팔은 `arm_controller` 궤적 토픽·`FollowJointTrajectory` action, primitive 집게는 `/gripper/command`(손가락 변위 m)를 사용한다. 관절 상태는 `joint_states`로 받는다. 역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
+- 김성민: 로봇별 `cmd_vel`(Twist)·`odom`·이동 TF를 `diff_drive_controller`로 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
+- 양현승: 실제 OBJ·단위·원점·관절 축표 확보 후 모델을 교체하고 재검증한다. 질량·관성·제어값·관절 제한은 실측 검증 전이다.
 
 ## 전달 파일
 

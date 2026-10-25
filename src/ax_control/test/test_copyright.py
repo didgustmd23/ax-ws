@@ -16,7 +16,8 @@ from ament_copyright.main import main
 import pytest
 
 
-# Remove the `skip` decorator once the source file(s) have a copyright header
+# 패키지 소스 파일의 저작권 헤더를 ament_copyright로 검사한다(현재 skip).
+# 소스 파일에 저작권 헤더를 넣은 뒤 `skip` 데코레이터를 제거한다.
 @pytest.mark.skip(reason='No copyright header has been placed in the generated source file.')
 @pytest.mark.copyright
 @pytest.mark.linter

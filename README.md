@@ -22,7 +22,9 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 ![AX 전체 시스템 구성도 — 양현승·이종수·엄승연·김성민 담당 영역과 구현 상태](docs/assets/diagrams/ax-system.webp)
 
-[전체 구성도 크게 보기 · 투명 배경 WebP](docs/assets/diagrams/ax-system.webp)
+[인터랙티브 전체 시스템 구성도 열기 · HTML](docs/assets/diagrams/ax-system.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
+
+GitHub에서는 HTML 파일을 내려받아 브라우저로 열면 인터랙티브 구성도를 볼 수 있다.
 
 중앙 운영 AI 에이전트는 김성민이 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. 김성민은 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. 양현승은 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제한다. 이종수는 위치·환경·안전 판단을 제공하고 엄승연은 `robot_1`의 인식·조작을 담당한다. 상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
 

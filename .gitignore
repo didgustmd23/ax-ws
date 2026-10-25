@@ -51,3 +51,6 @@ Thumbs.db
 # Intentionally keep robot model assets (*.obj, *.mtl, *.dae, *.stl), maps,
 # upstream provenance (*.original / LICENSE / manifests), and reviewed
 # docs/evidence files. Do not add a blanket *.obj, *.log, or *.original rule.
+
+# Local Archify sources, HTML, export helpers, fonts and verification receipts.
+/.archify/

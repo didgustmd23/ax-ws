@@ -1,0 +1,12 @@
+# 서버 D4. 복구 예산 사용 현황 조회(읽기 전용, 설계 7.10절). 조회는 예산을 바꾸지 않는다.
+string request_id               # 요청 ID
+string recovery_context_id      # 조회할 복구 문맥 ID. 비우면 task_id로 찾는다
+string task_id                  # 조회할 그룹 작업 ID
+---
+bool found                      # 해당 문맥이 원장에 있는지
+BudgetGrant[] grants            # 예산 목록
+uint32[] used_attempts          # grants와 같은 순서의 시작된 시도 수
+uint32[] uncertain_attempts     # grants와 같은 순서의 결과 미확정 시도 수(예약 유지)
+float64[] used_time_s           # grants와 같은 순서의 누적 시간, s(CLOCK_BOOTTIME)
+bool frozen                     # 예산 미확정으로 동결됐는지(설계 7.10절)
+string reason_code              # 조회 실패 사유 코드

@@ -109,7 +109,7 @@ A의 Task Executor는 승인된 로컬 작업을 직렬화한다.
 | ros2_control | 바퀴·팔 궤적 제어, 팔·바퀴 관절 상태 발행, 흡착은 별도 구현 | 바퀴 제어, 바퀴 관절 상태 발행 |
 | A 최종 구동 관리 | 적용 | 적용 |
 
-RGB-D는 카메라 개수에 포함한다. 흡착 공구 중앙 ToF는 최종 접근 간격 측정용 개발 센서로, Gazebo 단일 광선으로 근사했으며 최종 실물 센서 선정이나 성능 확정이 아니다. 토픽·좌표·측정 범위·구독 계약은 새 구현의 공통 계약(K0)에서 정한다. 이전 개발 구성의 값은 커밋 `4f85007`의 `docs/guides/INTERFACES.md`에 있다. ToF 값은 접촉·흡착·보유 판정이 아니며, 이 판정들은 기존 계약대로 별도 구현 대상이다.
+RGB-D는 카메라 개수에 포함한다. 흡착 공구 중앙 ToF는 최종 접근 간격 측정용 개발 센서로, Gazebo 단일 광선으로 근사했으며 최종 실물 센서 선정이나 성능 확정이 아니다. 토픽·좌표·측정 범위·구독은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3·8절을 따른다. 이전 개발 구성의 값은 커밋 `4f85007`의 `docs/guides/INTERFACES.md`에 있다. ToF 값은 접촉·흡착·보유 판정이 아니며, 이 판정들은 기존 계약대로 별도 구현 대상이다.
 
 이전 개발 모델(커밋 `4f85007`)은 나머지 카메라를 RGB로 두고 `sensor_mounts.yaml`의 임시 장착 좌표·방향과 Xacro의 해상도·시야각·갱신율을 적용한다. 이는 최종 센서 상세 확정이 아니며, 특히 팔 카메라는 작업 자세별 시야·가림 검증 후 위치를 보정한다. robot_2는 AX_2 메시와 별도 가상 질량·관성을 사용하며 최종 차체·적재 공간·허용 하중은 검증 대상이다.
 
@@ -152,8 +152,8 @@ ros2_control 도입만으로 가속도·TCP 속도 제한, 안전 정지·watchd
 OFF·ADVISORY에서도 입고 작업은 자동 생성하고, 검증된 규칙 목적지·계획을 사용한다.
 없는 규칙·모호한 물품은 추측 실행하지 않고 9.5절의 유한 복구·실패 처리를 따른다.
 
-물체 상태는 AT_SOURCE → HELD_BY_ROBOT_1 → STOWED_ON_ROBOT_2 → HELD_BY_ROBOT_1 →
-AT_DESTINATION이다. 상태 이름의 robot_1/2는 최초 역할 예이며 실제 robot_id·배정과 결합한다.
+물체 상태는 출발 지점 → 조작 로봇 보유 → 운송 로봇 적재 → 조작 로봇 보유 →
+도착 지점 순이다. 상태 이름은 역할 기준이며([공통 인터페이스 계약](INTERFACE_CONTRACT.md) 6절) 실제 robot_id·배정과 결합한다.
 조작 로봇은 물품을 든 채 주행하지 않는다. 목적지에서도 정차 보정 후 인계 잠금을 건다.
 최소 단일 상자만으로 LLM 효과를 주장하지 않으며 복수 유효 목적지·후보·우회 분기의 평가 조건을 별도로 둔다.
 
@@ -199,7 +199,7 @@ AT_DESTINATION이다. 상태 이름의 robot_1/2는 최초 역할 예이며 실�
 
 ### 5.1 운영 모드·인증 — 결정
 
-D가 OFF·ADVISORY·ASSISTED를 영속 관리한다. 시작 전에 설정하고 운영 중 자동 상향하지 않는다.
+D가 OFF·ADVISORY·ASSISTED를 영속 관리한다. 시작 전에 설정하고 운영 중 자동 상향하지 않는다. 운영 중 운영자 상향 요청의 수락 조건은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) D-18을 따른다.
 장애 시 자동 하향은 허용하되 진행 중 실행·보류·잠금·수신 세대·예산·격리는 초기화하지 않는다.
 모드 하향은 미래 계획 반영 제한이며 실행 중 동작의 무조건 취소가 아니다.
 
@@ -231,8 +231,8 @@ D에 보낸다. 전역 순서 변경은 중앙의 재계획과 D 검증을 거�
 | 교착·복구·예비 재배정 | 중앙 LLM이 D의 사건·최신 snapshot으로 계획 | D가 9.9~9.10절 조건으로 검증·실행 |
 | LLM 무응답·계획 거절 | 검증된 규칙 계획/복구가 있으면 D가 명시적 대체 | 없거나 소진 시 9.5절 실패 종료·격리·알림 |
 
-중앙 계획은 plan_id·plan_revision·snapshot_id·task_id, 단계 키와 의존 관계, 허용 operation,
-등록 지점·물품·역할/로봇 참조, 전제조건·실패 분기·종료 조건을 구조화한다. 정확한 타입은 7절에서 확정한다.
+중앙 계획은 plan_id·plan_revision·snapshot_id·task_ids(단계마다 소속 작업), 단계 키와 의존 관계, 허용 operation,
+등록 지점·물품·역할/로봇 참조, 전제조건·실패 분기·종료 조건을 구조화한다. 정확한 타입은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.4절 `AgentPlan`을 따른다.
 D 검증기는 순환 대기·없는/권한 밖 도구·지점·물품, 지지 없는 해제·물품을 든 주행, 인계 상호 배제 위반,
 실행 중 단계 변조, 무한 반복·예산 우회, 용량·상태 버전 불일치를 거절한다. 수락한 계획은 영속화한다.
 전송 전과 단계 실행 직전에 실제 상태·조건을 재검증하고, 결과를 중앙에 전달해 필요 시 유한 재계획한다.
@@ -241,7 +241,7 @@ D 검증기는 순환 대기·없는/권한 밖 도구·지점·물품, 지지 �
 
 허용 제안 종류는 ASSIGN_TASK·DEFER_TASK·RECOMMEND_RETRY·RECOMMEND_REASSIGN·
 RECOMMEND_PRIORITY_CHANGE·REQUEST_HOLD·REQUEST_RESUME_REVIEW·PREFER_CANDIDATE·NO_ACTION이다.
-전체 계획 제출·등록 지점 이동/대기 제안도 별도 종류로 추가하고 enum 매핑은 인터페이스에서 확정한다.
+등록 지점 이동/대기 제안도 별도 종류로 추가한다. 전체 계획은 제안 종류가 아니라 별도 계획 경로로 제출한다. 경로와 enum은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.4·6절과 D-17을 따른다.
 LLM이 관절 궤적·바퀴 속도·원시 흡착 명령·안전 해제·점유 중 통로 허가 회수를 직접 내리는 것은 금지한다.
 허용 도구에 없는 미분류 복구는 설명할 수 있지만 실행할 수 없다. Agent별 금지 행동은 다음과 같으며,
 D 검증기는 이에 해당하는 계획·제안을 거절한다.
@@ -286,7 +286,7 @@ shadow 제안은 실제 보류 접수 예산·운영 위반 건수에 계상하�
 실패하면 연속 건수를 0으로 되돌리고 검증 예산 소진 시 격리를 유지한다. 충분한 제안이
 없으면 미완료다. 최종 건수·시간·비용 한도는 시험 전에 고정한다.
 
-통과하면 D가 새 agent_receive_generation을 기록하고 ACTIVE로 전환한다.
+통과하면 D가 새 agent_receive_generation을 기록하고 ACTIVE로 전환한다. 격리 진입 때의 세대 증가와 shadow 제안의 세대는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 8절을 따른다.
 기존 hold_id는 9.6절로만 처리한다. 작업별 상한이 이미 소진됐으면 다른 허용 제안은
 받되 새 보류는 예산 사유로 거절한다. 새 복구 문맥·초기 예산은 기존 작업 정상 종료와
 미해결 사건·예약 없음이 확인된 새 운반에만 발급하며 격리 해제로 생성하지 않는다.
@@ -310,9 +310,9 @@ Cosmos는 후보 모델이며 채택·실행 성능·파인튜닝 여부를 확�
 로봇/예비 상태·Agent 계획/검증 결과·교착·실패·격리·알림·재배정을 패널/탭으로 조회한다.
 사람 개입·성공률·자동 종료·SAFE_STOP·리셋/재기동·Agent 격리를 표시하고 미수집을 0과 구분한다.
 조회·알림·사후 조치 등록 중심이며 정상 운영은 화면 조작을 요구하지 않는다. 등록만으로 성공 처리·
-잠금 해제·예산 재발급하지 않고 D가 실제 상태와 권한을 확인한다. 화면/조회 API는 D, 추론 상태는 E,
+잠금 해제·예산 재발급하지 않고 D가 실제 상태와 권한을 확인한다. 화면과 상태 Topic·예산 조회(`QueryBudget`)는 D, 추론 상태는 E,
 공통 계약은 K0 공동 책임이다. 관제 운영 기능은 D2, 원장·검증/알림은 D4, 추론 상태 제공은 E1~E3 작업이 맡으며 담당자와 세부 연결은 공통 일정에서 관리한다.
-비상 정지·최종 차단은 화면·LLM과 독립적으로 동작한다. 화면 정지 버튼·기술·레이아웃·색상은 미정이다.
+비상 정지·최종 차단은 화면·LLM과 독립적으로 동작한다. 화면 정지 요청은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md)의 `RequestSafeStop`을 쓴다. 화면 기술·레이아웃·색상은 미정이다.
 
 ## 6. 통신·명명·시간·좌표 규칙
 
@@ -337,33 +337,27 @@ Cosmos는 후보 모델이며 채택·실행 성능·파인튜닝 여부를 확�
 - 센서 기반 관측과 정답 기반 판정을 구분할 수 있도록 결과에 출처를 표시한다.
 - 이 예외를 C의 일반 물체 위치 계산이나 주행 위치 추정으로 확대하지 않는다.
 
-네임스페이스:
+네임스페이스: 공용은 `/ax/fleet/…`, 로봇별은 `/ax/robot_<n>/…`이다. 하위 이름 목록은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4절(D-01)을 따른다.
 
-```text
-/ax/fleet/{mode,tasks,teams,robot_status,inventory,receipt,holds,failures,time_validity,corridor,conditions,agent}
-/ax/robot_1/{executor,safety,localization,navigation,manipulation,arm,sensors,load,perception,conditions,failures,agent,ml}
-/ax/robot_2/{executor,safety,localization,navigation,manipulation,arm,sensors,load,perception,conditions,failures,agent,ml}
-```
-
-아래는 목표 인터페이스다. 원문의 접두사 혼재를 정리하고 현재 결정의 생산자·소비자·갱신 경로를 반영했다. 정확한 절대 경로·타입은 구현 전에 확정한다.
+아래는 목표 인터페이스다. 원문의 접두사 혼재를 정리하고 현재 결정의 생산자·소비자·갱신 경로를 반영했다. 생산자 → 소비자는 개념 방향이며 정확한 절대 경로·타입·생산자·소비자는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4절을 따른다.
 
 | 인터페이스 | 형태 | 생산자 → 소비자 |
 |---|---|---|
 | `/ax/fleet/agent/snapshot` | Topic | D → Agent |
 | `/ax/fleet/agent/{sender_agent_id}/proposal` | Topic | 인증된 Agent 어댑터 → D. 경로만으로 인증하지 않음 |
 | `/ax/fleet/agent/decision` | Topic | D → Agent/로그 |
-| `/ax/robot_N/executor/...` 역할별 하위 Action | Action | D → A |
+| `/ax/robot_N/executor/...` 로컬 작업 Action(작업 종류로 역할별 작업 구분) | Action | D → A |
 | `/ax/robot_N/safety/state` | Topic | B → A/D |
-| `/ax/robot_N/safety/actuation_state` | Topic | A → B/D |
-| `/ax/robot_N/localization/health` | Topic | B → A/D |
-| `/ax/robot_N/perception/corridor_observation` | Topic | B → D |
+| `/ax/robot_N/safety/actuation_state` | Topic | A → B/D/상대 로봇 A |
+| `/ax/robot_N/localization/health` | Topic | B → B(통로·안전 판단)/D |
+| `/ax/robot_N/perception/corridor_observation` | Topic | B → D/A |
 | `/ax/robot_N/manipulation/execute` | Action | A → C |
 | 로봇별 Nav2 이동 Action | Action | D 주행 관리자 → Nav2. 속도 출력은 A 최종 구동 게이트 통과 |
 | `/ax/fleet/corridor/request_entry` | Service | D 서버 / 주행 관리자 클라이언트 |
 | 조작 후보 snapshot | Topic | C → D(Agent용 snapshot에 포함). 7.13절 |
 | 시간 유효성 | Topic | A 공용 감독기 → D·A 실행 계층. 7.6절 |
-| 입고 사건·보관 위치·재고 | Topic + 짧은 등록/조회 Service | B/C → D 사건, D → Agent/화면의 버전 있는 상태 |
-| D 유효성·C lease | 요청/응답/철회 Topic | A↔D challenge heartbeat, C↔A lease. 7.11절 |
+| 입고 사건·보관 위치·재고 | 관측 Topic + 등록 Service + 상태 Topic | B/C → D 관측, D 입고 처리 → 작업 등록, D → Agent/화면의 버전 있는 상태 |
+| D 유효성·C lease | 요청/응답/철회 Topic + A 내부 명령 확인 Service | A↔D challenge heartbeat, C↔A lease, A2·A4 → A3 명령 수락 확인(C 조작 권한·A3 로컬 후퇴 권한). 7.11절 |
 | 실패·정지·사후 알림 | Topic + 영속 로그/조회 | 각 관측/실행 주체 → D/관제. 9.5절 |
 
 ## 7. 메시지·서비스·액션 계약
@@ -388,7 +382,7 @@ D가 그룹 작업·배정·주행 단계를 관리하고 Nav2를 직접 호출�
 Goal은 위 식별자·목표·예산을 결합한다. Result/Feedback은 phase·progress·종료/실패·보유/적재 상태와
 시도별 사용량·미확정 시도를 전달한다. C의 NEED_REOBSERVATION_MOVE는 C→A→D로 보고하고 로컬
 Action을 종료한 뒤 D가 이동을 조정한다. 물품 지지·팔 안전·정지·잠금·예산을 먼저 확인한다(9.7절).
-완료·실패·취소·시간초과를 구분하며 최종 enum 값·구체 Action 이름은 미정이다.
+완료·실패·취소·시간초과를 구분하며 enum 값·Action 이름은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3·5·6절을 따른다.
 
 ### 7.2 SafetyState.msg
 
@@ -406,7 +400,7 @@ float32 recommended_max_linear_speed
 
 `level`: `CLEAR=0`, `SLOWDOWN_REQUIRED=1`, `STOP_REQUIRED=2`, `UNKNOWN=3`.
 
-보완 결정: 위 원문 필드에 더해 전진·후진·회전 허용 여부, 선속도·각속도 상한, 전방·후방 센서 유효성을 표현한다. 전체 정지(`STOP_REQUIRED`·`UNKNOWN`)와 상태 만료는 방향별 허가보다 우선한다. 후방 센서 이상 시 해당 로봇의 후진을 금지한다. 필드 이름·타입·만료 시간은 미정이다.
+보완 결정: 위 원문 필드에 더해 전진·후진·회전 허용 여부, 선속도·각속도 상한, 전방·후방 센서 유효성을 표현한다. 전체 정지(`STOP_REQUIRED`·`UNKNOWN`)와 상태 만료는 방향별 허가보다 우선한다. 후방 센서 이상 시 해당 로봇의 후진을 금지한다. 위 블록은 원문 필드이며, 현행 필드 이름·타입·만료 시간은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.2·6절과 `SafetyState.msg`를 따른다.
 
 ### 7.3 CorridorObservation.msg / CorridorState.msg
 
@@ -417,12 +411,11 @@ float32 recommended_max_linear_speed
 
 - 관측 enum: `OUTSIDE=0`, `APPROACHING=1`, `INSIDE=2`, `UNKNOWN=3`.
 - 통로 상태 enum: `FREE=0`, `RESERVED=1`, `OCCUPIED=2`, `BLOCKED_UNKNOWN=3`.
+- 위 표는 원문 필드다. 현행 필드(상태 머리·revision 이름)와 0값 보호 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 2.3·6절을 따른다.
 
 ### 7.4 RequestCorridorEntry.srv
 
-- 서버 D.
-- Request: `corridor_id`, `robot_id`, `request_id`.
-- Response: `granted`, `grant_id`, `reason_code`, `corridor_revision`.
+- 서버 D. 요청·응답 필드는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 5.4절과 `RequestCorridorEntry.srv`를 따른다.
 
 동일한 `request_id` 재전송은 중복 허가를 생성하지 않는다. 취소·시간초과가 발생해도 점유 여부를 확인하지 않은 채 허가를 해제할 수 없다.
 
@@ -430,10 +423,10 @@ float32 recommended_max_linear_speed
 
 - 클라이언트 A(robot_1), 서버 C.
 - Goal: task_id·object_id·operation(PICK/PLACE)·target_pose와 7.1절 실행/배정 ID·D 예산·lease 초기화 정보·선택적 후보 선호도. 초기 Goal만으로 물리 시도를 허가하지 않는다.
-- Result: success·error_code·object_held·attempt_count·시도별 사용 보고·미확정 시도. 재관측 이동 필요 시 NEED_REOBSERVATION_MOVE.
+- Result: 결과 상태·오류 코드·공구 보유 판정·시도 수·시도별 사용 보고·미확정 시도. 재관측 이동 필요 시 NEED_REOBSERVATION_MOVE와 관측 요구.
 - Feedback: phase·progress·시도별 사용량·상태. 실행 중 lease는 별도 C↔A Topic, 철회 Topic+Action cancel을 사용한다(7.11절).
 
-`target_pose`는 6절의 pose 구분(정차·물체·공구 목표)에 맞춰 의미를 확정한다. 결과의 `object_held`는 C가 제공하는 공구 보유 상태이며 전체 적재 상태를 대신하지 않는다.
+`target_pose`의 동작별 의미와 결과 필드 이름은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 5.2·8절을 따른다. 결과의 보유 판정은 C가 제공하는 공구 보유 상태이며 전체 적재 상태를 대신하지 않는다.
 
 흡착 실행 흐름: C의 흡착·해제 요청 → A의 실행 허용 검사 → 흡착 제어 노드 → Gazebo 플러그인 연결·해제 실행 → 실제 부착 상태 확인 → 결과 반환. 흡착 ON 요청, 실제 부착 완료, 유지, 실제 해제 완료를 구분한다. 안전 정지 시 흡착을 자동 해제하지 않으며 내려놓기 조건을 확인한 해제 절차를 사용한다.
 
@@ -442,7 +435,7 @@ float32 recommended_max_linear_speed
 AgentProposal·전체 계획·AgentDecision·FleetSnapshot·RobotTaskStatus·LocalizationHealth·LoadState·
 입고/재고/지점 상태를 공통 타입으로 작성한다. 전체 계획의 구성 요소는 5.2절, 제안 필드는 아래 표,
 보관/예약은 7.12절을 따른다.
-상태·계획·제안의 정확한 타입과 enum 숫자는 아직 미정이며 공개 후 숫자를 재사용하지 않는다.
+상태·계획·제안의 정확한 타입과 enum 숫자는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.4·6절과 `src/ax_interfaces/`를 따르며 공개 후 숫자를 재사용하지 않는다.
 
 제안에는 sender_agent_id를 넣고 중앙·robot_1·robot_2 Agent별 수신 경로를 분리한다.
 D는 등록된 발신 주체와 sender_agent_id·agent_session_id·agent_receive_generation을
@@ -455,7 +448,7 @@ Topic 이름 분리나 메시지의 자기 신고 ID만으로 발신자를 인�
 
 Agent 제안은 기존 AgentProposal에 맞춰 `target_robot_id`를 사용한다.
 관측·실행 상태의 기존 `robot_id`는 변경하지 않고 검증된 대상과 대응시킨다.
-Agent 제안의 필드는 이 표를 기준으로 하며 조건부 필드가 불필요한 제안에는 생략을 허용한다.
+아래 표는 Agent 제안 필드의 개념 구분이며 정확한 필드는 `AgentProposal.msg`를 따른다. 조건부 필드가 불필요한 제안에는 생략을 허용한다.
 
 | 구분 | 필드 |
 |---|---|
@@ -464,13 +457,13 @@ Agent 제안의 필드는 이 표를 기준으로 하며 조건부 필드가 불
 | 보류 재검토 | hold_id |
 | 인계·통로 | transfer_id, corridor_id, grant_id, corridor_revision 중 해당 동작의 필드 |
 | 후보 선호 | 7.13절의 candidate_set_id, candidate_id, scene_revision |
-| 전체 계획 제출 | plan_id, plan_revision. 단계·의존 관계·전제조건 등 계획 구성 요소는 5.2절 |
+| 근거 계획 참조 | plan_id, plan_revision. 전체 계획 제출 자체는 제안이 아니라 별도 계획 경로([공통 인터페이스 계약](INTERFACE_CONTRACT.md) D-17), 계획 구성 요소는 5.2절 |
 | 등록 지점 이동·대기 | location_id, location_revision, map_revision. 좌표는 받지 않음(DEC-22) |
 | 우선순위·설명 | priority(ASSIGN_TASK·RECOMMEND_PRIORITY_CHANGE 등 해당 시), explanation(기록용. 검증·판정 근거로 쓰지 않음) |
 
 신규 진입 허가 요청은
 아직 grant_id가 없으므로 기존 RequestCorridorEntry의 request_id로 중복을 막고
-응답의 grant_id를 이후 요청에 사용한다. 실제 타입·추가 필드는 후속 계약에서 확정한다.
+응답의 grant_id를 이후 요청에 사용한다. 타입·필드는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.1·5.4절을 따른다.
 
 상태 수락은 snapshot_id와 영역별 revision·배정 세대 대조를 주 조건으로 한다.
 시계 용도 구분은 6절을 따른다. 아래의 감독용 단조 시계는 CLOCK_BOOTTIME을 뜻한다. 수신 측에서 경과 시간을 재고
@@ -487,7 +480,7 @@ sim time 정지·역행·RTF 이탈의 감지 주체는 A의 공용 감독기다
 CLOCK_BOOTTIME 관측 구간과 비교하고 시간 유효성 Topic을 발행한다. D는 이를 작업
 정책에 반영하고 A 실행 계층은 만료·이상 상태에서 새 실행 권한을 제한한다.
 감독기 상태 자체가 만료되어도 시간 유효성을 정상으로 추정하지 않는다.
-관측 창·임계값·허용 RTF 범위는 시험 설정에 고정하며 최종 보류 전이는 9.6절을 따른다.
+관측 창·임계값·허용 RTF 범위는 시험 설정에 고정하며(개발 초깃값은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) D-09) 최종 보류 전이는 9.6절을 따른다.
 
 ### 7.7 흡착 공구와 제어 — 결정
 
@@ -503,13 +496,13 @@ CLOCK_BOOTTIME 관측 구간과 비교하고 시간 유효성 Topic을 발행한
 ### 7.8 물체·적재 상태 — 권장 계약
 
 본 절의 robot_1·robot_2 표기는 최초 조작·운송 역할의 예다. 실제 상태에는 물품·실제 robot_id·배정 세대를 함께 기록한다.
-`object_held` 하나로 전체 적재 상태를 표현하지 않는다. 아래 이름은 개념 상태이며 실제 enum 값은 미정이다.
+공구 보유 판정 하나로 전체 적재 상태를 표현하지 않는다. 아래는 개념 상태이며 실제 enum 이름·값은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 6절을 따른다(역할 이름으로 일반화, D-15).
 
 | 그룹 물체 상태 (D) | 의미 |
 |---|---|
 | `AT_SOURCE` | `station_src`에 있음 |
-| `HELD_BY_ROBOT_1` | robot_1이 흡착해 들고 있음 |
-| `STOWED_ON_ROBOT_2` | robot_2 적재함에 놓여 있음 |
+| 조작 로봇 보유 | 조작 로봇(최초 robot_1)이 흡착해 들고 있음 |
+| 운송 로봇 적재 | 운송 로봇(최초 robot_2) 적재함에 놓여 있음 |
 | `AT_DESTINATION` | `station_dst`에 배치됨 |
 | `UNKNOWN` | 위치·보유 상태를 확인할 수 없음 |
 | `LOST` | 운반 중 이탈·낙하가 확인됨 |
@@ -521,7 +514,7 @@ CLOCK_BOOTTIME 관측 구간과 비교하고 시간 유효성 Topic을 발행한
 | `UNKNOWN` | 센서 만료·관측 모순·일시적 접촉 해제 |
 | `LOST` | 운송 중 상자가 적재 영역을 벗어났다고 확인됨 |
 
-- 적재 판정은 접촉, 허용 영역, 상태 최신성을 조합하며 적재 후 이동 중에도 계속 감시한다. 접촉이 순간적으로 끊겼다고 바로 낙하로 판정하지 않는다. 유지 시간·허용 영역·임계값은 시험 후 확정한다.
+- 적재 판정은 접촉, 허용 영역, 상태 최신성을 조합하며 적재 후 이동 중에도 계속 감시한다. 접촉이 순간적으로 끊겼다고 바로 낙하로 판정하지 않는다. 유지 시간·허용 영역·임계값은 시험 후 확정한다(개발 초깃값은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) D-08).
 - C는 공구 보유·해제 상태, A는 로봇별 실행·적재 확인 결과, D는 그룹 물체 상태와 진행 단계를 관리한다. 오래되거나 모순되는 상태를 성공으로 처리하지 않는다.
 
 ### 7.9 실행 ID·영속화·Action UUID
@@ -529,7 +522,7 @@ CLOCK_BOOTTIME 관측 구간과 비교하고 시간 유효성 Topic을 발행한
 D가 승인한 상위 작업에 root_execution_id를 발급하고 전송 전에 계획 버전과 함께
 영속화한다. Agent는 이 ID를 발급·갱신하지 않는다. 하위 호출마다 별도 execution_id를
 `derive(root_execution_id, step_key, operation, attempt_index)`로 만든다.
-derive는 버전을 고정한 정규화 인코딩과 결정적 해시를 사용하며 실제 규칙은 계약에서 확정한다.
+derive는 버전을 고정한 정규화 인코딩과 결정적 해시를 사용하며 실제 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) D-03을 따른다.
 step_key는 반복문의 현재 순번이 아니라 계획에 영속 저장된 단계 식별자다.
 plan_revision은 메타데이터로만 보관하며 ID 계산에 넣지 않는다.
 수락됐거나 결과가 미확정인 단계의 step_key·operation·물체·목표 인자는 변경하지 못한다.
@@ -620,8 +613,8 @@ C는 고유 요청 ID와 execution_id로 A에 lease를 요청한다. C의 요청
 다른 호스트로 분산할 때의 시계·지연 조건은 이 안의 보장 범위 밖이며 별도 계약이 필요하다.
 
 Action Goal은 budget_grant_id·세대 등 초기화 정보만 담고 물리 실행 권한을 주지 않는다.
-첫 물리 시도 전에 C의 요청·응답을 완료해야 한다. 실행 중에도 같은 A→C 갱신 Topic과
-C→A 요청·확인 Topic을 사용한다. 이전 세대·중복 갱신은 거절하고 수락된 Goal은 수정하지 않는다.
+첫 물리 시도 전에 C의 요청·응답을 완료해야 한다. 실행 중 갱신도 C→A 요청, A→C 응답으로 한다.
+이전 세대·중복 갱신은 거절하고 수락된 Goal은 수정하지 않는다. lease 소유·명령 수락 확인·재동기화 규칙, 명령의 부모 goal_id 전달, C 조작 권한과 A3 로컬 후퇴(RETRACT_ARM) 권한의 구분은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 5.2절을 따른다.
 
 A가 D 단절을 판정하면 갱신을 중단하고 execution_id·세대·이유를 담은 lease 철회 Topic과
 ManipulateObject Action cancel을 보낸다. C는 새 시도를 차단하고 검증된 안전 경계에서
@@ -677,7 +670,7 @@ D·A·C는 후보 의견을 받기 위해 실행을 기다리지 않는다. Goal
 | Agent 운영 모드·수신 | D | OFF/ADVISORY/ASSISTED와 Agent별 ACTIVE/QUARANTINED/RECOVERY_SHADOW를 별도로 영속 관리 |
 | Agent 추론 | E | DISABLED(OFF)/IDLE/REASONING/VALIDATING/ACCEPTED/REJECTED/FALLBACK. ACCEPTED는 실행 성공이 아님 |
 | 입고·재고·예약 | D | 입고 사건·작업 연결, 등록 지점·예약·실제 재고·미확정 상태 |
-| 시스템 운영 | D | 정상 운영 / SAFE_STOP. 진입·해제 조건은 9.5절, 구체 enum은 미정 |
+| 시스템 운영 | D | 정상 운영 / SAFE_STOP. 진입·해제 조건은 9.5절, enum은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 6절 |
 
 그룹 작업이 `RUNNING`이어도 로봇 실행은 `PAUSED`일 수 있다. 모든 상태를 하나의 문자열로 합치지 않는다. 공구 보유(C), 적재 판정(A), 그룹 물체 상태(D)를 7.8처럼 구분한다.
 
@@ -704,8 +697,8 @@ D·A·C는 후보 의견을 받기 위해 실행을 기다리지 않는다. Goal
 | `OBJECT_NOT_FOUND` / `GRASP_FAILED` | C | C가 D 위임 예산 안에서 제한 재시도, A가 결과 전달, D가 공통 예산·복구 종료 판정(DEC-07, 7.10절) |
 | `OBJECT_DROPPED` | C | A 중단, 물체 상태 재확인 |
 | `JOINT_CONTROL_ERROR` | A/C | 제어 중단·진단 |
-| 적재 `UNKNOWN` / `LOST` (코드 이름 미정) | A(robot_2) | 그룹 보류, D가 물체 상태 재확인 조정 |
-| 인계 상대 상태 만료 (코드 이름 미정) | A | 주행 금지 유지, D에 보고 |
+| 적재 `UNKNOWN` / `LOST` (코드 이름은 계약 D-13) | A(robot_2) | 그룹 보류, D가 물체 상태 재확인 조정 |
+| 인계 상대 상태 만료 (코드 이름은 계약 D-13) | A | 주행 금지 유지, D에 보고 |
 | `CORRIDOR_BLOCKED` | B/D | 진입 대기·점유 유지 |
 | `AGENT_INVALID_PLAN` / `AGENT_TIMEOUT` | D | 계획·제안 폐기. 유효한 상태와 검증된 규칙 계획이 있으면 계속, 없으면 9.6절 유한 재판정 후 9.5절 실패 종료(DEC-13) |
 | EVIDENCE_CONFLICT·PLAN_PRECONDITION_UNCLEAR·UNCLASSIFIED_FAILURE | D/조건·관측 소유자 | 9.6절 근거·책임자·유한 재판정, 분류된 실패 승격 금지 |
@@ -747,7 +740,7 @@ D·A·C는 후보 의견을 받기 위해 실행을 기다리지 않는다. Goal
 - 팔 동작 중 robot_1 주행 금지, 적재·하역 중 robot_2 주행 금지.
 - 적재 확인·흡착 해제·팔 후퇴가 확인된 후에만 robot_2 주행을 허용한다.
 - `station_dst`에서는 두 로봇의 정차 위치·방향·상태를 확인한 뒤 하역을 허용한다.
-- 필요한 상대 상태나 허가가 오래되면 기본값은 주행 금지다.
+- 필요한 상대 상태나 허가가 오래되면 기본값은 주행 금지다. 작업 목록 자체를 받지 못하거나 만료되면 배정 없는 대기 로봇까지 주행을 막는 보수 정책을 쓴다(적용 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3절).
 - 취소·실패·시간초과를 자동 잠금 해제로 취급하지 않는다. 같은 인계·공유 물체에 의존하는 한쪽만 이동을 재개하지 않는다. 실패 영향 밖의 독립 후속 작업은 9.5절 조건으로만 D가 승인한다.
 - 보류·취소·실패 뒤 재개 확인 전의 한쪽 이동은 아래 "한쪽 이동 예외" 표의 경우에만 허용한다.
 - 후방 센서 이상 시 해당 로봇의 후진을 금지한다.
@@ -765,11 +758,11 @@ D·A·C는 후보 의견을 받기 위해 실행을 기다리지 않는다. Goal
 | 인계 중단 후 재관측 이동 | 9.7절 | 로컬 Action 종료, 물체 지지·팔 안전 확인, 인계 중이면 위 잠금 해제 절차 선행 |
 | 물리 교착 해소를 위한 대기 지점 이동 | 9.9절 | 검증된 대기 지점만 사용, 위 첫째·둘째 행의 조건 충족 |
 
-A의 최종 구동 차단 구현 방식(바퀴 명령 게이트, 팔 궤적 차단 방법)과 실제 정지 확인의 속도 임계값·지속 시간은 미정이다. 정지 시 팔 컨트롤러 비활성화는 하중 유지와 실제 정지 동작을 검증한 뒤 채택 여부를 결정하며 기본 해법으로 확정하지 않는다.
+바퀴 명령 게이트 경로, 팔 궤적·흡착 명령의 수락 조건, 실제 정지 확인의 속도 임계값·지속 시간은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3절·D-06·8절을 따른다. 게이트 내부 구현 방식은 A4가 정한다. 정지 시 팔 컨트롤러 비활성화는 하중 유지와 실제 정지 동작을 검증한 뒤 채택 여부를 결정하며 기본 해법으로 확정하지 않는다.
 
 우선순위는 A의 보호·고장 잠금 → B의 위험·상태 불확실성에 따른 정지 →
 D의 그룹 보류·인계 잠금 → 승인된 일반 작업 순서다. 안전 정지는 D나 LLM을 기다리지 않는다.
-D는 배정 세대와 task_revision을 대조하여 상충 제안 중 하나만 승인한다.
+D는 상충 제안 중 하나만 승인한다. 작업 내용·배정 변경은 배정 세대와 task_revision, 우선순위·연기 같은 일정 변경은 schedule_revision으로 대조한다([공통 인터페이스 계약](INTERFACE_CONTRACT.md) 8절).
 실행 중 목표 교체는 기존 동작의 취소·종료·실제 정지 확인을 거친다.
 
 로봇 Agent 간 직접 실행 명령·인계 협상은 허용하지 않는다. 협조는 D의 transfer_id와
@@ -821,12 +814,12 @@ robot_2가 운송 중 Agent 보류를 받으면 D가 현재 경로·적재·위�
 
 SAFE_STOP은 시스템의 실행 금지·정지 유지 정책이며 작업 성공·정상 운반 완료가 아니다.
 정지 요청만으로 실제 STOPPED를 기록하지 않는다. 정지·하중 유지가 확인되지 않으면
-미확인 또는 실패로 기록하고 최종 차단·진단을 계속한다. 구체적인 상태 enum·코드는 인터페이스에서 확정한다.
+미확인 또는 실패로 기록하고 최종 차단·진단을 계속한다. 구체적인 상태 enum·코드는 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 6절·D-12·D-13을 따른다.
 
 | 항목 | SAFE_STOP 정의 |
 |---|---|
 | 소유 | D가 시스템 수준 SAFE_STOP 진입·해제를 판정·영속 기록한다. 각 로봇의 실제 정지·차단은 A의 안전 실행 상태(8절)가 소유한다 |
-| 진입 | 위 표의 "안전 조건 또는 독립성 확인 불가"에서 전체 가용성이 없거나 영향 범위를 한정할 수 없을 때. D 부재 시 A·감독 주체는 로컬 차단을 유지하고 D 복원 후 기록을 연결한다 |
+| 진입 | 위 표의 "안전 조건 또는 독립성 확인 불가"에서 전체 가용성이 없거나 영향 범위를 한정할 수 없을 때, 또는 운영자·시험 하네스의 수동 정지 요청([공통 인터페이스 계약](INTERFACE_CONTRACT.md) `RequestSafeStop`). D 부재 시 A·감독 주체는 로컬 차단을 유지하고 D 복원 후 기록을 연결한다 |
 | 유지 | 새 작업·재배정·Agent 계획 반영 금지. A·B의 정지·차단·감시와 사건 기록은 계속 |
 | 해제 | 영향 범위를 한정할 수 있고, 필요한 로봇의 실제 정지·가용성·원장 대조가 확인된 뒤 D가 해제. 시간 경과·LLM 요청·알림 응답만으로 해제하지 않는다 |
 | 해제의 의미 | 새 작업 승인 가능 상태로의 전환일 뿐이며 개별 구동·인계·통로 잠금 해제 명령이 아니다 |
@@ -882,7 +875,7 @@ FAILED_ISOLATED는 이 설계에서 보류의 자동 복구가 실패로 종료�
 RECOVERY_UNSUPPORTED·COMMUNICATION_LOST 등 실제 실패 원인은 별도 보존한다.
 사람의 확인 응답을 기다려 실패를 확정하지 않는다. 하위 Action 종료·실제 정지·잠금은
 별도로 확인하며 후속 작업 승인·알림·사후 처리 기준은 9.5절을 따른다.
-보류 실패와 그룹 FAILED, 사후 검토 알림을 구분하며 숫자 enum은 아직 미정이다.
+보류 실패와 그룹 FAILED, 사후 검토 알림을 구분하며 숫자 enum은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 6절을 따른다.
 
 | 보류 사유 | 근거·접수 판정 | 재판정·종료 책임 |
 |---|---|---|
@@ -1048,7 +1041,7 @@ input_features, ground_truth, prediction, result
 | A | ax_description·ax_simulation·ax_control·ax_task_executor·ax_control_ml, 최종 게이트·감독/서비스 시작 래퍼 |
 | B | ax_localization·ax_environment_perception·ax_safety_monitor·ax_localization_ml |
 | C | ax_vision·ax_manipulation·ax_grasp_ml |
-| D | ax_navigation·ax_fleet_manager·ax_corridor_manager·ax_travel_time_ml, 입고/재고/지점 예약·원장·관제 API |
+| D | ax_navigation·ax_fleet_manager·ax_corridor_manager·ax_travel_time_ml, 입고/재고/지점 예약·원장·관제 상태 Topic과 예산 조회 |
 | E | ax_operations_agent, 중앙/로봇 Agent·추론 어댑터·오프라인 품질 평가 |
 | 공통 K0 | ax_interfaces·ax_bringup·ax_integration_tests·독립 관측기. SROS2 기반 설정·소비자 계약 |
 
@@ -1173,12 +1166,12 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 | robot_2 | AX_2 개발 형상·별도 가상 물리 특성은 적용. 최종 적재함 크기·높이·유지 구조·허용 하중은 미확정 |
 | 인계 | 두 로봇의 상대 위치·허용 오차 |
 | 이동 방식 | 개별 이동·합류 또는 대형 유지 |
-| 최종 구동 차단 | A의 구현 방식(바퀴 게이트, 팔 궤적 차단), 실제 정지 확인 속도 임계값·지속 시간 |
-| 인터페이스 | 하위 Action 이름, 필드 타입, enum 값, 상태 만료 시간. 초안과 결정 항목은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 7절 |
+| 최종 구동 차단 | A 게이트 내부 구현 방식. 경로·수락 조건·정지 확인 초깃값은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3절·D-06 |
+| 인터페이스 | 하위 Action 이름, 필드 타입, enum 값, 상태 만료 시간. 초안과 결정 항목은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 7·8절 |
 | 통로·대기 지점 | 통로 폭, 외형 경계, 완전 이탈 여유 |
 | 최종 속도 제어 경로 | Nav2/ros2_control/안전 게이트 통합 검증 |
 | AI 모델 실행 | CPU/GPU 메모리, 응답 지연, 오류, 외부 전송 범위 |
-| 운영 무인 후속 계약 | 실패 종료 판정 기한, 격리·알림 타입, 사후 재등록 승인·예산 재발급, 리셋·전체 재기동 허용 범위와 검증 |
+| 운영 무인 후속 계약 | 실패 종료 판정 기한, 사후 재등록 승인·예산 재발급, 리셋·전체 재기동 허용 범위와 검증. 격리·알림 타입은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.1·6절. 리셋 범위 확정 전에는 D가 `ClearFault`를 자동 호출하지 않는다 |
 | 시간초과·재시도 수치 | 시뮬레이션 테스트 기반 조정 |
 | 모델 채택 기준 | 모델별 기준선, 안전·성능 개선 목표 |
 
@@ -1187,12 +1180,12 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 - LLM 모델·외부 API 또는 로컬 서버·지연·동시성·비용·장애 정책과 외부 전송 필드·보관 범위.
 - 도구별 허용 인자·상태 조건·Service/Action 타입과 실행 원장 저장 형식·보존 기간.
 - SROS2 키·권한 배포·갱신·취소와 D 발신자 대조, 실제 인증 계약 시험·담당 배정.
-- 작업별 복구 예산·Agent 보류 횟수·빈도·확인 기한·재시작 허용 목록·상태 유효기간.
+- 작업별 복구 예산·Agent 보류 횟수·빈도·확인 기한·재시작 허용 목록·상태 유효기간(상태 유효기간 초깃값은 계약 D-05).
 - 그룹·Agent 보류 접수 상한과 발신 위반·빈도 한도, 조건 소유자·사유별 종료 규칙.
 - D 검증기 거절 사례·Agent shadow 출력의 연속 통과 건수, 수신 세대 정책과 평가 예산.
-- 단조 시계로 sim time 진행을 감시하는 정지 판정 임계값, 낮은 RTF 허용 범위와 재동기화 조건.
-- A의 D 연결 감시·C lease·갱신 응답 기한, 취소 실패 처리, 재시도 정산 필드와 하위 ID 정규화 규칙.
-- 후보 snapshot·선호도 필드·유효성, NEED_REOBSERVATION_MOVE의 종류별 예산 설정.
+- 단조 시계로 sim time 진행을 감시하는 정지 판정 임계값, 낮은 RTF 허용 범위와 재동기화 조건(초깃값은 계약 D-09).
+- A의 D 연결 감시·C lease·갱신 응답 기한, 취소 실패 처리, 재시도 정산 필드(기한 초깃값은 계약 D-07, 하위 ID 규칙은 D-03).
+- 후보 snapshot·선호도 유효성, NEED_REOBSERVATION_MOVE의 종류별 예산 수치(필드·예산 종류는 계약 4.3·8절).
 - 호스트 서비스 관리자·공용 감독기의 대상 목록·재시작 제한·영속 예산과 복원 순서.
 - CLOCK_BOOTTIME·host_id·boot_id 저장·일회 복원 처리, 다른 호스트·부팅의 수동 복원 절차.
 - WSL2 절전 복귀 시 감독 시계의 독립 측정·허용 오차·운용 제약, 별도 영속 재시작 원장.
@@ -1200,12 +1193,10 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 - 최종 구동 차단·정지 확인·하중 유지 및 실제 흡착·적재 판정의 구현·검증.
 - 최소 월드의 치수·상자·작업 자세·인계 허용 오차와 평가 기준.
 - 확정한 번호별 배정의 세부 공수·기간·일자, K0·공통 통합 시험 조정 담당.
-
-
-- 전체 계획 스키마·허용 operation·검증 규칙·재계획 예산·독립 결과 확인.
+- 전체 계획 검증 규칙·재계획 예산·독립 결과 확인(계획 스키마는 `AgentPlan`, 허용 operation은 계약 D-11).
 - 입고 사건/재입고 식별·물품 ID, 보관 규칙·용량·위치 예약·재고 원자 갱신·지도 revision.
 - 예비 대수·동시 가동 수·역할별 능력 검증·회수/인계·Agent 문맥/권한 이관·오래된 로봇 복귀 차단.
-- 통합 관제 화면 기술·조회/사후 등록 API·표시/외부 알림·화면 정지 요청 계약.
+- 통합 관제 화면 기술·사후 등록 API·표시/외부 알림(조회 경로와 화면 정지 요청은 계약 8절·`RequestSafeStop`).
 
 ## 15. 추가 검토 사항
 
@@ -1213,9 +1204,9 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 
 | 항목 | 보완할 내용 |
 |---|---|
-| 네임스페이스 | `/ax` 접두사의 적용·생략 기준과 최종 절대 경로 확정 |
-| 종료 상태 | Action의 `TIMED_OUT`과 전역 작업 상태 표의 대응 규칙 정의 |
-| 계약 완성 | 생략된 필드 타입, enum, 정차·물체·공구 목표 pose의 프레임, 추가 메시지 스키마 확정 |
+| 네임스페이스 | 계약 D-01과 4절로 반영 |
+| 종료 상태 | 계약 8절 `TIMED_OUT` 규칙으로 반영 |
+| 계약 완성 | 계약 4~8절과 `src/ax_interfaces/` 초안으로 반영. 승인은 계약 7절 절차 |
 | 최종 구동 제어 | ros2_control 전환 후 주행·조작 명령과 A 안전 차단의 실제 제어 경로·우선순위 확정 |
 | 정량 완료 기준 | 목표 완료율, 응답 지연, 복구시간, ML 성능, 반복 횟수 설정 |
 

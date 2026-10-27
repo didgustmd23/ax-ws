@@ -1,0 +1,6 @@
+# 서버 D4. 운영자·시험 하네스의 수동 전체 안전 정지 요청(설계 9.5절). 해제는 이 Service로 하지 않는다.
+string request_id               # 요청 ID. 재전송은 같은 응답
+string reason                   # 정지 사유(기록용)
+---
+bool accepted                   # SAFE_STOP 진입 요청 수락 여부. 실제 정지 완료가 아니다
+string reason_code              # 거절 사유 코드

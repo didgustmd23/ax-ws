@@ -1,12 +1,12 @@
 # 서버: 조건 소유 영역. A·B·C는 로봇별, D는 fleet 하나. 등록 조건 재판정 요청(설계 9.6절).
-string request_id
-string hold_id
-string precondition_id
-string robot_id
+string request_id               # 요청 ID. 재전송은 같은 응답
+string hold_id                  # 재판정을 요청한 보류 ID
+string precondition_id          # 재판정할 계획 조건 ID
+string robot_id                 # 조건 대상 로봇 ID(D 조건이면 빈 문자열)
 ---
 uint8 UNKNOWN=0                 # 응답을 채우지 않거나 판정 불가. 보류를 유지한다
-uint8 SATISFIED=1
-uint8 NOT_SATISFIED=2
-uint8 result
-string reason_code
-string[] evidence_state_ids
+uint8 SATISFIED=1               # 조건 충족
+uint8 NOT_SATISFIED=2           # 조건 불충족
+uint8 result                    # 위 상수 중 판정 결과
+string reason_code              # 판정 사유 코드
+string[] evidence_state_ids     # 근거 상태 ID 목록. 형식: state:<source_id>:<source_session_id>:<revision> 또는 원장 ID(hold-…, fail-…, rcpt-…)

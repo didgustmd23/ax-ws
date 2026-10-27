@@ -1,0 +1,11 @@
+# 서버 A4, 클라이언트는 시험 하네스와 사후 조치 경로만. D는 본설계 14절 리셋 범위 확정 전 자동 호출하지 않는다.
+# 조건부 고장 해제(설계 8절 안전 실행). 해제 조건을 A4가 직접 확인하고 하나라도 어긋나면 거절한다.
+# 조건: 실제 정지, SYSTEM_SAFE_STOP 아님, 고장 원인 해소 확인, 진행 중 로컬 작업 없음.
+string request_id               # 요청 ID. 재전송은 같은 응답
+string robot_id                 # 대상 로봇 ID
+string fault_code               # 해제할 고장 코드(ActuationState.block_reasons의 FAULT_LOCK 원인)
+string reason                   # 해제 사유(기록용)
+---
+bool accepted                   # 해제 수락 여부. 수락해도 다른 차단 사유는 유지된다
+string reason_code              # 거절 사유 코드(예: NOT_STOPPED, CAUSE_ACTIVE)
+string[] remaining_block_reasons # 해제 후에도 남은 구동 차단 사유(D-12 코드)

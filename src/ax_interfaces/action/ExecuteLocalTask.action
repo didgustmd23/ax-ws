@@ -1,33 +1,36 @@
 # D → A. 역할별 로컬 작업(설계 7.1절). 주행은 포함하지 않으며 D가 Nav2로 직접 조정한다.
-uint8 UNSPECIFIED=0            # 채우지 않은 Goal은 거절한다
-uint8 LOCK_HANDOFF=1
-uint8 UNLOCK_HANDOFF=2
-uint8 PICK_AND_STOW=3
-uint8 UNLOAD_AND_PLACE=4
-uint8 CONFIRM_LOAD=5
-uint8 RETRACT_ARM=6
-ExecutionRef execution
-uint8 task_kind
-string peer_robot_id             # 인계 상대 로봇. A4가 상대 상태를 구독하는 대상(인계 없는 작업은 빈 문자열)
-string object_id
-uint64 inventory_revision       # 물품 상태 revision(InventoryEntry.revision)
-string source_location_id
-uint64 source_location_revision
-string destination_location_id
-uint64 destination_location_revision
-uint64 map_revision
-BudgetGrant[] budgets
-bool has_candidate_preference
-CandidatePreference candidate_preference
+uint8 UNSPECIFIED=0             # 채우지 않은 Goal은 거절한다
+uint8 LOCK_HANDOFF=1            # 인계 잠금(두 로봇 정지 확인)
+uint8 UNLOCK_HANDOFF=2          # 인계 잠금 해제
+uint8 PICK_AND_STOW=3           # 집어서 운송 로봇에 적재
+uint8 UNLOAD_AND_PLACE=4        # 적재물을 내려 배치
+uint8 CONFIRM_LOAD=5            # 적재 상태 확인
+uint8 RETRACT_ARM=6             # 팔 안전 위치로 후퇴
+ExecutionRef execution          # 실행 식별자 묶음
+uint8 task_kind                 # 위 상수 중 로컬 작업 종류
+string peer_robot_id            # 인계 상대 로봇. A4가 상대 상태를 구독하는 대상(인계 없는 작업은 빈 문자열)
+string object_id                # 대상 물체 ID
+uint64 inventory_revision       # D가 Goal 전송 직전 원장과 대조한 물품 revision(InventoryEntry.revision). A는 기록하고 결과와 함께 보고
+string source_location_id       # 출발 등록 지점 ID
+uint64 source_location_revision # D가 대조한 출발 지점 revision. A는 기록·보고
+string destination_location_id  # 도착 등록 지점 ID
+uint64 destination_location_revision # D가 대조한 도착 지점 revision. A는 기록·보고
+# 작업별 PICK·PLACE 대상(계약 5.2절). LOCK_HANDOFF·UNLOCK_HANDOFF·CONFIRM_LOAD·RETRACT_ARM은 두 pose를 비우며 판정에 쓰지 않는다. PICK_AND_STOW: 출발지 물체 → 운송 로봇 적재함, UNLOAD_AND_PLACE: 적재함 물체 → 목적지 배치 위치.
+geometry_msgs/PoseStamped pick_pose  # PICK 대상 기준 pose. PICK_AND_STOW는 map 기준 원장의 물체 마지막 확인 pose, UNLOAD_AND_PLACE는 robot_<상대>/cargo_link 기준 적재 위치
+geometry_msgs/PoseStamped place_pose # PLACE 대상 pose. PICK_AND_STOW는 robot_<상대>/cargo_link 기준 적재 위치, UNLOAD_AND_PLACE는 map 기준 도착 지점 RegisteredLocation.pose
+uint64 map_revision             # D가 대조한 지도 revision. A는 기록·보고
+BudgetGrant[] budgets           # D가 위임한 예산 목록
+bool has_candidate_preference   # 후보 선호가 들어 있는지
+CandidatePreference candidate_preference # 후보 선호(has_candidate_preference일 때만)
 ---
-ResultStatus status
+ResultStatus status             # 결과·오류 코드
 uint8 object_hold_state         # ToolHoldState 상수. 0(UNKNOWN)은 미보유로 해석하지 않는다
-uint8 load_state                # LoadState 상수(운송 로봇 작업일 때)
-AttemptUsage[] usage
-bool need_reobservation_move
-string observation_reason          # C가 보고한 관측 요구 사유 코드
-geometry_msgs/PoseStamped observation_target  # 관측할 대상 기준(map). 차체 목표가 아니며 D가 등록 지점을 고른다
+uint8 load_state                # LoadState 상수. 운송 로봇 작업에서만 의미가 있고 조작 로봇 작업은 0이며 판정에 쓰지 않는다. 운송 작업의 0(UNKNOWN)은 EMPTY가 아니다
+AttemptUsage[] usage            # 시도별 예산 사용 기록
+bool need_reobservation_move    # 재관측에 차체 이동이 필요한지
+string observation_reason       # C가 보고한 관측 요구 사유 코드
+geometry_msgs/PoseStamped observation_target # 관측할 대상 기준(map). 차체 목표가 아니며 D가 등록 지점을 고른다
 ---
-string phase
+string phase                    # 현재 단계 이름
 float32 progress                # 0~1
-AttemptUsage[] usage
+AttemptUsage[] usage            # 시도별 예산 사용 기록

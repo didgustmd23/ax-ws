@@ -1,9 +1,9 @@
 # 서버 D. 통로 진입 허가(설계 7.4절). 같은 request_id 재전송은 중복 허가를 만들지 않는다.
-string corridor_id
-string robot_id
-string request_id
+string corridor_id              # 진입할 통로 ID
+string robot_id                 # 진입할 로봇 ID
+string request_id               # 요청 ID. 재전송은 같은 응답
 ---
-bool granted
-string grant_id
-string reason_code
-uint64 corridor_revision
+bool granted                    # 허가 발급 여부. 진입·점유 확인이 아니다
+string grant_id                 # 허가 ID. 해제·점유 확인에 쓴다
+string reason_code              # 거절 사유 코드(예: CORRIDOR_BLOCKED)
+uint64 corridor_revision        # 판정 시점의 통로 상태 revision(D 원장 영속, 세션과 무관)

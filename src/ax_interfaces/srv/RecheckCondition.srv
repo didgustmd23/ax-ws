@@ -1,4 +1,4 @@
-# 서버: 조건 소유자(A·B·C·D 영역). 등록 조건 재판정 요청(설계 9.6절).
+# 서버: 조건 소유 영역. A·B·C는 로봇별, D는 fleet 하나. 등록 조건 재판정 요청(설계 9.6절).
 string request_id
 string hold_id
 string precondition_id

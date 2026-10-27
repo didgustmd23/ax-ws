@@ -12,4 +12,4 @@ string location_id              # 확정 위치. 이동 중이면 빈 문자열
 string carrier_robot_id         # 들고 있거나 적재한 로봇
 uint64 assignment_generation    # carrier 로봇의 배정 세대
 uint8 state
-bool isolated                   # 실패로 격리된 물품
+bool isolated                   # 실패로 격리된 물품. false만으로 정상 판단하지 않고 state·hold로 확인한다

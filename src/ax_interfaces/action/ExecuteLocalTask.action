@@ -8,6 +8,7 @@ uint8 CONFIRM_LOAD=5
 uint8 RETRACT_ARM=6
 ExecutionRef execution
 uint8 task_kind
+string peer_robot_id             # 인계 상대 로봇. A4가 상대 상태를 구독하는 대상(인계 없는 작업은 빈 문자열)
 string object_id
 uint64 inventory_revision       # 물품 상태 revision(InventoryEntry.revision)
 string source_location_id
@@ -20,11 +21,12 @@ bool has_candidate_preference
 CandidatePreference candidate_preference
 ---
 ResultStatus status
-bool object_held
+uint8 object_hold_state         # ToolHoldState 상수. 0(UNKNOWN)은 미보유로 해석하지 않는다
 uint8 load_state                # LoadState 상수(운송 로봇 작업일 때)
 AttemptUsage[] usage
 bool need_reobservation_move
-string observation_location_id  # 재관측 이동이 필요할 때 요구 지점
+string observation_reason          # C가 보고한 관측 요구 사유 코드
+geometry_msgs/PoseStamped observation_target  # 관측할 대상 기준(map). 차체 목표가 아니며 D가 등록 지점을 고른다
 ---
 string phase
 float32 progress                # 0~1

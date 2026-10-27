@@ -340,9 +340,9 @@ Cosmos는 후보 모델이며 채택·실행 성능·파인튜닝 여부를 확�
 네임스페이스:
 
 ```text
-/ax/fleet/{tasks,teams,robot_status,corridor,agent}
-/ax/robot_1/{executor,safety,localization,navigation,manipulation,ml}
-/ax/robot_2/{executor,safety,localization,navigation,manipulation,ml}
+/ax/fleet/{mode,tasks,teams,robot_status,inventory,receipt,holds,failures,time_validity,corridor,conditions,agent}
+/ax/robot_1/{executor,safety,localization,navigation,manipulation,arm,sensors,load,perception,conditions,failures,agent,ml}
+/ax/robot_2/{executor,safety,localization,navigation,manipulation,arm,sensors,load,perception,conditions,failures,agent,ml}
 ```
 
 아래는 목표 인터페이스다. 원문의 접두사 혼재를 정리하고 현재 결정의 생산자·소비자·갱신 경로를 반영했다. 정확한 절대 경로·타입은 구현 전에 확정한다.

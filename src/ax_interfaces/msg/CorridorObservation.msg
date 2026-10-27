@@ -7,4 +7,4 @@ StateMeta meta
 string corridor_id
 string robot_id
 uint8 observation
-bool position_valid
+bool position_valid             # false면 OUTSIDE(0)여도 통로 해제 근거로 쓰지 않는다

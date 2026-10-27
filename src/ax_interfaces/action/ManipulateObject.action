@@ -6,16 +6,18 @@ ExecutionRef execution
 string object_id
 uint8 operation
 geometry_msgs/PoseStamped target_pose   # 정차·물체·공구 목표 중 operation에 맞는 의미(설계 6절)
-BudgetGrant budget
+BudgetGrant[] budgets           # 집기 시도·재관측 예산을 구분해 위임(설계 7.10절)
 uint64 lease_generation
 bool has_candidate_preference
 CandidatePreference candidate_preference
 ---
 ResultStatus status
-bool object_held
+uint8 object_hold_state         # ToolHoldState 상수. 0(UNKNOWN)은 미보유로 해석하지 않는다
 uint32 attempt_count
 AttemptUsage[] usage
 bool need_reobservation_move
+string observation_reason
+geometry_msgs/PoseStamped observation_target  # 관측할 대상 기준(map). C는 차체 이동을 직접 요청하지 않는다
 ---
 string phase
 float32 progress

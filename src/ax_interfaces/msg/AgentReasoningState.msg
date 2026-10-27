@@ -10,4 +10,4 @@ StateMeta meta
 string sender_agent_id
 uint8 state
 string model_id
-float32 last_latency_s
+float32 last_latency_s          # 마지막 추론 1회 소요 시간(어댑터 단조 시계)

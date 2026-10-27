@@ -1,10 +1,10 @@
 # 서버 D. 구조화 작업 등록(입고 사건 또는 명시적 운반 요청). request_id로 멱등 처리한다.
-string request_id
+string request_id               # 요청 ID. 재전송은 같은 응답
 string receipt_event_id         # 입고 사건이면 채움
-string object_id
-string source_location_id
+string object_id                # 운반할 물체 ID
+string source_location_id       # 출발 등록 지점 ID
 string destination_location_id  # 비우면 D 규칙 또는 중앙 계획이 정함
 ---
-bool accepted
-string task_id
-string reason_code
+bool accepted                   # 등록 수락 여부. 운반 완료가 아니다
+string task_id                  # 생성된 작업 ID
+string reason_code              # 거절 사유 코드

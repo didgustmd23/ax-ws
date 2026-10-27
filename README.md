@@ -67,7 +67,7 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 | [docs/design/DETAILED_DESIGN.md](docs/design/DETAILED_DESIGN.md) | 목표 설계·결정·계약·시험 요구 |
 | [docs/management/TEAM_SCHEDULE.md](docs/management/TEAM_SCHEDULE.md) | A1~E4 작업 분해·담당·의존성·단계·이전 구현 기록 |
 | [docs/design/INTERFACE_CONTRACT.md](docs/design/INTERFACE_CONTRACT.md) | 공통 인터페이스 계약 초안(K0) |
-| `src/ax_interfaces/` | 공통 메시지·서비스·액션 타입 초안(55개). `colcon build --packages-select ax_interfaces` |
+| `src/ax_interfaces/` | 공통 메시지·서비스·액션 타입 초안(62개). `colcon build --packages-select ax_interfaces` |
 | [docs/management/GIT_UPLOAD_POLICY.md](docs/management/GIT_UPLOAD_POLICY.md) | Git 포함·제외 기준, 초안·이전 구현의 정리 원칙 |
 | `docs/assets/diagrams/` | 공유 구성도 HTML·투명 WebP |
 | `src/ax_description/meshes/` | AX_1·AX_2·상자 원본 OBJ·MTL과 분리 메시. [분리 메시 README](src/ax_description/meshes/parts/README.md) |

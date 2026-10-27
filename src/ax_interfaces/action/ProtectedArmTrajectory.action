@@ -1,0 +1,20 @@
+# C4 또는 A3 → A4. 권한에 묶인 보호 팔 궤적(설계 7.5·9.3절). A4가 검사 후 팔 제어기로 넘긴다.
+# 권한 종류: AUTH_C_MANIPULATION(C4의 조작, 부모 goal_id·lease_generation 필수) 또는 AUTH_A3_LOCAL_TASK(A3의 RETRACT_ARM 로컬 작업).
+# A4는 받은 권한 필드를 바꾸지 않고 A3의 CheckCommandLease(ACCEPT)로 확인하고, 실행 중에는 CONTINUE로 계속 확인한다.
+# arm_allowed가 참이어야 하며, 허용 기한이 지나거나 권한이 철회되면 검증된 방식으로 정지한다.
+# 보호 정지는 이 Action·A3와 관계없이 항상 가능하며 흡착은 해제하지 않는다. 이 Action 자체의 UUID는 부모 goal_id와 다르다.
+uint8 AUTH_UNSPECIFIED=0        # 채우지 않은 권한. A4는 거절
+uint8 AUTH_C_MANIPULATION=1     # C4 조작 권한(ManipulateObject Goal과 lease)
+uint8 AUTH_A3_LOCAL_TASK=2      # A3 로컬 작업 권한(현재 ExecuteLocalTask가 RETRACT_ARM일 때만)
+string request_id               # 요청 ID. 재전송은 같은 결과
+uint8 authority                 # 위 AUTH_ 상수 중 권한 종류
+string execution_id             # C 조작: ManipulateObject 실행 ID, A3 로컬: A3가 수락한 ExecuteLocalTask 실행 ID
+string goal_id                  # C 조작: 부모 ManipulateObject Goal UUID(필수). A3 로컬: 빈 문자열이어야 함
+uint64 lease_generation         # C 조작: 유효 lease 세대(필수). A3 로컬: 0이어야 함
+trajectory_msgs/JointTrajectory trajectory  # 관절 궤적(관절 이름·시점별 위치)
+---
+ResultStatus status             # 결과·오류 코드(권한 만료·철회 시 중단, 예: LEASE_REVOKED). 후퇴 완료는 실제 관절 상태로 확인
+string[] block_reasons          # 거절·중단 때의 구동 차단 사유(D-12 코드)
+---
+float32 progress                # 진행률 0~1
+string phase                    # 현재 단계 이름(예: CHECKING, EXECUTING, STOPPING)

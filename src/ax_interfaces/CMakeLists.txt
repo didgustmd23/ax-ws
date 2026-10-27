@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.8)
 project(ax_interfaces)
 
-# 공통 인터페이스 초안(K0). 타입 확정 전까지 schema_version으로 변경을 추적한다.
+# 공통 인터페이스 초안(K0). 변경 추적은 계약 D-14(schema_version, 그 외 타입은 패키지 버전·타입 해시)를 따른다.
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ActuationState.msg"
@@ -33,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ExecutionLeaseRevoke.msg"
   "msg/ExecutionRef.msg"
   "msg/FailureEvent.msg"
+  "msg/FailureEventList.msg"
   "msg/FleetSnapshot.msg"
   "msg/GraspCandidate.msg"
   "msg/GroupTaskList.msg"
@@ -57,14 +59,20 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StateMeta.msg"
   "msg/TimeValidity.msg"
   "msg/ToolHoldState.msg"
+  "srv/CheckCommandLease.srv"
+  "srv/ClearFault.srv"
+  "srv/QueryBudget.srv"
   "srv/RecheckCondition.srv"
   "srv/RegisterTask.srv"
+  "srv/ReleaseCorridor.srv"
   "srv/RequestCorridorEntry.srv"
+  "srv/RequestSafeStop.srv"
   "srv/SetOperationMode.srv"
   "srv/ToolCommand.srv"
   "action/ExecuteLocalTask.action"
   "action/ManipulateObject.action"
-  DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
+  "action/ProtectedArmTrajectory.action"
+  DEPENDENCIES builtin_interfaces std_msgs geometry_msgs trajectory_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)

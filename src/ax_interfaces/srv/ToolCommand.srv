@@ -1,14 +1,16 @@
-# 서버 A2(A의 허용 검사 포함), 클라이언트 C4. 흡착 부착·해제 요청(설계 7.5·7.7절).
+# 서버 A2(A3 CheckCommandLease 확인 포함), 클라이언트 C4. 흡착 부착·해제 요청(설계 7.5·7.7절).
+# A2는 CheckCommandLease 허용과 자기 로봇 actuation_state의 arm_allowed(유효·최신일 때만)를 확인한 뒤 수락한다.
 # 수락은 실제 부착·해제 완료가 아니다. 결과는 AttachState(A)와 ToolHoldState(C)로 확인한다.
-uint8 UNSPECIFIED=0
-uint8 ATTACH=1
-uint8 RELEASE=2
-string request_id
-string robot_id
-string execution_id
-string object_id
-uint64 lease_generation         # 유효한 lease 안에서만 수락. 만료·철회된 세대는 거절
-uint8 command
+uint8 UNSPECIFIED=0             # 채우지 않은 명령. 거절
+uint8 ATTACH=1                  # 흡착 부착 요청
+uint8 RELEASE=2                 # 흡착 해제 요청
+string request_id               # 요청 ID. 재전송은 같은 응답
+string robot_id                 # 대상 로봇 ID
+string execution_id             # 이 명령이 속한 실행 ID
+string goal_id                  # 부모 ManipulateObject Goal UUID(소문자 16진수 32자). C4가 처리 중인 Goal 값을 넣고 A2는 바꾸지 않고 CheckCommandLease에 전달
+string object_id                # 대상 물체 ID
+uint64 lease_generation         # 유효한 lease 세대. A2는 CheckCommandLease 허용 없이 수락하지 않는다
+uint8 command                   # 위 상수 중 명령
 ---
-bool accepted
-string reason_code
+bool accepted                   # 수락 여부(완료 아님)
+string reason_code              # 거절 사유 코드(D-12 구동 차단 사유 또는 D-13 오류 코드, 예: LEASE_EXPIRED)

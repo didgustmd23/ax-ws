@@ -1,24 +1,25 @@
 # A → C. 조작 실행(설계 7.5절). Goal은 초기화 정보만 담고 물리 실행 권한은 lease로 받는다.
-uint8 UNSPECIFIED=0            # 채우지 않은 Goal은 거절한다
-uint8 PICK=1
-uint8 PLACE=2
-ExecutionRef execution
-string object_id
-uint8 operation
-geometry_msgs/PoseStamped target_pose   # 정차·물체·공구 목표 중 operation에 맞는 의미(설계 6절)
+uint8 UNSPECIFIED=0             # 채우지 않은 Goal은 거절한다
+uint8 PICK=1                    # 집기
+uint8 PLACE=2                   # 놓기
+string peer_robot_id            # 인계 상대 로봇 ID. C4는 /ax/fleet/tasks의 작업·인계·배정과 일치하는지 확인. 인계 없는 조작은 빈 문자열
+ExecutionRef execution          # 실행 식별자 묶음
+string object_id                # 대상 물체 ID
+uint8 operation                 # 위 상수 중 조작 종류
+geometry_msgs/PoseStamped target_pose # A3가 PICK이면 ExecuteLocalTask의 pick_pose, PLACE면 place_pose를 그대로 넣는다. 프레임은 header.frame_id(map 또는 robot_<상대>/cargo_link). C는 PICK에서 관측으로 다시 계산한다
 BudgetGrant[] budgets           # 집기 시도·재관측 예산을 구분해 위임(설계 7.10절)
-uint64 lease_generation
-bool has_candidate_preference
-CandidatePreference candidate_preference
+uint64 lease_generation         # Goal을 보낼 때 A3 원장의 이 execution_id 마지막 lease 세대(첫 Goal이면 0, 기록용). 물리 시도 권한이 아니며 lease는 goal_id로 묶인 FIRST 요청으로 받는다
+bool has_candidate_preference   # 후보 선호가 들어 있는지
+CandidatePreference candidate_preference # 후보 선호(has_candidate_preference일 때만)
 ---
-ResultStatus status
+ResultStatus status             # 결과·오류 코드
 uint8 object_hold_state         # ToolHoldState 상수. 0(UNKNOWN)은 미보유로 해석하지 않는다
-uint32 attempt_count
-AttemptUsage[] usage
-bool need_reobservation_move
-string observation_reason
-geometry_msgs/PoseStamped observation_target  # 관측할 대상 기준(map). C는 차체 이동을 직접 요청하지 않는다
+uint32 attempt_count            # 실제 시작한 물리 시도 수
+AttemptUsage[] usage            # 시도별 예산 사용 기록
+bool need_reobservation_move    # 재관측에 차체 이동이 필요한지
+string observation_reason       # 관측 요구 사유 코드
+geometry_msgs/PoseStamped observation_target # 관측할 대상 기준(map). C는 차체 이동을 직접 요청하지 않는다
 ---
-string phase
-float32 progress
-AttemptUsage[] usage
+string phase                    # 현재 단계 이름
+float32 progress                # 진행률 0~1
+AttemptUsage[] usage            # 시도별 예산 사용 기록

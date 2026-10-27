@@ -3,6 +3,7 @@
 > 상태: **초안**. 생산자·소비자 승인 전이며 구현·동작을 뜻하지 않는다.
 > 기준 설계는 [통합 상세설계](DETAILED_DESIGN.md) 6·7절, 일정은 [팀 공통 일정](../management/TEAM_SCHEDULE.md)의 K0(W0~W1, 승인 11-08)이다.
 > 타입 정의는 `src/ax_interfaces/`의 `.msg`·`.srv`·`.action`이며, 이 문서는 이름·방향·QoS·최신성·소유 작업을 정한다.
+> 구성도: [인터페이스 관계](../assets/diagrams/ax-interfaces.html)(4절 묶음 개요) · [lease·명령 확인 순서](../assets/diagrams/ax-lease.html)(5.2절). 구성도는 이름·방향만 보이며 값의 기준은 이 문서다.
 
 ## 1. 범위와 승인 절차
 

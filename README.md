@@ -35,7 +35,7 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 
 ![AX 전체 시스템 — 입고부터 재고 갱신까지](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=89df46995ea9)
 
-[인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp) · [상세 기능 구성도](https://didgustmd23.github.io/ax-ws/functions.html) ([HTML](docs/assets/diagrams/ax-functions.html))
+[인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp) · [상세 기능 구성도](https://didgustmd23.github.io/ax-ws/functions.html) ([HTML](docs/assets/diagrams/ax-functions.html)) · [인터페이스 관계](https://didgustmd23.github.io/ax-ws/interfaces.html) ([HTML](docs/assets/diagrams/ax-interfaces.html)) · [lease·명령 확인 순서](https://didgustmd23.github.io/ax-ws/lease.html) ([HTML](docs/assets/diagrams/ax-lease.html))
 
 웹 링크는 main 반영과 GitHub Pages 최초 배포 후 사용할 수 있다. 배포 전에는 [전체 구성도 HTML](docs/assets/diagrams/ax-system.html)을 내려받아 브라우저로 연다.
 
@@ -44,7 +44,7 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 
 저장소의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 선택한다. 이후 main에서 배포 파일이 변경되면 `Publish AX diagrams` 워크플로가 사이트를 갱신한다. 수동 실행은 main을 선택한다.
 
-공개 대상은 `docs/assets/diagrams/`에서 명시한 구성도 HTML 7개와 투명 WebP 7개다. `.archify/`의 작업 원본·JSON·검증 자료·글꼴은 Git과 Pages 배포에서 제외한다.
+공개 대상은 `docs/assets/diagrams/`에서 명시한 구성도 HTML 9개와 투명 WebP 9개다. `.archify/`의 작업 원본·JSON·검증 자료·글꼴은 Git과 Pages 배포에서 제외한다.
 
 </details>
 

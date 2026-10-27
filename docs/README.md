@@ -23,6 +23,8 @@
 |---|---|---|---|---|
 | 전체 시스템 | 입고부터 재고 갱신까지 기능 A~E의 간략 연결 | [열기](assets/diagrams/ax-system.html) | [WebP](assets/diagrams/ax-system.webp) | [overview](https://didgustmd23.github.io/ax-ws/overview.html) |
 | 상세 기능 | 기능 A~E 블록 21개와 데이터 흐름·예비·원장·관제 | [열기](assets/diagrams/ax-functions.html) | [WebP](assets/diagrams/ax-functions.webp) | [functions](https://didgustmd23.github.io/ax-ws/functions.html) |
+| 인터페이스 관계 | 기능 A~E 사이의 공통 인터페이스 4개 묶음(이름·방향만, 값은 계약 4절) | [열기](assets/diagrams/ax-interfaces.html) | [WebP](assets/diagrams/ax-interfaces.webp) | [interfaces](https://didgustmd23.github.io/ax-ws/interfaces.html) |
+| lease·명령 확인 | 조작 1회의 lease 발급·명령 수락 확인·갱신·철회·재동기화 순서(규칙 기준은 계약 5.2절) | [열기](assets/diagrams/ax-lease.html) | [WebP](assets/diagrams/ax-lease.webp) | [lease](https://didgustmd23.github.io/ax-ws/lease.html) |
 | 공동 운반 | 입고·적재·배치·재고 갱신·실패 복구·예비 배정 | [열기](assets/diagrams/ax-transfer.html) | [WebP](assets/diagrams/ax-transfer.webp) | [transfer](https://didgustmd23.github.io/ax-ws/transfer.html) |
 | 최종 차단 권고 | 중앙 계획→D 검증→A 최종 차단·주행/조작 경로 | [열기](assets/diagrams/ax-safety.html) | [WebP](assets/diagrams/ax-safety.webp) | [safety](https://didgustmd23.github.io/ax-ws/safety.html) |
 | 패키지 구성 | A~E·공통 목표 패키지. 그림의 "현재 구현" 표시는 이전 구현(커밋 `4f85007`) 기준 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 3.2.0">
   <meta name="archify-reader-contract" content="declared-wide-v1">
-  <title>AX 전체 목표 구조 — 자동 입고·중앙 계획·D 실행 다이어그램</title>
+  <title>AX 전체 시스템 — 입고부터 재고 갱신까지 다이어그램</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5193,7 +5193,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="블루프린트 / 개정 01"
            data-preset-badge-editorial="에디토리얼 / 현장 노트">
         <div class="pulse-dot"></div>
-        <h1>AX 전체 목표 구조 — 자동 입고·중앙 계획·D 실행</h1>
+        <h1>AX 전체 시스템 — 입고부터 재고 갱신까지</h1>
       </div>
     </div>
 
@@ -5202,8 +5202,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 도판 04">
-      <svg viewBox="0 0 1239 1480" role="img" lang="ko" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
-        <title id="archify-diagram-title">AX 전체 목표 구조 — 자동 입고·중앙 계획·D 실행</title>
+      <svg viewBox="0 0 1270 596" role="img" lang="ko" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
+        <title id="archify-diagram-title">AX 전체 시스템 — 입고부터 재고 갱신까지</title>
         <desc id="archify-diagram-description">Archify로 생성한 아키텍처 다이어그램입니다.</desc>
         <!-- Definitions -->
         <defs>
@@ -5253,548 +5253,210 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <!-- Connection paths (before components for correct z-order) -->
         <g data-graph-role="automatic-crossover" style="--step:0">
-          <path data-graph-role="automatic-crossover-underlay" d="M 260 84 L 353 84" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="receipt" data-edge-to="registry" data-edge-label="입고 사건" data-edge-key="0" data-edge-id="edge-0" data-composition-points="260,84;353,84" data-composition-crossover="halo" data-composition-independent="true" d="M 260 84 L 353 84" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 240 84 L 370 84" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="incoming" data-edge-to="perceive" data-edge-label="입고 감지" data-edge-key="0" data-edge-id="e0" data-composition-points="240,84;370,84" data-composition-crossover="halo" data-composition-independent="true" d="M 240 84 L 370 84" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:1">
-          <path data-graph-role="automatic-crossover-underlay" d="M 573 77 L 979 77" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="registry" data-edge-to="console" data-edge-label="운영 상태" data-edge-key="1" data-edge-id="edge-1" data-composition-points="573,77;979,77" data-composition-crossover="halo" data-composition-independent="true" d="M 573 77 L 979 77" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 570 84 L 627 84 Q 635 84 635 92 L 635 262 Q 635 270 643 270 L 700 270" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="perceive" data-edge-to="ops" data-edge-label="입고·후보·보유" data-edge-key="1" data-edge-id="e1" data-composition-points="570,84;635,84;635,270;700,270" data-composition-crossover="halo" data-composition-independent="true" d="M 570 84 L 627 84 Q 635 84 635 92 L 635 262 Q 635 270 643 270 L 700 270" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:2">
-          <path data-graph-role="automatic-crossover-underlay" d="M 463 128 L 463 220" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="registry" data-edge-to="central" data-edge-label="D FleetSnapshot" data-edge-key="2" data-edge-id="edge-2" data-composition-points="463,128;463,220" data-composition-crossover="halo" data-composition-independent="true" d="M 463 128 L 463 220" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 793 240 L 793 128" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="ops" data-edge-to="agent" data-edge-label="FleetSnapshot" data-edge-key="2" data-edge-id="e2" data-composition-points="793,240;793,128" data-composition-crossover="halo" data-composition-independent="true" d="M 793 240 L 793 128" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:3">
-          <path data-graph-role="automatic-crossover-underlay" d="M 150 308 L 150 324 Q 150 332 158 332 L 321 332 Q 329 332 329 340 L 329 422 Q 329 430 337 430 L 353 430" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="local_arm" data-edge-to="validator" data-edge-label="로컬 의견→D" data-edge-key="3" data-edge-id="edge-3" data-composition-points="150,308;150,332;329,332;329,430;353,430" data-composition-crossover="halo" data-composition-independent="true" d="M 150 308 L 150 324 Q 150 332 158 332 L 321 332 Q 329 332 329 340 L 329 422 Q 329 430 337 430 L 353 430" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 807 128 L 807 240" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="agent" data-edge-to="ops" data-edge-label="계획·제안" data-edge-key="3" data-edge-id="e3" data-composition-points="807,128;807,240" data-composition-crossover="halo" data-composition-independent="true" d="M 807 128 L 807 240" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:4">
-          <path data-graph-role="automatic-crossover-underlay" d="M 886 264 L 902 264 Q 910 264 910 272 L 910 368 Q 910 376 902 376 L 485 376 Q 477 376 477 384 L 477 400" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="local_cargo" data-edge-to="validator" data-edge-label="로컬 의견→D" data-edge-key="4" data-edge-id="edge-4" data-composition-points="886,264;910,264;910,376;477,376;477,400" data-composition-crossover="halo" data-composition-independent="true" d="M 886 264 L 902 264 Q 910 264 910 272 L 910 368 Q 910 376 902 376 L 485 376 Q 477 376 477 384 L 477 400" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 700 284 L 684 284 Q 676 284 676 292 L 676 292 Q 676 300 668 300 L 602 300 Q 594 300 594 292 L 594 285 Q 594 277 586 277 L 570 277" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="ops" data-edge-to="exec" data-edge-label="로컬 작업·주행" data-edge-key="4" data-edge-id="e4" data-composition-points="700,284;676,284;676,300;594,300;594,277;570,277" data-composition-crossover="halo" data-composition-independent="true" d="M 700 284 L 684 284 Q 676 284 676 292 L 676 292 Q 676 300 668 300 L 602 300 Q 594 300 594 292 L 594 285 Q 594 277 586 277 L 570 277" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:5">
-          <path data-graph-role="automatic-crossover-underlay" d="M 463 308 L 463 400" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="central" data-edge-to="validator" data-edge-label="전체 계획" data-edge-key="5" data-edge-id="edge-5" data-composition-points="463,308;463,400" data-composition-crossover="halo" data-composition-independent="true" d="M 463 308 L 463 400" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 484 328 L 484 344 Q 484 352 492 352 L 668 352 Q 676 352 676 344 L 676 306 Q 676 298 684 298 L 700 298" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="exec" data-edge-to="ops" data-edge-label="실행 결과·적재" data-edge-key="5" data-edge-id="e5" data-composition-points="484,328;484,352;676,352;676,298;700,298" data-composition-crossover="halo" data-composition-independent="true" d="M 484 328 L 484 344 Q 484 352 492 352 L 668 352 Q 676 352 676 344 L 676 306 Q 676 298 684 298 L 700 298" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:6">
-          <path data-graph-role="automatic-crossover-underlay" d="M 456 488 L 456 580" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="validator" data-edge-to="runtime" data-edge-label="검증 통과" data-edge-key="6" data-edge-id="edge-6" data-composition-points="456,488;456,580" data-composition-crossover="halo" data-composition-independent="true" d="M 456 488 L 456 580" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 463 240 L 463 128" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="exec" data-edge-to="perceive" data-edge-label="조작 요청" data-edge-key="6" data-edge-id="e6" data-composition-points="463,240;463,128" data-composition-crossover="halo" data-composition-independent="true" d="M 463 240 L 463 128" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:7">
-          <path data-graph-role="automatic-crossover-underlay" d="M 353 458 L 314.5 458 Q 306.5 458 306.5 450 L 306.5 445 Q 306.5 437 298.5 437 L 260 437" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="validator" data-edge-to="pool" data-edge-label="재배정 검사" data-edge-key="7" data-edge-id="edge-7" data-composition-points="353,458;306.5,458;306.5,437;260,437" data-composition-crossover="halo" data-composition-independent="true" d="M 353 458 L 314.5 458 Q 306.5 458 306.5 450 L 306.5 445 Q 306.5 437 298.5 437 L 260 437" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 477 128 L 477 240" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="perceive" data-edge-to="exec" data-edge-label="팔·공구 명령" data-edge-key="7" data-edge-id="e7" data-composition-points="477,128;477,240" data-composition-crossover="halo" data-composition-independent="true" d="M 477 128 L 477 240" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:8">
-          <path data-graph-role="automatic-crossover-underlay" d="M 150 488 L 150 504 Q 150 512 158 512 L 321 512 Q 329 512 329 520 L 329 602 Q 329 610 337 610 L 353 610" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="pool" data-edge-to="runtime" data-edge-label="재배정안 검증" data-edge-key="8" data-edge-id="edge-8" data-composition-points="150,488;150,512;329,512;329,610;353,610" data-composition-crossover="halo" data-composition-independent="true" d="M 150 488 L 150 504 Q 150 512 158 512 L 321 512 Q 329 512 329 520 L 329 602 Q 329 610 337 610 L 353 610" class="a-default" data-animate="edge" style="--step:8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 470 328 L 470 440" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="exec" data-edge-to="robots" data-edge-label="허용된 구동" data-edge-key="8" data-edge-id="e8" data-composition-points="470,328;470,440" data-composition-crossover="halo" data-composition-independent="true" d="M 470 328 L 470 440" class="a-default" data-animate="edge" style="--step:8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:9">
-          <path data-graph-role="automatic-crossover-underlay" d="M 353 638 L 314.5 638 Q 306.5 638 306.5 646 L 306.5 789 Q 306.5 797 298.5 797 L 260 797" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="nav" data-edge-label="주행 요청" data-edge-key="9" data-edge-id="edge-9" data-composition-points="353,638;306.5,638;306.5,797;260,797" data-composition-crossover="halo" data-composition-independent="true" d="M 353 638 L 314.5 638 Q 306.5 638 306.5 646 L 306.5 789 Q 306.5 797 298.5 797 L 260 797" class="a-default" data-animate="edge" style="--step:9" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 370 456 L 232 456 Q 224 456 224 448 L 224 328" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="robots" data-edge-to="sense" data-edge-label="센서·실제 상태" data-edge-key="9" data-edge-id="e9" data-composition-points="370,456;224,456;224,328" data-composition-crossover="halo" data-composition-independent="true" d="M 370 456 L 232 456 Q 224 456 224 448 L 224 328" class="a-default" data-animate="edge" style="--step:9" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:10">
-          <path data-graph-role="automatic-crossover-underlay" d="M 449 668 L 449 760" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="executor" data-edge-label="로컬 작업" data-edge-key="10" data-edge-id="edge-10" data-composition-points="449,668;449,760" data-composition-crossover="halo" data-composition-independent="true" d="M 449 668 L 449 760" class="a-default" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 240 277 L 370 277" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="sense" data-edge-to="exec" data-edge-label="안전 상태" data-edge-key="10" data-edge-id="e10" data-composition-points="240,277;370,277" data-composition-crossover="halo" data-composition-independent="true" d="M 240 277 L 370 277" class="a-default" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:11">
-          <path data-graph-role="automatic-crossover-underlay" d="M 573 797 L 666 797" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="executor" data-edge-to="manip" data-edge-label="조작 Action" data-edge-key="11" data-edge-id="edge-11" data-composition-points="573,797;666,797" data-composition-crossover="halo" data-composition-independent="true" d="M 573 797 L 666 797" class="a-default" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 140 328 L 140 429 Q 140 437 148 437 L 792 437 Q 800 437 800 429 L 800 328" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="sense" data-edge-to="ops" data-edge-label="위치·통로 관측" data-edge-key="11" data-edge-id="e11" data-composition-points="140,328;140,437;800,437;800,328" data-composition-crossover="halo" data-composition-independent="true" d="M 140 328 L 140 429 Q 140 437 148 437 L 792 437 Q 800 437 800 429 L 800 328" class="a-default" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:12">
-          <path data-graph-role="automatic-crossover-underlay" d="M 666 458 L 573 458" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="perception" data-edge-to="validator" data-edge-label="유효성" data-edge-key="12" data-edge-id="edge-12" data-composition-points="666,458;573,458" data-composition-crossover="halo" data-composition-independent="true" d="M 666 458 L 573 458" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:13">
-          <path data-graph-role="automatic-crossover-underlay" d="M 886 444 L 902 444 Q 910 444 910 452 L 910 962 Q 910 970 902 970 L 573 970" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="perception" data-edge-to="gate" data-edge-label="안전 요구" data-edge-key="13" data-edge-id="edge-13" data-composition-points="886,444;910,444;910,970;573,970" data-composition-crossover="halo" data-composition-independent="true" d="M 886 444 L 902 444 Q 910 444 910 452 L 910 962 Q 910 970 902 970 L 573 970" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:14">
-          <path data-graph-role="automatic-crossover-underlay" d="M 150 848 L 150 886 Q 150 894 158 894 L 455 894 Q 463 894 463 902 L 463 940" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="nav" data-edge-to="gate" data-edge-label="속도 명령" data-edge-key="14" data-edge-id="edge-14" data-composition-points="150,848;150,894;463,894;463,940" data-composition-crossover="halo" data-composition-independent="true" d="M 150 848 L 150 886 Q 150 894 158 894 L 455 894 Q 463 894 463 902 L 463 940" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:15">
-          <path data-graph-role="automatic-crossover-underlay" d="M 682 848 L 682 948 Q 682 956 674 956 L 573 956" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="manip" data-edge-to="gate" data-edge-label="팔·공구 요청" data-edge-key="15" data-edge-id="edge-15" data-composition-points="682,848;682,956;573,956" data-composition-crossover="halo" data-composition-independent="true" d="M 682 848 L 682 948 Q 682 956 674 956 L 573 956" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:16">
-          <path data-graph-role="automatic-crossover-underlay" d="M 260 977 L 276 977 Q 284 977 284 969 L 284 924 Q 284 916 292 916 L 441 916 Q 449 916 449 924 L 449 940" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="guard" data-edge-to="gate" data-edge-label="보호·차단" data-edge-key="16" data-edge-id="edge-16" data-composition-points="260,977;284,977;284,916;449,916;449,940" data-composition-crossover="halo" data-composition-independent="true" d="M 260 977 L 276 977 Q 284 977 284 969 L 284 924 Q 284 916 292 916 L 441 916 Q 449 916 449 924 L 449 940" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:17">
-          <path data-graph-role="automatic-crossover-underlay" d="M 463 1028 L 463 1120" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="gate" data-edge-to="control" data-edge-label="허용 시" data-edge-key="17" data-edge-id="edge-17" data-composition-points="463,1028;463,1120" data-composition-crossover="halo" data-composition-independent="true" d="M 463 1028 L 463 1120" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:18">
-          <path data-graph-role="automatic-crossover-underlay" d="M 463 1208 L 463 1300" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="control" data-edge-to="robots" data-edge-label="구동" data-edge-key="18" data-edge-id="edge-18" data-composition-points="463,1208;463,1300" data-composition-crossover="halo" data-composition-independent="true" d="M 463 1208 L 463 1300" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:19">
-          <path data-graph-role="automatic-crossover-underlay" d="M 573 1351 L 666 1351" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="robots" data-edge-to="feedback" data-edge-label="센서·상태" data-edge-key="19" data-edge-id="edge-19" data-composition-points="573,1351;666,1351" data-composition-crossover="halo" data-composition-independent="true" d="M 573 1351 L 666 1351" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:20">
-          <path data-graph-role="automatic-crossover-underlay" d="M 776 1388 L 776 1404 Q 776 1412 768 1412 L 292 1412 Q 284 1412 284 1404 L 284 999 Q 284 991 276 991 L 260 991" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="feedback" data-edge-to="guard" data-edge-label="상태 감시" data-edge-key="20" data-edge-id="edge-20" data-composition-points="776,1388;776,1412;284,1412;284,991;260,991" data-composition-crossover="halo" data-composition-independent="true" d="M 776 1388 L 776 1404 Q 776 1412 768 1412 L 292 1412 Q 284 1412 284 1404 L 284 999 Q 284 991 276 991 L 260 991" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:21">
-          <path data-graph-role="automatic-crossover-underlay" d="M 776 1300 L 776 1094 Q 776 1086 784 1086 L 968 1086 Q 976 1086 976 1078 L 976 520 Q 976 512 968 512 L 791 512 Q 783 512 783 504 L 783 488" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="feedback" data-edge-to="perception" data-edge-label="관측" data-edge-key="21" data-edge-id="edge-21" data-composition-points="776,1300;776,1086;976,1086;976,512;783,512;783,488" data-composition-crossover="halo" data-composition-independent="true" d="M 776 1300 L 776 1094 Q 776 1086 784 1086 L 968 1086 Q 976 1086 976 1078 L 976 520 Q 976 512 968 512 L 791 512 Q 783 512 783 504 L 783 488" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:22">
-          <path data-graph-role="automatic-crossover-underlay" d="M 790 1300 L 790 848" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="feedback" data-edge-to="manip" data-edge-label="영상·신호" data-edge-key="22" data-edge-id="edge-22" data-composition-points="790,1300;790,848" data-composition-crossover="halo" data-composition-independent="true" d="M 790 1300 L 790 848" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:23">
-          <path data-graph-role="automatic-crossover-underlay" d="M 470 760 L 470 668" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="executor" data-edge-to="runtime" data-edge-label="실제 결과" data-edge-key="23" data-edge-id="edge-23" data-composition-points="470,760;470,668" data-composition-crossover="halo" data-composition-independent="true" d="M 470 760 L 470 668" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:24">
-          <path data-graph-role="automatic-crossover-underlay" d="M 573 617 L 589 617 Q 597 617 597 609 L 597 99 Q 597 91 589 91 L 573 91" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="registry" data-edge-label="배치 확인" data-edge-key="24" data-edge-id="edge-24" data-composition-points="573,617;597,617;597,91;573,91" data-composition-crossover="halo" data-composition-independent="true" d="M 573 617 L 589 617 Q 597 617 597 609 L 597 99 Q 597 91 589 91 L 573 91" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:25">
-          <path data-graph-role="automatic-crossover-underlay" d="M 484 668 L 484 684 Q 484 692 492 692 L 1081 692 Q 1089 692 1089 684 L 1089 488" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="ledger" data-edge-label="실행 기록" data-edge-key="25" data-edge-id="edge-25" data-composition-points="484,668;484,692;1089,692;1089,488" data-composition-crossover="halo" data-composition-independent="true" d="M 484 668 L 484 684 Q 484 692 492 692 L 1081 692 Q 1089 692 1089 684 L 1089 488" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:26">
-          <path data-graph-role="automatic-crossover-underlay" d="M 477 580 L 477 564 Q 477 556 485 556 L 679.8 556 Q 687.8 556 687.8 564 L 687.8 660 Q 687.8 668 695.8 668 L 947 668 Q 955 668 955 660 L 955 272 Q 955 264 963 264 L 979 264" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="failure" data-edge-label="복구 소진" data-edge-key="26" data-edge-id="edge-26" data-composition-points="477,580;477,556;687.8,556;687.8,668;955,668;955,264;979,264" data-composition-crossover="halo" data-composition-independent="true" d="M 477 580 L 477 564 Q 477 556 485 556 L 679.8 556 Q 687.8 556 687.8 564 L 687.8 660 Q 687.8 668 695.8 668 L 947 668 Q 955 668 955 660 L 955 272 Q 955 264 963 264 L 979 264" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:27">
-          <path data-graph-role="automatic-crossover-underlay" d="M 1089 220 L 1089 128" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="failure" data-edge-to="console" data-edge-label="알림" data-edge-key="27" data-edge-id="edge-27" data-composition-points="1089,220;1089,128" data-composition-crossover="halo" data-composition-independent="true" d="M 1089 220 L 1089 128" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:28">
-          <path data-graph-role="automatic-crossover-underlay" d="M 1096 400 L 1096 308" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="ledger" data-edge-to="failure" data-edge-label="격리·예산" data-edge-key="28" data-edge-id="edge-28" data-composition-points="1096,400;1096,308" data-composition-crossover="halo" data-composition-independent="true" d="M 1096 400 L 1096 308" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:29">
-          <path data-graph-role="automatic-crossover-underlay" d="M 353 624 L 260 624" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="evaluation" data-edge-label="실행 결과" data-edge-key="29" data-edge-id="edge-29" data-composition-points="353,624;260,624" data-composition-crossover="halo" data-composition-independent="true" d="M 353 624 L 260 624" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:30">
-          <path data-graph-role="automatic-crossover-underlay" d="M 573 631 L 635.9 631 Q 643.9 631 643.9 623 L 643.9 272 Q 643.9 264 635.9 264 L 573 264" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="runtime" data-edge-to="central" data-edge-label="사건·결과·재계획 요청" data-edge-key="30" data-edge-id="edge-30" data-composition-points="573,631;643.9,631;643.9,264;573,264" data-composition-crossover="halo" data-composition-independent="true" d="M 573 631 L 635.9 631 Q 643.9 631 643.9 623 L 643.9 272 Q 643.9 264 635.9 264 L 573 264" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:31">
-          <path data-graph-role="automatic-crossover-underlay" d="M 776 760 L 776 520 Q 776 512 768 512 L 478 512 Q 470 512 470 504 L 470 488" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="manip" data-edge-to="validator" data-edge-label="후보·보유 판정" data-edge-key="31" data-edge-id="edge-31" data-composition-points="776,760;776,512;470,512;470,488" data-composition-crossover="halo" data-composition-independent="true" d="M 776 760 L 776 520 Q 776 512 768 512 L 478 512 Q 470 512 470 504 L 470 488" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:32">
-          <path data-graph-role="automatic-crossover-underlay" d="M 762 1300 L 762 1284 Q 762 1276 754 1276 L 337 1276 Q 329 1276 329 1268 L 329 660 Q 329 652 337 652 L 353 652" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="feedback" data-edge-to="runtime" data-edge-label="실제 정지·적재" data-edge-key="32" data-edge-id="edge-32" data-composition-points="762,1300;762,1276;329,1276;329,652;353,652" data-composition-crossover="halo" data-composition-independent="true" d="M 762 1300 L 762 1284 Q 762 1276 754 1276 L 337 1276 Q 329 1276 329 1268 L 329 660 Q 329 652 337 652 L 353 652" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:33">
-          <path data-graph-role="automatic-crossover-underlay" d="M 449 400 L 449 384 Q 449 376 441 376 L 346.09999999999997 376 Q 338.09999999999997 376 338.09999999999997 368 L 338.09999999999997 279 Q 338.09999999999997 271 330.09999999999997 271 L 260 271" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="validator" data-edge-to="local_arm" data-edge-label="D의 로봇별 snapshot" data-edge-key="33" data-edge-id="edge-33" data-composition-points="449,400;449,376;338.09999999999997,376;338.09999999999997,271;260,271" data-composition-crossover="halo" data-composition-independent="true" d="M 449 400 L 449 384 Q 449 376 441 376 L 346.09999999999997 376 Q 338.09999999999997 376 338.09999999999997 368 L 338.09999999999997 279 Q 338.09999999999997 271 330.09999999999997 271 L 260 271" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        </g>
-        <g data-graph-role="automatic-crossover" style="--step:34">
-          <path data-graph-role="automatic-crossover-underlay" d="M 491 400 L 491 362 Q 491 354 499 354 L 768 354 Q 776 354 776 346 L 776 308" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="validator" data-edge-to="local_cargo" data-edge-label="D의 로봇별 snapshot" data-edge-key="34" data-edge-id="edge-34" data-composition-points="491,400;491,354;776,354;776,308" data-composition-crossover="halo" data-composition-independent="true" d="M 491 400 L 491 362 Q 491 354 499 354 L 768 354 Q 776 354 776 346 L 776 308" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 900 284 L 1030 284" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="ops" data-edge-to="console" data-edge-label="상태·알림" data-edge-key="12" data-edge-id="e12" data-composition-points="900,284;1030,284" data-composition-crossover="halo" data-composition-independent="true" d="M 900 284 L 1030 284" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
 
         <!-- Components -->
-        <g id="node-receipt" data-node-id="receipt" data-node-label="B/C · 입고 관측" tabindex="0" role="button" aria-label="B/C · 입고 관측 포커스, 신규 물품·식별·출처, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="신규 물품·식별·출처" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>B/C · 입고 관측 · 신규 물품·식별·출처 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="40" y="40" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="40" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 46) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">B/C · 입고 관측</text>
-        <text data-detail="context" x="150" y="98" class="t-muted" font-size="9" text-anchor="middle">신규 물품·식별·출처</text>
-        <text data-detail="fine" x="150" y="120" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-registry" data-node-id="registry" data-node-label="D · 입고·재고·지점 관리" tabindex="0" role="button" aria-label="D · 입고·재고·지점 관리 포커스, 작업 자동 등록·예약·지도 버전, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="작업 자동 등록·예약·지도 버전" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 입고·재고·지점 관리 · 작업 자동 등록·예약·지도 버전 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="40" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="40" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 46) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 입고·재고·지점 관리</text>
-        <text data-detail="context" x="463" y="98" class="t-muted" font-size="9" text-anchor="middle">작업 자동 등록·예약·지도 버전</text>
-        <text data-detail="fine" x="463" y="120" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-console" data-node-id="console" data-node-label="D · 통합 관제 화면 1개" tabindex="0" role="button" aria-label="D · 통합 관제 화면 1개 포커스, 조회·알림·사후 조치 등록, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="조회·알림·사후 조치 등록" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 통합 관제 화면 1개 · 조회·알림·사후 조치 등록 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="979" y="40" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="979" y="40" width="220" height="88" rx="8" class="c-external" data-animate="node" style="--step:2" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(985 46) scale(0.6875)">
+        <g id="node-incoming" data-node-id="incoming" data-node-label="입고 물품" tabindex="0" role="button" aria-label="입고 물품 포커스, 등록 입고 구역, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="등록 입고 구역" data-node-tag="외부 입력" data-node-context="아키텍처 구성요소">
+          <title>입고 물품 · 등록 입고 구역 · 아키텍처 구성요소 · 외부 입력</title>
+          <rect x="40" y="40" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="40" y="40" width="200" height="88" rx="8" class="c-external" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(46 46) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1089" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 통합 관제 화면 1개</text>
-        <text data-detail="context" x="1089" y="98" class="t-muted" font-size="9" text-anchor="middle">조회·알림·사후 조치 등록</text>
-        <text data-detail="fine" x="1089" y="120" class="t-external" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="140" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">입고 물품</text>
+        <text data-detail="context" x="140" y="98" class="t-muted" font-size="9" text-anchor="middle">등록 입고 구역</text>
+        <text data-detail="fine" x="140" y="120" class="t-external" font-size="7" text-anchor="middle">외부 입력</text>
         </g>
 
-        <g id="node-local_arm" data-node-id="local_arm" data-node-label="E · 조작 로봇 Agent" tabindex="0" role="button" aria-label="E · 조작 로봇 Agent 포커스, 집기 후보·재관측 의견, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="집기 후보·재관측 의견" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>E · 조작 로봇 Agent · 집기 후보·재관측 의견 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="40" y="220" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="220" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 226) scale(0.6875)">
+        <g id="node-perceive" data-node-id="perceive" data-node-label="C · 인식·조작 계획" tabindex="0" role="button" aria-label="C · 인식·조작 계획 포커스, 물체 식별·집기 후보·보유 판정, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="물체 식별·집기 후보·보유 판정" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>C · 인식·조작 계획 · 물체 식별·집기 후보·보유 판정 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="370" y="40" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="370" y="40" width="200" height="88" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(376 46) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="262" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">E · 조작 로봇 Agent</text>
-        <text data-detail="context" x="150" y="278" class="t-muted" font-size="9" text-anchor="middle">집기 후보·재관측 의견</text>
-        <text data-detail="fine" x="150" y="300" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="470" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">C · 인식·조작 계획</text>
+        <text data-detail="context" x="470" y="98" class="t-muted" font-size="9" text-anchor="middle">물체 식별·집기 후보·보유 판정</text>
+        <text data-detail="fine" x="470" y="120" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
         </g>
 
-        <g id="node-central" data-node-id="central" data-node-label="E · 중앙 LLM Agent" tabindex="0" role="button" aria-label="E · 중앙 LLM Agent 포커스, ASSISTED 전체 작업·교착·재배정 계획, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="ASSISTED 전체 작업·교착·재배정 계획" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>E · 중앙 LLM Agent · ASSISTED 전체 작업·교착·재배정 계획 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="220" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="220" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 226) scale(0.6875)">
+        <g id="node-agent" data-node-id="agent" data-node-label="E · LLM Agent" tabindex="0" role="button" aria-label="E · LLM Agent 포커스, 중앙 전체 계획·로봇별 의견, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="중앙 전체 계획·로봇별 의견" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>E · LLM Agent · 중앙 전체 계획·로봇별 의견 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="700" y="40" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="700" y="40" width="200" height="88" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(706 46) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="262" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">E · 중앙 LLM Agent</text>
-        <text data-detail="context" x="463" y="278" class="t-muted" font-size="9" text-anchor="middle">ASSISTED 전체 작업·교착·재배정 계획</text>
-        <text data-detail="fine" x="463" y="300" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="800" y="82" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">E · LLM Agent</text>
+        <text data-detail="context" x="800" y="98" class="t-muted" font-size="9" text-anchor="middle">중앙 전체 계획·로봇별 의견</text>
+        <text data-detail="fine" x="800" y="120" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
         </g>
 
-        <g id="node-local_cargo" data-node-id="local_cargo" data-node-label="E · 운송 로봇 Agent" tabindex="0" role="button" aria-label="E · 운송 로봇 Agent 포커스, 운송·대기·복구 의견, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="운송·대기·복구 의견" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>E · 운송 로봇 Agent · 운송·대기·복구 의견 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="666" y="220" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="666" y="220" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(672 226) scale(0.6875)">
+        <g id="node-sense" data-node-id="sense" data-node-label="B · 위치·환경·위험" tabindex="0" role="button" aria-label="B · 위치·환경·위험 포커스, 위치 추정·통로·안전 판단, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="위치 추정·통로·안전 판단" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>B · 위치·환경·위험 · 위치 추정·통로·안전 판단 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="40" y="240" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="40" y="240" width="200" height="88" rx="8" class="c-backend" data-animate="node" style="--step:10" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 246) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="776" y="262" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">E · 운송 로봇 Agent</text>
-        <text data-detail="context" x="776" y="278" class="t-muted" font-size="9" text-anchor="middle">운송·대기·복구 의견</text>
-        <text data-detail="fine" x="776" y="300" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="140" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">B · 위치·환경·위험</text>
+        <text data-detail="context" x="140" y="298" class="t-muted" font-size="9" text-anchor="middle">위치 추정·통로·안전 판단</text>
+        <text data-detail="fine" x="140" y="320" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
         </g>
 
-        <g id="node-pool" data-node-id="pool" data-node-label="D · 역할별 예비 배정" tabindex="0" role="button" aria-label="D · 역할별 예비 배정 포커스, 동일 역할·능력·물품·기존 명령 검증, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="동일 역할·능력·물품·기존 명령 검증" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 역할별 예비 배정 · 동일 역할·능력·물품·기존 명령 검증 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="40" y="400" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="400" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:8" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 406) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="442" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 역할별 예비 배정</text>
-        <text data-detail="context" x="150" y="458" class="t-muted" font-size="9" text-anchor="middle">동일 역할·능력·물품·기존 명령 검증</text>
-        <text data-detail="fine" x="150" y="480" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-validator" data-node-id="validator" data-node-label="D · 계획·권한 검증" tabindex="0" role="button" aria-label="D · 계획·권한 검증 포커스, SROS2·모드·세대·잠금·예산, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="SROS2·모드·세대·잠금·예산" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 계획·권한 검증 · SROS2·모드·세대·잠금·예산 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="400" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="400" width="220" height="88" rx="8" class="c-security" data-animate="node" style="--step:4" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(359 406) scale(0.6875)">
+        <g id="node-exec" data-node-id="exec" data-node-label="A · 실행·최종 구동 차단" tabindex="0" role="button" aria-label="A · 실행·최종 구동 차단 포커스, 로컬 작업·인계 잠금·정지, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="로컬 작업·인계 잠금·정지" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>A · 실행·최종 구동 차단 · 로컬 작업·인계 잠금·정지 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="370" y="240" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="370" y="240" width="200" height="88" rx="8" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(376 246) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="442" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 계획·권한 검증</text>
-        <text data-detail="context" x="463" y="458" class="t-muted" font-size="9" text-anchor="middle">SROS2·모드·세대·잠금·예산</text>
-        <text data-detail="fine" x="463" y="480" class="t-security" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="470" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 실행·최종 구동 차단</text>
+        <text data-detail="context" x="470" y="298" class="t-muted" font-size="9" text-anchor="middle">로컬 작업·인계 잠금·정지</text>
+        <text data-detail="fine" x="470" y="320" class="t-security" font-size="7" text-anchor="middle">목표·미구현</text>
         </g>
 
-        <g id="node-perception" data-node-id="perception" data-node-label="B · 위치·환경·위험" tabindex="0" role="button" aria-label="B · 위치·환경·위험 포커스, YOLO·위치 추정·Isolation Forest, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="YOLO·위치 추정·Isolation Forest" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>B · 위치·환경·위험 · YOLO·위치 추정·Isolation Forest · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="666" y="400" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="666" y="400" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(672 406) scale(0.6875)">
+        <g id="node-ops" data-node-id="ops" data-node-label="D · 운영·주행" tabindex="0" role="button" aria-label="D · 운영·주행 포커스, 작업·재고·배정·통로·검증·원장, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="작업·재고·배정·통로·검증·원장" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>D · 운영·주행 · 작업·재고·배정·통로·검증·원장 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="700" y="240" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="700" y="240" width="200" height="88" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(706 246) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="776" y="442" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">B · 위치·환경·위험</text>
-        <text data-detail="context" x="776" y="458" class="t-muted" font-size="9" text-anchor="middle">YOLO·위치 추정·Isolation Forest</text>
-        <text data-detail="fine" x="776" y="480" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="800" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 운영·주행</text>
+        <text data-detail="context" x="800" y="298" class="t-muted" font-size="9" text-anchor="middle">작업·재고·배정·통로·검증·원장</text>
+        <text data-detail="fine" x="800" y="320" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
         </g>
 
-        <g id="node-nav" data-node-id="nav" data-node-label="D · Nav2 주행" tabindex="0" role="button" aria-label="D · Nav2 주행 포커스, 이동·정차·주행 복구, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="이동·정차·주행 복구" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · Nav2 주행 · 이동·정차·주행 복구 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="40" y="760" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="760" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:10" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 766) scale(0.6875)">
+        <g id="node-console" data-node-id="console" data-node-label="통합 관제 화면" tabindex="0" role="button" aria-label="통합 관제 화면 포커스, 조회·알림·사후 조치, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="조회·알림·사후 조치" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
+          <title>통합 관제 화면 · 조회·알림·사후 조치 · 아키텍처 구성요소 · 목표·미구현</title>
+          <rect x="1030" y="240" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="1030" y="240" width="200" height="88" rx="8" class="c-external" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1036 246) scale(0.6875)">
+            <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
+            <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="1130" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">통합 관제 화면</text>
+        <text data-detail="context" x="1130" y="298" class="t-muted" font-size="9" text-anchor="middle">조회·알림·사후 조치</text>
+        <text data-detail="fine" x="1130" y="320" class="t-external" font-size="7" text-anchor="middle">목표·미구현</text>
+        </g>
+
+        <g id="node-robots" data-node-id="robots" data-node-label="로봇 Fleet" tabindex="0" role="button" aria-label="로봇 Fleet 포커스, 조작 robot_1·운송 robot_2·예비, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="조작 robot_1·운송 robot_2·예비" data-node-tag="최초 AX_1/AX_2 메시 자산" data-node-context="아키텍처 구성요소">
+          <title>로봇 Fleet · 조작 robot_1·운송 robot_2·예비 · 아키텍처 구성요소 · 최초 AX_1/AX_2 메시 자산</title>
+          <rect x="370" y="440" width="200" height="88" rx="8" class="c-mask"/>
+          <rect x="370" y="440" width="200" height="88" rx="8" class="c-backend" data-animate="node" style="--step:9" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(376 446) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="802" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · Nav2 주행</text>
-        <text data-detail="context" x="150" y="818" class="t-muted" font-size="9" text-anchor="middle">이동·정차·주행 복구</text>
-        <text data-detail="fine" x="150" y="840" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-runtime" data-node-id="runtime" data-node-label="D · 그룹 실행·통로·교착" tabindex="0" role="button" aria-label="D · 그룹 실행·통로·교착 포커스, 통로·인계·ETA(XGBoost)·결과, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="통로·인계·ETA(XGBoost)·결과" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 그룹 실행·통로·교착 · 통로·인계·ETA(XGBoost)·결과 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="580" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="580" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 586) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="622" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 그룹 실행·통로·교착</text>
-        <text data-detail="context" x="463" y="638" class="t-muted" font-size="9" text-anchor="middle">통로·인계·ETA(XGBoost)·결과</text>
-        <text data-detail="fine" x="463" y="660" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-executor" data-node-id="executor" data-node-label="A · 로컬 실행기" tabindex="0" role="button" aria-label="A · 로컬 실행기 포커스, 인계 잠금·조작 요청·적재 확인, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="인계 잠금·조작 요청·적재 확인" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>A · 로컬 실행기 · 인계 잠금·조작 요청·적재 확인 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="760" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="760" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:11" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 766) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="802" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 로컬 실행기</text>
-        <text data-detail="context" x="463" y="818" class="t-muted" font-size="9" text-anchor="middle">인계 잠금·조작 요청·적재 확인</text>
-        <text data-detail="fine" x="463" y="840" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-control" data-node-id="control" data-node-label="A · 기본 제어" tabindex="0" role="button" aria-label="A · 기본 제어 포커스, ros2_control·공구별 구동, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="ros2_control·공구별 구동" data-node-tag="목표 · 이전 구현 이력" data-node-context="아키텍처 구성요소">
-          <title>A · 기본 제어 · ros2_control·공구별 구동 · 아키텍처 구성요소 · 목표 · 이전 구현 이력</title>
-          <rect x="353" y="1120" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="1120" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 1126) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="1162" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 기본 제어</text>
-        <text data-detail="context" x="463" y="1178" class="t-muted" font-size="9" text-anchor="middle">ros2_control·공구별 구동</text>
-        <text data-detail="fine" x="463" y="1200" class="t-backend" font-size="7" text-anchor="middle">목표 · 이전 구현 이력</text>
-        </g>
-
-        <g id="node-gate" data-node-id="gate" data-node-label="A · 최종 구동 게이트" tabindex="0" role="button" aria-label="A · 최종 구동 게이트 포커스, 위험·인계·허가·실제 정지, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="위험·인계·허가·실제 정지" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>A · 최종 구동 게이트 · 위험·인계·허가·실제 정지 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="353" y="940" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="940" width="220" height="88" rx="8" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(359 946) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 최종 구동 게이트</text>
-        <text data-detail="context" x="463" y="998" class="t-muted" font-size="9" text-anchor="middle">위험·인계·허가·실제 정지</text>
-        <text data-detail="fine" x="463" y="1020" class="t-security" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-manip" data-node-id="manip" data-node-label="C · 인식·조작 실행" tabindex="0" role="button" aria-label="C · 인식·조작 실행 포커스, YOLO·3D·XGBoost·보유 판정, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="YOLO·3D·XGBoost·보유 판정" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>C · 인식·조작 실행 · YOLO·3D·XGBoost·보유 판정 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="666" y="760" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="666" y="760" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(672 766) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="776" y="802" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">C · 인식·조작 실행</text>
-        <text data-detail="context" x="776" y="818" class="t-muted" font-size="9" text-anchor="middle">YOLO·3D·XGBoost·보유 판정</text>
-        <text data-detail="fine" x="776" y="840" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-robots" data-node-id="robots" data-node-label="조작 robot_1·운송 robot_2" tabindex="0" role="button" aria-label="조작 robot_1·운송 robot_2 포커스, 5축·흡착 목표 / 팔 없음·적재함, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="5축·흡착 목표 / 팔 없음·적재함" data-node-tag="최초 AX_1/AX_2 메시 자산" data-node-context="아키텍처 구성요소">
-          <title>조작 robot_1·운송 robot_2 · 5축·흡착 목표 / 팔 없음·적재함 · 아키텍처 구성요소 · 최초 AX_1/AX_2 메시 자산</title>
-          <rect x="353" y="1300" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="353" y="1300" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(359 1306) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="463" y="1342" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">조작 robot_1·운송 robot_2</text>
-        <text data-detail="context" x="463" y="1358" class="t-muted" font-size="9" text-anchor="middle">5축·흡착 목표 / 팔 없음·적재함</text>
-        <text data-detail="fine" x="463" y="1380" class="t-backend" font-size="7" text-anchor="middle">최초 AX_1/AX_2 메시 자산</text>
-        </g>
-
-        <g id="node-feedback" data-node-id="feedback" data-node-label="A · 실제 상태·센서" tabindex="0" role="button" aria-label="A · 실제 상태·센서 포커스, 실제 정지·부착·적재·관절·TF, 아키텍처 구성요소" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="실제 정지·부착·적재·관절·TF" data-node-tag="목표 · 이전 구현 이력" data-node-context="아키텍처 구성요소">
-          <title>A · 실제 상태·센서 · 실제 정지·부착·적재·관절·TF · 아키텍처 구성요소 · 목표 · 이전 구현 이력</title>
-          <rect x="666" y="1300" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="666" y="1300" width="220" height="88" rx="8" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(672 1306) scale(0.6875)">
-            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
-            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
-            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
-            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="776" y="1342" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 실제 상태·센서</text>
-        <text data-detail="context" x="776" y="1358" class="t-muted" font-size="9" text-anchor="middle">실제 정지·부착·적재·관절·TF</text>
-        <text data-detail="fine" x="776" y="1380" class="t-messagebus" font-size="7" text-anchor="middle">목표 · 이전 구현 이력</text>
-        </g>
-
-        <g id="node-guard" data-node-id="guard" data-node-label="A · 보호·정지·감독" tabindex="0" role="button" aria-label="A · 보호·정지·감독 포커스, 관절 보호·Isolation Forest·감독, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="관절 보호·Isolation Forest·감독" data-node-tag="목표 · 이전 구현 이력" data-node-context="아키텍처 구성요소">
-          <title>A · 보호·정지·감독 · 관절 보호·Isolation Forest·감독 · 아키텍처 구성요소 · 목표 · 이전 구현 이력</title>
-          <rect x="40" y="940" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="940" width="220" height="88" rx="8" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(46 946) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">A · 보호·정지·감독</text>
-        <text data-detail="context" x="150" y="998" class="t-muted" font-size="9" text-anchor="middle">관절 보호·Isolation Forest·감독</text>
-        <text data-detail="fine" x="150" y="1020" class="t-security" font-size="7" text-anchor="middle">목표 · 이전 구현 이력</text>
-        </g>
-
-        <g id="node-ledger" data-node-id="ledger" data-node-label="D · 영속 실행·예산 원장" tabindex="0" role="button" aria-label="D · 영속 실행·예산 원장 포커스, ID·세대·시도·점유·격리, 아키텍처 구성요소" aria-pressed="false" data-node-kind="database" data-node-sublabel="ID·세대·시도·점유·격리" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 영속 실행·예산 원장 · ID·세대·시도·점유·격리 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="979" y="400" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="979" y="400" width="220" height="88" rx="8" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(985 406) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="1089" y="442" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 영속 실행·예산 원장</text>
-        <text data-detail="context" x="1089" y="458" class="t-muted" font-size="9" text-anchor="middle">ID·세대·시도·점유·격리</text>
-        <text data-detail="fine" x="1089" y="480" class="t-database" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-failure" data-node-id="failure" data-node-label="D · 실패 격리·알림" tabindex="0" role="button" aria-label="D · 실패 격리·알림 포커스, 독립 작업만 계속·안전 정지, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="독립 작업만 계속·안전 정지" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>D · 실패 격리·알림 · 독립 작업만 계속·안전 정지 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="979" y="220" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="979" y="220" width="220" height="88" rx="8" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(985 226) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="1089" y="262" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">D · 실패 격리·알림</text>
-        <text data-detail="context" x="1089" y="278" class="t-muted" font-size="9" text-anchor="middle">독립 작업만 계속·안전 정지</text>
-        <text data-detail="fine" x="1089" y="300" class="t-security" font-size="7" text-anchor="middle">목표·미구현</text>
-        </g>
-
-        <g id="node-evaluation" data-node-id="evaluation" data-node-label="E · 품질·효과 평가" tabindex="0" role="button" aria-label="E · 품질·효과 평가 포커스, ML·LLM 품질·OFF/ASSISTED 비교, 아키텍처 구성요소" aria-pressed="false" data-node-kind="backend" data-node-sublabel="ML·LLM 품질·OFF/ASSISTED 비교" data-node-tag="목표·미구현" data-node-context="아키텍처 구성요소">
-          <title>E · 품질·효과 평가 · ML·LLM 품질·OFF/ASSISTED 비교 · 아키텍처 구성요소 · 목표·미구현</title>
-          <rect x="40" y="580" width="220" height="88" rx="8" class="c-mask"/>
-          <rect x="40" y="580" width="220" height="88" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 586) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="150" y="622" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">E · 품질·효과 평가</text>
-        <text data-detail="context" x="150" y="638" class="t-muted" font-size="9" text-anchor="middle">ML·LLM 품질·OFF/ASSISTED 비교</text>
-        <text data-detail="fine" x="150" y="660" class="t-backend" font-size="7" text-anchor="middle">목표·미구현</text>
+          <text data-node-label="" data-detail-anchor="" x="470" y="482" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">로봇 Fleet</text>
+        <text data-detail="context" x="470" y="498" class="t-muted" font-size="9" text-anchor="middle">조작 robot_1·운송 robot_2·예비</text>
+        <text data-detail="fine" x="470" y="520" class="t-backend" font-size="7" text-anchor="middle">최초 AX_1/AX_2 메시 자산</text>
         </g>
 
         <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="receipt" data-edge-to="registry" data-edge-label="입고 사건" data-edge-key="0" data-edge-id="edge-0">
-          <rect x="279.9" y="64" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="306.5" y="74" class="t-edge-default" font-size="8" text-anchor="middle">입고 사건</text>
+        <g data-detail="context" data-edge-from="incoming" data-edge-to="perceive" data-edge-label="입고 감지" data-edge-key="0" data-edge-id="e0">
+          <rect x="278.4" y="64" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="305" y="74" class="t-edge-default" font-size="8" text-anchor="middle">입고 감지</text>
         </g>
-        <g data-detail="context" data-edge-from="registry" data-edge-to="console" data-edge-label="운영 상태" data-edge-key="1" data-edge-id="edge-1">
-          <rect x="749.4" y="57" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="776" y="67" class="t-edge-default" font-size="8" text-anchor="middle">운영 상태</text>
+        <g data-detail="context" data-edge-from="perceive" data-edge-to="ops" data-edge-label="입고·후보·보유" data-edge-key="1" data-edge-id="e1">
+          <rect x="596.4" y="157" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="635" y="167" class="t-edge-default" font-size="8" text-anchor="middle">입고·후보·보유</text>
         </g>
-        <g data-detail="context" data-edge-from="registry" data-edge-to="central" data-edge-label="D FleetSnapshot" data-edge-key="2" data-edge-id="edge-2">
-          <rect x="375" y="167" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="416" y="177" class="t-edge-default" font-size="8" text-anchor="middle">D FleetSnapshot</text>
+        <g data-detail="context" data-edge-from="ops" data-edge-to="agent" data-edge-label="FleetSnapshot" data-edge-key="2" data-edge-id="e2">
+          <rect x="714.5999999999999" y="177" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="750.8" y="187" class="t-edge-default" font-size="8" text-anchor="middle">FleetSnapshot</text>
         </g>
-        <g data-detail="context" data-edge-from="local_arm" data-edge-to="validator" data-edge-label="로컬 의견→D" data-edge-key="3" data-edge-id="edge-3">
-          <rect x="208.1" y="312" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="239.5" y="322" class="t-edge-default" font-size="8" text-anchor="middle">로컬 의견→D</text>
+        <g data-detail="context" data-edge-from="agent" data-edge-to="ops" data-edge-label="계획·제안" data-edge-key="3" data-edge-id="e3">
+          <rect x="813" y="177" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="839.6" y="187" class="t-edge-default" font-size="8" text-anchor="middle">계획·제안</text>
         </g>
-        <g data-detail="context" data-edge-from="local_cargo" data-edge-to="validator" data-edge-label="로컬 의견→D" data-edge-key="4" data-edge-id="edge-4">
-          <rect x="841.2" y="313" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="872.6" y="323" class="t-edge-default" font-size="8" text-anchor="middle">로컬 의견→D</text>
+        <g data-detail="context" data-edge-from="ops" data-edge-to="exec" data-edge-label="로컬 작업·주행" data-edge-key="4" data-edge-id="e4">
+          <rect x="596.4" y="280" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="635" y="290" class="t-edge-default" font-size="8" text-anchor="middle">로컬 작업·주행</text>
         </g>
-        <g data-detail="context" data-edge-from="central" data-edge-to="validator" data-edge-label="전체 계획" data-edge-key="5" data-edge-id="edge-5">
-          <rect x="403.79999999999995" y="324" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="430.4" y="334" class="t-edge-default" font-size="8" text-anchor="middle">전체 계획</text>
+        <g data-detail="context" data-edge-from="exec" data-edge-to="ops" data-edge-label="실행 결과·적재" data-edge-key="5" data-edge-id="e5">
+          <rect x="541.4" y="332" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="580" y="342" class="t-edge-default" font-size="8" text-anchor="middle">실행 결과·적재</text>
         </g>
-        <g data-detail="context" data-edge-from="validator" data-edge-to="runtime" data-edge-label="검증 통과" data-edge-key="6" data-edge-id="edge-6">
-          <rect x="396.79999999999995" y="527" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="423.4" y="537" class="t-edge-default" font-size="8" text-anchor="middle">검증 통과</text>
+        <g data-detail="context" data-edge-from="exec" data-edge-to="perceive" data-edge-label="조작 요청" data-edge-key="6" data-edge-id="e6">
+          <rect x="403.79999999999995" y="177" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="430.4" y="187" class="t-edge-default" font-size="8" text-anchor="middle">조작 요청</text>
         </g>
-        <g data-detail="context" data-edge-from="validator" data-edge-to="pool" data-edge-label="재배정 검사" data-edge-key="7" data-edge-id="edge-7">
-          <rect x="275.1" y="443.5" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="306.5" y="453.5" class="t-edge-default" font-size="8" text-anchor="middle">재배정 검사</text>
+        <g data-detail="context" data-edge-from="perceive" data-edge-to="exec" data-edge-label="팔·공구 명령" data-edge-key="7" data-edge-id="e7">
+          <rect x="482.99999999999994" y="177" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="516.8" y="187" class="t-edge-default" font-size="8" text-anchor="middle">팔·공구 명령</text>
         </g>
-        <g data-detail="context" data-edge-from="pool" data-edge-to="runtime" data-edge-label="재배정안 검증" data-edge-key="8" data-edge-id="edge-8">
-          <rect x="203.3" y="492" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="239.5" y="502" class="t-edge-default" font-size="8" text-anchor="middle">재배정안 검증</text>
+        <g data-detail="context" data-edge-from="exec" data-edge-to="robots" data-edge-label="허용된 구동" data-edge-key="8" data-edge-id="e8">
+          <rect x="401.20000000000005" y="377" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="432.6" y="387" class="t-edge-default" font-size="8" text-anchor="middle">허용된 구동</text>
         </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="nav" data-edge-label="주행 요청" data-edge-key="9" data-edge-id="edge-9">
-          <rect x="247.29999999999998" y="710.5" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="273.9" y="720.5" class="t-edge-default" font-size="8" text-anchor="middle">주행 요청</text>
+        <g data-detail="context" data-edge-from="robots" data-edge-to="sense" data-edge-label="센서·실제 상태" data-edge-key="9" data-edge-id="e9">
+          <rect x="185.4" y="372" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="224" y="382" class="t-edge-default" font-size="8" text-anchor="middle">센서·실제 상태</text>
         </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="executor" data-edge-label="로컬 작업" data-edge-key="10" data-edge-id="edge-10">
-          <rect x="389.79999999999995" y="707" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="416.4" y="717" class="t-edge-default" font-size="8" text-anchor="middle">로컬 작업</text>
+        <g data-detail="context" data-edge-from="sense" data-edge-to="exec" data-edge-label="안전 상태" data-edge-key="10" data-edge-id="e10">
+          <rect x="278.4" y="257" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="305" y="267" class="t-edge-default" font-size="8" text-anchor="middle">안전 상태</text>
         </g>
-        <g data-detail="context" data-edge-from="executor" data-edge-to="manip" data-edge-label="조작 Action" data-edge-key="11" data-edge-id="edge-11">
-          <rect x="588.1" y="777" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="619.5" y="787" class="t-edge-default" font-size="8" text-anchor="middle">조작 Action</text>
+        <g data-detail="context" data-edge-from="sense" data-edge-to="ops" data-edge-label="위치·통로 관측" data-edge-key="11" data-edge-id="e11">
+          <rect x="56.800000000000004" y="375.5" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="95.4" y="385.5" class="t-edge-default" font-size="8" text-anchor="middle">위치·통로 관측</text>
         </g>
-        <g data-detail="context" data-edge-from="perception" data-edge-to="validator" data-edge-label="유효성" data-edge-key="12" data-edge-id="edge-12">
-          <rect x="601" y="468" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="620.4" y="478" class="t-edge-default" font-size="8" text-anchor="middle">유효성</text>
-        </g>
-        <g data-detail="context" data-edge-from="perception" data-edge-to="gate" data-edge-label="안전 요구" data-edge-key="13" data-edge-id="edge-13">
-          <rect x="850.8" y="700" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="877.4" y="710" class="t-edge-default" font-size="8" text-anchor="middle">안전 요구</text>
-        </g>
-        <g data-detail="context" data-edge-from="nav" data-edge-to="gate" data-edge-label="속도 명령" data-edge-key="14" data-edge-id="edge-14">
-          <rect x="90.80000000000001" y="864" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="117.4" y="874" class="t-edge-default" font-size="8" text-anchor="middle">속도 명령</text>
-        </g>
-        <g data-detail="context" data-edge-from="manip" data-edge-to="gate" data-edge-label="팔·공구 요청" data-edge-key="15" data-edge-id="edge-15">
-          <rect x="593.7" y="936" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="627.5" y="946" class="t-edge-default" font-size="8" text-anchor="middle">팔·공구 요청</text>
-        </g>
-        <g data-detail="context" data-edge-from="guard" data-edge-to="gate" data-edge-label="보호·차단" data-edge-key="16" data-edge-id="edge-16">
-          <rect x="257.4" y="926.5" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="284" y="936.5" class="t-edge-default" font-size="8" text-anchor="middle">보호·차단</text>
-        </g>
-        <g data-detail="context" data-edge-from="gate" data-edge-to="control" data-edge-label="허용 시" data-edge-key="17" data-edge-id="edge-17">
-          <rect x="413.4" y="1067" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="435.2" y="1077" class="t-edge-default" font-size="8" text-anchor="middle">허용 시</text>
-        </g>
-        <g data-detail="context" data-edge-from="control" data-edge-to="robots" data-edge-label="구동" data-edge-key="18" data-edge-id="edge-18">
-          <rect x="427" y="1247" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="442" y="1257" class="t-edge-default" font-size="8" text-anchor="middle">구동</text>
-        </g>
-        <g data-detail="context" data-edge-from="robots" data-edge-to="feedback" data-edge-label="센서·상태" data-edge-key="19" data-edge-id="edge-19">
-          <rect x="592.9" y="1331" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="619.5" y="1341" class="t-edge-default" font-size="8" text-anchor="middle">센서·상태</text>
-        </g>
-        <g data-detail="context" data-edge-from="feedback" data-edge-to="guard" data-edge-label="상태 감시" data-edge-key="20" data-edge-id="edge-20">
-          <rect x="503.4" y="1392" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="530" y="1402" class="t-edge-default" font-size="8" text-anchor="middle">상태 감시</text>
-        </g>
-        <g data-detail="context" data-edge-from="feedback" data-edge-to="perception" data-edge-label="관측" data-edge-key="21" data-edge-id="edge-21">
-          <rect x="861" y="1066" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="876" y="1076" class="t-edge-default" font-size="8" text-anchor="middle">관측</text>
-        </g>
-        <g data-detail="context" data-edge-from="feedback" data-edge-to="manip" data-edge-label="영상·신호" data-edge-key="22" data-edge-id="edge-22">
-          <rect x="730.8" y="1067" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="757.4" y="1077" class="t-edge-default" font-size="8" text-anchor="middle">영상·신호</text>
-        </g>
-        <g data-detail="context" data-edge-from="executor" data-edge-to="runtime" data-edge-label="실제 결과" data-edge-key="23" data-edge-id="edge-23">
-          <rect x="476" y="707" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="502.6" y="717" class="t-edge-default" font-size="8" text-anchor="middle">실제 결과</text>
-        </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="registry" data-edge-label="배치 확인" data-edge-key="24" data-edge-id="edge-24">
-          <rect x="603" y="215.5" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="629.6" y="225.5" class="t-edge-default" font-size="8" text-anchor="middle">배치 확인</text>
-        </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="ledger" data-edge-label="실행 기록" data-edge-key="25" data-edge-id="edge-25">
-          <rect x="608.65" y="672" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="635.25" y="682" class="t-edge-default" font-size="8" text-anchor="middle">실행 기록</text>
-        </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="failure" data-edge-label="복구 소진" data-edge-key="26" data-edge-id="edge-26">
-          <rect x="503.1" y="536" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="529.7" y="546" class="t-edge-default" font-size="8" text-anchor="middle">복구 소진</text>
-        </g>
-        <g data-detail="context" data-edge-from="failure" data-edge-to="console" data-edge-label="알림" data-edge-key="27" data-edge-id="edge-27">
-          <rect x="1074" y="200" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="1089" y="210" class="t-edge-default" font-size="8" text-anchor="middle">알림</text>
-        </g>
-        <g data-detail="context" data-edge-from="ledger" data-edge-to="failure" data-edge-label="격리·예산" data-edge-key="28" data-edge-id="edge-28">
-          <rect x="1069.4" y="380" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="1096" y="390" class="t-edge-default" font-size="8" text-anchor="middle">격리·예산</text>
-        </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="evaluation" data-edge-label="실행 결과" data-edge-key="29" data-edge-id="edge-29">
-          <rect x="279.9" y="620" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="306.5" y="630" class="t-edge-default" font-size="8" text-anchor="middle">실행 결과</text>
-        </g>
-        <g data-detail="context" data-edge-from="runtime" data-edge-to="central" data-edge-label="사건·결과·재계획 요청" data-edge-key="30" data-edge-id="edge-30">
-          <rect x="649.9" y="532.25" width="110.8" height="14" rx="3" class="c-mask"/>
-          <text x="705.3" y="542.25" class="t-edge-default" font-size="8" text-anchor="middle">사건·결과·재계획 요청</text>
-        </g>
-        <g data-detail="context" data-edge-from="manip" data-edge-to="validator" data-edge-label="후보·보유 판정" data-edge-key="31" data-edge-id="edge-31">
-          <rect x="692.8" y="629" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="731.4" y="639" class="t-edge-default" font-size="8" text-anchor="middle">후보·보유 판정</text>
-        </g>
-        <g data-detail="context" data-edge-from="feedback" data-edge-to="runtime" data-edge-label="실제 정지·적재" data-edge-key="32" data-edge-id="edge-32">
-          <rect x="506.9" y="1256" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="545.5" y="1266" class="t-edge-default" font-size="8" text-anchor="middle">실제 정지·적재</text>
-        </g>
-        <g data-detail="context" data-edge-from="validator" data-edge-to="local_arm" data-edge-label="D의 로봇별 snapshot" data-edge-key="33" data-edge-id="edge-33">
-          <rect x="342.94999999999993" y="356" width="101.2" height="14" rx="3" class="c-mask"/>
-          <text x="393.54999999999995" y="366" class="t-edge-default" font-size="8" text-anchor="middle">D의 로봇별 snapshot</text>
-        </g>
-        <g data-detail="context" data-edge-from="validator" data-edge-to="local_cargo" data-edge-label="D의 로봇별 snapshot" data-edge-key="34" data-edge-id="edge-34">
-          <rect x="654.15" y="334" width="101.2" height="14" rx="3" class="c-mask"/>
-          <text x="704.75" y="344" class="t-edge-default" font-size="8" text-anchor="middle">D의 로봇별 snapshot</text>
+        <g data-detail="context" data-edge-from="ops" data-edge-to="console" data-edge-label="상태·알림" data-edge-key="12" data-edge-id="e12">
+          <rect x="938.4" y="264" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="965" y="274" class="t-edge-default" font-size="8" text-anchor="middle">상태·알림</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
@@ -5802,26 +5464,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <!-- Legend -->
         <g data-legend="" data-legend-bridge="">
-          <text x="40" y="1444" class="t-primary" font-size="12" font-weight="650">범례</text>
-          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="백엔드" data-legend-x="40" data-legend-baseline="1464" data-legend-width="81">
-            <rect x="40" y="1455" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
-            <text x="62" y="1464" class="t-muted" font-size="10" font-weight="500">백엔드</text>
+          <text x="40" y="560" class="t-primary" font-size="12" font-weight="650">범례</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="백엔드" data-legend-x="40" data-legend-baseline="580" data-legend-width="81">
+            <rect x="40" y="571" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="62" y="580" class="t-muted" font-size="10" font-weight="500">백엔드</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="데이터베이스" data-legend-x="143" data-legend-baseline="1464" data-legend-width="118">
-            <rect x="143" y="1455" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
-            <text x="165" y="1464" class="t-muted" font-size="10" font-weight="500">데이터베이스</text>
+          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="보안" data-legend-x="143" data-legend-baseline="580" data-legend-width="68">
+            <rect x="143" y="571" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
+            <text x="165" y="580" class="t-muted" font-size="10" font-weight="500">보안</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="보안" data-legend-x="283" data-legend-baseline="1464" data-legend-width="68">
-            <rect x="283" y="1455" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
-            <text x="305" y="1464" class="t-muted" font-size="10" font-weight="500">보안</text>
-          </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="메시지 버스" data-legend-x="373" data-legend-baseline="1464" data-legend-width="112">
-            <rect x="373" y="1455" width="16" height="10" rx="2.5" class="c-messagebus" stroke-width="1"/>
-            <text x="395" y="1464" class="t-muted" font-size="10" font-weight="500">메시지 버스</text>
-          </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="외부" data-legend-x="507" data-legend-baseline="1464" data-legend-width="68">
-            <rect x="507" y="1455" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="529" y="1464" class="t-muted" font-size="10" font-weight="500">외부</text>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="외부" data-legend-x="233" data-legend-baseline="580" data-legend-width="68">
+            <rect x="233" y="571" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="255" y="580" class="t-muted" font-size="10" font-weight="500">외부</text>
           </g>
         </g>
       </svg>
@@ -6003,53 +5657,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div class="cards">
       <div class="card">
         <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>한 번의 입고가 처리되는 흐름</h3>
+        </div>
+        <ul>
+          <li>입고 물품을 B·C가 관측하면 D가 중복 없이 작업을 만든다.</li>
+          <li>ASSISTED에서는 중앙 LLM이 목적지와 전체 계획을 만들고, OFF·ADVISORY에서는 D의 검증된 규칙 계획을 쓴다.</li>
+          <li>D가 계획을 검증하고 주행(Nav2)과 로컬 작업을 지시한다. 조작은 A를 거쳐 C가 수행한다.</li>
+          <li>모든 실제 구동은 A의 최종 게이트를 통과한다. 실제 배치를 확인한 뒤 D가 재고를 갱신한다.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>목표와 구현 상태</h3>
+          <h3>역할의 경계</h3>
         </div>
         <ul>
-          <li>본설계의 목표 구조다. 작업트리에는 구현 소스가 없고 모델 메시·Robotiq subset·지도만 있다.</li>
-          <li>모든 블록은 신규 구현 대상이다. 이전 구현(커밋 4f85007)의 모델·ros2_control·관절 보호도 G1 미충족이었으며 새 구현의 통과 근거가 아니다.</li>
-          <li>기준: docs/design/DETAILED_DESIGN.md 3·5·7·9절과 TEAM_SCHEDULE.md. 이 그림은 설계 기준이며 실행 증거가 아니다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot violet"></div>
-          <h3>중앙 계획과 실행 권한</h3>
-        </div>
-        <ul>
-          <li>ASSISTED에서 중앙은 전체 계획을 만들고(OFF·ADVISORY는 D의 검증된 규칙 계획) 로봇 Agent는 자기 배정 범위의 의견을 제공한다. 서로 직접 실행 명령을 내리지 않는다.</li>
-          <li>D는 SROS2 발신 주체·Agent ID·세대·지점·물품·잠금·예산을 검증하고 Nav2 또는 A 실행기를 호출한다.</li>
-          <li>모든 실제 구동은 A 게이트를 통과한다. C는 후보와 보유 결과, B는 위험·위치, D는 그룹/재고 상태를 소유한다.</li>
-          <li>논리적 Agent 수는 최초 쌍에서 3개이며 예비 활성화의 문맥·권한 이관 세부는 미정이다. Cosmos는 후보 모델이다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>운영 무인·예비·화면</h3>
-        </div>
-        <ul>
-          <li>물품마다 사람 명령 없이 입고 사건으로 작업을 만든다. 등록 목적지 ID와 예약을 사용하고 실제 배치 후에만 재고를 갱신한다.</li>
-          <li>LLM 거절/단절은 검증 규칙 대체, 허용 복구 소진은 실패 종료·격리·알림. 독립 작업만 계속하고 불가하면 안전 정지를 유지한다.</li>
-          <li>같은 역할·공구·능력의 예비만 이전 명령 차단·물품·통로 확인 후 재배정한다. 미확정 시도·예산을 초기화하지 않는다.</li>
-          <li>통합 화면은 하나다. 화면 부재에도 정상 운용하며 비상 정지·흡착 유지·통로 점유 보호는 독립적이다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>로봇·ML·운영 모드</h3>
-        </div>
-        <ul>
-          <li>최소 구성은 조작 robot_1(5축·흡착 목표)과 운송 robot_2(팔 없음·적재함)다. 물품은 이동 중 적재함이 지지하며 조작 로봇은 물품을 든 채 주행하지 않는다.</li>
-          <li>로봇별 의견은 D가 수신·검증하고 중앙은 전체 계획을 생성한다. 후보 선호는 D→A→C로 전달하며 C가 최종 선택한다. Agent가 서로 직접 실행 협상하지 않는다.</li>
-          <li>A 제어 이상·B 위치 이상은 Isolation Forest, B 환경·C 물체 인식은 YOLO, C 집기 성공률·D ETA는 XGBoost다. 검증된 규칙을 대체하는 안전 판단기가 아니다.</li>
-          <li>OFF·ADVISORY도 입고 작업을 자동 생성하되 규칙 목적지·계획으로 실행한다. ASSISTED만 인증·검증된 중앙 계획을 반영한다. D가 모드·권한·영속 예산을 소유한다.</li>
-          <li>D FleetSnapshot은 입고·재고뿐 아니라 A 실제 상태, B 위치·환경·통로, C 후보·보유, 로봇 능력과 예측을 묶은 유효성 있는 관측이다.</li>
+          <li>LLM은 제안·계획만 하고 D가 검증한다. 안전 정지는 B 판단·A 실행이며 LLM·화면을 기다리지 않는다.</li>
+          <li>복구가 불가능하거나 예산이 소진되면 작업을 실패 종료·격리·알림하고 독립 작업만 계속한다(운영 무인).</li>
+          <li>작업트리에는 구현이 없으며 모든 블록은 신규 구현 대상이다. 블록 세부는 상세 기능 구성도(ax-functions)를 본다.</li>
         </ul>
       </div>
     </div>

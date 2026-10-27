@@ -1,0 +1,7 @@
+# 서버 D. 운영 모드 설정. 시작 전 설정이 원칙이며 운영 중 상향 요청과 인증 검증 전 ASSISTED는 거절한다. 장애 시 하향은 D가 자동 수행한다.
+string request_id
+uint8 mode                      # OperationMode 상수
+string reason
+---
+bool accepted
+string reason_code

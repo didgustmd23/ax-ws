@@ -4,14 +4,14 @@
 
 ## 현재 상태와 문서 선택
 
-- 저장소는 **설계·일정 단계**다. 작업트리에는 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산만 있다.
+- 저장소는 **설계·일정 단계**다. 작업트리에는 기능 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산, 공통 인터페이스 타입 초안(`src/ax_interfaces`)만 있다.
 - [통합 상세설계](design/DETAILED_DESIGN.md)는 목표 계약, [팀 공통 일정](management/TEAM_SCHEDULE.md)은 A1~E4 산출물·의존성·단계·검증을 관리한다. 번호별 담당은 확정했고 기간은 2026-10-28 ~ 2027-01-28(개발 2개월·시험 1개월)이다.
 - 이전 개발 구성의 소스와 인터페이스·검증·집게 비교·팔 사양·외부 저장소 검토 문서, 검증 자료는 커밋 `4f85007` 이력으로만 남긴다. 이전 구현은 **G1 미충족** 상태였으며, 이력의 수치·시험 결과를 새 구현의 통과 근거로 해석하지 않는다. 경위와 조회 방법은 [이전 구현 기록](management/TEAM_SCHEDULE.md#이전-구현-기록)을 따른다.
-- 설계는 본설계 하나, 전체 일정·업무 분담은 공통 일정 하나로 관리한다. 채택된 임시 초안은 흡수 후 제거한다.
+- 설계 원칙은 본설계 하나, 전체 일정·업무 분담은 공통 일정 하나로 관리한다. 공유 인터페이스의 이름·QoS·필드 세부는 본설계 7절을 구체화한 인터페이스 계약 문서를 따른다. 채택된 임시 초안은 흡수 후 제거한다.
 
 ## 전체 시스템 구성도
 
-[![AX 전체 시스템 — 자동 입고·중앙 계획·D 실행·예비 로봇·통합 관제](assets/diagrams/ax-system.webp)](https://didgustmd23.github.io/ax-ws/overview.html)
+[![AX 전체 시스템 — 입고부터 재고 갱신까지](assets/diagrams/ax-system.webp)](https://didgustmd23.github.io/ax-ws/overview.html)
 
 [인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [HTML 내려받기](assets/diagrams/ax-system.html) · [이미지 크게 보기 · WebP](assets/diagrams/ax-system.webp)
 
@@ -21,7 +21,8 @@
 
 | 구성도 | 범위 | HTML | 투명 이미지 | Pages |
 |---|---|---|---|---|
-| 전체 시스템 | 자동 입고·중앙 계획·D 실행·역할별 예비·통합 관제 | [열기](assets/diagrams/ax-system.html) | [WebP](assets/diagrams/ax-system.webp) | [overview](https://didgustmd23.github.io/ax-ws/overview.html) |
+| 전체 시스템 | 입고부터 재고 갱신까지 기능 A~E의 간략 연결 | [열기](assets/diagrams/ax-system.html) | [WebP](assets/diagrams/ax-system.webp) | [overview](https://didgustmd23.github.io/ax-ws/overview.html) |
+| 상세 기능 | 기능 A~E 블록 21개와 데이터 흐름·예비·원장·관제 | [열기](assets/diagrams/ax-functions.html) | [WebP](assets/diagrams/ax-functions.webp) | [functions](https://didgustmd23.github.io/ax-ws/functions.html) |
 | 공동 운반 | 입고·적재·배치·재고 갱신·실패 복구·예비 배정 | [열기](assets/diagrams/ax-transfer.html) | [WebP](assets/diagrams/ax-transfer.webp) | [transfer](https://didgustmd23.github.io/ax-ws/transfer.html) |
 | 최종 차단 권고 | 중앙 계획→D 검증→A 최종 차단·주행/조작 경로 | [열기](assets/diagrams/ax-safety.html) | [WebP](assets/diagrams/ax-safety.webp) | [safety](https://didgustmd23.github.io/ax-ws/safety.html) |
 | 패키지 구성 | A~E·공통 목표 패키지. 그림의 "현재 구현" 표시는 이전 구현(커밋 `4f85007`) 기준 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
@@ -43,6 +44,7 @@
 |---|---|---|
 | [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 조작·운송 역할 협업 그룹, A~E 기능, 상태 머신·통신·검증 목표 | 운영 무인·자동 입고·중앙 전체 계획·D 실행·역할별 예비·인증/관제 목표. 구현 완료 아님 |
 | [TEAM_SCHEDULE](management/TEAM_SCHEDULE.md) | 팀 공통 일정, A1~E4·공통 계약·통합/장시간 시험·완료 관문 | 1 이종수·2 양현승·3 김성민·4 엄승연. 2026-10-28 ~ 2027-01-28, 주차 계획은 초안 |
+| [INTERFACE_CONTRACT](design/INTERFACE_CONTRACT.md) | A~E 공유 Topic·Service·Action 이름·QoS·최신성·소유 작업, `src/ax_interfaces` 타입 초안 | K0 초안. 생산자·소비자 승인 전 |
 | [GIT_UPLOAD_POLICY](management/GIT_UPLOAD_POLICY.md) | 포함·제외 파일과 확인 방법 | build/install/log 제외, 모델 자산·외부 LICENSE 포함 |
 | [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf) | 최초 통합 상세설계 원문 | 현재 작업트리에서 삭제 상태, 저장된 커밋 참조 |
 
@@ -53,4 +55,4 @@
 | [분리 메시 README](../src/ax_description/meshes/parts/README.md) | AX_1·AX_2·상자별 OBJ 분리, 재생성·좌표·원통 분리 규칙(도구는 커밋 `4f85007` 이력) |
 | [Robotiq README](../src/robotiq_description/README.md) | 도입 commit·모델 전용 범위·원본 파일 해시·라이선스 |
 
-문서의 설계 목표, 코드 반영, 정적 계산 통과, Gazebo 실행 통과는 서로 다른 상태다. 현재 작업트리에는 실행 가능한 구현이 없으므로 모든 기능은 새 구현과 검증 대상이다.
+문서의 설계 목표, 코드 반영, 정적 계산 통과, Gazebo 실행 통과는 서로 다른 상태다. 현재 작업트리에는 실행 가능한 기능 구현이 없으므로(공유 타입 초안만 빌드됨) 모든 기능은 새 구현과 검증 대상이다.

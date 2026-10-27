@@ -1,0 +1,33 @@
+# D → A. 역할별 로컬 작업(설계 7.1절). 주행은 포함하지 않으며 D가 Nav2로 직접 조정한다.
+uint8 UNSPECIFIED=0            # 채우지 않은 Goal은 거절한다
+uint8 LOCK_HANDOFF=1
+uint8 UNLOCK_HANDOFF=2
+uint8 PICK_AND_STOW=3
+uint8 UNLOAD_AND_PLACE=4
+uint8 CONFIRM_LOAD=5
+uint8 RETRACT_ARM=6
+ExecutionRef execution
+uint8 task_kind
+string peer_robot_id             # 인계 상대 로봇. A4가 상대 상태를 구독하는 대상(인계 없는 작업은 빈 문자열)
+string object_id
+uint64 inventory_revision       # 물품 상태 revision(InventoryEntry.revision)
+string source_location_id
+uint64 source_location_revision
+string destination_location_id
+uint64 destination_location_revision
+uint64 map_revision
+BudgetGrant[] budgets
+bool has_candidate_preference
+CandidatePreference candidate_preference
+---
+ResultStatus status
+uint8 object_hold_state         # ToolHoldState 상수. 0(UNKNOWN)은 미보유로 해석하지 않는다
+uint8 load_state                # LoadState 상수(운송 로봇 작업일 때)
+AttemptUsage[] usage
+bool need_reobservation_move
+string observation_reason          # C가 보고한 관측 요구 사유 코드
+geometry_msgs/PoseStamped observation_target  # 관측할 대상 기준(map). 차체 목표가 아니며 D가 등록 지점을 고른다
+---
+string phase
+float32 progress                # 0~1
+AttemptUsage[] usage

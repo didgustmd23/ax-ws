@@ -39,6 +39,10 @@ jobs:
           install -Dm644 docs/assets/diagrams/ax-system.webp _site/ax-system.webp
           install -Dm644 docs/assets/diagrams/ax-functions.html _site/functions.html
           install -Dm644 docs/assets/diagrams/ax-functions.webp _site/ax-functions.webp
+          install -Dm644 docs/assets/diagrams/ax-interfaces.html _site/interfaces.html
+          install -Dm644 docs/assets/diagrams/ax-interfaces.webp _site/ax-interfaces.webp
+          install -Dm644 docs/assets/diagrams/ax-lease.html _site/lease.html
+          install -Dm644 docs/assets/diagrams/ax-lease.webp _site/ax-lease.webp
           install -Dm644 docs/assets/diagrams/ax-control.html _site/internal.html
           install -Dm644 docs/assets/diagrams/ax-control.webp _site/ax-control.webp
           install -Dm644 docs/assets/diagrams/ax-transfer.html _site/transfer.html

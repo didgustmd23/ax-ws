@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 3.2.0">
   <meta name="archify-reader-contract" content="declared-wide-v1">
-  <title>현재 AX 제어 — 표준 입력·개발용 팔 보호 다이어그램</title>
+  <title>이전 AX 제어 구성 — 커밋 4f85007 기록 다이어그램</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5193,7 +5193,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="블루프린트 / 개정 01"
            data-preset-badge-editorial="에디토리얼 / 현장 노트">
         <div class="pulse-dot"></div>
-        <h1>현재 AX 제어 — 표준 입력·개발용 팔 보호</h1>
+        <h1>이전 AX 제어 구성 — 커밋 4f85007 기록</h1>
       </div>
     </div>
 
@@ -5203,7 +5203,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 도판 04">
       <svg viewBox="0 0 1180 1368" role="img" lang="ko" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
-        <title id="archify-diagram-title">현재 AX 제어 — 표준 입력·개발용 팔 보호</title>
+        <title id="archify-diagram-title">이전 AX 제어 구성 — 커밋 4f85007 기록</title>
         <desc id="archify-diagram-description">Archify로 생성한 아키텍처 다이어그램입니다.</desc>
         <!-- Definitions -->
         <defs>
@@ -5486,8 +5486,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="525" y="1292" class="t-messagebus" font-size="7" text-anchor="middle">센서 토픽 · /clock</text>
         </g>
 
-        <g id="node-arm_guard" data-node-id="arm_guard" data-node-label="개발용 팔 명령 보호" tabindex="0" role="button" aria-label="개발용 팔 명령 보호 포커스, arm_command_guard · 상태 감시, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="arm_command_guard · 상태 감시" data-node-tag="미커밋 개발 구성" data-node-context="아키텍처 구성요소">
-          <title>개발용 팔 명령 보호 · arm_command_guard · 상태 감시 · 아키텍처 구성요소 · 미커밋 개발 구성</title>
+        <g id="node-arm_guard" data-node-id="arm_guard" data-node-label="개발용 팔 명령 보호" tabindex="0" role="button" aria-label="개발용 팔 명령 보호 포커스, arm_command_guard · 상태 감시, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="arm_command_guard · 상태 감시" data-node-tag="이전 구현 · 4f85007" data-node-context="아키텍처 구성요소">
+          <title>개발용 팔 명령 보호 · arm_command_guard · 상태 감시 · 아키텍처 구성요소 · 이전 구현 · 4f85007</title>
           <rect x="400" y="430" width="250" height="78" rx="8" class="c-mask"/>
           <rect x="400" y="430" width="250" height="78" rx="8" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(406 436) scale(0.6875)">
@@ -5496,7 +5496,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           </g>
           <text data-node-label="" data-detail-anchor="" x="525" y="467" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">개발용 팔 명령 보호</text>
         <text data-detail="context" x="525" y="483" class="t-muted" font-size="9" text-anchor="middle">arm_command_guard · 상태 감시</text>
-        <text data-detail="fine" x="525" y="500" class="t-security" font-size="7" text-anchor="middle">미커밋 개발 구성</text>
+        <text data-detail="fine" x="525" y="500" class="t-security" font-size="7" text-anchor="middle">이전 구현 · 4f85007</text>
         </g>
 
         <!-- Connection labels -->
@@ -5760,13 +5760,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>현재 소스의 명령 경로</h3>
+          <h3>이전 소스의 명령 경로</h3>
         </div>
         <ul>
           <li>주행: {ns}/cmd_vel(Twist) → cmd_vel_relay → TwistStamped → diff_drive_controller. 중계 노드는 안전 게이트가 아니다.</li>
           <li>팔: 공개 JointTrajectory/FollowJointTrajectory → arm_command_guard → 내부 action → JTC. 내부 토픽은 열려 있어 보안 접근 차단은 아니다.</li>
           <li>primitive 손가락: /gripper/command(각 손가락 m) → 배열 변환 → finger_controller. 흡착 공구 성공 판정이 아니다.</li>
-          <li>현재 소스: simulation.launch.py, arm_command_guard.py, cmd_vel_relay.py, gripper_controller.py, 로봇별 제어기 YAML.</li>
+          <li>이전 소스(커밋 4f85007): simulation.launch.py, arm_command_guard.py, cmd_vel_relay.py, gripper_controller.py, 로봇별 제어기 YAML. 작업트리에서는 제거했다.</li>
         </ul>
       </div>
 
@@ -5785,12 +5785,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>목표와의 차이</h3>
+          <h3>기록의 범위</h3>
         </div>
         <ul>
+          <li>이 그림은 제거된 이전 구현의 기록이다. 새 구현의 기준은 목표 구조도와 통합 상세설계이며, 이력의 동작을 현재 기능으로 간주하지 않는다.</li>
           <li>최종 구동 게이트·주행 안전 watchdog·Task Executor·Fleet·Nav2·Agent는 이 그림에 구현된 노드로 추가하지 않는다. 별도 목표 그림을 참조한다.</li>
           <li>G1 미충족. 실제 순간 감속과 고장 해제 후 재개 결함, 물리 한계 고착·하중·충돌 검증이 남아 있다.</li>
-          <li>clear_fault는 Trigger 서비스이며 응답 성공만으로 실제 후속 명령 재개를 보장하지 않는다. 현재 INTERFACES.md의 잔여 결함을 따른다.</li>
+          <li>clear_fault는 Trigger 서비스이며 응답 성공만으로 실제 후속 명령 재개를 보장하지 않았다. 잔여 결함은 커밋 4f85007의 INTERFACES.md 기록이며 새 구현의 시험 항목으로 둔다.</li>
         </ul>
       </div>
     </div>

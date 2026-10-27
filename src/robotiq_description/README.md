@@ -8,6 +8,6 @@ Every imported file was verified against its upstream Git blob SHA; see `UPSTREA
 
 Local changes are limited to package metadata and CMake installation rules so the selected model can build without hardware drivers or ros2_control controllers. Original package metadata and CMake rules are retained under `upstream/` for reference.
 
-AX invokes the macro with `include_ros2_control="false"` for RViz preview. This does not activate a serial port or hardware driver. The upstream `mimic` relationships are interpreted by joint_state_publisher. No claim of Gazebo grasping or controller compatibility is made by this model-only integration.
+The previous AX implementation (commit `4f85007`, now removed from the working tree) invoked the macro with `include_ros2_control="false"` for RViz preview. No AX source in the current working tree invokes it. This does not activate a serial port or hardware driver. The upstream `mimic` relationships are interpreted by joint_state_publisher. No claim of Gazebo grasping or controller compatibility is made by this model-only integration.
 
 Do not install another package named `robotiq_description` in the same workspace without first replacing this subset and checking the pinned interfaces.

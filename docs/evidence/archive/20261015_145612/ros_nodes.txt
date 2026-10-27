@@ -1,7 +1,0 @@
-[WARN] [1792043795.644449201] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
-[WARN] [1792043795.644481422] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
-/gripper_controller
-/gripper_rotation_bridge
-/left_finger_bridge
-/lidar_bridge
-/wrist_bridge

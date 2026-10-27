@@ -1,14 +1,18 @@
 # ax-ws
 
-**ax-ws는 중앙 운영 AI 에이전트의 상황 판단과 계획 제안을 중심으로, 가상 창고에서 두 로봇의 공동 운반을 조정하는 시스템을 개발하는 프로젝트다.** ROS 2 Jazzy와 Gazebo Harmonic을 기반으로 흡착 팔 로봇 `robot_1`이 물체를 집어 적재함 운송 로봇 `robot_2`에 싣고, 두 로봇이 목적지로 이동한 뒤 `robot_1`이 하역·배치하는 시나리오를 구현한다.
+**ax-ws는 입고 물품을 자동 확인하고, 중앙 LLM이 전체 운반 계획을 수립하며 Fleet이 검증·실행하는 가상 창고 운영 무인 시스템을 개발하는 프로젝트다.** ROS 2 Jazzy와 Gazebo Harmonic을 사용한다.
 
-에이전트는 Fleet이 제공하는 로봇·작업·통로 상태와 예측 데이터를 종합해 상황을 요약하고, 작업 우선순위·통로 통과 순서·작업 보류·실패 복구 방안을 제안한다. 초기에는 협업 중인 두 로봇 중 누가 먼저 통로를 통과해야 공동 작업이 빨리 끝나는지 판단하는 데 초점을 둔다. Fleet은 제안의 유효성과 현재 상태를 검증해 운영에 반영하고, 로봇별 Task Executor와 제어부가 실행 및 최종 구동 차단을 담당하도록 설계한다.
+B·C가 입고를 관측하면 D가 중복 없이 작업을 생성한다. 중앙 LLM은 보관 규칙·가용 등록 위치·로봇 상태를 보고 목적지와 전체 계획을 생성하고, D가 용량·예약·권한·통로·예산을 검사해 실행을 조정한다. 조작 로봇이 집기·적재·하역하고 운송 로봇이 적재함으로 이동한다. 같은 역할의 검증된 예비 로봇 재배정도 목표 범위다.
 
-개발 범위는 에이전트의 운영 판단을 로봇 모델·제어, 위치 추정·환경 인지, 물체 인식·조작, Fleet 작업 배정·자율주행과 연결하는 것이다. 규칙 기반 공동 운반을 먼저 검증하고, 에이전트 제안을 기록·평가하는 `ADVISORY` 단계를 거쳐 검증된 제안을 반영하는 `ASSISTED` 단계로 확장한다. AI 응답 지연·오류나 제안 검증 실패 시에는 규칙 기반 운영으로 복귀하도록 설계한다.
+기능 E에는 중앙·로봇별 Agent를 두며 전체 계획 책임은 중앙에 있다. D는 Nav2 주행을 직접 조정하고 A의 로컬 실행기에 작업을 전달한다. A는 최종 구동·차단, B는 위치·환경·위험, C는 조작 전략·보유 판정을 맡는다. 네 사람은 A~E의 세부 작업을 분담하며 기능과 개인을 일대일 고정하지 않는다.
 
-목표 구성과 역할별 계약은 [통합 상세설계](docs/design/DETAILED_DESIGN.md)에 정리한다.
+운영 목표는 **B 운영 무인**이다. 검증된 자동 복구가 실패·소진되면 작업을 종료·격리·알림 처리하고, 안전 조건을 확인한 독립 후속 작업만 계속한다. 사람은 사후에 원인 수정·물품 정리·재등록을 수행한다. 정상 입고는 물품별 사람 명령·승인을 요구하지 않는다.
 
-현재 저장소는 AX_1 팔 로봇·AX_2 선반 로봇의 URDF와 ros2_control(gz_ros2_control) 기반 기본 제어, Gazebo 센서를 개발하는 단계다. 중앙 운영 AI 에이전트·두 로봇 협업·흡착 부착/해제·자율주행·최종 구동 차단은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
+규칙 기반 자동 입고·공동 운반부터 검증하고, SROS2+D 권한 검사 후 ADVISORY에서 중앙 계획을 평가한 뒤 ASSISTED로 확장한다. LLM 장애·계획 거절 시 유효한 규칙 경로가 있으면 사용하고, 없으면 유한 복구·실패 절차를 따른다. 관제 화면은 통합 1개이며 디자인은 추후 구체화한다.
+
+[통합 상세설계](docs/design/DETAILED_DESIGN.md) · [팀 공통 일정·A1~E4 분담](docs/management/TEAM_SCHEDULE.md)
+
+현재 저장소는 AX_1 팔 로봇·AX_2 선반 로봇의 URDF와 ros2_control(gz_ros2_control) 기반 기본 제어, Gazebo 센서를 개발하는 단계다. 자동 입고·재고·중앙/로봇 Agent·예비 재배정·협업·흡착 부착/해제·자율주행·최종 구동 차단은 후속 구현 대상이다. 실제 기구가 없는 가상 설계이며, 질량·관성·충돌 형상은 개발용 근삿값이다.
 
 프로젝트·GitHub 저장소 이름: **`ax-ws`**. ROS 모델 이름은 `ax`, 패키지 이름은 기존 값을 유지한다. 로컬 작업공간은 `~/ax_ws`로 사용한다. 저장소를 받을 때 대상 폴더를 `~/ax_ws`로 지정하면 아래 명령을 그대로 사용할 수 있다.
 
@@ -20,9 +24,9 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 ### 목표 구성
 
-아래는 두 로봇이 협업하는 **목표 설계**다. 각 블록의 현재 구현 범위는 아래 표를 참고한다.
+아래는 조작·운송 역할과 예비 로봇 Fleet을 포함한 **목표 설계**다. 각 블록의 현재 구현 범위는 아래 표를 참고한다.
 
-![AX 전체 시스템 구성도 — 중앙 운영 AI의 상황 요약·운영 판단·계획 제안과 담당 영역](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=dcfed37dcb94)
+![AX 전체 시스템 구성도 — 자동 입고·중앙 계획·D 실행·예비 로봇·통합 관제](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=80161937e9e6)
 
 [인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [로봇 제어 구조](https://didgustmd23.github.io/ax-ws/internal.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
 
@@ -37,13 +41,12 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 
 </details>
 
-중앙 운영 AI 에이전트는 김성민이 수집한 상태를 바탕으로 **상황 요약 → 운영 판단 → 계획 제안**을 수행한다. 김성민은 제안을 검증해 작업 배정·통로 허가에 반영한다. 제안 검증 실패·AI 지연·오류 시에는 규칙 기반 운영으로 복귀한다. 양현승은 각 로봇의 최종 구동 경로에서 실행 허용과 정지를 강제하도록 구현할 예정이다. 이종수는 위치·환경·안전 판단을 제공하고 엄승연은 `robot_1`의 인식·조작을 담당한다.
-
-상세 계약과 미정 수치는 [통합 상세설계](docs/design/DETAILED_DESIGN.md)를 따른다.
+목표 구성도는 기능 A~E의 책임을 표시한다. 실제 구현 범위는 아래 표와 현재 인터페이스를 따른다.
+번호별 담당은 1 이종수·2 양현승·3 김성민·4 엄승연이며 [작업자 배정표](docs/management/TEAM_SCHEDULE.md#번호별-작업자-배정)를 따른다. 달력 일정·기간은 미정이다.
 
 ### 공동 운반 흐름
 
-[![공동 운반 흐름 — 미구현 목표 설계](docs/assets/diagrams/ax-transfer.webp)](https://didgustmd23.github.io/ax-ws/transfer.html)
+[![자동 입고·공동 운반·실패 복구 — 목표 설계](docs/assets/diagrams/ax-transfer.webp)](https://didgustmd23.github.io/ax-ws/transfer.html)
 
 [인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/transfer.html) · [HTML 내려받기](docs/assets/diagrams/ax-transfer.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-transfer.webp)
 
@@ -59,7 +62,7 @@ Claude 하네스 파일(`CLAUDE.md`, `.claude/`)은 로컬 작업 환경 전용�
 | 기본 제어 | 로봇별 gz_ros2_control `controller_manager`, 바퀴 `diff_drive_controller`(`/cmd_vel` Twist 중계), 팔 JTC와 개발용 `arm_command_guard`(입력 검사·한계 접근 보호), primitive 손가락 위치 제어기 | 보호 잔여 결함·실제 감속 검증, 토크 정격 확정, 안전 게이트·최종 구동 차단 |
 | 센서·상태 | 로봇별 전·후방 LiDAR·RGB/RGB-D·IMU, AX_2 접촉 센서 브리지, ros2_control 관절 상태·odom·이동 TF, 시간 브리지 | 작업 자세별 시야·접촉·주기·물리 동작 검증, 적재 판정 |
 | 공구·조작 | Gazebo 기본 `primitive`, RViz 기본 비교용 `suction` 외형 | EPick 도입, 인식·집기 계획·실제 부착/해제·보유 판정 |
-| 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·Fleet·Nav2·통로 허가·중앙 운영 AI |
+| 작업·주행 운영 | 두 로봇 협업 실행은 미구현 | Task Executor·자동 입고/재고·Fleet·Nav2·통로·예비·중앙/로봇 Agent |
 
 현재 적용 상태와 검증 범위(2026-10-25, 작업트리 기준):
 
@@ -182,12 +185,14 @@ ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 0.2}}'
 
 명령 단위·범위는 [인터페이스 표](docs/guides/INTERFACES.md)를 따른다. 팔 공개 입력은 `arm_command_guard`가 명령 가능 범위와 보간 경로의 속도·가속도를 검사한다. 주행 중계와 primitive 집게 노드는 같은 검사를 제공하지 않는다. `/cmd_vel` 발행을 멈추면 0.5 s 뒤 바퀴 목표 속도가 0이 되며, 이는 안전 정지 기능이 아니다.
 
-## 팀별 후속 연결
+## 기능별 후속 연결
 
-- 이종수: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU·시간 브리지와 ros2_control 관절 상태·odom을 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
-- 엄승연: 팔은 `arm_controller` 궤적 토픽·`FollowJointTrajectory` action, primitive 집게는 `/gripper/command`(손가락 변위 m)를 사용한다. 관절 상태는 `joint_states`로 받는다. 역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
-- 김성민: 로봇별 `cmd_vel`(Twist)·`odom`·이동 TF를 `diff_drive_controller`로 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
-- 양현승: 현재 분리 OBJ와 개발용 질량·관성을 관리한다. 다음은 관절 보호 잔여 결함·실제 감속 확인, 안전 게이트·최종 구동 차단이며 실물 정격은 미확정이다.
+- B: 로봇별 센서·광학 프레임을 사용한다. 전·후방 LiDAR·RGB-D·IMU·시간 브리지와 ros2_control 관절 상태·odom을 연결했으며 작업 자세별 시야·수신·추정 성능은 검증 대상이다.
+- C: 팔은 `arm_controller` 궤적 토픽·`FollowJointTrajectory` action, primitive 집게는 `/gripper/command`(손가락 변위 m)를 사용한다. 관절 상태는 `joint_states`로 받는다. 역기구학·인식·집기 성공은 별도 구현 및 검증 대상이다.
+- D: 로봇별 `cmd_vel`(Twist)·`odom`·이동 TF를 `diff_drive_controller`로 구성했다. 공통 map 연결·Nav2·구동 차단 게이트는 후속 작업이다.
+- A: 현재 분리 OBJ와 개발용 질량·관성을 관리한다. 다음은 관절 보호 잔여 결함·실제 감속 확인, 안전 게이트·최종 구동 차단이며 실물 정격은 미확정이다.
+
+- E: D의 버전 있는 snapshot·전체 계획·로봇별 의견을 인증 경로로 연결한다. 중앙 계획·D 검증·규칙 대체·통합 관제는 목표 계약이며 현재 동작하지 않는다.
 
 ## 전달 파일
 

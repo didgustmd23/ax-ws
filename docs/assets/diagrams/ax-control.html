@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 3.2.0">
   <meta name="archify-reader-contract" content="declared-wide-v1">
-  <title>현재 AX 제어 구조 — 팔 명령 보호 포함 다이어그램</title>
+  <title>현재 AX 제어 — 표준 입력·개발용 팔 보호 다이어그램</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5193,7 +5193,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="블루프린트 / 개정 01"
            data-preset-badge-editorial="에디토리얼 / 현장 노트">
         <div class="pulse-dot"></div>
-        <h1>현재 AX 제어 구조 — 팔 명령 보호 포함</h1>
+        <h1>현재 AX 제어 — 표준 입력·개발용 팔 보호</h1>
       </div>
     </div>
 
@@ -5203,7 +5203,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 도판 04">
       <svg viewBox="0 0 1180 1368" role="img" lang="ko" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
-        <title id="archify-diagram-title">현재 AX 제어 구조 — 팔 명령 보호 포함</title>
+        <title id="archify-diagram-title">현재 AX 제어 — 표준 입력·개발용 팔 보호</title>
         <desc id="archify-diagram-description">Archify로 생성한 아키텍처 다이어그램입니다.</desc>
         <!-- Definitions -->
         <defs>
@@ -5486,8 +5486,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="525" y="1292" class="t-messagebus" font-size="7" text-anchor="middle">센서 토픽 · /clock</text>
         </g>
 
-        <g id="node-arm_guard" data-node-id="arm_guard" data-node-label="개발용 팔 명령 보호" tabindex="0" role="button" aria-label="개발용 팔 명령 보호 포커스, arm_command_guard · 상태 감시, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="arm_command_guard · 상태 감시" data-node-tag="양현승 · 미커밋 개발 구성" data-node-context="아키텍처 구성요소">
-          <title>개발용 팔 명령 보호 · arm_command_guard · 상태 감시 · 아키텍처 구성요소 · 양현승 · 미커밋 개발 구성</title>
+        <g id="node-arm_guard" data-node-id="arm_guard" data-node-label="개발용 팔 명령 보호" tabindex="0" role="button" aria-label="개발용 팔 명령 보호 포커스, arm_command_guard · 상태 감시, 아키텍처 구성요소" aria-pressed="false" data-node-kind="security" data-node-sublabel="arm_command_guard · 상태 감시" data-node-tag="미커밋 개발 구성" data-node-context="아키텍처 구성요소">
+          <title>개발용 팔 명령 보호 · arm_command_guard · 상태 감시 · 아키텍처 구성요소 · 미커밋 개발 구성</title>
           <rect x="400" y="430" width="250" height="78" rx="8" class="c-mask"/>
           <rect x="400" y="430" width="250" height="78" rx="8" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(406 436) scale(0.6875)">
@@ -5496,7 +5496,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           </g>
           <text data-node-label="" data-detail-anchor="" x="525" y="467" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">개발용 팔 명령 보호</text>
         <text data-detail="context" x="525" y="483" class="t-muted" font-size="9" text-anchor="middle">arm_command_guard · 상태 감시</text>
-        <text data-detail="fine" x="525" y="500" class="t-security" font-size="7" text-anchor="middle">양현승 · 미커밋 개발 구성</text>
+        <text data-detail="fine" x="525" y="500" class="t-security" font-size="7" text-anchor="middle">미커밋 개발 구성</text>
         </g>
 
         <!-- Connection labels -->
@@ -5760,74 +5760,37 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>두 로봇에 적용하는 방법</h3>
+          <h3>현재 소스의 명령 경로</h3>
         </div>
         <ul>
-          <li>robot_1: 팔 5축 + primitive 손가락 2개 + 바퀴 4개. robot_2: 바퀴 4개, 팔·손가락 제어기 없음.</li>
-          <li>공통 주행·상태 경로는 각 로봇에서 따로 실행된다. 관리자도 로봇마다 하나이며 설정 주기는 100 Hz다.</li>
-          <li>두 로봇 실행: /ax/robot_1, /ax/robot_2 아래 명령·제어기를 분리한다. 단일 AX_1은 루트 namespace를 사용한다.</li>
+          <li>주행: {ns}/cmd_vel(Twist) → cmd_vel_relay → TwistStamped → diff_drive_controller. 중계 노드는 안전 게이트가 아니다.</li>
+          <li>팔: 공개 JointTrajectory/FollowJointTrajectory → arm_command_guard → 내부 action → JTC. 내부 토픽은 열려 있어 보안 접근 차단은 아니다.</li>
+          <li>primitive 손가락: /gripper/command(각 손가락 m) → 배열 변환 → finger_controller. 흡착 공구 성공 판정이 아니다.</li>
+          <li>현재 소스: simulation.launch.py, arm_command_guard.py, cmd_vel_relay.py, gripper_controller.py, 로봇별 제어기 YAML.</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>명령과 실제 상태는 다르다</h3>
+          <h3>모델·상태·namespace</h3>
         </div>
         <ul>
-          <li>팔 입력: {ns}/arm_controller/joint_trajectory 또는 {ns}/arm_controller/follow_joint_trajectory.</li>
-          <li>손가락 입력: /gripper/command는 전체 개구 폭이 아니라 각 손가락 변위(m)다.</li>
-          <li>플러그인은 위치 오차를 관절 속도 명령으로 바꾼다. effort는 시뮬레이션 출력 상한이며 실물 모터 정격이 아니다.</li>
-          <li>관절 상태는 Gazebo 물리 피드백이다. odom은 바퀴 기반 추정값이며 절대 위치 정답이 아니다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot violet"></div>
-          <h3>상태·센서는 별도 전달 경로</h3>
-        </div>
-        <ul>
-          <li>관절·odom·이동 TF는 ros2_control 경로에서 직접 ROS로 전달하며 Gazebo 상태 브리지를 중복 사용하지 않는다.</li>
-          <li>센서는 /ax/robot_i/sensors/ 아래로 브리지한다. 전방·후방 LiDAR와 IMU, 카메라 구성을 로봇별로 분리한다.</li>
-          <li>/clock은 월드 시간을 ROS에 전달한다. launch의 시뮬레이션 노드는 use_sim_time을 사용한다.</li>
-          <li>그림은 센서 경로를 묶어 표시한다. 팔 카메라는 AX_1, 적재함 접촉 센서는 AX_2에 있다. 기본 primitive 실행에는 suction ToF가 없다.</li>
+          <li>AX_1 단독 namespace는 루트, AX_2/두 모델 실행은 /ax/robot_N. 센서 토픽·관절/odom 프레임·생성 파일을 분리한다.</li>
+          <li>joint_states·odom·TF·센서·clock은 개발 구성이다. Gazebo 모델 2개 생성이 협업 운반·자동 입고·예비 Fleet을 뜻하지 않는다.</li>
+          <li>토크 제한은 개발용 10/100/65/25/5 N·m이며 실물 정격·2 kg 운반 보장이 아니다.</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>G1은 아직 미충족</h3>
+          <h3>목표와의 차이</h3>
         </div>
         <ul>
-          <li>안전 게이트·watchdog·최종 구동 차단은 미구현이다. 주행 명령 timeout 0.5 s는 안전 정지 기능이 아니다.</li>
-          <li>팔은 새 명령이 없어도 마지막 목표를 유지한다. 제어기 비활성화를 검증된 하중 유지 방법으로 보지 않는다.</li>
-          <li>Task Executor·Nav2·흡착 부착/해제는 현재 활성 제어 경로에 포함하지 않았다.</li>
-          <li>effort 100·65·25 N·m는 개발용 잠정값이다. 물리 한계에 닿은 DART 관절의 고착은 해결되지 않았다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot slate"></div>
-          <h3>기준과 검증 범위</h3>
-        </div>
-        <ul>
-          <li>현행 작업트리의 simulation.launch.py, arm_command_guard.py, arm_guard_logic.py와 제어기 YAML을 읽어 갱신했다.</li>
-          <li>미커밋 보호 코드는 고정 커밋의 근거로 표시하지 않았다. 이 그림의 검증은 구조·표시 검사이며 로봇 물리 시험이 아니다.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot rose"></div>
-          <h3>보호와 최종 안전 차단은 다르다</h3>
-        </div>
-        <ul>
-          <li>공개 팔 입력은 arm_command_guard를 거쳐 내부 JTC action으로 전달된다. 내부 토픽은 여전히 열려 있어 보안 차단이 아니다.</li>
-          <li>joint_states로 한계 접근을 감시한다. 계획 궤적 가속도 제한과 실제 순간 감속은 다르며 실제 감속 초과가 남아 있다.</li>
-          <li>상태 만료 중 보호 유지와 비정상 상태의 고장 해제 거부는 보완됐다. 보호 중 물리 한계 도달 후 해제 성공을 응답해도 명령 재개가 막히는 결함은 남아 있다. G1은 미충족이다.</li>
+          <li>최종 구동 게이트·주행 안전 watchdog·Task Executor·Fleet·Nav2·Agent는 이 그림에 구현된 노드로 추가하지 않는다. 별도 목표 그림을 참조한다.</li>
+          <li>G1 미충족. 실제 순간 감속과 고장 해제 후 재개 결함, 물리 한계 고착·하중·충돌 검증이 남아 있다.</li>
+          <li>clear_fault는 Trigger 서비스이며 응답 성공만으로 실제 후속 명령 재개를 보장하지 않는다. 현재 INTERFACES.md의 잔여 결함을 따른다.</li>
         </ul>
       </div>
     </div>

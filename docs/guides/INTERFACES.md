@@ -14,6 +14,15 @@
 
 실제 관절의 순간 가속도 제한 준수는 확인되지 않았고 초과가 관찰됐다.
 
+## 목표 운영 계약과 현재 API의 경계
+
+[본설계](../design/DETAILED_DESIGN.md)의 목표는 자동 입고·등록 지점 선택·중앙 LLM 전체 계획·
+D 검증/실행·역할별 예비 재배정·운영 무인이다. A~E는 기능 구분이며 개인 배정은
+[팀 공통 일정](../management/TEAM_SCHEDULE.md)에서 관리한다.
+입고·재고·위치 예약·FleetSnapshot·Agent 계획/인증·D heartbeat·C lease·실행 원장은 목표 계약이다.
+현재 표준 관절·속도·센서 API가 이 상위 계약을 이미 제공한다고 해석하지 않는다.
+구현 시 D→Nav2, D→A 로컬 Action→C 조작, 모든 실제 구동→A 최종 게이트 경로를 연결해야 한다.
+
 ## 링크와 관절
 
 루트는 `base_link`. 현재 원통 회전·카메라·광학 프레임을 포함하여 `primitive` 집게 선택(Gazebo·공통 Xacro 기본값)은 관절 24개·링크 25개, `robotiq` 선택은 관절 31개·링크 32개다. `parallel_wide`는 관절 26개·링크 27개, RViz 기본값인 비교용 공구 `suction`은 ToF 포함 관절 29개·링크 30개다.

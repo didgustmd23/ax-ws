@@ -5,7 +5,7 @@
 ## 현재 상태와 문서 선택
 
 - 저장소는 **설계·일정 단계**다. 작업트리에는 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산만 있다.
-- [통합 상세설계](design/DETAILED_DESIGN.md)는 목표 계약, [팀 공통 일정](management/TEAM_SCHEDULE.md)은 A1~E4 산출물·의존성·단계·검증을 관리한다. 번호별 담당은 확정했고 기간은 미정이다.
+- [통합 상세설계](design/DETAILED_DESIGN.md)는 목표 계약, [팀 공통 일정](management/TEAM_SCHEDULE.md)은 A1~E4 산출물·의존성·단계·검증을 관리한다. 번호별 담당은 확정했고 기간은 2026-10-28 ~ 2027-01-28(개발 2개월·시험 1개월)이다.
 - 이전 개발 구성의 소스와 인터페이스·검증·집게 비교·팔 사양·외부 저장소 검토 문서, 검증 자료는 커밋 `4f85007` 이력으로만 남긴다. 이전 구현은 **G1 미충족** 상태였으며, 이력의 수치·시험 결과를 새 구현의 통과 근거로 해석하지 않는다. 경위와 조회 방법은 [이전 구현 기록](management/TEAM_SCHEDULE.md#이전-구현-기록)을 따른다.
 - 설계는 본설계 하나, 전체 일정·업무 분담은 공통 일정 하나로 관리한다. 채택된 임시 초안은 흡수 후 제거한다.
 
@@ -42,7 +42,7 @@
 | 문서 | 내용 | 상태 |
 |---|---|---|
 | [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 조작·운송 역할 협업 그룹, A~E 기능, 상태 머신·통신·검증 목표 | 운영 무인·자동 입고·중앙 전체 계획·D 실행·역할별 예비·인증/관제 목표. 구현 완료 아님 |
-| [TEAM_SCHEDULE](management/TEAM_SCHEDULE.md) | 팀 공통 일정, A1~E4·공통 계약·통합/장시간 시험·완료 관문 | 1 이종수·2 양현승·3 김성민·4 엄승연. 기간 미정 |
+| [TEAM_SCHEDULE](management/TEAM_SCHEDULE.md) | 팀 공통 일정, A1~E4·공통 계약·통합/장시간 시험·완료 관문 | 1 이종수·2 양현승·3 김성민·4 엄승연. 2026-10-28 ~ 2027-01-28, 주차 계획은 초안 |
 | [GIT_UPLOAD_POLICY](management/GIT_UPLOAD_POLICY.md) | 포함·제외 파일과 확인 방법 | build/install/log 제외, 모델 자산·외부 LICENSE 포함 |
 | [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf) | 최초 통합 상세설계 원문 | 현재 작업트리에서 삭제 상태, 저장된 커밋 참조 |
 

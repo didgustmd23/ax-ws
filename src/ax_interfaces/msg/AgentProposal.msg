@@ -1,0 +1,44 @@
+# Agent → D. 제안 1건(설계 7.6절 필드표). 조건부 필드는 해당 action에서만 채운다.
+uint8 NO_ACTION=0
+uint8 ASSIGN_TASK=1
+uint8 DEFER_TASK=2
+uint8 RECOMMEND_RETRY=3
+uint8 RECOMMEND_REASSIGN=4
+uint8 RECOMMEND_PRIORITY_CHANGE=5
+uint8 REQUEST_HOLD=6
+uint8 REQUEST_RESUME_REVIEW=7
+uint8 PREFER_CANDIDATE=8
+uint8 MOVE_TO_LOCATION=9
+uint8 WAIT_AT_LOCATION=10
+# 전체 계획은 제안이 아니라 AgentPlan Topic으로 제출한다
+string sender_agent_id
+string agent_session_id
+uint64 agent_receive_generation
+string proposal_id
+uint32 schema_version
+uint8 action
+string team_id
+string target_robot_id
+string task_id
+string assignment_id
+uint64 assignment_generation
+uint64 snapshot_id
+uint64 task_revision
+string reason_code
+string[] evidence_state_ids
+string object_id
+string precondition_id
+string failure_event_id
+string hold_id
+string transfer_id
+string corridor_id
+string grant_id
+uint64 corridor_revision
+CandidatePreference candidate
+string plan_id
+uint64 plan_revision
+string location_id
+uint64 location_revision
+uint64 map_revision
+uint8 priority
+string explanation              # 기록용. 검증 근거로 쓰지 않는다

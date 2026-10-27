@@ -11,7 +11,7 @@
 
 **결정**은 목표 계약, **구현**은 소스 반영, **검증**은 명시된 조건의 시험 결과다. 이 세 상태를 같은 뜻으로 쓰지 않는다.
 
-2026-10-27 기준 작업트리에는 구현 소스가 없다. 이전 개발 구성(AX_1·AX_2 모델, 로봇별 ros2_control,
+2026-10-27 기준 작업트리에는 기능 구현 소스가 없고 공통 인터페이스 타입 초안(`src/ax_interfaces`)만 있다. 이전 개발 구성(AX_1·AX_2 모델, 로봇별 ros2_control,
 개발용 관절 보호 `arm_command_guard`; G1 미충족)과 그 인터페이스·검증·팔 사양 문서는 커밋 `4f85007`
 이력으로만 남긴다. 작업트리에 남긴 모델 자산은 메시(`src/ax_description/meshes/`)·`src/robotiq_description/`·`maps/`다.
 새 구현은 이 문서와 [팀 공통 일정](../management/TEAM_SCHEDULE.md)을 따르며, 이전 구현의 경위와 조회 방법은
@@ -67,9 +67,9 @@ PPO/SAC 등 강화학습 기반 주행·배정은 현재 핵심 범위 밖의 �
 
 ## 3. 아키텍처와 역할 분담
 
-[![전체 목표 구조 — 자동 입고·중앙 계획·Fleet 실행](../assets/diagrams/ax-system.webp)](https://didgustmd23.github.io/ax-ws/overview.html)
+[![상세 기능 구성 — 기능 A~E 블록과 데이터 흐름](../assets/diagrams/ax-functions.webp)](https://didgustmd23.github.io/ax-ws/functions.html)
 
-[인터랙티브 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [HTML](../assets/diagrams/ax-system.html)
+[인터랙티브 상세 기능 구성도](https://didgustmd23.github.io/ax-ws/functions.html) · [HTML](../assets/diagrams/ax-functions.html) · 간략한 전체 구조는 [전체 시스템 구성도](../assets/diagrams/ax-system.html)
 
 A~E는 기능 영역이다. 번호별 담당은 12절을 따르며 각자는 A~E의 같은 번호 작업을 맡는다.
 세부 산출물·기간은 [팀 공통 일정](../management/TEAM_SCHEDULE.md#번호별-작업자-배정)에서 관리하며 기능 A~E와 사람을 일대일로 고정하지 않는다.
@@ -368,7 +368,7 @@ Cosmos는 후보 모델이며 채택·실행 성능·파인튜닝 여부를 확�
 
 ## 7. 메시지·서비스·액션 계약
 
-아래는 현재 결정에 맞춘 목표 계약이다. 타입·enum·프레임·시간 조건을 확정해 구현하며 현재 동작하는 API와 구분한다.
+아래는 현재 결정에 맞춘 목표 계약이다. 타입·enum·프레임·시간 조건을 확정해 구현하며 현재 동작하는 API와 구분한다. 공유 Topic·Service·Action의 이름·QoS·최신성·소유 작업 초안은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md), 타입 정의 초안은 `src/ax_interfaces/`를 따른다.
 
 ### 7.1 그룹 작업과 역할별 하위 Action
 
@@ -1041,7 +1041,7 @@ input_features, ground_truth, prediction, result
 [![기능별 목표 패키지](../assets/diagrams/ax-packages.webp)](https://didgustmd23.github.io/ax-ws/packages.html)
 
 아래는 기능 경계에 맞춘 목표 패키지안이다. 현재 패키지의 분리·이전 완료를 뜻하지 않는다.
-현재 작업트리에는 `ax_description` 메시와 `robotiq_description` 모델 subset만 있다. 이전 패키지 구조는 커밋 `4f85007` 이력을 참조한다.
+현재 작업트리에는 `ax_description` 메시, `robotiq_description` 모델 subset, 공통 타입 초안 `ax_interfaces`만 있다. 이전 패키지 구조는 커밋 `4f85007` 이력을 참조한다.
 
 | 기능 | 목표 모듈·패키지 |
 |---|---|
@@ -1174,7 +1174,7 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 | 인계 | 두 로봇의 상대 위치·허용 오차 |
 | 이동 방식 | 개별 이동·합류 또는 대형 유지 |
 | 최종 구동 차단 | A의 구현 방식(바퀴 게이트, 팔 궤적 차단), 실제 정지 확인 속도 임계값·지속 시간 |
-| 인터페이스 | 하위 Action 이름, 필드 타입, enum 값, 상태 만료 시간 |
+| 인터페이스 | 하위 Action 이름, 필드 타입, enum 값, 상태 만료 시간. 초안과 결정 항목은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 7절 |
 | 통로·대기 지점 | 통로 폭, 외형 경계, 완전 이탈 여유 |
 | 최종 속도 제어 경로 | Nav2/ros2_control/안전 게이트 통합 검증 |
 | AI 모델 실행 | CPU/GPU 메모리, 응답 지연, 오류, 외부 전송 범위 |

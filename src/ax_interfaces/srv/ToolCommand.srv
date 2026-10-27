@@ -1,0 +1,13 @@
+# 서버 A2(A의 허용 검사 포함), 클라이언트 C4. 흡착 부착·해제 요청(설계 7.5·7.7절).
+# 수락은 실제 부착·해제 완료가 아니다. 결과는 AttachState(A)와 ToolHoldState(C)로 확인한다.
+uint8 UNSPECIFIED=0
+uint8 ATTACH=1
+uint8 RELEASE=2
+string request_id
+string robot_id
+string execution_id
+string object_id
+uint8 command
+---
+bool accepted
+string reason_code

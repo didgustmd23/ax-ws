@@ -18,7 +18,7 @@
 
 ## 현재 저장소 상태
 
-현재 저장소는 **설계·일정 단계**다. 작업트리에는 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산만 있다.
+현재 저장소는 **설계·일정 단계**다. 작업트리에는 기능 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산, 공통 인터페이스 타입 초안(`src/ax_interfaces`)만 있다.
 
 이전 개발 구성(AX_1·AX_2 모델, 로봇별 ros2_control 기본 제어, Gazebo 센서, 개발용 관절 보호 `arm_command_guard`)과 그 인터페이스·검증·팔 사양 문서는 커밋 [`4f85007`](https://github.com/didgustmd23/ax-ws/tree/4f8500755151b2fbcbf35ab9cbca13fb1d71cea9)까지의 Git 이력으로만 남긴다. 이전 구현은 G1(안전 게이트·최종 구동 차단)을 충족하지 않았으며, 이력의 코드·수치·시험 결과를 새 구현의 통과 근거로 쓰지 않는다. 경위와 조회 방법은 [이전 구현 기록](docs/management/TEAM_SCHEDULE.md#이전-구현-기록)을 따른다.
 
@@ -31,11 +31,11 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 
 ### 목표 구성
 
-아래는 조작·운송 역할과 예비 로봇 Fleet을 포함한 **목표 설계**다.
+아래는 입고부터 재고 갱신까지 기능 A~E가 어떻게 연결되는지 보여 주는 **목표 설계의 간략 구조**다. 블록별 세부는 상세 기능 구성도를 본다.
 
-![AX 전체 시스템 구성도 — 자동 입고·중앙 계획·D 실행·예비 로봇·통합 관제](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=dda0bc30abd3)
+![AX 전체 시스템 — 입고부터 재고 갱신까지](https://raw.githubusercontent.com/didgustmd23/ax-ws/main/docs/assets/diagrams/ax-system.webp?v=89df46995ea9)
 
-[인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp)
+[인터랙티브 전체 구성도](https://didgustmd23.github.io/ax-ws/overview.html) · [이미지 크게 보기 · WebP](docs/assets/diagrams/ax-system.webp) · [상세 기능 구성도](https://didgustmd23.github.io/ax-ws/functions.html) ([HTML](docs/assets/diagrams/ax-functions.html))
 
 웹 링크는 main 반영과 GitHub Pages 최초 배포 후 사용할 수 있다. 배포 전에는 [전체 구성도 HTML](docs/assets/diagrams/ax-system.html)을 내려받아 브라우저로 연다.
 
@@ -44,7 +44,7 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 
 저장소의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 선택한다. 이후 main에서 배포 파일이 변경되면 `Publish AX diagrams` 워크플로가 사이트를 갱신한다. 수동 실행은 main을 선택한다.
 
-공개 대상은 `docs/assets/diagrams/`에서 명시한 구성도 HTML 6개와 투명 WebP 6개다. `.archify/`의 작업 원본·JSON·검증 자료·글꼴은 Git과 Pages 배포에서 제외한다.
+공개 대상은 `docs/assets/diagrams/`에서 명시한 구성도 HTML 7개와 투명 WebP 7개다. `.archify/`의 작업 원본·JSON·검증 자료·글꼴은 Git과 Pages 배포에서 제외한다.
 
 </details>
 
@@ -66,6 +66,8 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 |---|---|
 | [docs/design/DETAILED_DESIGN.md](docs/design/DETAILED_DESIGN.md) | 목표 설계·결정·계약·시험 요구 |
 | [docs/management/TEAM_SCHEDULE.md](docs/management/TEAM_SCHEDULE.md) | A1~E4 작업 분해·담당·의존성·단계·이전 구현 기록 |
+| [docs/design/INTERFACE_CONTRACT.md](docs/design/INTERFACE_CONTRACT.md) | 공통 인터페이스 계약 초안(K0) |
+| `src/ax_interfaces/` | 공통 메시지·서비스·액션 타입 초안(53개). `colcon build --packages-select ax_interfaces` |
 | [docs/management/GIT_UPLOAD_POLICY.md](docs/management/GIT_UPLOAD_POLICY.md) | Git 포함·제외 기준, 초안·이전 구현의 정리 원칙 |
 | `docs/assets/diagrams/` | 공유 구성도 HTML·투명 WebP |
 | `src/ax_description/meshes/` | AX_1·AX_2·상자 원본 OBJ·MTL과 분리 메시. [분리 메시 README](src/ax_description/meshes/parts/README.md) |

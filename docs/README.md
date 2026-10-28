@@ -27,9 +27,9 @@
 | lease·명령 확인 | 조작 1회의 lease 발급·명령 수락 확인·갱신·철회·재동기화 순서(규칙 기준은 계약 5.2절) | [열기](assets/diagrams/ax-lease.html) | [WebP](assets/diagrams/ax-lease.webp) | [lease](https://didgustmd23.github.io/ax-ws/lease.html) |
 | 공동 운반 | 입고·적재·배치·재고 갱신·실패 복구·예비 배정 | [열기](assets/diagrams/ax-transfer.html) | [WebP](assets/diagrams/ax-transfer.webp) | [transfer](https://didgustmd23.github.io/ax-ws/transfer.html) |
 | 최종 차단 권고 | 중앙 계획→D 검증→A 최종 차단·주행/조작 경로 | [열기](assets/diagrams/ax-safety.html) | [WebP](assets/diagrams/ax-safety.webp) | [safety](https://didgustmd23.github.io/ax-ws/safety.html) |
-| 패키지 구성 | A~E·공통 목표 패키지. 그림의 "현재 구현" 표시는 이전 구현(커밋 `4f85007`) 기준 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
+| 패키지 구성 | A~E·공통 목표 패키지와 현재 공통 타입 초안. 실행 노드는 신규 구현 대상 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
 | 이전 로봇 제어 | 이전 구현(커밋 `4f85007`)의 팔 명령 보호를 포함한 제어 구성 기록 | [열기](assets/diagrams/ax-control.html) | [WebP](assets/diagrams/ax-control.webp) | [internal](https://didgustmd23.github.io/ax-ws/internal.html) |
-| 문서 폴더 | 이전 문서 구성(커밋 `4f85007`) 기준. 현재 문서는 이 안내를 따름 | [열기](assets/diagrams/ax-docs.html) | [WebP](assets/diagrams/ax-docs.webp) | [documents](https://didgustmd23.github.io/ax-ws/documents.html) |
+| 문서 폴더 | 현행 본설계·인터페이스 계약·공통 일정과 이전 구현 이력의 구분 | [열기](assets/diagrams/ax-docs.html) | [WebP](assets/diagrams/ax-docs.webp) | [documents](https://didgustmd23.github.io/ax-ws/documents.html) |
 
 구성도는 개인 배정 없이 A~E 기능과 호출·관측 경계를 표시한다. Pages 링크는 main 반영 및 배포 후 갱신된다. 이전 구현을 그린 구성도는 기록용이며 현재 동작 설명이 아니다.
 

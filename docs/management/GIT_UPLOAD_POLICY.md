@@ -79,16 +79,16 @@ Claude 하네스 파일은 팀 공용 지침으로도 Git에 올리지 않는다
 | 경로·종류 | 포함 이유 |
 |---|---|
 | 새 구현의 ROS 패키지 소스·launch·설정 | 추가 시 포함. 이전 `ax_description` 모델 정의·`ax_control`·`tools/`는 커밋 `4f85007` 이력 참조 |
-| `src/robotiq_description/` | 현재 Robotiq 미리보기의 로컬 의존 패키지 |
+| `src/robotiq_description/` | 보존 중인 외부 Robotiq 모델 자산·모델 전용 패키지 |
 | `.obj`, `.mtl`, `.dae`, `.stl` | 로봇 시각·충돌 모델의 실제 입력 자산 |
 | `meshes/parts/`의 OBJ·MTL | 이전 URDF가 참조하던 분리 모델. 새 모델에서 재사용 가능 |
 | `manifest.json`, `column_split_manifest.json` | 모델 분리 결과와 출처·대응 관계 |
 | `src/robotiq_description/LICENSE` | 외부 모델의 BSD-3-Clause 라이선스 |
 | `src/robotiq_description/UPSTREAM_FILES.json` | 외부 원본 commit·파일 SHA 기록 |
 | `src/robotiq_description/upstream/*.original` | 가져온 외부 패키지의 원본 메타데이터·설치 규칙 보존 |
-| `package.xml`, `CMakeLists.txt`, `setup.py`, `setup.cfg`, `resource/` | 새 ROS 패키지 빌드·설치·검색에 필요. 현재 `robotiq_description`만 해당 |
+| `package.xml`, `CMakeLists.txt`, `setup.py`, `setup.cfg`, `resource/` | 새 ROS 패키지 빌드·설치·검색에 필요. 현재 `robotiq_description`·`ax_interfaces`에 해당 |
 | `maps/warehouse_map.yaml`, `maps/warehouse_map.pgm` | 지도 메타데이터와 실제 지도 이미지. 한 쌍으로 관리 |
-| `docs/assets/diagrams/*.html`, `*.webp` | 검토한 공유 구성도와 투명 이미지. 원본·검증 영수증 제외 |
+| `docs/assets/diagrams/*.html`, `*.webp` | 검토한 공유 구성도와 투명 이미지. 원본·검증 결과 파일 제외 |
 | `.github/workflows/diagram-pages.yml` | main에서 명시한 공유 구성도만 Pages 배포 |
 | `README.md`, `docs/**/*.md`, 검토된 증거 | 팀 공유·설계·일정·검증 기록 |
 | `.gitignore` | 생성 파일·개인 환경 제외 규칙 공유 |

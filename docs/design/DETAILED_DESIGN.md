@@ -180,10 +180,10 @@ OFF·ADVISORY에서도 입고 작업은 자동 생성하고, 검증된 규칙 �
 ### 4.3 C: 물체 인식·조작
 
 - 모델: YOLO11n/s + XGBoost.
-- YOLO로 운반 대상 검출 후 Depth, 카메라 내참수, TF 변환으로 3D 목표 좌표 계산.
+- YOLO로 운반 대상 검출 후 Depth, 카메라 내부 파라미터, TF 변환으로 3D 목표 좌표 계산.
 - 집기 후보는 먼저 도달 가능성·충돌 검증을 통과해야 한다.
 - XGBoost가 검증된 후보의 성공 확률을 추정하여 비교한다.
-- 입력 예: 물체 크기, 상대 거리, 접근각, 집게 벌림, 목표 편차, 물체 종류.
+- 입력 예: 물체 크기, 상대 거리, 접근각, 표면 기울기, 접근 거리, 목표 편차, 물체 종류.
 - 평가: Precision/Recall/mAP, 집기 성공률, 평균 재시도 횟수, 집기 시간, 예측 확률 보정 상태.
 
 ### 4.4 D: 이동시간 예측
@@ -386,32 +386,38 @@ Action을 종료한 뒤 D가 이동을 조정한다. 물품 지지·팔 안전·
 
 ### 7.2 SafetyState.msg
 
-발행자 B.
+발행자 B. 현행 필드 정의는 [`SafetyState.msg`](../../src/ax_interfaces/msg/SafetyState.msg)를 따른다.
 
 ```text
-Header header
+StateMeta meta
 string robot_id
 uint8 level
 string reason_code
 bool sensor_valid
+bool front_sensor_valid
+bool rear_sensor_valid
 bool localization_valid
-float32 recommended_max_linear_speed
+bool allow_forward
+bool allow_backward
+bool allow_rotate
+float32 max_linear_speed
+float32 max_angular_speed
 ```
 
 `level`: `CLEAR=0`, `SLOWDOWN_REQUIRED=1`, `STOP_REQUIRED=2`, `UNKNOWN=3`.
 
-보완 결정: 위 원문 필드에 더해 전진·후진·회전 허용 여부, 선속도·각속도 상한, 전방·후방 센서 유효성을 표현한다. 전체 정지(`STOP_REQUIRED`·`UNKNOWN`)와 상태 만료는 방향별 허가보다 우선한다. 후방 센서 이상 시 해당 로봇의 후진을 금지한다. 위 블록은 원문 필드이며, 현행 필드 이름·타입·만료 시간은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.2·6절과 `SafetyState.msg`를 따른다.
+전진·후진·회전 허용 여부, 선속도·각속도 상한, 전방·후방 센서 유효성을 표현한다. 전체 정지(`STOP_REQUIRED`·`UNKNOWN`)와 상태 만료는 방향별 허가보다 우선한다. 후방 센서 이상 시 해당 로봇의 후진을 금지한다. QoS·만료 시간·0값 보호 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 2.3·4.2·6절을 따른다.
 
 ### 7.3 CorridorObservation.msg / CorridorState.msg
 
 | 메시지 | 필드 |
 |---|---|
-| Observation, B 발행 | `header`, `corridor_id`, `robot_id`, `observation`, `position_valid` |
-| State, D 관리 | `header`, `corridor_id`, `state`, `owner_robot_id`, `active_grant_id`, `revision` |
+| [`CorridorObservation`](../../src/ax_interfaces/msg/CorridorObservation.msg), B 발행 | `meta`, `corridor_id`, `robot_id`, `observation`, `position_valid` |
+| [`CorridorState`](../../src/ax_interfaces/msg/CorridorState.msg), D 관리 | `corridor_id`, `state`, `owner_robot_id`, `active_grant_id`, `corridor_revision` |
 
 - 관측 enum: `OUTSIDE=0`, `APPROACHING=1`, `INSIDE=2`, `UNKNOWN=3`.
 - 통로 상태 enum: `FREE=0`, `RESERVED=1`, `OCCUPIED=2`, `BLOCKED_UNKNOWN=3`.
-- 위 표는 원문 필드다. 현행 필드(상태 머리·revision 이름)와 0값 보호 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 2.3·6절을 따른다.
+- 위 표는 현행 타입의 필드다. `CorridorState`의 상태 머리는 바깥 목록 `CorridorStateList.meta`에 둔다. 상태 머리·0값 보호 규칙은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 2.3·6절을 따른다.
 
 ### 7.4 RequestCorridorEntry.srv
 
@@ -1045,7 +1051,7 @@ input_features, ground_truth, prediction, result
 | E | ax_operations_agent, 중앙/로봇 Agent·추론 어댑터·오프라인 품질 평가 |
 | 공통 K0 | ax_interfaces·ax_bringup·ax_integration_tests·독립 관측기. SROS2 기반 설정·소비자 계약 |
 
-A~E와 담당 개인을 일대일 고정하지 않는다. 생산자·소비자가 인터페이스를 함께 승인하고
+A~E와 담당 개인을 일대일 고정하지 않는다. 공통 인터페이스는 양현승이 초안을 작성·공유하고 생산자·소비자가 검토한다. 정해진 기한까지 이의가 없으면 확정하며, 이의가 있는 항목만 함께 조정한다.
 A↔B 안전, A↔C 조작, A↔D 작업/lease, B↔D 통로/입고, D↔E 계획/인증에는 계약 시험이 필요하다.
 외부 모델 subset·LICENSE·고정 commit·manifest를 유지하고 동명 패키지를 중복 도입하지 않는다.
 
@@ -1085,7 +1091,7 @@ A↔B 안전, A↔C 조작, A↔D 작업/lease, B↔D 통로/입고, D↔E 계�
 | TC-17 | 실패 종료 직후 재시작·동일 물체 재등록(새 task_id 포함) | 격리·알림·미확정 실행·예산 복원, 자동 초기화·중복 실행 없음 |
 | TC-18 | 알림 수신자 부재·사후 조치 | 무응답에도 실패 처리 완료, 수동 조치 개입 기록·사후 재실행은 새 회차로 구분, 실제 상태 대조 전 잠금 해제·재등록 없음 |
 
-완료하려면 두 로봇의 안전한 공동 운반, 지정 통로 교행, 실패·취소·센서 이상 복구 검증, 반복 성능 측정을 마쳐야 한다. AI는 기존 안전 불변조건을 훼손하지 않아야 하며, 기준선 대비 실제 개선 여부를 별도로 보고한다.
+완료하려면 두 로봇의 안전한 공동 운반, 지정 통로의 양방향 순차 통과, 실패·취소·센서 이상 복구 검증, 반복 성능 측정을 마쳐야 한다. AI는 기존 안전 불변조건을 훼손하지 않아야 하며, 기준선 대비 실제 개선 여부를 별도로 보고한다.
 
 ### 13.1 자동 운영·Agent·영속 복원 시나리오
 
@@ -1159,11 +1165,11 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 
 | 항목 | 선행 확정 내용 |
 |---|---|
-| 센서 상세 | 개발용 RGB/RGB-D·장착 좌표·해상도·시야각·주기는 적용. 최종 종류·보정값·노이즈·시야 가림·실제 갱신율은 미확정 |
+| 센서 상세 | 이전 개발 구성에 RGB/RGB-D·임시 장착 좌표·해상도·시야각·주기를 적용했으며, 새 구현에서 재검증한다. 최종 종류·보정값·노이즈·시야 가림·실제 갱신율은 미확정 |
 | 팔·흡착 | 수정 메시·부품 배치, 관절 범위, 필요 토크, 제어 이득, 흡착·적재 판정 임계값 |
 | EPick | 최종 컵 구성, 제품 질량 특성, `epick_tcp` 보정값, 가상 진공 관절 처리, Jazzy 빌드 결과 |
 | 작업 환경 | `station_src`·`station_dst` 높이·위치, 상자 크기·질량·배치 조건 |
-| robot_2 | AX_2 개발 형상·별도 가상 물리 특성은 적용. 최종 적재함 크기·높이·유지 구조·허용 하중은 미확정 |
+| robot_2 | 이전 개발 구성에 AX_2 형상·별도 가상 물리 특성을 적용했으며, 새 구현에서 재검증한다. 최종 적재함 크기·높이·유지 구조·허용 하중은 미확정 |
 | 인계 | 두 로봇의 상대 위치·허용 오차 |
 | 이동 방식 | 개별 이동·합류 또는 대형 유지 |
 | 최종 구동 차단 | A 게이트 내부 구현 방식. 경로·수락 조건·정지 확인 초깃값은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md) 4.3절·D-06 |
@@ -1222,7 +1228,7 @@ LLM 모델·제공자·가용한 모델 버전, 샘플링 설정(temperature, to
 
 ## 17. 원문과 현재 결정의 구분
 
-운영 무인·전체 계획/실행 분리·자동 입고·등록 지점·역할별 예비·SROS2/D 인증·모드/격리·교착·통합 관제와 공통 일정은 현재 결정 사항이다. 번호별 개인 배정은 확정했으며 정확한 타입·수치·기간·모델과 공통 조정 담당은 미정이다.
+운영 무인·전체 계획/실행 분리·자동 입고·등록 지점·역할별 예비·SROS2/D 인증·모드/격리·교착·통합 관제와 공통 일정은 현재 결정 사항이다. 번호별 개인 배정과 전체 기간(2026-10-28 ~ 2027-01-28)은 확정했다. 타입·수치의 초안은 공통 인터페이스 계약을 따르며, 최종 수치·모델·세부 공수·주차별 배분과 공통 조정 담당은 확정·조정 대상이다.
 
 결정 출처: DEC-20~DEC-24와 DEC-11·DEC-13·DEC-14 개정, 위 결정 사항, 번호별 개인 배정은 2026-10-27 팀 회의에서 결정했다. 회의 전 검토용 초안과 결정표는 이 문서와 [팀 공통 일정](../management/TEAM_SCHEDULE.md)에 반영한 뒤 삭제했으며 이전 내용은 Git 이력에서 확인한다.
 

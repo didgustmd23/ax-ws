@@ -1,0 +1,325 @@
+
+<link name="wheel_01">
+  <visual>
+    <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
+    <geometry>
+      <mesh
+        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        scale="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+</link>
+
+<joint name="wheel_01_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_01"/>
+  <origin xyz="0.440 -0.311 0.190" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+</joint>
+
+<!-- 첫 번째 바퀴 -->
+<link name="wheel_01">
+  <visual>
+    <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
+    <geometry>
+      <mesh
+        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        scale="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+</link>
+
+<joint name="wheel_01_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_01"/>
+  <origin xyz="0.440 -0.311 0.190" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+</joint>
+
+
+<!-- 두 번째 바퀴 -->
+<link name="wheel_02">
+  <visual>
+    <origin xyz="-0.440 -0.311 -0.190" rpy="0 0 0"/>
+    <geometry>
+      <mesh
+        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_02.obj"
+        scale="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+</link>
+
+<joint name="wheel_02_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_02"/>
+  <origin xyz="0.440 0.311 0.190" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+</joint>
+
+
+<!-- 세 번째 바퀴 -->
+<link name="wheel_03">
+  <visual>
+    <origin xyz="0.440 0.311 -0.190" rpy="0 0 0"/>
+    <geometry>
+      <mesh
+        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_03.obj"
+        scale="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+</link>
+
+<joint name="wheel_03_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_03"/>
+  <origin xyz="-0.440 -0.311 0.190" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+</joint>
+
+
+<!-- 네 번째 바퀴 -->
+<link name="wheel_04">
+  <visual>
+    <origin xyz="0.440 -0.311 -0.190" rpy="0 0 0"/>
+    <geometry>
+      <mesh
+        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_04.obj"
+        scale="0.001 0.001 0.001"/>
+    </geometry>
+  </visual>
+</link>
+
+<joint name="wheel_04_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_04"/>
+  <origin xyz="-0.440 0.311 0.190" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+</joint>
+
+  <!-- 로봇 팔의 첫 번째 고정 부품 -->
+  <link name="arm_01_fixed">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_fixed.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="arm_01_fixed_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_01_fixed"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 로봇 팔 지지대 -->
+  <link name="arm_01_support">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_support.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_01_support_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_01_support"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 로봇 팔 기둥 -->
+  <link name="arm_01_column">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_column.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_01_column_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_01_column"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 로봇 팔 두 번째 부품 -->
+  <link name="arm_02_movie">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_02_movie.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_02_movie_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_02_movie"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 로봇 팔 상완 -->
+  <link name="arm_03_upperarm">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_03_upperarm.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_03_upperarm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_03_upperarm"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 로봇 팔 전완 -->
+  <link name="arm_04_forearm">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_04_forearm.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_04_forearm_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_04_forearm"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 손목 -->
+  <link name="gripper_wristhousing">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_wristhousing.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_wristhousing_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_wristhousing"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 중앙 패드 -->
+  <link name="gripper_centerpad">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_centerpad.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_centerpad_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_centerpad"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 손가락 1 -->
+  <link name="gripper_finger_01">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_finger_01.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_finger_01_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_finger_01"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 손가락 2 -->
+  <link name="gripper_finger_02">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_finger_02.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_finger_02_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_finger_02"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 연결 부품 1 -->
+  <link name="gripper_linkpair_01">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_linkpair_01.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_linkpair_01_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_linkpair_01"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 그리퍼 연결 부품 2 -->
+  <link name="gripper_linkpair_02">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_linkpair_02.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="gripper_linkpair_02_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gripper_linkpair_02"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 우측 부품 1 -->
+  <link name="ax_right_01">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_01.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="ax_right_01_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ax_right_01"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 우측 부품 2 -->
+  <link name="ax_right_02">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_02.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="ax_right_02_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ax_right_02"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 우측 부품 3 -->
+  <link name="ax_right_03">
+    <visual>
+      <geometry>
+        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_03.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="ax_right_03_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ax_right_03"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>

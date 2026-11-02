@@ -10,11 +10,11 @@ ax_1_arm_controller:
   ros__parameters:
     type: joint_trajectory_controller/JointTrajectoryController
     joints:
-      - column_yaw_joint
-      - shoulder_joint
-      - elbow_joint
-      - wrist_joint
-      - gripper_rotation_joint
+      - arm_turret_column_joint
+      - arm_shoulder_joint
+      - arm_03_shoulder_pitch_joint
+      - arm_04_elbow_joint
+      - gripper_wrist_pitch_joint
     command_interfaces:
       - position
     state_interfaces:

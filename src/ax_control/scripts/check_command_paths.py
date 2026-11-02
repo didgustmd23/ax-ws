@@ -2,6 +2,16 @@
 """A2 개발용 명령 경로 점검. 시뮬레이션 실행 중 제어기를 직접 구동해 측정한다.
 
 운영 경로가 아니며 A4 게이트를 거치지 않는다. 격리된 개발 시뮬레이션에서만 실행한다.
+
+실행 순서
+  터미널 1: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+  터미널 2: python3 src/ax_control/scripts/check_command_paths.py --robot-id robot_1
+
+점검 항목
+  joint_states 수신, 팔 Action 서버, 바퀴 구동, 명령 끊김 후 정지, 팔 궤적 추종,
+  없는 관절 거부, TF odom→base_link, 프레임 접두사
+
+A4 담당자는 여기 쓰인 제어기 입력 이름을 게이트·보호 서버의 출력으로 연결하면 된다.
 """
 
 import argparse

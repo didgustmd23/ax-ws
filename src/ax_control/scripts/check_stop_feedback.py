@@ -4,6 +4,19 @@
 정지 기준은 INTERFACE_CONTRACT D-06이다. 판정 소유자는 A4이며 이 도구는 측정만 한다.
 Gazebo 실제 값은 시험 비교용이므로 운영 판정에 쓰지 않는다.
 제어기를 A4 없이 직접 구동하므로 격리된 개발 시뮬레이션에서만 실행한다.
+
+실행 순서
+  터미널 1: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+  터미널 2: python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
+
+출력 읽는 법
+  [INFO]  피드백 주기·최대 간격·지연과 NaN이 있는 관절
+  [PASS]  시나리오별 정지 시간. PASS는 정지가 확인됐다는 뜻이지 값이 좋다는 뜻이 아니다
+  "odom 정지 후 실제 이동"이 크면 odom이 먼저 정지를 보고한 것이다
+
+정지 시간은 명령 종료부터 D-06 값 안으로 들어오기 시작한 시점까지다.
+A4 판정에 필요한 0.5 s 유지 시간은 포함하지 않는다.
+팔이 원점이 아닌 자세로 시작하면 팔 시나리오 동작량이 달라진다. 재시작 후 실행한다.
 """
 
 import argparse

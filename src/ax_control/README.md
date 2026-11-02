@@ -50,13 +50,33 @@ A4 게이트는 아직 없다. 지금은 제어기를 누구나 직접 호출할
 호 주행에서는 odom이 정지를 먼저 보고한다. odom만으로 실제 정지를 판정하면 차체가 아직 움직일 수 있다.
 Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
+## 흡착 부착·해제
+
+기본 `DetachableJoint`는 연결 대상을 불러올 때 고정해서 실행 중에 정해지는 물체를 붙일 수 없다. 설계의 조건부 기준에 따라 플러그인 `ax_suction_attach_system`을 쓴다.
+
+| 구분 | 경로 | 비고 |
+|---|---|---|
+| 요청 | `/ax/<robot_id>/manipulation/tool_command` (`ToolCommand`) | C4 → 공구 노드. 수락은 완료가 아니다 |
+| 결과 | `/ax/<robot_id>/manipulation/attach_state` (`AttachState`, 20 Hz) | 플러그인의 실제 연결 상태. 보유 판정은 C4 담당이다 |
+| 내부 | `tool/gz_command`, `tool/gz_state` | 공구 노드와 플러그인 사이 전용. 다른 노드는 쓰지 않는다 |
+
+수락에는 `arm_allowed`가 유효·최신이고 A3 `CheckCommandLease`가 허용해야 한다. A3·A4가 없으면 모든 요청을 거절한다.
+안전 정지나 A3 무응답으로 물체를 자동 해제하지 않으며, 해제는 명시적 `RELEASE`로만 한다.
+
+- 부착 조건은 `epick_tcp`와 물체 링크 중심의 거리 0.12 m 이하다. 계약에 값이 없어 정한 개발용 잠정값이고 `simulation.launch.py`의 `SUCTION_PLUGIN`에 있다.
+- 물체 이름은 Gazebo 모델 이름과 같아야 하며 공백을 쓸 수 없다.
+- 진공·접촉 물리는 없다. 조건을 만족하면 고정 관절로 잇는다.
+- 받침면에 닿은 채 수평으로 끌면 팔이 움직이지 않는 것을 확인했다. 부착 뒤 먼저 들어 올려야 한다.
+
 ## 개발 시험
 
 ```bash
 python3 src/ax_control/scripts/check_command_paths.py --robot-id robot_1
 python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
+python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1
 ```
 
 `check_command_paths.py`는 시뮬레이션 실행 중 제어기를 A4 없이 직접 구동해 관절 상태, 바퀴 구동·정지, 팔 궤적, 잘못된 관절 거부, TF 접두사를 점검한다.
 `check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다.
-둘 다 운영 경로가 아니므로 격리된 개발 시뮬레이션에서만 실행한다.
+`check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다.
+모두 운영 경로가 아니므로 격리된 개발 시뮬레이션에서만 실행한다.

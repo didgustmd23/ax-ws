@@ -3,28 +3,55 @@
 # 실행: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
 # 기동 순서: Gazebo → 로봇 스폰 → 스폰 성공 시 제어기 spawner 실행
 #
+# 이 launch가 띄우는 것
+# - Gazebo(empty 월드), /clock 브리지, robot_state_publisher, 로봇 스폰
+# - 제어기 3개: joint_state_broadcaster, arm_controller, diff_drive_controller
+# - 공구: 플러그인(ax_suction_attach_system), 공구 브리지, suction_tool_node
+#
+# 띄우지 않는 것
+# - A3 Task Executor, A4 게이트·보호 서버, Nav2, 센서 브리지
+# - A3·A4가 없으면 tool_command는 전부 거절된다. 정상 동작이다.
+#
 # 주의
 # - A4 게이트가 없어 제어기를 직접 호출할 수 있다. 운영 경로가 아니다.
 # - launch 하나가 Gazebo까지 띄우므로 여러 대를 동시에 실행할 수 없다.
 # - 모델은 로컬 임시 모델(temp_robot)이다. 정식 A1 모델이 오면 model_path를 바꾼다.
 
+import os
 import xacro
 from pathlib import Path
 from launch.events import Shutdown
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.event_handlers import OnProcessExit
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch.actions import (
     DeclareLaunchArgument,
     EmitEvent,
+    SetEnvironmentVariable,
     IncludeLaunchDescription,
     LogInfo,
     OpaqueFunction,
     RegisterEventHandler,
 )
+
+
+# 흡착 플러그인 설정. 값은 임시 흡착 공구 기준이고 tcp_offset은 gripper_base_link에서 epick_tcp까지다.
+# Gazebo가 고정 관절을 합치므로 공구 링크 대신 gripper_base_link를 부모로 쓴다.
+# max_attach_distance는 계약에 값이 없어 개발용으로 정한 잠정값이다(m).
+SUCTION_PLUGIN = """
+<gazebo>
+  <plugin filename="ax_suction_attach_system" name="ax_control::SuctionAttachSystem">
+    <parent_link>gripper_base_link</parent_link>
+    <tcp_offset>0.082 0 0</tcp_offset>
+    <max_attach_distance>0.12</max_attach_distance>
+    <command_topic>{namespace}/tool/gz_command</command_topic>
+    <state_topic>{namespace}/tool/gz_state</state_topic>
+  </plugin>
+</gazebo>
+"""
 
 
 # 로봇 ID에 맞는 URDF 문자열을 Xacro로 생성한다. 제어기 YAML 두 개의 경로도 함께 넘긴다.
@@ -59,8 +86,13 @@ def build_robot_description(robot_id):
         },
     )
 
+    # 모델 파일을 고치지 않고 흡착 플러그인을 URDF 끝에 덧붙인다.
+    urdf = document.toxml()
+    plugin = SUCTION_PLUGIN.format(namespace=f"/ax/{robot_id}")
+    insert_at = urdf.rindex("</robot>")
+
     # 완성된 URDF 반환하기
-    return document.toxml()
+    return urdf[:insert_at] + plugin + urdf[insert_at:]
 
 # launch 인자를 실제 값으로 풀어 로봇별 노드 목록을 만든다
 def launch_setup(context):
@@ -183,9 +215,44 @@ def launch_setup(context):
         output="screen",
     )
 
+    # 공구 노드와 Gazebo 플러그인 사이 명령·상태를 잇는다. ]는 ROS→Gazebo, [는 Gazebo→ROS다.
+    tool_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="tool_bridge",
+        namespace=namespace,
+        arguments=[
+            f"{namespace}/tool/gz_command@std_msgs/msg/String]gz.msgs.StringMsg",
+            f"{namespace}/tool/gz_state@std_msgs/msg/String[gz.msgs.StringMsg",
+        ],
+        output="screen",
+    )
+
+    # tool_command 서버이자 attach_state 발행자. A3·A4가 없으면 모든 명령을 거절한다.
+    tool_node = Node(
+        package="ax_control",
+        executable="suction_tool_node.py",
+        name="suction_tool_node",
+        namespace=namespace,
+        parameters=[{
+            "robot_id": robot_id,
+            "use_sim_time": True,
+        }],
+        output="screen",
+    )
+
+    # Gazebo가 ax_control의 플러그인 라이브러리를 찾도록 경로를 더한다.
+    plugin_path = os.pathsep.join(filter(None, [
+        str(Path(get_package_prefix("ax_control")) / "lib"),
+        os.environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", ""),
+    ]))
+
     return [
+        SetEnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", plugin_path),
         gazebo,
         clock_bridge,
+        tool_bridge,
+        tool_node,
         state_publisher,
         start_controller_after_spawn,
         spawn_robot,

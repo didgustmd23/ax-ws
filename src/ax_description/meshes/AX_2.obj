@@ -30307,7 +30307,7 @@ f 7842/5539/690 7843/5540/690 7840/5537/690
 # 4796 faces
 
 #
-# object AX_2_Tire_01
+# object AX_2_Tire_Right_Front
 #
 
 v  -1078.0898 -382.6985 358.0436
@@ -41257,8 +41257,8 @@ vt 0.0978 0.8948 0.0000
 vt 0.0987 0.8984 0.0000
 # 3843 texture coords
 
-o AX_2_Tire_01
-g AX_2_Tire_01
+o AX_2_Tire_Right_Front
+g AX_2_Tire_Right_Front
 usemtl AX_1_Shelf
 s 1
 f 7844/5541/848 7845/5542/849 7846/5543/850 
@@ -48440,7 +48440,7 @@ f 11658/9343/4083 11698/9383/4083 11660/9345/4052
 # 6946 faces
 
 #
-# object AX_2_Tire_04
+# object AX_2_Tire_Left_Rear
 #
 
 v  -1600.3868 456.2874 204.5616
@@ -59362,8 +59362,8 @@ vt 0.0512 0.8022 0.0000
 vt 0.0503 0.7985 0.0000
 # 3844 texture coords
 
-o AX_2_Tire_04
-g AX_2_Tire_04
+o AX_2_Tire_Left_Rear
+g AX_2_Tire_Left_Rear
 usemtl AX_1_Shelf
 s 4
 f 11699/9384/4091 11700/9385/4091 11701/9386/4091 
@@ -66546,7 +66546,7 @@ f 15514/13187/7297 15554/13227/7297 15516/13189/7265
 # 6948 faces
 
 #
-# object AX_2_Tire_03
+# object AX_2_Tire_Right_Rear
 #
 
 v  -1600.3868 -371.2446 204.5616
@@ -77464,8 +77464,8 @@ vt 0.0985 0.8426 0.0000
 vt 0.0994 0.8462 0.0000
 # 3844 texture coords
 
-o AX_2_Tire_03
-g AX_2_Tire_03
+o AX_2_Tire_Right_Rear
+g AX_2_Tire_Right_Rear
 usemtl AX_1_Shelf
 s 4
 f 15555/13228/7304 15556/13229/7304 15557/13230/7304 
@@ -84648,7 +84648,7 @@ f 19370/17031/10510 19410/17071/10510 19372/17033/10477
 # 6948 faces
 
 #
-# object AX_2_Tire_02
+# object AX_2_Tire_Left_Front
 #
 
 v  -928.4258 456.2874 204.5616
@@ -95572,8 +95572,8 @@ vt 0.0520 0.9639 0.0000
 vt 0.0511 0.9602 0.0000
 # 3844 texture coords
 
-o AX_2_Tire_02
-g AX_2_Tire_02
+o AX_2_Tire_Left_Front
+g AX_2_Tire_Left_Front
 usemtl AX_1_Shelf
 s 4
 f 19411/17072/10513 19412/17073/10513 19413/17074/10513 

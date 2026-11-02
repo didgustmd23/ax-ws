@@ -10909,8 +10909,8 @@ vn 0.6725 0.7071 -0.2185
 vn 0.6984 0.7071 -0.1106
 vn 0.9511 0.0000 0.3090
 vn -0.9511 0.0000 0.3090
-o AX1_Tire_03
-g AX1_Tire_03
+o AX1_Tire_Right_Rear
+g AX1_Tire_Right_Rear
 usemtl AX_1_Shelf
 s 4
 f 1/1/1 2/2/1 3/3/1

@@ -1,163 +1,163 @@
 
-<link name="wheel_01">
+<link name="wheel_right_front">
   <visual>
     <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_right_front.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
 </link>
 
-<joint name="wheel_01_joint" type="continuous">
+<joint name="wheel_right_front_joint" type="continuous">
   <parent link="base_link"/>
-  <child link="wheel_01"/>
+  <child link="wheel_right_front"/>
   <origin xyz="0.440 -0.311 0.190" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
 </joint>
 
-<!-- 첫 번째 바퀴 -->
-<link name="wheel_01">
+<!-- 嶺??뺢퀡????꾩룆???-->
+<link name="wheel_right_front">
   <visual>
     <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_right_front.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
 </link>
 
-<joint name="wheel_01_joint" type="continuous">
+<joint name="wheel_right_front_joint" type="continuous">
   <parent link="base_link"/>
-  <child link="wheel_01"/>
+  <child link="wheel_right_front"/>
   <origin xyz="0.440 -0.311 0.190" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
 </joint>
 
 
-<!-- 두 번째 바퀴 -->
-<link name="wheel_02">
+<!-- ???뺢퀡????꾩룆???-->
+<link name="wheel_left_front">
   <visual>
     <origin xyz="-0.440 -0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="package://ax_description/meshes/parts/AX_1/ax_tire_02.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_left_front.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
 </link>
 
-<joint name="wheel_02_joint" type="continuous">
+<joint name="wheel_left_front_joint" type="continuous">
   <parent link="base_link"/>
-  <child link="wheel_02"/>
+  <child link="wheel_left_front"/>
   <origin xyz="0.440 0.311 0.190" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
 </joint>
 
 
-<!-- 세 번째 바퀴 -->
-<link name="wheel_03">
+<!-- ???뺢퀡????꾩룆???-->
+<link name="wheel_right_rear">
   <visual>
     <origin xyz="0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="package://ax_description/meshes/parts/AX_1/ax_tire_03.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_right_rear.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
 </link>
 
-<joint name="wheel_03_joint" type="continuous">
+<joint name="wheel_right_rear_joint" type="continuous">
   <parent link="base_link"/>
-  <child link="wheel_03"/>
+  <child link="wheel_right_rear"/>
   <origin xyz="-0.440 -0.311 0.190" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
 </joint>
 
 
-<!-- 네 번째 바퀴 -->
-<link name="wheel_04">
+<!-- ???뺢퀡????꾩룆???-->
+<link name="wheel_left_rear">
   <visual>
     <origin xyz="0.440 -0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="package://ax_description/meshes/parts/AX_1/ax_tire_04.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_left_rear.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
 </link>
 
-<joint name="wheel_04_joint" type="continuous">
+<joint name="wheel_left_rear_joint" type="continuous">
   <parent link="base_link"/>
-  <child link="wheel_04"/>
+  <child link="wheel_left_rear"/>
   <origin xyz="-0.440 0.311 0.190" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
 </joint>
 
-  <!-- 로봇 팔의 첫 번째 고정 부품 -->
-  <link name="arm_01_fixed">
+  <!-- ?β돦裕????븐슦踰?嶺??뺢퀡?????μ쪠???遊붋??-->
+  <link name="arm_base_mount">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_fixed.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_base_mount.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
 
-  <joint name="arm_01_fixed_joint" type="fixed">
+  <joint name="arm_base_mount_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="arm_01_fixed"/>
+    <child link="arm_base_mount"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 로봇 팔 지지대 -->
-  <link name="arm_01_support">
+  <!-- ?β돦裕????嶺뚯솘?嶺뚯솘??? -->
+  <link name="arm_turret_support">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_support.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_turret_support.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="arm_01_support_joint" type="fixed">
+  <joint name="arm_turret_support_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="arm_01_support"/>
+    <child link="arm_turret_support"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 로봇 팔 기둥 -->
-  <link name="arm_01_column">
+  <!-- ?β돦裕?????リ옇?←땟?-->
+  <link name="arm_turret_column">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_column.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_turret_column.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="arm_01_column_joint" type="fixed">
+  <joint name="arm_turret_column_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="arm_01_column"/>
+    <child link="arm_turret_column"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 로봇 팔 두 번째 부품 -->
-  <link name="arm_02_movie">
+  <!-- ?β돦裕???????뺢퀡????遊붋??-->
+  <link name="arm_shoulder_link">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_02_movie.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_shoulder_link.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="arm_02_movie_joint" type="fixed">
+  <joint name="arm_shoulder_link_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="arm_02_movie"/>
+    <child link="arm_shoulder_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 로봇 팔 상완 -->
+  <!-- ?β돦裕??????⑤챷??-->
   <link name="arm_03_upperarm">
     <visual>
       <geometry>
@@ -172,7 +172,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 로봇 팔 전완 -->
+  <!-- ?β돦裕?????熬곣뫗??-->
   <link name="arm_04_forearm">
     <visual>
       <geometry>
@@ -187,22 +187,22 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 손목 -->
-  <link name="gripper_wristhousing">
+  <!-- ?잙갭梨??????嫄?-->
+  <link name="gripper_wrist_housing">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wristhousing.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wrist_housing.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="gripper_wristhousing_joint" type="fixed">
+  <joint name="gripper_wrist_housing_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="gripper_wristhousing"/>
+    <child link="gripper_wrist_housing"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 중앙 패드 -->
+  <!-- ?잙갭梨???繞벿살탳?????산덧 -->
   <link name="gripper_centerpad">
     <visual>
       <geometry>
@@ -217,7 +217,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 손가락 1 -->
+  <!-- ?잙갭梨????????1 -->
   <link name="gripper_finger_01">
     <visual>
       <geometry>
@@ -232,7 +232,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 손가락 2 -->
+  <!-- ?잙갭梨????????2 -->
   <link name="gripper_finger_02">
     <visual>
       <geometry>
@@ -247,7 +247,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 연결 부품 1 -->
+  <!-- ?잙갭梨?????⑤슡???遊붋??1 -->
   <link name="gripper_linkpair_01">
     <visual>
       <geometry>
@@ -262,7 +262,7 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 그리퍼 연결 부품 2 -->
+  <!-- ?잙갭梨?????⑤슡???遊붋??2 -->
   <link name="gripper_linkpair_02">
     <visual>
       <geometry>
@@ -277,48 +277,48 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 우측 부품 1 -->
-  <link name="ax_right_01">
+  <!-- ??⑥? ?遊붋??1 -->
+  <link name="ax_side_right">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_01.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_right.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="ax_right_01_joint" type="fixed">
+  <joint name="ax_side_right_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="ax_right_01"/>
+    <child link="ax_side_right"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 우측 부품 2 -->
-  <link name="ax_right_02">
+  <!-- ??⑥? ?遊붋??2 -->
+  <link name="ax_side_left">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_02.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_left.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="ax_right_02_joint" type="fixed">
+  <joint name="ax_side_left_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="ax_right_02"/>
+    <child link="ax_side_left"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!-- 우측 부품 3 -->
-  <link name="ax_right_03">
+  <!-- ??⑥? ?遊붋??3 -->
+  <link name="ax_side_center">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_03.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_center.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
   </link>
-  <joint name="ax_right_03_joint" type="fixed">
+  <joint name="ax_side_center_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="ax_right_03"/>
+    <child link="ax_side_center"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 

@@ -1218,8 +1218,8 @@ vn 0.0000 1.0000 0.0000
 vn -0.3090 0.9511 -0.0000
 vn -0.9877 0.1564 -0.0000
 vn -0.9877 -0.1564 -0.0000
-o arm_01_column
-g arm_01_column
+o arm_turret_column
+g arm_turret_column
 usemtl ax_column_orange
 s 8
 f 1/1/3 2/2/4 3/3/4

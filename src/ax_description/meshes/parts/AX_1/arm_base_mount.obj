@@ -4063,8 +4063,8 @@ vn -0.0000 -1.0000 -0.0000
 vn 0.3827 -0.9239 -0.0000
 vn 0.9239 -0.3827 -0.0000
 vn 0.9239 -0.3827 0.0000
-o Arm_01_Fixed
-g Arm_01_Fixed
+o Arm_Base_Mount
+g Arm_Base_Mount
 usemtl wire_087225087
 s 1
 f 1/1/1 2/2/2 3/3/3

@@ -2858,8 +2858,8 @@ vn -0.0000 -1.0000 -0.0000
 vn 0.3827 -0.9239 -0.0000
 vn 0.9239 -0.3827 -0.0000
 vn 0.9239 -0.3827 0.0000
-o arm_01_support
-g arm_01_support
+o arm_turret_support
+g arm_turret_support
 usemtl ax_support_dark_gray
 s 1
 f 1/1/1 2/2/2 3/3/3

@@ -10941,8 +10941,8 @@ vn -0.5878 0.0000 -0.8090
 vn 0.5878 -0.0000 -0.8090
 vn 0.7071 -0.0000 -0.7071
 vn 0.8090 -0.0000 -0.5878
-o AX_2_Tire_01
-g AX_2_Tire_01
+o AX_2_Tire_Right_Front
+g AX_2_Tire_Right_Front
 usemtl AX_1_Shelf
 s 1
 f 1/1/1 2/2/2 3/3/3

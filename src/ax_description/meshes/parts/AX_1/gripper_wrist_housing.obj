@@ -10226,8 +10226,8 @@ vn -0.3090 0.9511 0.0000
 vn -0.1564 0.9877 0.0000
 vn 0.1564 0.9877 0.0000
 vn 0.3090 0.9511 0.0000
-o Gripper_WristHousing
-g Gripper_WristHousing
+o Gripper_Wrist_Housing
+g Gripper_Wrist_Housing
 usemtl AX_1_Arm
 s 1
 f 1/1/1 2/2/2 3/3/3

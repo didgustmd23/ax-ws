@@ -931,8 +931,8 @@ vn 0.0000 0.9511 -0.3090
 vn 0.0000 0.9877 -0.1564
 vn 1.0000 0.0000 0.0000
 vn 0.0000 -1.0000 -0.0000
-o AX1_Right_01
-g AX1_Right_01
+o AX1_Side_Right
+g AX1_Side_Right
 usemtl wire_225088199
 s 1
 f 1/1/1 2/2/2 3/3/3

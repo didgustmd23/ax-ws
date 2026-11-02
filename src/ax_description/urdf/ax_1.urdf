@@ -19,11 +19,11 @@
       </geometry>
     </collision>
 </link>
-  <link name="wheel_01">
+  <link name="wheel_right_front">
     <visual>
       <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_right_front.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -32,17 +32,17 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   <collision><origin xyz="0 0 0" rpy="1.57079632679 0 0" /><geometry><cylinder radius="0.196" length="0.144" /></geometry></collision></link>
-  <joint name="wheel_01_joint" type="continuous">
+  <joint name="wheel_right_front_joint" type="continuous">
     <parent link="base_link" />
-    <child link="wheel_01" />
+    <child link="wheel_right_front" />
     <origin xyz="0.440 -0.311 0.190" rpy="0 0 0" />
     <axis xyz="0 1 0" />
   </joint>
-  <link name="wheel_02">
+  <link name="wheel_left_front">
     <visual>
       <origin xyz="-0.440 -0.311 -0.190" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_02.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_left_front.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -51,17 +51,17 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   <collision><origin xyz="0 0 0" rpy="1.57079632679 0 0" /><geometry><cylinder radius="0.196" length="0.144" /></geometry></collision></link>
-  <joint name="wheel_02_joint" type="continuous">
+  <joint name="wheel_left_front_joint" type="continuous">
     <parent link="base_link" />
-    <child link="wheel_02" />
+    <child link="wheel_left_front" />
     <origin xyz="0.440 0.311 0.190" rpy="0 0 0" />
     <axis xyz="0 1 0" />
   </joint>
-  <link name="wheel_03">
+  <link name="wheel_right_rear">
     <visual>
       <origin xyz="0.440 0.311 -0.190" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_03.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_right_rear.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -70,17 +70,17 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   <collision><origin xyz="0 0 0" rpy="1.57079632679 0 0" /><geometry><cylinder radius="0.196" length="0.144" /></geometry></collision></link>
-  <joint name="wheel_03_joint" type="continuous">
+  <joint name="wheel_right_rear_joint" type="continuous">
     <parent link="base_link" />
-    <child link="wheel_03" />
+    <child link="wheel_right_rear" />
     <origin xyz="-0.440 -0.311 0.190" rpy="0 0 0" />
     <axis xyz="0 1 0" />
   </joint>
-  <link name="wheel_04">
+  <link name="wheel_left_rear">
     <visual>
       <origin xyz="0.440 -0.311 -0.190" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_04.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_tire_left_rear.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -89,16 +89,16 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   <collision><origin xyz="0 0 0" rpy="1.57079632679 0 0" /><geometry><cylinder radius="0.196" length="0.144" /></geometry></collision></link>
-  <joint name="wheel_04_joint" type="continuous">
+  <joint name="wheel_left_rear_joint" type="continuous">
     <parent link="base_link" />
-    <child link="wheel_04" />
+    <child link="wheel_left_rear" />
     <origin xyz="-0.440 0.311 0.190" rpy="0 0 0" />
     <axis xyz="0 1 0" />
   </joint>
-  <link name="arm_01_fixed">
+  <link name="arm_base_mount">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_fixed.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_base_mount.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -107,15 +107,15 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_01_fixed_joint" type="fixed">
+  <joint name="arm_base_mount_joint" type="fixed">
     <parent link="base_link" />
-    <child link="arm_01_fixed" />
+    <child link="arm_base_mount" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
-  <link name="arm_01_support">
+  <link name="arm_turret_support">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_support.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_turret_support.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -124,15 +124,15 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_01_support_joint" type="fixed">
+  <joint name="arm_turret_support_joint" type="fixed">
     <parent link="base_link" />
-    <child link="arm_01_support" />
+    <child link="arm_turret_support" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
-  <link name="arm_01_column">
+  <link name="arm_turret_column">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_column.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_turret_column.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -141,15 +141,17 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_01_column_joint" type="fixed">
-    <parent link="base_link" />
-    <child link="arm_01_column" />
+  <joint name="arm_turret_column_joint" type="revolute">
+    <parent link="arm_turret_support" />
+    <child link="arm_turret_column" />
     <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-3.14159265359" upper="3.14159265359" effort="50.0" velocity="1.0" />
   </joint>
-  <link name="arm_02_movie">
+  <link name="arm_shoulder_link">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_02_movie.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_shoulder_link.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -158,10 +160,12 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_02_movie_joint" type="fixed">
-    <parent link="base_link" />
-    <child link="arm_02_movie" />
+  <joint name="arm_shoulder_joint" type="revolute">
+    <parent link="arm_turret_column" />
+    <child link="arm_shoulder_link" />
     <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="40.0" velocity="1.0" />
   </joint>
   <link name="arm_03_upperarm">
     <visual>
@@ -175,10 +179,12 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_03_upperarm_joint" type="fixed">
-    <parent link="base_link" />
+  <joint name="arm_03_shoulder_pitch_joint" type="revolute">
+    <parent link="arm_shoulder_link" />
     <child link="arm_03_upperarm" />
     <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="35.0" velocity="1.0" />
   </joint>
   <link name="arm_04_forearm">
     <visual>
@@ -192,15 +198,17 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="arm_04_forearm_joint" type="fixed">
-    <parent link="base_link" />
+  <joint name="arm_04_elbow_joint" type="revolute">
+    <parent link="arm_03_upperarm" />
     <child link="arm_04_forearm" />
     <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-2.09439510239" upper="2.09439510239" effort="30.0" velocity="1.0" />
   </joint>
-  <link name="gripper_wristhousing">
+  <link name="gripper_wrist_housing">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wristhousing.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wrist_housing.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -209,10 +217,12 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="gripper_wristhousing_joint" type="fixed">
-    <parent link="base_link" />
-    <child link="gripper_wristhousing" />
+  <joint name="gripper_wrist_pitch_joint" type="revolute">
+    <parent link="arm_04_forearm" />
+    <child link="gripper_wrist_housing" />
     <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit lower="-3.14159265359" upper="3.14159265359" effort="10.0" velocity="1.5" />
   </joint>
   <link name="gripper_centerpad">
     <visual>
@@ -227,7 +237,7 @@
     </inertial>
   </link>
   <joint name="gripper_centerpad_joint" type="fixed">
-    <parent link="base_link" />
+    <parent link="gripper_wrist_housing" />
     <child link="gripper_centerpad" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
@@ -244,7 +254,7 @@
     </inertial>
   </link>
   <joint name="gripper_finger_01_joint" type="fixed">
-    <parent link="base_link" />
+    <parent link="gripper_wrist_housing" />
     <child link="gripper_finger_01" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
@@ -261,7 +271,7 @@
     </inertial>
   </link>
   <joint name="gripper_finger_02_joint" type="fixed">
-    <parent link="base_link" />
+    <parent link="gripper_wrist_housing" />
     <child link="gripper_finger_02" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
@@ -278,7 +288,7 @@
     </inertial>
   </link>
   <joint name="gripper_linkpair_01_joint" type="fixed">
-    <parent link="base_link" />
+    <parent link="gripper_wrist_housing" />
     <child link="gripper_linkpair_01" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
@@ -295,14 +305,14 @@
     </inertial>
   </link>
   <joint name="gripper_linkpair_02_joint" type="fixed">
-    <parent link="base_link" />
+    <parent link="gripper_wrist_housing" />
     <child link="gripper_linkpair_02" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
-  <link name="ax_right_01">
+  <link name="ax_side_right">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_01.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_right.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -311,15 +321,15 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="ax_right_01_joint" type="fixed">
+  <joint name="ax_side_right_joint" type="fixed">
     <parent link="base_link" />
-    <child link="ax_right_01" />
+    <child link="ax_side_right" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
-  <link name="ax_right_02">
+  <link name="ax_side_left">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_02.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_left.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -328,15 +338,15 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="ax_right_02_joint" type="fixed">
+  <joint name="ax_side_left_joint" type="fixed">
     <parent link="base_link" />
-    <child link="ax_right_02" />
+    <child link="ax_side_left" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
-  <link name="ax_right_03">
+  <link name="ax_side_center">
     <visual>
       <geometry>
-        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_03.obj" scale="0.001 0.001 0.001" />
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_side_center.obj" scale="0.001 0.001 0.001" />
       </geometry>
     </visual>
     <inertial>
@@ -345,9 +355,9 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
   </link>
-  <joint name="ax_right_03_joint" type="fixed">
+  <joint name="ax_side_center_joint" type="fixed">
     <parent link="base_link" />
-    <child link="ax_right_03" />
+    <child link="ax_side_center" />
     <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
   <link name="lidar_link">
@@ -405,4 +415,40 @@
     <render_engine>ogre2</render_engine>
   </plugin>
 </gazebo>
-<gazebo><plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive"><left_joint>wheel_01_joint</left_joint><left_joint>wheel_03_joint</left_joint><right_joint>wheel_02_joint</right_joint><right_joint>wheel_04_joint</right_joint><wheel_separation>0.622</wheel_separation><wheel_radius>0.196</wheel_radius><topic>/model/AX_1_drive/cmd_vel</topic></plugin></gazebo></robot>
+<gazebo><plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive"><left_joint>wheel_left_front_joint</left_joint><left_joint>wheel_left_rear_joint</left_joint><right_joint>wheel_right_front_joint</right_joint><right_joint>wheel_right_rear_joint</right_joint><wheel_separation>0.622</wheel_separation><wheel_radius>0.196</wheel_radius><topic>/model/AX_1_drive/cmd_vel</topic></plugin></gazebo>
+  <ros2_control name="ax_1_gazebo_control" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <joint name="arm_turret_column_joint">
+      <command_interface name="position" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="arm_shoulder_joint">
+      <command_interface name="position" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="arm_03_shoulder_pitch_joint">
+      <command_interface name="position" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="arm_04_elbow_joint">
+      <command_interface name="position" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="gripper_wrist_pitch_joint">
+      <command_interface name="position" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+  </ros2_control>
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find ax_description)/config/ax_1_arm_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+</robot>

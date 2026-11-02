@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ax_2">
+
+  <xacro:macro name="wheel" params="name x y z mesh">
+    <link name="${name}">
+      <visual>
+        <origin xyz="${-x} ${-y} ${-z}" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://ax_description/meshes/parts/AX_2/${mesh}.obj"
+                scale="0.001 0.001 0.001"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+        <geometry>
+          <cylinder radius="0.149373" length="0.109958"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="1.0"/>
+        <inertia ixx="0.01" ixy="0" ixz="0"
+                 iyy="0.01" iyz="0" izz="0.01"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://ax_description/meshes/parts/AX_2/ax_body.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-1.41178 -0.000666 0.332081" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.043067 0.995651 0.406231"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="-1.41178 -0.000666 0.332081" rpy="0 0 0"/>
+      <mass value="20.0"/>
+      <inertia ixx="1.0" ixy="0" ixz="0"
+               iyy="1.0" iyz="0" izz="1.0"/>
+    </inertial>
+  </link>
+
+  <link name="ax_shelf">
+    <visual>
+      <geometry>
+        <mesh filename="package://ax_description/meshes/parts/AX_2/ax_shelf.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="ax_shelf_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ax_shelf"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="ax_right">
+    <visual>
+      <geometry>
+        <mesh filename="package://ax_description/meshes/parts/AX_2/ax_right.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="ax_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="ax_right"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="lidar_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://ax_description/meshes/parts/AX_2/ax_top_lidar.obj"
+              scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <inertial>
+      <origin xyz="-1.418134 0.016905 1.914191" rpy="0 0 0"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.01" ixy="0" ixz="0"
+               iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:wheel name="wheel_right_front"
+               x="-1.078090" y="-0.420878" z="0.212961"
+               mesh="ax_tire_right_front"/>
+  <xacro:wheel name="wheel_left_front"
+               x="-1.078090" y="0.415817" z="0.212961"
+               mesh="ax_tire_left_front"/>
+  <xacro:wheel name="wheel_right_rear"
+               x="-1.750051" y="-0.420878" z="0.212961"
+               mesh="ax_tire_right_rear"/>
+  <xacro:wheel name="wheel_left_rear"
+               x="-1.750051" y="0.415817" z="0.212961"
+               mesh="ax_tire_left_rear"/>
+
+  <gazebo>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-diff-drive-system"
+            name="gz::sim::systems::DiffDrive">
+      <left_joint>wheel_left_front_joint</left_joint>
+      <left_joint>wheel_left_rear_joint</left_joint>
+      <right_joint>wheel_right_front_joint</right_joint>
+      <right_joint>wheel_right_rear_joint</right_joint>
+      <wheel_separation>0.836695</wheel_separation>
+      <wheel_radius>0.149373</wheel_radius>
+      <topic>/model/ax_2/cmd_vel</topic>
+    </plugin>
+  </gazebo>
+
+</robot>

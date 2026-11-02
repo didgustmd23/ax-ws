@@ -1,0 +1,13 @@
+# 모든 로봇이 함께 쓰는 제어기 설정. 로봇별 값은 ax_controllers.yaml에 둔다.
+/**/controller_manager:
+  ros__parameters:
+    # 제어 주기(Hz).
+    update_rate: 100
+
+    # 관절 상태를 joint_states 토픽으로 발행한다.
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # 바퀴 제어기 종류 등록. 세부 값은 ax_controllers.yaml에 있다.
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController

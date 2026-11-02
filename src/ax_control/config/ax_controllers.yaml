@@ -1,0 +1,46 @@
+# 로봇별 제어기 설정. 공통 설정은 common_controllers.yaml에 있다.
+# /**/는 모든 namespace에 적용한다는 뜻이다. 그래서 /ax/robot_<n> 어디서든 같은 설정을 쓴다.
+# 길이 m, 각도 rad, 시간 s.
+
+# 바퀴 제어기. 입력 cmd_vel(TwistStamped), 출력 odom과 TF odom→base_link.
+# 운영에서는 A4 게이트만 cmd_vel을 보낸다(INTERFACE_CONTRACT 4.3절).
+/**/diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
+    # 좌우 바퀴 중심 사이 거리(윤거)와 바퀴 반지름. 모델이 바뀌면 함께 확인한다.
+    wheel_separation: 0.622
+    # 스키드 조향의 유효 윤거 보정. 실제 회전/odom 비 0.812의 역수이며 임시 로봇 측정값이다.
+    wheel_separation_multiplier: 1.2315
+    wheel_radius: 0.19631
+    # tf_frame_prefix 값은 로봇마다 달라서 launch가 넘긴다. 여기에 고정하지 않는다.
+    tf_frame_prefix_enable: true
+    # 명령이 끊긴 뒤 제어기가 스스로 멈추는 시간(s). A4 게이트의 0.2 s 만료 뒤에서 받치는 값이다.
+    cmd_vel_timeout: 0.5
+    odom_frame_id: odom
+    base_frame_id: base_link
+    enable_odom_tf: true
+    
+# 팔 제어기는 로봇 종류에 따라 없을 수 있어 공통 설정이 아닌 여기서 등록한다.
+/**/controller_manager:
+  ros__parameters:
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+# 팔 5축 궤적 제어기. 운영에서는 A4 보호 서버만 follow_joint_trajectory를 호출한다.
+# 관절 이름은 모델(ros2_control 블록)과 일치해야 한다.
+/**/arm_controller:
+  ros__parameters:
+    joints:
+      - column_yaw_joint
+      - shoulder_joint
+      - elbow_joint
+      - wrist_joint
+      - gripper_rotation_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity

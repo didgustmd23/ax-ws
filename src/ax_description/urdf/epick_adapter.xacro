@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find epick_description)/urdf/epick_body.xacro"/>
+  <xacro:macro name="ax_epick" params="parent">
+    <xacro:property name="settings" value="${xacro.load_yaml('../config/epick.yaml')}"/>
+    <xacro:epick_body parent="${parent}" origin_xyz="0.02 0 0" origin_rpy="0 ${pi/2} 0"
+                       prefix="" virtual_mass="${settings['body_mass_kg']}"/>
+    <link name="epick_suction_cup">
+      <visual><geometry><cylinder radius="${settings['cup_radius_m']}" length="${settings['cup_height_m']}"/></geometry></visual>
+      <collision><geometry><cylinder radius="${settings['cup_radius_m']}" length="${settings['cup_height_m']}"/></geometry></collision>
+      <inertial><mass value="${settings['cup_mass_kg']}"/>
+        <inertia ixx="${settings['cup_mass_kg']*(3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12}"
+                 iyy="${settings['cup_mass_kg']*(3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12}"
+                 izz="${settings['cup_mass_kg']*settings['cup_radius_m']**2/2}" ixy="0" ixz="0" iyz="0"/>
+      </inertial>
+    </link>
+    <joint name="epick_cup_joint" type="fixed"><parent link="epick_body"/><child link="epick_suction_cup"/>
+      <origin xyz="0 0 ${(settings['body_length_m']+settings['cup_height_m'])/2}"/>
+    </joint>
+    <link name="epick_tip"/>
+    <joint name="epick_tip_joint" type="fixed"><parent link="epick_suction_cup"/><child link="epick_tip"/>
+      <origin xyz="0 0 ${settings['cup_height_m']/2}"/>
+    </joint>
+    <link name="epick_tcp"/>
+    <joint name="epick_tcp_joint" type="fixed"><parent link="epick_tip"/><child link="epick_tcp"/>
+      <origin xyz="0 0 ${-settings['tcp_stroke_compensation_m']}"/>
+    </joint>
+  </xacro:macro>
+</robot>

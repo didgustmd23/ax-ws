@@ -3,6 +3,19 @@
 # on checkout or commit; keep the bytes produced by tools/split_robot_meshes.py
 # or the pinned upstream source. AX_1.obj/.mtl intentionally keep CRLF.
 *.obj -text
-*.mtl -text
+*.mtl -text whitespace=cr-at-eol
 *.dae -text
 *.stl -text
+# Provenance and generated-input hashes must survive Windows/Linux checkouts.
+*.original -text
+src/epick_description/LICENSE -text
+*.xacro text eol=lf
+*.urdf text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.xml text eol=lf
+*.world text eol=lf
+*.txt text eol=lf
+.gitattributes text eol=lf

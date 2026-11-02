@@ -11,11 +11,14 @@ install(
 install(
   DIRECTORY launch worlds
   DESTINATION share/${PROJECT_NAME}
+  PATTERN "__pycache__" EXCLUDE
 )
 
 install(
   DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
+
+install(PROGRAMS scripts/tof_range.py DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

@@ -1,0 +1,9 @@
+payloads_kg: [0.0, 0.5, 1.0, 2.0]
+repetitions: 3
+hold_seconds: 1.0
+position_tolerance_rad: 0.03
+stop_velocity_tolerance_rad_s: 0.01
+poses:
+  neutral: [0.0, 0.0, 0.0, 0.0, 0.0]
+  reach_left: [0.35, -0.30, 0.35, -0.20, 0.25]
+  reach_right: [-0.35, 0.30, -0.35, 0.20, -0.25]

@@ -1,3 +1,13 @@
+# A2 개발용 시뮬레이션 launch. Gazebo와 로봇 한 대를 띄우고 제어기를 활성화한다.
+#
+# 실행: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+# 기동 순서: Gazebo → 로봇 스폰 → 스폰 성공 시 제어기 spawner 실행
+#
+# 주의
+# - A4 게이트가 없어 제어기를 직접 호출할 수 있다. 운영 경로가 아니다.
+# - launch 하나가 Gazebo까지 띄우므로 여러 대를 동시에 실행할 수 없다.
+# - 모델은 로컬 임시 모델(temp_robot)이다. 정식 A1 모델이 오면 model_path를 바꾼다.
+
 import xacro
 from pathlib import Path
 from launch.events import Shutdown
@@ -6,10 +16,18 @@ from launch import LaunchDescription
 from launch.event_handlers import OnProcessExit
 from ament_index_python.packages import get_package_share_directory
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import IncludeLaunchDescription, EmitEvent, LogInfo, RegisterEventHandler
+from launch.substitutions import LaunchConfiguration
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    IncludeLaunchDescription,
+    LogInfo,
+    OpaqueFunction,
+    RegisterEventHandler,
+)
 
 
-# 두 YAML 경로를 찾아 Xacro에 전달
+# 로봇 ID에 맞는 URDF 문자열을 Xacro로 생성한다. 제어기 YAML 두 개의 경로도 함께 넘긴다.
 def build_robot_description(robot_id):
     # 패키지 설치 위치 찾기
     description_share = Path(
@@ -28,10 +46,13 @@ def build_robot_description(robot_id):
     document = xacro.process_file(
         str(model_path),
         mappings={
+            # robot_name은 ros2_control 하드웨어 이름, sensor_robot_id는 센서 토픽에 쓰인다.
             "robot_name": robot_id,
             "sensor_robot_id": robot_id,
+            # suction은 비교용 외형이다. 흡착 부착·해제는 구현되어 있지 않다.
             "gripper_model": "suction",
             "ros_namespace": f"/ax/{robot_id}",
+            # gz_ros2_control 플러그인이 이 두 YAML을 읽어 제어기를 구성한다.
             "ros2_control_params": str(robot_config),
             "ros2_control_common_params": str(common_config),
             "frame_prefix": f"{robot_id}/",
@@ -41,15 +62,16 @@ def build_robot_description(robot_id):
     # 완성된 URDF 반환하기
     return document.toxml()
 
-# ROS 2 launch가 호출하는 진입점
-def generate_launch_description():
-    robot_id = "robot_1"
+# launch 인자를 실제 값으로 풀어 로봇별 노드 목록을 만든다
+def launch_setup(context):
+    robot_id = LaunchConfiguration("robot_id").perform(context)
     namespace = f"/ax/{robot_id}"
     frame_prefix = f"{robot_id}/"
 
     # 앞 함수가 생성한 URDF 문자열
     robot_description = build_robot_description(robot_id)
 
+    # robot_description 토픽과 관절·고정 프레임 TF를 발행한다.
     state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -71,6 +93,7 @@ def generate_launch_description():
         get_package_share_directory("ros_gz_sim")
     )
 
+    # -r은 시작과 동시에 시뮬레이션을 실행한다. 화면 없이 띄우려면 -s --headless-rendering을 더한다.
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             str(gazebo_share / "launch" / "gz_sim.launch.py")
@@ -80,6 +103,8 @@ def generate_launch_description():
         }.items(),
     )
 
+    # robot_description 토픽을 읽어 Gazebo에 로봇을 넣는다. 이름은 robot_id와 같다.
+    # z 0.40 m는 바퀴가 지면에 닿는 높이(약 0.389 m)보다 살짝 위다.
     spawn_robot = Node(
         package = "ros_gz_sim",
         executable = "create",
@@ -94,12 +119,12 @@ def generate_launch_description():
         ],
     )
 
+    # 상태 발행과 팔 제어기를 활성화한다. 제어기 매니저는 스폰된 로봇 안에서 시작한다.
     controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=[
             "joint_state_broadcaster",
-            "diff_drive_controller",
             "arm_controller",
             "--controller-manager", 
             f"{namespace}/controller_manager",
@@ -109,8 +134,24 @@ def generate_launch_description():
         output="screen",
     )
 
+    # odom TF 접두사는 로봇별 값이라 YAML에 고정하지 않고 여기서만 넘긴다.
+    drive_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "diff_drive_controller",
+            "--controller-manager",
+            f"{namespace}/controller_manager",
+            "--controller-manager-timeout",
+            "60",
+            # 값이 -p로 시작해 인자 파서가 옵션으로 읽지 않도록 등호로 붙인다.
+            f"--controller-ros-args=-p tf_frame_prefix:={frame_prefix}",
+        ],
+        output="screen",
+    )
+
+    # 스폰 프로세스 종료 시 호출된다. 성공하면 제어기를 띄우고 실패하면 launch를 끝낸다.
     def on_robot_spawned(event, context):
-        # 로봇이 Gazebo에 스폰되면 컨트롤러 스포너를 실행
         if event.returncode != 0:
             return [
                 LogInfo(msg="Robot spawn failed, stopping launch."),
@@ -119,7 +160,7 @@ def generate_launch_description():
                 )
             ]
         
-        return [controller_spawner]
+        return [controller_spawner, drive_spawner]
 
     start_controller_after_spawn = RegisterEventHandler(
         OnProcessExit(
@@ -128,6 +169,7 @@ def generate_launch_description():
         )
     )
 
+    # Gazebo 시계를 ROS /clock으로 넘긴다. use_sim_time을 쓰는 노드는 이 토픽이 있어야 동작한다.
     clock_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -141,10 +183,22 @@ def generate_launch_description():
         output="screen",
     )
 
-    return LaunchDescription([
+    return [
         gazebo,
         clock_bridge,
         state_publisher,
         start_controller_after_spawn,
         spawn_robot,
+    ]
+
+
+# ROS 2 launch가 호출하는 진입점
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            "robot_id",
+            default_value="robot_1",
+            description="Robot ID used for namespace and TF prefix (robot_<n>).",
+        ),
+        OpaqueFunction(function=launch_setup),
     ])

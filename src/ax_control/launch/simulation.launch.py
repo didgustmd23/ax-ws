@@ -198,7 +198,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "robot_id",
             default_value="robot_1",
-            description="Robot ID used for namespace and TF prefix (robot_<n>).",
+            description="namespace와 TF 접두사에 쓰는 로봇 ID (robot_<n>).",
         ),
         OpaqueFunction(function=launch_setup),
     ])

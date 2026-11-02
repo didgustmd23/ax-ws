@@ -4,7 +4,7 @@
     <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
@@ -23,7 +23,7 @@
     <origin xyz="-0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_01.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_01.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
@@ -43,7 +43,7 @@
     <origin xyz="-0.440 -0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_02.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_02.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
@@ -63,7 +63,7 @@
     <origin xyz="0.440 0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_03.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_03.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
@@ -83,7 +83,7 @@
     <origin xyz="0.440 -0.311 -0.190" rpy="0 0 0"/>
     <geometry>
       <mesh
-        filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_tire_04.obj"
+        filename="package://ax_description/meshes/parts/AX_1/ax_tire_04.obj"
         scale="0.001 0.001 0.001"/>
     </geometry>
   </visual>
@@ -100,7 +100,7 @@
   <link name="arm_01_fixed">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_fixed.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_fixed.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -116,7 +116,7 @@
   <link name="arm_01_support">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_support.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_support.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -131,7 +131,7 @@
   <link name="arm_01_column">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_01_column.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_01_column.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -146,7 +146,7 @@
   <link name="arm_02_movie">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_02_movie.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_02_movie.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -161,7 +161,7 @@
   <link name="arm_03_upperarm">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_03_upperarm.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_03_upperarm.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -176,7 +176,7 @@
   <link name="arm_04_forearm">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/arm_04_forearm.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/arm_04_forearm.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -191,7 +191,7 @@
   <link name="gripper_wristhousing">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_wristhousing.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_wristhousing.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -206,7 +206,7 @@
   <link name="gripper_centerpad">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_centerpad.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_centerpad.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -221,7 +221,7 @@
   <link name="gripper_finger_01">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_finger_01.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_finger_01.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -236,7 +236,7 @@
   <link name="gripper_finger_02">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_finger_02.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_finger_02.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -251,7 +251,7 @@
   <link name="gripper_linkpair_01">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_linkpair_01.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_linkpair_01.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -266,7 +266,7 @@
   <link name="gripper_linkpair_02">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/gripper_linkpair_02.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/gripper_linkpair_02.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -281,7 +281,7 @@
   <link name="ax_right_01">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_01.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_01.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -296,7 +296,7 @@
   <link name="ax_right_02">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_02.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_02.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>
@@ -311,7 +311,7 @@
   <link name="ax_right_03">
     <visual>
       <geometry>
-        <mesh filename="file:///mnt/c/Users/ljs38/OneDrive/바탕 화면/ax_ws/src/ax_description/meshes/parts/AX_1/ax_right_03.obj"
+        <mesh filename="package://ax_description/meshes/parts/AX_1/ax_right_03.obj"
               scale="0.001 0.001 0.001"/>
       </geometry>
     </visual>

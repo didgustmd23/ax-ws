@@ -1,0 +1,34 @@
+/**/diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: [front_left_wheel_joint, rear_left_wheel_joint]
+    right_wheel_names: [front_right_wheel_joint, rear_right_wheel_joint]
+    wheel_separation: 0.622
+    # 스키드 조향의 유효 윤거 보정. 실제 회전/odom 비 0.812의 역수이며 임시 로봇 측정값이다.
+    wheel_separation_multiplier: 1.2315
+    wheel_radius: 0.19631
+    tf_frame_prefix_enable: true
+    tf_frame_prefix: robot_1/
+    odom_frame_id: odom
+    base_frame_id: base_link
+    enable_odom_tf: true
+    
+/**/controller_manager:
+  ros__parameters:
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+/**/arm_controller:
+  ros__parameters:
+    joints:
+      - column_yaw_joint
+      - shoulder_joint
+      - elbow_joint
+      - wrist_joint
+      - gripper_rotation_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity

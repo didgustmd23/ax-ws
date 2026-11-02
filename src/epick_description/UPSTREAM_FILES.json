@@ -1,0 +1,51 @@
+{
+  "repository": "https://github.com/PickNikRobotics/ros2_epick_gripper",
+  "commit": "d07391307d2d16cacf88daa168ce02839589397e",
+  "license": "BSD-3-Clause",
+  "files": [
+    {
+      "upstream_path": "LICENSE",
+      "vendored_path": "LICENSE",
+      "sha256": "a47544ef0ad645c587e46348dc10e68b89c3e74732bd124c005cfcd8ede3b3b8"
+    },
+    {
+      "upstream_path": "epick_description/meshes/visual/epick_body.stl",
+      "vendored_path": "meshes/visual/epick_body.stl",
+      "sha256": "827b7f44964048821421c50e842c3878c5667df853aab6fcdf62de851295aa0a"
+    },
+    {
+      "upstream_path": "epick_description/urdf/epick_body.xacro",
+      "vendored_path": "upstream/epick_body.xacro.original",
+      "sha256": "e314b8dd0488f148d9e6ad1195fb537c2c0c69197229dd43cc99f43dd22ca4a4"
+    },
+    {
+      "upstream_path": "epick_description/urdf/helper_macros.xacro",
+      "vendored_path": "upstream/helper_macros.xacro.original",
+      "sha256": "7032605850130171fe017f0408726876bf9f3a4ae1a2c3bf750bc73144c57325"
+    },
+    {
+      "upstream_path": "epick_description/urdf/epick_single_suction_cup.xacro",
+      "vendored_path": "upstream/epick_single_suction_cup.xacro.original",
+      "sha256": "d3c9397a2d12983b6ba53923892905f68fd0da7d63665ae64792ed2c43c3f561"
+    },
+    {
+      "upstream_path": "epick_description/CMakeLists.txt",
+      "vendored_path": "upstream/CMakeLists.txt.original",
+      "sha256": "b4487c59d7cf099bef8915e9c12f08f539efa6a654d762fc438e629ee9383505"
+    },
+    {
+      "upstream_path": "epick_description/package.xml",
+      "vendored_path": "upstream/package.xml.original",
+      "sha256": "fbd57362e332d3b7a2b8ab545a58b625256d5e94d4ba33cdd3b5885108318faf"
+    }
+  ],
+  "adaptations": [
+    "epick_body.xacro: add configurable virtual cylinder mass/inertia only",
+    "Hardware driver and MoveIt virtual vacuum joint are excluded from active macros",
+    "AX cup, ToF mount and TCP are defined in ax_description/urdf/epick_adapter.xacro"
+  ],
+  "adapted_sha256": {
+    "urdf/epick_body.xacro": "4af5657cf1383d8b67f97bf1b03d402b4b0b873f2559cb1d14c9772198d518b4",
+    "urdf/helper_macros.xacro": "7032605850130171fe017f0408726876bf9f3a4ae1a2c3bf750bc73144c57325"
+  }
+}

@@ -4,8 +4,8 @@
 아래 58개 collision·4컵 공구·27.82 kg 수치는 초기 수정 시점의 비교 기록이며,
 V2/EPick의 현재 수치와 검증 결과는 A1 안내와 증거에 구분해 기록한다.
 
-작업일: 2026-11-03. 실제 실행 작업공간은 Ubuntu의 `/home/ljs3837/ax-ws`다.
-바탕화면 사본에서 준비한 변경을 이 작업공간에 반영하고 여기서 빌드·실행 검증한다.
+작업일: 2026-11-03. 저장소를 내려받은 작업공간에서 빌드·실행한다.
+다른 PC의 준비 절차는 [실행 안내](RUN_ON_ANOTHER_PC.md)를 따른다.
 기존 모델·설정은 `log/repair/before_drive_repair_*.tar.gz`에 백업했다.
 
 ## 바로 실행
@@ -19,7 +19,7 @@ source install/setup.bash
 ros2 launch ax_description robot_test.launch.py
 ```
 
-기본값은 AX_1 조작 로봇 1대와 AX_2 운송 로봇 1대, 평평한 주행 시험 월드, GUI 켜짐이다.
+기본값은 AX_1 조작 로봇 1대와 AX_2 운송 로봇 1대, 빈 주행 구역과 테이블·상자를 갖춘 통합 시험 월드, GUI 켜짐이다.
 
 ```bash
 # 조작 로봇만 / 운송 로봇만
@@ -27,7 +27,7 @@ ros2 launch ax_description robot_test.launch.py robot_ids:=robot_1
 ros2 launch ax_description robot_test.launch.py robot_ids:=robot_2
 
 # 작업대 2개·상자 1개가 있는 팔 시험 월드
-ros2 launch ax_description robot_test.launch.py world:=ax_arm_test.world
+ros2 launch ax_description robot_test.launch.py world:=ax_test.world
 
 # 화면 없는 시험 / 4대 활성
 ros2 launch ax_description robot_test.launch.py gui:=false
@@ -65,8 +65,7 @@ ros2 launch ax_description robot_test.launch.py robots:=4
 ## 이름·설정 정리
 
 - 공통 진입점: `launch/robot_test.launch.py`.
-- 평지 주행 시험: `worlds/drive_test.world` / Gazebo world 이름 `ax_drive_test`.
-- 작업대·팔 시험: `worlds/ax_arm_test.world` / Gazebo world 이름 `ax_arm_test`.
+- 주행·작업대·팔 공통 월드: `worlds/ax_test.world` / Gazebo world 이름 `ax_test`.
 - 런치 변수: `robot_namespace`, `robot_description`, `controller_file`, `controller_names`,
   `spawn_x`, `spawn_y`, `wheel_geometry`, `ROBOT_ROLES`처럼 의미를 드러낸다.
 - 생성 치수: `ax2_front_left_wheel_pivot` 등으로 정리하고

@@ -37,7 +37,7 @@ class Observer(Node):
         self.sim_time, self.positions, self.velocities = 0.0, {}, {}
         self.base_pose = None
         self.gazebo = GazeboNode()
-        self.gazebo.subscribe(Pose_V, '/world/ax_drive_test/dynamic_pose/info', self.pose)
+        self.gazebo.subscribe(Pose_V, '/world/ax_test/dynamic_pose/info', self.pose)
         self.owned_subscriptions = [self.create_subscription(Clock, '/clock', self.clock, qos_profile_sensor_data),
             self.create_subscription(JointState, '/ax/robot_1/joint_states', self.state, qos_profile_sensor_data)]
         self.drive = self.create_publisher(TwistStamped, '/ax/robot_1/diff_drive_controller/cmd_vel', 10)

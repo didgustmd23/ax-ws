@@ -58,7 +58,7 @@ try:
         file.write_text(f'''<sdf version="1.8"><model name="{name}"><static>true</static><link name="plate">
           <collision name="collision"><geometry><box><size>0.4 0.4 0.01</size></box></geometry></collision>
           <visual name="visual"><geometry><box><size>0.4 0.4 0.01</size></box></geometry></visual></link></model></sdf>''')
-        subprocess.run(['ros2','run','ros_gz_sim','create','-world','ax_drive_test','-name',name,'-file',str(file),
+        subprocess.run(['ros2','run','ros_gz_sim','create','-world','ax_test','-name',name,'-file',str(file),
             '-x',str(center[0]),'-y',str(center[1]),'-z',str(center[2]),
             '-R',str(angles[0]),'-P',str(angles[1]),'-Y',str(angles[2])],
             check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)

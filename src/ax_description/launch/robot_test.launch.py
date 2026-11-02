@@ -160,7 +160,7 @@ def setup(context):
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='drive_test.world', choices=['drive_test.world', 'ax_arm_test.world']),
+        DeclareLaunchArgument('world', default_value='ax_test.world', choices=['ax_test.world']),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('control', default_value='true', choices=['true', 'false']),

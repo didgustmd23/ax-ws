@@ -43,6 +43,19 @@ ros2 launch ax_description robot_test.launch.py
 원본 CAD·라이선스를 보존하고 [A1 안내](docs/guides/A1_MODEL_ASSETS.md)의 생성·시험 명령을 따른다.
 [바퀴·시험 월드·런치](docs/guides/WHEEL_AND_LAUNCH_REPAIR.md) · [A1 시험 증거](docs/evidence/a1/).
 
+### 통합 시험 월드와 다른 PC 실행
+
+시험 월드는 `ax_test.world` 하나다. 30×30 m 바닥의 원점 주변은 주행 시험용으로 비워 두고,
+작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
+`robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
+다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
+
+```bash
+bash tools/setup_jazzy.sh
+source install/setup.bash
+ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
+```
+
 ## 전체 시스템 구성도
 
 ### 목표 구성

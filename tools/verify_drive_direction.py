@@ -53,7 +53,7 @@ class DriveObserver(Node):
         self.link_poses = {}
         self.scans = {}
         self.gazebo_node = GazeboNode()
-        self.gazebo_node.subscribe(Pose_V, '/world/ax_drive_test/dynamic_pose/info', self.on_gazebo_pose)
+        self.gazebo_node.subscribe(Pose_V, '/world/ax_test/dynamic_pose/info', self.on_gazebo_pose)
         self.subscriptions_owned = [
             self.create_subscription(Clock, '/clock', self.on_clock, qos_profile_sensor_data)]
         self.publishers_owned, self.controller_clients = {}, {}
@@ -256,7 +256,7 @@ class DriveObserver(Node):
                 file.write_text(f'''<sdf version="1.8"><model name="{name}"><static>true</static>
                   <link name="target"><collision name="collision"><geometry><sphere><radius>0.15</radius></sphere></geometry></collision>
                   <visual name="visual"><geometry><sphere><radius>0.15</radius></sphere></geometry></visual></link></model></sdf>''')
-                subprocess.run(['ros2', 'run', 'ros_gz_sim', 'create', '-world', 'ax_drive_test', '-name', name,
+                subprocess.run(['ros2', 'run', 'ros_gz_sim', 'create', '-world', 'ax_test', '-name', name,
                     '-file', str(file), '-x', str(target_x), '-y', str(target_y), '-z', str(base_z + mount_z)],
                     stdout=log, stderr=subprocess.STDOUT, timeout=30, check=True)
         self.advance(1.0)
@@ -289,7 +289,7 @@ def main():
     rclpy.init()
     observer = DriveObserver()
     process = subprocess.Popen(['ros2', 'launch', 'ax_description', 'robot_test.launch.py',
-        'robots:=2', 'gui:=false', 'world:=drive_test.world'],
+        'robots:=2', 'gui:=false', 'world:=ax_test.world'],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     observer.launch_process = process
     report = {'passed': False, 'installed_package': get_package_share_directory('ax_description'), 'trials': []}

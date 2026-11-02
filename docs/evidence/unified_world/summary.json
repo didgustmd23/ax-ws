@@ -1,0 +1,75 @@
+{
+  "passed": true,
+  "entities": {
+    "robot_1": true,
+    "robot_2": true,
+    "station_src": true,
+    "station_dst": true,
+    "test_box": true,
+    "ground_plane": true
+  },
+  "controllers": {
+    "robot_1": {
+      "arm_controller": "active",
+      "diff_drive_controller": "active",
+      "joint_state_broadcaster": "active"
+    },
+    "robot_2": {
+      "diff_drive_controller": "active",
+      "joint_state_broadcaster": "active"
+    }
+  },
+  "topics": {
+    "/ax/robot_1/sensors/front_lidar/scan": {
+      "samples": 360,
+      "nan": 0
+    },
+    "/ax/robot_1/sensors/rear_lidar/scan": {
+      "samples": 360,
+      "nan": 0
+    },
+    "/ax/robot_2/joint_states": {
+      "joints": [
+        "front_left_wheel_joint",
+        "front_right_wheel_joint",
+        "rear_left_wheel_joint",
+        "rear_right_wheel_joint"
+      ],
+      "finite": true
+    },
+    "/ax/robot_1/joint_states": {
+      "joints": [
+        "column_yaw_joint",
+        "elbow_joint",
+        "front_left_wheel_joint",
+        "front_right_wheel_joint",
+        "gripper_rotation_joint",
+        "rear_left_wheel_joint",
+        "rear_right_wheel_joint",
+        "shoulder_joint",
+        "wrist_joint"
+      ],
+      "finite": true
+    },
+    "/ax/robot_2/sensors/front_lidar/scan": {
+      "samples": 360,
+      "nan": 0
+    },
+    "/ax/robot_2/sensors/rear_lidar/scan": {
+      "samples": 360,
+      "nan": 0
+    }
+  },
+  "validation": "Source-only relocated workspace build under Ubuntu 24.04 / Jazzy / Harmonic; no previous workspace overlay",
+  "unit_tests_passed": 13,
+  "mesh_references_checked": 114,
+  "rosdep_check_passed": true,
+  "separate_physical_pc_tested": false,
+  "source_sha256": {
+    "src/ax_description/worlds/ax_test.world": "9c7eefd507fdaea49e30e8f87eef42cef1debfb92747b0eec1220ae6ee310dcd",
+    "src/ax_description/launch/robot_test.launch.py": "719008dca91eb676a74ba86281496e65c656e4820a9afe46f5c27771779b6dec",
+    "src/ax_description/package.xml": "f6b2f496c47e033f32b0c7efd264b472258ccfedd29cbae472f360e5a49ca039",
+    "tools/check_portability.py": "533f23eb661ea5cb849ac594b312cc086ba796df3f0b1488a3518c37b46e8c7c",
+    "tools/verify_unified_runtime.py": "2a33d9e7336d1da909dc1f98b7ab6a324c8c9dc7537cb71a63abb650fcc85b58"
+  }
+}

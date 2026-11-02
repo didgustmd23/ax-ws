@@ -51,11 +51,19 @@ class Models(unittest.TestCase):
                         self.assertIn(joint_name, drive[side + '_wheel_names'])
                         self.assertNotIn(joint_name, drive[('right' if side == 'left' else 'left') + '_wheel_names'])
 
-    def test_drive_world_is_flat_and_obstacle_free(self):
-        world = ET.parse(PKG / 'worlds/drive_test.world').getroot().find('world')
-        self.assertEqual([element.get('name') for element in world.findall('model')], ['ground_plane'])
-        self.assertEqual(world.findtext('model/static'), 'true')
+    def test_unified_world_has_clear_drive_area_and_work_stations(self):
+        self.assertEqual([p.name for p in (PKG / 'worlds').glob('*.world')], ['ax_test.world'])
+        world = ET.parse(PKG / 'worlds/ax_test.world').getroot().find('world')
+        self.assertEqual(world.get('name'), 'ax_test')
+        self.assertEqual({m.get('name') for m in world.findall('model')},
+                         {'ground_plane', 'station_src', 'station_dst', 'test_box'})
         self.assertEqual(world.findtext('gravity'), '0 0 -9.80665')
+        for name in ('station_src', 'station_dst', 'test_box'):
+            entity = world.find(f"model[@name='{name}']")
+            self.assertGreaterEqual(float(entity.findtext('pose').split()[0]), 8)
+        ground = world.find("model[@name='ground_plane']")
+        self.assertEqual(ground.findtext('static'), 'true')
+        self.assertEqual(ground.findtext('.//plane/size'), '30 30')
 
     def test_tree_meshes_inertias_and_limits(self):
         for filename in ('ax.urdf.xacro', 'ax_2.urdf.xacro'):
@@ -107,7 +115,7 @@ class Models(unittest.TestCase):
                 self.assertTrue(sensor.findtext('gz_frame_id').startswith(robot_id + '/'))
             # No model-local shared systems or alternative wheel driver.
             self.assertEqual(root.findall('gazebo/plugin'), [])
-        world = ET.parse(PKG / 'worlds/ax_arm_test.world').getroot().find('world')
+        world = ET.parse(PKG / 'worlds/ax_test.world').getroot().find('world')
         names = [element.get('name') for element in world.findall('plugin')]
         self.assertEqual(len(names), len(set(names)))
         self.assertIn('gz::sim::systems::Sensors', names)

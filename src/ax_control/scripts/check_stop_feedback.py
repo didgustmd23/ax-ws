@@ -63,8 +63,11 @@ WHEEL_JOINTS = [
 TRUTH_TOPIC = "/world/ax_test/dynamic_pose/info"
 TRUTH_WINDOW_SECONDS = 0.1
 SAMPLE_PERIOD_SECONDS = 0.02
-SETTLE_WALL_SECONDS = 3.0
+# 명령 종료 뒤 기록 구간(시뮬레이션 시간 s). 정지(최대 약 1.7 s)와 D-06 유지 0.5 s를 담는다.
+SETTLE_SIM_SECONDS = 3.0
 IDLE_WALL_SECONDS = 3.0
+# 시뮬레이션 시간 대기의 벽시계 상한(s). 실시간 비율이 낮아도 여기까지 기다린다.
+SIM_WAIT_WALL_LIMIT_SECONDS = 120.0
 
 
 # 각도 차이를 -pi~pi 범위로 정규화한다
@@ -299,11 +302,29 @@ class StopFeedbackRecorder(Node):
         while time.monotonic() < deadline:
             rclpy.spin_once(self, timeout_sec=0.005)
 
-    # 속도 명령을 지정 시간 보낸 뒤 끊고 그 시각을 돌려준다
-    def run_drive(self, linear, angular, seconds):
-        deadline = time.monotonic() + seconds
+    # 시뮬레이션 시간이 지정 시각에 이를 때까지 콜백을 처리한다. 도달하면 True
+    def spin_until_sim(self, target_seconds):
+        wall_deadline = time.monotonic() + SIM_WAIT_WALL_LIMIT_SECONDS
 
-        while time.monotonic() < deadline:
+        while self.now_seconds() < target_seconds:
+            if time.monotonic() > wall_deadline:
+                return False
+
+            rclpy.spin_once(self, timeout_sec=0.005)
+
+        return True
+
+    # 명령 종료 시각부터 시뮬레이션 시간 기준 기록 구간을 채운다
+    def settle_after(self, cut_time):
+        if not self.spin_until_sim(cut_time + SETTLE_SIM_SECONDS):
+            print("[WARN] 시뮬레이션 시간이 진행되지 않아 기록 구간을 다 채우지 못함", flush=True)
+
+    # 속도 명령을 시뮬레이션 시간 기준으로 지정 시간 보낸 뒤 끊고 그 시각을 돌려준다
+    def run_drive(self, linear, angular, seconds):
+        end_time = self.now_seconds() + seconds
+        wall_deadline = time.monotonic() + SIM_WAIT_WALL_LIMIT_SECONDS
+
+        while self.now_seconds() < end_time and time.monotonic() < wall_deadline:
             message = TwistStamped()
             message.header.stamp = self.get_clock().now().to_msg()
             message.twist.linear.x = linear
@@ -455,7 +476,7 @@ def run_checks(node):
         node.samples.clear()
 
         cut_time = node.run_drive(linear, angular, seconds)
-        node.spin_for(SETTLE_WALL_SECONDS)
+        node.settle_after(cut_time)
 
         if not evaluate(name, node.samples, cut_time):
             failures += 1
@@ -481,7 +502,7 @@ def run_checks(node):
 
             continue
 
-        node.spin_for(SETTLE_WALL_SECONDS)
+        node.settle_after(cut_time)
 
         if not evaluate(name, node.samples, cut_time):
             failures += 1

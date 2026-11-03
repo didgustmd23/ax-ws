@@ -28,7 +28,7 @@ def process(pid):
 
 
 def discover(workspace):
-    result = {'launch': [], 'remote': [], 'keyboard': [], 'gazebo': []}
+    result = {'launch': [], 'remote': [], 'keyboard': [], 'gazebo': [], 'terminal': []}
     prefix = str(workspace / 'install')
     for entry in Path('/proc').iterdir():
         if not entry.name.isdigit():
@@ -47,6 +47,8 @@ def discover(workspace):
             result['remote'].append(item)
         elif 'python3' in args and 'keyboard_teleop.py' in args:
             result['keyboard'].append(item)
+        elif 'bash --rcfile ' in args and str(workspace / 'log/desktop_session/terminal.bash') in args:
+            result['terminal'].append(item)
         elif args.startswith('gz sim ') or ('gz sim ' in args and ('ruby' in args or '/bin/sh' in args)):
             result['gazebo'].append(item)
     return result
@@ -128,7 +130,8 @@ def run(args):
         found = discover(workspace)
         if args.action == 'status':
             return {'ok': True, 'launch_pids': [p['pid'] for p in found['launch']],
-                    'remote_pids': [p['pid'] for p in found['remote']], 'remote_ready': bool(remote_state(args.port))}
+                    'remote_pids': [p['pid'] for p in found['remote']],
+                    'terminal_pids': [p['pid'] for p in found['terminal']], 'remote_ready': bool(remote_state(args.port))}
         if args.action == 'stop':
             roots = [item for group in found.values() for item in group]
             stopped = stop_processes(roots)
@@ -161,7 +164,8 @@ def run(args):
             terminal = logs / 'terminal.bash'
             terminal.write_text('source ~/.bashrc\nsource /opt/ros/jazzy/setup.bash\nsource ' +
                 shlex.quote(str(workspace / 'install/setup.bash')) + '\ncd ' + shlex.quote(str(workspace)) +
-                '\nexport GZ_PARTITION=' + shlex.quote(env['GZ_PARTITION']) + '\n')
+                '\nexport GZ_PARTITION=' + shlex.quote(env['GZ_PARTITION']) +
+                "\ntrap 'exit 0' TERM HUP\n")
             if not found['launch'] and not remote_only:
                 if found['gazebo']:
                     raise RuntimeError('Orphan Gazebo processes found; use AX Stop first')

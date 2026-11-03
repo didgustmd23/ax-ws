@@ -4,4 +4,4 @@ if not exist "%~dp0..\log\desktop_launcher\config.json" (
   if errorlevel 1 exit /b 1
 )
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0ax-launch.ps1" -Action Remote
-if errorlevel 1 pause
+exit /b %errorlevel%

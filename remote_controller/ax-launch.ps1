@@ -52,7 +52,7 @@ try {
             $terminal = Get-Command wt.exe -ErrorAction SilentlyContinue
             $terminalArgs = @('wsl.exe', '-d', $Distro, '--exec', 'bash', '--rcfile', ('"'+$result.terminal_rcfile+'"'), '-i')
             if ($terminal) {
-                Start-Process -FilePath $terminal.Source -ArgumentList (@('-w','0','new-tab','--title','"Ubuntu 24.04 - AX"') + $terminalArgs) -WindowStyle Normal
+                Start-Process -FilePath $terminal.Source -ArgumentList (@('-w','new','new-tab','--title','"Ubuntu 24.04 - AX"','--suppressApplicationTitle') + $terminalArgs) -WindowStyle Normal
             } else {
                 Start-Process -FilePath 'wsl.exe' -ArgumentList $terminalArgs[1..($terminalArgs.Count-1)] -WindowStyle Normal
             }
@@ -68,6 +68,7 @@ try {
     } elseif ($Action -eq 'Stop') {
         $closedWindows = Close-RemoteWindows
         $result | Add-Member -NotePropertyName remote_windows_closed -NotePropertyValue $closedWindows
+        $result | Add-Member -NotePropertyName ax_terminal_windows_closed -NotePropertyValue ([AxRemoteWindow]::Close('Ubuntu 24.04 - AX'))
     }
     $result | ConvertTo-Json -Compress
 } catch {

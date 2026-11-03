@@ -34,6 +34,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-shortcuts.ps1 -Dis
 자동 감지는 작업 폴더를 찾는 기능이며, Ubuntu·ROS 설치나 빌드를 대신하지 않습니다.
 처음 실행할 때 Ubuntu 시작과 로봇 생성에 시간이 걸릴 수 있으니 기다리세요.
 이미 실행 중인 세션은 재사용하며, 중복 클릭으로 로봇을 추가 생성하지 않습니다.
+실행 중 PowerShell 창이 잠깐 보일 수 있지만 작업이 끝나면 자동으로 닫힙니다.
+AX 종료는 AX 전용 Ubuntu 터미널도 함께 종료합니다. 별도로 연 다른 터미널은 유지합니다.
 **AX 실행은 리모컨을 열지 않습니다.** 리모컨이 필요할 때 **AX 리모컨**을 별도로 실행하세요.
 
 ## 파일 정리

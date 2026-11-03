@@ -1,0 +1,36 @@
+# robot_1 계열(AX_1, 5축 팔) 제어기 설정. 공통 설정은 common_controllers.yaml에 있다.
+# 모델: ax_description/urdf/ax.urdf.xacro. 길이 m, 각도 rad, 시간 s.
+
+# 바퀴 기하. 모델이 바뀌면 함께 확인한다.
+/**/diff_drive_controller:
+  ros__parameters:
+    # 좌우 바퀴 중심 사이 거리(윤거)와 바퀴 반지름.
+    wheel_separation: 0.622
+    wheel_radius: 0.19631
+    # 스키드 조향의 유효 윤거 보정 = odom 예측 회전/실제 회전.
+    # 임시 모델 실측 1.2315, A1 모델 drive_repair 증거(제자리 회전 좌·우 각 1회)에서 계산한 값 1.232와 일치한다.
+    wheel_separation_multiplier: 1.2315
+
+# 팔 제어기는 이 모델에만 있어 공통 설정이 아닌 여기서 등록한다.
+/**/controller_manager:
+  ros__parameters:
+    arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+# 팔 5축 궤적 제어기. 운영에서는 A4 보호 서버만 follow_joint_trajectory를 호출한다.
+# 관절 이름은 모델(ros2_control 블록)과 일치해야 한다.
+/**/arm_controller:
+  ros__parameters:
+    joints:
+      - column_yaw_joint
+      - shoulder_joint
+      - elbow_joint
+      - wrist_joint
+      - gripper_rotation_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity

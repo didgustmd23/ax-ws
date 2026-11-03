@@ -161,7 +161,7 @@ def run_payload(payload, settings, output_directory):
     rclpy.init()
     observer = Observer(geometry, settings)
     log = (output_directory / f'payload_{payload}.log').open('w')
-    process = subprocess.Popen(['ros2', 'launch', 'ax_description', 'robot_test.launch.py',
+    process = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
         'robot_ids:=robot_1', 'gui:=false', 'sensors:=false', 'tool:=epick', f'payload_mass:={payload}'],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     observer.launch_process = process

@@ -5,7 +5,7 @@
 상자와 받침대를 월드에 만들고 팔을 움직이므로 격리된 개발 시뮬레이션에서만 실행한다.
 
 실행 순서
-  터미널 1: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+  터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
   터미널 2: python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1
 
 주의
@@ -86,7 +86,7 @@ def spawn_box(name, position, size, static):
     subprocess.run(
         [
             "ros2", "run", "ros_gz_sim", "create",
-            "-world", "empty",
+            "-world", "ax_test",
             "-string", sdf,
             "-name", name,
             "-x", str(position[0]),

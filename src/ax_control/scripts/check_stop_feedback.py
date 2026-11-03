@@ -6,7 +6,7 @@ Gazebo 실제 값은 시험 비교용이므로 운영 판정에 쓰지 않는다
 제어기를 A4 없이 직접 구동하므로 격리된 개발 시뮬레이션에서만 실행한다.
 
 실행 순서
-  터미널 1: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+  터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
   터미널 2: python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
 
 출력 읽는 법
@@ -60,7 +60,7 @@ WHEEL_JOINTS = [
     "rear_right_wheel_joint",
 ]
 
-TRUTH_TOPIC = "/world/empty/dynamic_pose/info"
+TRUTH_TOPIC = "/world/ax_test/dynamic_pose/info"
 TRUTH_WINDOW_SECONDS = 0.1
 SAMPLE_PERIOD_SECONDS = 0.02
 SETTLE_WALL_SECONDS = 3.0

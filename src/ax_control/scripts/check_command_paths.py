@@ -4,7 +4,7 @@
 운영 경로가 아니며 A4 게이트를 거치지 않는다. 격리된 개발 시뮬레이션에서만 실행한다.
 
 실행 순서
-  터미널 1: ros2 launch ax_control simulation.launch.py robot_id:=robot_1
+  터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
   터미널 2: python3 src/ax_control/scripts/check_command_paths.py --robot-id robot_1
 
 점검 항목

@@ -67,7 +67,7 @@ TCP/ToF 보정 시험은 컵 끝면에서 0.10·0.05·0 m 떨어진 기준 평�
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-colcon build --packages-select epick_description ax_description ax_interfaces robotiq_description
+colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
 python3 tools/export_ax1_urdf.py
 python3 -m unittest discover -s tools/tests -v
@@ -76,7 +76,7 @@ python3 tools/verify_a1_envelope.py
 python3 tools/verify_epick_tcp.py
 ```
 
-기본 실행은 `ros2 launch ax_description robot_test.launch.py`다.
+기본 실행은 `ros2 launch ax_control simulation.launch.py`다. 제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.
 센서 렌더링을 생략하는 `sensors:=false`는 관절 시험 성능을 위한 별도 조건이며
 일반 센서 구성이 검증됐다는 근거로 쓰지 않는다.
 

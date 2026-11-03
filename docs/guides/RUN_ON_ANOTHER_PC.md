@@ -11,11 +11,11 @@ git clone --branch su --single-branch https://github.com/didgustmd23/ax-ws.git
 cd ax-ws
 bash tools/setup_jazzy.sh
 source install/setup.bash
-ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
+ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 ```
 
 설치 스크립트는 apt/rosdep에 sudo 권한과 네트워크를 사용한다. 이미 ROS가 설치된 환경에서
-의존성을 설치하고 네 패키지를 빌드한다. 사용자 이름이나 다운로드 디렉터리를 코드에 넣지 않는다.
+의존성을 설치하고 모델·인터페이스·제어(`ax_control`) 패키지를 빌드한다. 사용자 이름이나 다운로드 디렉터리를 코드에 넣지 않는다.
 새 터미널에서는 workspace로 이동한 뒤 `source /opt/ros/jazzy/setup.bash`와
 `source install/setup.bash`를 실행한다. `build/`, `install/`, `log/`는 복사하지 않고 해당 PC에서 생성한다.
 
@@ -28,17 +28,18 @@ ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
 월드가 자동 집기나 내비게이션 동작을 수행하지는 않는다.
 
 ```bash
-ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
+ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 # 기본 공구 EPick
-ros2 launch ax_description robot_test.launch.py robots:=2 tool:=epick
+ros2 launch ax_control simulation.launch.py robots:=2 tool:=epick
 # GUI 없이 실행 (센서 렌더링에는 EGL 지원 필요)
-ros2 launch ax_description robot_test.launch.py gui:=false
+ros2 launch ax_control simulation.launch.py gui:=false
 # 렌더링 없이 제어만 확인
-ros2 launch ax_description robot_test.launch.py gui:=false sensors:=false
+ros2 launch ax_control simulation.launch.py gui:=false sensors:=false
 ```
 
 `ax_arm_test.launch.py`는 robot_1, `ax_2_test.launch.py`는 robot_2,
 `ax_test_both.launch.py`는 두 로봇을 같은 월드에 생성하는 호환 진입점이다.
+이 호환 진입점과 `robot_test.launch.py`는 제어기 없이 모델·센서만 띄운다. 조종·시험은 `ax_control` launch를 쓴다.
 종전 `drive_test.world`/`ax_arm_test.world` 직접 지정은 `world:=ax_test.world`로 바꾼다.
 
 ## 경로와 검증

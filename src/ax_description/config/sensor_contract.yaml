@@ -1,0 +1,56 @@
+# W1 sensor baseline. SI units, ideal Gazebo measurements, no calibrated hardware noise.
+# Geometric extrinsics are in sensor_mounts.yaml; CameraInfo is the intrinsic source.
+schema_version: 1
+topic_root: /ax/{robot_id}/sensors
+frame_root: '{robot_id}/'
+qos: {reliability: best_effort, durability: volatile, depth: 5}
+clock: {stamp: sim_time, use_sim_time: true}
+cameras:
+  width: 640
+  height: 480
+  horizontal_fov_rad: 1.0471975511965976
+  rate_hz: 15
+  rgb_encoding: rgb8
+  optical_axes: {right: '+X', down: '+Y', forward: '+Z'}
+  body_axes: {forward: '+X', left: '+Y', up: '+Z'}
+  rgb_names: {manipulator: [front_rgb, arm_rgb], transporter: [front_rgb]}
+  rgbd_names: {manipulator: [front_rgbd, arm_rgbd], transporter: [front_rgbd]}
+  rgb_suffixes: [image_raw, camera_info]
+  rgbd_suffixes: [image, depth_image, points, camera_info]
+  depth_unit: m
+  depth_clip_m: [0.05, 5.0]
+lidar:
+  names: [front_lidar, rear_lidar]
+  rate_hz: 10
+  samples: 360
+  horizontal_fov_rad: 3.141592653589793
+  range_m: [0.12, 10.0]
+  suffix: scan
+imu: {rate_hz: 100, suffix: imu}
+tool_tof:
+  role: manipulator
+  tool: suction
+  simulated_source: suction_tof/scan
+  simulated_type: sensor_msgs/msg/LaserScan
+  raw_topic: tool_tof/raw
+  raw_type: sensor_msgs/msg/Range
+  frame: tool_tof_link
+  rate_hz: 30
+  range_m: [0.02, 0.40]
+  lip_offset_m: 0.031
+  invalid: NaN
+  too_far: '+inf'
+  too_close: '-inf'
+  semantics: distance_from_sensor_origin_not_suction_success
+  processed_topic: tool_tof
+  processed_status: W2_preprocessing_not_implemented
+cargo_contact:
+  role: transporter
+  suffix: cargo_contact
+  type: ros_gz_interfaces/msg/Contacts
+  sensor_mount_frame: cargo_contact_link
+  positions_frame: world
+  ros_header_frame: may_be_empty_identify_source_by_robot_topic_and_collision_entities
+  task_frame: cargo_link
+  rate_hz: 30
+  semantics: raw_contact_not_load_state

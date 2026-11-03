@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.8)
+project(epick_description)
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY meshes urdf upstream DESTINATION share/${PROJECT_NAME})
+install(FILES LICENSE UPSTREAM_FILES.json README.md DESTINATION share/${PROJECT_NAME})
+ament_package()

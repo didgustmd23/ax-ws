@@ -1,0 +1,16 @@
+# AX support/column display colors; original AX_1.mtl is unchanged.
+newmtl ax_support_dark_gray
+Ka 0.08 0.08 0.08
+Kd 0.22 0.25 0.30
+Ks 0.12 0.12 0.12
+Ns 24
+d 1
+illum 2
+
+newmtl ax_column_orange
+Ka 0.08 0.08 0.08
+Kd 1.0 0.45 0.05
+Ks 0.12 0.12 0.12
+Ns 24
+d 1
+illum 2

@@ -1,3 +1,4 @@
+# HTTP 입력 검증·지연 명령 폐기·새 정지 우선순위를 검사한다. 브라우저 클릭 자체의 종단 시험은 별도다.
 import importlib.util
 from pathlib import Path
 import sys

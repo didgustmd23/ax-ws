@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- AX_2 운반 로봇 원본. 시각 메시·충돌/관성 생성물·센서 장착·바퀴 제어를 합성한다. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot_2">
   <xacro:arg name="sensors_enabled" default="true"/>
   <xacro:arg name="robot_name" default="robot_2"/>

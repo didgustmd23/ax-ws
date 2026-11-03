@@ -1,3 +1,4 @@
+# PID 시작 시각/소유권과 실행 범위를 검사한다. 다른 프로세스를 종료하지 않는지가 중요하다.
 import importlib.util
 import os
 from pathlib import Path

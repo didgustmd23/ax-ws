@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 브라우저 HTTP 요청을 큐로 받아 단일 ROS 루프에서 실행한다. HTTP 스레드는 ROS 객체를 직접 제어하지 않는다.
 """Local browser remote for AX simulation; ROS stays inside Ubuntu."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import argparse
@@ -14,6 +15,7 @@ import time
 from keyboard_teleop import KeyboardTeleop, JOINT_LABELS, rclpy, SignalHandlerOptions
 
 
+# 허용 명령·값·클라이언트 식별자·순서를 검사한다. bool은 Python에서 int의 하위형이므로 정수와 구분한다.
 def validate_command(data):
     if not isinstance(data, dict):
         raise ValueError('Invalid command')
@@ -39,6 +41,7 @@ def validate_command(data):
 
 
 class Remote:
+    # 대기열 크기를 제한하고 실행마다 새 토큰을 만든다. 브라우저를 새로고침하면 새 토큰을 받는다.
     def __init__(self):
         self.commands = queue.Queue(maxsize=32)
         self.state = {}
@@ -46,6 +49,7 @@ class Remote:
         self.last_seen = time.monotonic()
         self.sequences = {}
 
+    # 단일 ROS 스레드에서 큐 명령을 실행한다. 늦게 도착한 이전 주행 명령은 새 정지를 덮어쓰지 못한다.
     def apply(self, node, data, received):
         action, value = validate_command(data)
         client, seq = data['client'], data['seq']
@@ -70,6 +74,7 @@ class Remote:
             node.adjust_mode = 'arm'
             node.jog(value)
 
+    # ROS 내부 상태를 브라우저용 복사본으로 만든다. 내부 각도 rad를 화면용 degree로 변환한다.
     def update(self, node):
         self.state = {
             'robot': node.robot, 'joint': node.joint, 'labels': JOINT_LABELS,
@@ -82,8 +87,10 @@ class Remote:
         }
 
 
+# HTTP 핸들러를 만든다. 서버 객체를 캡처하고 ROS 접근은 큐와 상태 복사본으로 제한한다.
 def handler_for(remote):
     class Handler(BaseHTTPRequestHandler):
+        # UTF-8 응답 길이를 바이트로 계산하고 캐시를 막아 이전 토큰/UI가 재사용되지 않게 한다.
         def reply(self, code, content, mime='application/json; charset=utf-8'):
             body = content.encode('utf-8')
             self.send_response(code)
@@ -97,6 +104,7 @@ def handler_for(remote):
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
+        # 페이지와 상태 조회만 제공한다. 상태 요청 시각은 브라우저 연결 생존 확인에 사용한다.
         def do_GET(self):
             if self.path == '/':
                 page = Path(__file__).with_name('remote_control.html').read_text()
@@ -107,6 +115,7 @@ def handler_for(remote):
             else:
                 self.reply(404, '{}')
 
+        # 토큰과 명령 형식을 확인한 후 큐에 넣는다. 202는 접수 의미이며 실제 동작 성공 응답은 아니다.
         def do_POST(self):
             if self.path != '/api/command':
                 return self.reply(404, '{}')
@@ -126,15 +135,18 @@ def handler_for(remote):
             except queue.Full:
                 self.reply(429, '{}')
 
+        # 반복 상태 조회가 실행 로그를 채우지 않도록 기본 HTTP 접근 로그를 생략한다.
         def log_message(self, *args):
             pass
     return Handler
 
 
+# SIGTERM도 KeyboardInterrupt 경로로 합쳐 finally에서 정지 처리를 수행한다.
 def stop_signal_handler(*_):
     raise KeyboardInterrupt
 
 
+# 루프백 주소로만 서버를 열고 ROS 루프에서 명령을 실행한다. 브라우저 연결 만료 시 자기 팔 Action을 취소한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)

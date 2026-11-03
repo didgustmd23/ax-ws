@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 제어 명령뿐 아니라 Gazebo 실제 자세·관절·LiDAR를 관측한다. 자체 partition과 프로세스만 정리한다.
 """Check actual Gazebo motion and all four wheel signs on each robot."""
 import argparse
 import json
@@ -37,12 +38,14 @@ ARM_JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint'
 ARM_CHILDREN = ['column_link', 'upper_arm_link', 'forearm_link', 'wrist_link', 'gripper_base_link']
 
 
+# Gazebo quaternion에서 수평 방향 yaw(rad)를 추출한다.
 def yaw(rotation):
     return math.atan2(2 * (rotation.w * rotation.z + rotation.x * rotation.y),
                       1 - 2 * (rotation.y ** 2 + rotation.z ** 2))
 
 
 class DriveObserver(Node):
+    # 명령과 독립된 Gazebo 자세·관절·LiDAR 관측을 준비한다.
     def __init__(self):
         super().__init__('independent_drive_direction_observer')
         self.sim_time = 0.0
@@ -72,9 +75,11 @@ class DriveObserver(Node):
                     lambda message, key=scan_key: self.scans.__setitem__(key, message), qos_profile_sensor_data))
         self.arm_client = ActionClient(self, FollowJointTrajectory, '/ax/robot_1/arm_controller/follow_joint_trajectory')
 
+    # 시뮬레이션 시각을 저장해 속도 메시지 stamp와 시험 진행에 사용한다.
     def on_clock(self, message):
         self.sim_time = message.clock.sec + message.clock.nanosec * 1e-9
 
+    # Gazebo의 실제 로봇·팔 링크 자세를 갱신한다. odom 적분값만으로 성공을 판단하지 않는다.
     def on_gazebo_pose(self, message):
         for pose in message.pose:
             name = pose.name
@@ -90,9 +95,11 @@ class DriveObserver(Node):
             if name in ('robot_1', 'robot_2'):
                 self.poses[name] = (pose.position.x, pose.position.y, pose.position.z, yaw(pose.orientation))
 
+    # 로봇별 실제 관절 상태를 이름으로 구분해 저장한다.
     def on_joint(self, robot_id, message):
         self.joints[robot_id] = dict(zip(message.name, message.position))
 
+    # 현재 시험 속도를 시뮬레이션 시각의 TwistStamped로 반복 전송한다.
     def command(self, robot_id=None, linear=0.0, angular=0.0):
         stamp = int(self.sim_time * 1e9)
         for robot, publisher in self.publishers_owned.items():
@@ -104,6 +111,7 @@ class DriveObserver(Node):
                 message.twist.angular.z = angular
             publisher.publish(message)
 
+    # ROS 관측과 명령 갱신을 유지하며 지정 시뮬레이션 시간만큼 진행한다.
     def advance(self, duration, robot_id=None, linear=0.0, angular=0.0):
         end = self.sim_time + duration
         deadline = time.monotonic() + max(45, duration * 30)
@@ -116,6 +124,7 @@ class DriveObserver(Node):
                 self.command(robot_id, linear, angular)
                 last_command = time.monotonic()
 
+    # 시험에 필요한 로봇·시각·센서 관측이 준비될 때까지 기다린다.
     def wait_ready(self):
         deadline = time.monotonic() + 150
         progress_at = time.monotonic()
@@ -148,6 +157,7 @@ class DriveObserver(Node):
                 return
         raise RuntimeError('Readiness timed out: poses=' + repr(self.poses) + ', pose names=' + repr(sorted(self.pose_names)[:30]))
 
+    # 전후진 거리와 회전 방향을 Gazebo 실제 자세 변화로 판정한다.
     def trial(self, robot_id, name, linear, angular):
         self.advance(.3)
         start_pose = self.poses[robot_id]
@@ -175,6 +185,7 @@ class DriveObserver(Node):
         print(json.dumps(result), flush=True)
         return result
 
+    # 4개 스캔의 근거리 반환·NaN·음의 무한대를 기록한다. 정상 장애물 반환 전체를 제거하지 않는다.
     def lidar_snapshot(self, label):
         self.advance(.4)
         readings = {}
@@ -194,6 +205,7 @@ class DriveObserver(Node):
                           'minima': {key: value['minimum_finite_range_m'] for key, value in readings.items()}}), flush=True)
         return result
 
+    # 팔 Action 응답을 기다리는 동안 관측과 베이스 정지 명령을 유지한다.
     def await_future(self, future, timeout=90):
         deadline = time.monotonic() + timeout
         while not future.done():
@@ -203,6 +215,7 @@ class DriveObserver(Node):
             self.command()
         return future.result()
 
+    # 팔 각 축을 0.15 rad 이동하고 실제 관절·자식 링크 회전을 확인한 뒤 중립으로 복귀한다.
     def check_arm(self):
         if not self.arm_client.wait_for_server(timeout_sec=10):
             raise RuntimeError('Arm action server is unavailable')
@@ -242,6 +255,7 @@ class DriveObserver(Node):
             raise RuntimeError('Arm return to neutral failed')
         return results, scans
 
+    # 센서 앞뒤에 구형 표적을 배치해 가까운 자기 반환 제거와 실제 표적 검출을 구분한다.
     def check_lidar_targets(self, directory, log):
         mounts = yaml.safe_load((Path(get_package_share_directory('ax_description')) / 'config/sensor_mounts.yaml').read_text())
         for robot_id, profile in [('robot_1', 'ax1'), ('robot_2', 'ax2')]:
@@ -271,6 +285,7 @@ class DriveObserver(Node):
         return checks
 
 
+# 격리된 시험 세션을 실행하고 결과·잔류 프로세스 수를 기록한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', default=str(WORKSPACE / 'log/repair/drive_directions.json'))

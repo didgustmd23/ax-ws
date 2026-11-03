@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Windows 바로가기에서 호출하는 Ubuntu 세션 관리자. start는 Gazebo만, remote는 리모컨만, stop은 이 작업공간만 정리한다.
 """Start/stop only this workspace's AX simulation, called by Windows shortcuts."""
 import argparse
 import fcntl
@@ -13,6 +14,7 @@ import time
 import urllib.request
 
 
+# /proc에서 PID·부모 PID·시작 시각·실행 인자·환경을 읽는다. 종료된 프로세스는 None으로 처리한다.
 def process(pid):
     try:
         path = Path('/proc') / str(pid)
@@ -27,6 +29,7 @@ def process(pid):
         return None
 
 
+# AMENT 설치 경로가 이 workspace인 AX 프로세스만 찾는다. 다른 작업공간의 세션은 제외한다.
 def discover(workspace):
     result = {'launch': [], 'remote': [], 'keyboard': [], 'gazebo': [], 'terminal': []}
     prefix = str(workspace / 'install')
@@ -54,6 +57,7 @@ def discover(workspace):
     return result
 
 
+# 종료 전에 자식 프로세스 목록을 확보해 부모가 먼저 끝나도 잔류 자식을 추적한다.
 def descendants(roots):
     entries = [process(p.name) for p in Path('/proc').iterdir() if p.name.isdigit()]
     entries = [p for p in entries if p]
@@ -65,11 +69,13 @@ def descendants(roots):
         owned.update((p['pid'], p) for p in extra)
 
 
+# 같은 PID라도 시작 시각이 다르면 새 프로세스이므로 종료 대상으로 취급하지 않는다.
 def alive(item):
     current = process(item['pid'])
     return current is not None and current['start'] == item['start']
 
 
+# SIGINT로 정상 정리 기회를 준 뒤 TERM/KILL로 단계적으로 종료한다. 각 단계에서 소유권을 다시 확인한다.
 def stop_processes(roots):
     owned = descendants(roots)
     for sig, delay in [(signal.SIGINT, 4), (signal.SIGTERM, 2), (signal.SIGKILL, 1)]:
@@ -88,6 +94,7 @@ def stop_processes(roots):
     return len(owned)
 
 
+# 로컬 HTTP 상태를 확인한다. robot_id가 있어도 로봇 준비 완료를 뜻하지는 않는다.
 def remote_state(port):
     try:
         with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/state', timeout=1) as response:
@@ -97,6 +104,7 @@ def remote_state(port):
         return None
 
 
+# ROS 환경을 불러온 전용 프로세스 그룹으로 시작하고 stdout/stderr를 workspace 로그에 보관한다.
 def spawn(workspace, logs, name, command, env):
     script = logs / (name + '.sh')
     script.write_text('set -eo pipefail\nsource /opt/ros/jazzy/setup.bash\nsource ' +
@@ -111,6 +119,7 @@ def spawn(workspace, logs, name, command, env):
     return item
 
 
+# 파일 잠금으로 중복 클릭을 직렬화하고 Start/Remote/Stop/Status의 실행 범위를 분리한다.
 def run(args):
     workspace = Path(args.workspace).expanduser().resolve()
     if not (workspace / 'src/ax_description').is_dir():
@@ -222,6 +231,7 @@ def run(args):
             raise
 
 
+# CLI 인자를 받아 마지막 줄에 JSON 결과를 출력한다. Windows 런처가 ok와 종료 코드를 함께 확인한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])

@@ -1,4 +1,5 @@
 @echo off
+REM Start Ubuntu/Gazebo only; the PowerShell launcher exits when startup finishes.
 if not exist "%~dp0..\log\desktop_launcher\config.json" (
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-shortcuts.ps1"
   if errorlevel 1 exit /b 1

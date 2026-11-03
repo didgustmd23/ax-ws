@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 이미 실행 중인 통합 월드를 읽기 전용으로 검사한다. 새 로봇 생성이나 주행 명령은 보내지 않는다.
 """Read-only smoke check of an already running two-robot test world."""
 import argparse
 import json

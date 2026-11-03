@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 팔 5축의 단축 범위와 시드 고정 결합 자세를 검사하고 log/a1에 결과를 저장한다.
 import json
 from pathlib import Path
 import numpy as np

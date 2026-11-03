@@ -1,3 +1,4 @@
+# 모델 시험용 충돌 선별: URDF를 보수적인 OBB로 근사한다. 실제 명령을 차단하는 안전 게이트는 아니다.
 """Conservative URDF collision screening for model tests, not an A4 safety gate."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -8,6 +9,7 @@ from ament_index_python.packages import get_package_share_directory
 
 ARM_JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 
+# URDF xyz(m)와 고정축 rpy(rad)를 4×4 동차 변환으로 바꾼다.
 def origin(element):
     result = np.eye(4)
     if element is not None:
@@ -15,6 +17,7 @@ def origin(element):
         result[:3, :3] = Rotation.from_euler('xyz', np.fromstring(element.get('rpy', '0 0 0'), sep=' ')).as_matrix()
     return result
 
+# OBB의 면 축과 외적 축에 대한 분리축 검사로 겹침 여부를 계산한다.
 def overlap(a, b):
     center_a, axes_a, half_a = a
     center_b, axes_b, half_b = b
@@ -34,6 +37,7 @@ def overlap(a, b):
     return True
 
 class ArmGeometry:
+    # EPick 시험 모델을 펼치고 고정 링크 그룹·인접 관절·충돌 근사 형상을 준비한다.
     def __init__(self, payload=0.0):
         share = Path(get_package_share_directory('ax_description'))
         self.robot = ET.fromstring(xacro.process_file(str(share / 'urdf/ax.urdf.xacro'), mappings={
@@ -43,6 +47,7 @@ class ArmGeometry:
         self.limits = {joint.get('name'): (float(joint.find('limit').get('lower')), float(joint.find('limit').get('upper')))
                        for joint in self.joints if joint.get('name') in ARM_JOINTS}
         groups = {name: name for name in self.links}
+        # 고정 관절로 연결된 링크들의 대표 그룹을 찾는다.
         def group(name):
             while groups[name] != name:
                 name = groups[name]
@@ -68,6 +73,7 @@ class ArmGeometry:
                     raise ValueError('Unscreened collision shape: ' + name)
                 self.shapes.append((name, origin(collision.find('origin')), half))
 
+    # 부모부터 순회하며 관절 원점 변환 뒤에 축 회전을 적용해 base_link 기준 변환을 구한다.
     def frames(self, positions):
         values = dict(zip(ARM_JOINTS, positions))
         frames, pending = {'base_link': np.eye(4)}, list(self.joints)
@@ -87,6 +93,7 @@ class ArmGeometry:
                 raise ValueError('Disconnected model')
         return frames
 
+    # 동일 고정 그룹과 인접 그룹을 제외한 겹침 및 지면 침범을 찾는다. 보수 근사 결과다.
     def collisions(self, positions):
         frames = self.frames(positions)
         transformed = []
@@ -108,6 +115,7 @@ class ArmGeometry:
                     pairs.add(tuple(sorted((first, second))))
         return sorted(pairs)
 
+    # 목표 관절 한계와 선형 보간 경로를 표본 검사한다. 표본 사이 모든 충돌을 보장하는 연속 검사는 아니다.
     def screen_path(self, start, end, step=.03):
         for index, joint in enumerate(ARM_JOINTS):
             lower, upper = self.limits[joint]

@@ -1,3 +1,4 @@
+# 동일 내용 로그는 하나로 모으고 다른 결과는 과거 파일을 덮어쓰지 않는지 검사한다.
 import importlib.util
 from pathlib import Path
 import tempfile

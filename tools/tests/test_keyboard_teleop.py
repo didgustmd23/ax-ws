@@ -1,3 +1,4 @@
+# 키 입력의 한계값·설정 변경·정지·관절 목표 시간을 검사한다. 실물 제어 성능 검증과 구분한다.
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace

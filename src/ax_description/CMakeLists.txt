@@ -1,3 +1,4 @@
+# 설치 경로를 기준으로 launch/config/메시/스크립트를 배포한다. build/install은 사용자 PC에서 다시 만든다.
 cmake_minimum_required(VERSION 3.8)
 project(ax_description)
 

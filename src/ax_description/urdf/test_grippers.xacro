@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!-- 비교용 가상 공구 형상이다. 시각/충돌 모델이 물체 부착이나 손가락 구동 성공을 뜻하지는 않는다. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <!-- AX-designed virtual tools for model/kinematic comparison, not rated hardware. -->
     <!-- Both tools use local +Z as the approach direction and local X for jaw opening. -->

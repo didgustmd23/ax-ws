@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 이미 완료된 A1 시험 JSON과 로그를 docs/evidence로 모은다. 이 파일 자체가 시험을 실행하지는 않는다.
 import hashlib
 import json
 from pathlib import Path

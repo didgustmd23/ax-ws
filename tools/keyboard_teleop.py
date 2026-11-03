@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 키보드와 웹 리모컨이 공용으로 쓰는 ROS 제어부. 주행은 TwistStamped, 팔은 FollowJointTrajectory Action을 사용한다.
 """Terminal keyboard control for the AX simulation (not collision avoidance)."""
 import argparse
 import curses
@@ -23,6 +24,7 @@ import yaml
 JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 JOINT_LABELS = ['기둥 회전', '어깨', '팔꿈치', '손목', '집게 전체 회전']
 
+# 한글은 보통 두 칸을 차지하므로 문자 수가 아니라 터미널 표시 폭으로 잘라낸다.
 def fit_columns(text, columns):
     result, used = [], 0
     for char in text:
@@ -35,6 +37,7 @@ def fit_columns(text, columns):
 
 
 
+# 현재 관절 상태에서 한 축만 이동하고 위치 한계를 적용한다. SI 단위는 rad, rad/s, rad/s²다.
 def jog_target(positions, index, direction, limits, step=.04):
     if len(positions) != 5 or not all(math.isfinite(p) for p in positions):
         raise ValueError('Invalid arm state')
@@ -49,6 +52,7 @@ def jog_target(positions, index, direction, limits, step=.04):
 
 
 class KeyboardTeleop(Node):
+    # 시뮬레이션 시계를 쓰며, 두 주행 제어기와 AX_1 팔 Action만 연결한다.
     def __init__(self):
         super().__init__('ax_keyboard_teleop', parameter_overrides=[Parameter('use_sim_time', value=True)])
         share = Path(get_package_share_directory('ax_description'))
@@ -71,12 +75,14 @@ class KeyboardTeleop(Node):
         self.create_subscription(JointState, '/ax/robot_1/joint_states', self.on_state, qos_profile_sensor_data)
         self.arm = ActionClient(self, FollowJointTrajectory, '/ax/robot_1/arm_controller/follow_joint_trajectory')
 
+    # 팔 5축이 모두 들어온 상태만 저장한다. 최신성 판정에는 실제 경과 시간(monotonic)을 쓴다.
     def on_state(self, msg):
         values = dict(zip(msg.name, msg.position))
         if all(j in values for j in JOINTS):
             self.positions = [values[j] for j in JOINTS]
             self.state_time = time.monotonic()
 
+    # 선택 로봇에만 속도를 보내고 나머지는 0으로 유지한다. 메시지 stamp는 ROS 시뮬레이션 시각이다.
     def publish_drive(self):
         moving = time.monotonic() < self.key_deadline and not self.pending
         for robot, publisher in self.drive_publishers.items():
@@ -87,6 +93,7 @@ class KeyboardTeleop(Node):
                 msg.twist.linear.x, msg.twist.angular.z = self.velocity
             publisher.publish(msg)
 
+    # 양쪽 베이스를 정지시키고 이 인스턴스가 보낸 팔 Action만 취소한다.
     def stop(self):
         self.velocity = (0., 0.)
         self.key_deadline = 0.
@@ -96,6 +103,7 @@ class KeyboardTeleop(Node):
             self.goal.cancel_goal_async()
         self.notice = '정지 요청: 두 로봇 주행 정지 / 진행 중인 팔 동작 취소'
 
+    # 상태 최신성·서버 준비·위치 범위를 확인한 뒤 0 속도/가속도 끝점을 가진 작은 팔 궤적을 보낸다.
     def jog(self, direction):
         if self.robot != 'robot_1':
             self.notice = 'AX_2에는 팔이 없습니다. r을 눌러 AX_1을 선택하세요.'
@@ -131,6 +139,7 @@ class KeyboardTeleop(Node):
         change = target[self.joint] - self.positions[self.joint]
         self.notice = f'{JOINT_LABELS[self.joint]} 이동 중: {math.degrees(change):+.1f}도'
 
+    # 주행 속도 배율 또는 다음 팔 이동 각도만 변경한다. 진행 중인 팔 궤적의 속도를 바꾸지는 않는다.
     def adjust(self, direction):
         if self.adjust_mode == 'arm':
             self.arm_step = round(min(.15, max(.01, self.arm_step + direction * .01)), 2)
@@ -143,6 +152,7 @@ class KeyboardTeleop(Node):
             self.publish_drive()
             self.notice = f'주행 {self.drive_scale * .1:.3f} m/s / 회전 {self.drive_scale * .2:.2f} rad/s'
 
+    # 수락 응답보다 먼저 정지를 눌렀다면 수락 직후 취소해 지연된 동작 시작을 막는다.
     def on_goal(self, future):
         try:
             handle = future.result()
@@ -158,6 +168,7 @@ class KeyboardTeleop(Node):
             self.pending = False
             self.notice = str(exc)
 
+    # Action 결과를 UI 상태로 바꾸고 다음 팔 입력을 받을 수 있게 pending을 해제한다.
     def on_result(self, future):
         try:
             response = future.result()
@@ -169,6 +180,7 @@ class KeyboardTeleop(Node):
         self.goal = None
         self.pending = False
 
+    # UI 입력의 공용 라우터. 팔 동작 중 주행을 막고 관절 선택/로봇 변경 때는 먼저 정지한다.
     def key(self, key):
         if key in (ord('q'), ord('Q'), 3):
             return False
@@ -201,6 +213,7 @@ class KeyboardTeleop(Node):
                 self.notice = '주행 대상: ' + self.robot
         return True
 
+    # 터미널 키 입력·ROS 콜백·제로 속도 갱신을 같은 루프에서 처리한다.
     def screen(self, screen):
         screen.nodelay(True)
         curses.curs_set(0)
@@ -242,6 +255,7 @@ class KeyboardTeleop(Node):
             screen.refresh()
             time.sleep(.025)
 
+    # 종료 전 잠시 ROS 응답을 처리해 정지·취소 요청이 전송될 시간을 확보한다.
     def close_safely(self):
         self.stop()
         deadline = time.monotonic() + 2.
@@ -252,6 +266,7 @@ class KeyboardTeleop(Node):
                 break
 
 
+# 터미널 종료나 Ctrl+C에서도 finally 경로로 정지 요청을 수행한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()

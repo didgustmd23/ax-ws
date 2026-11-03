@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 원본 CAD 표면을 유지하며 링크 로컬 좌표로 변환한다. 입력·출력 OBJ는 mm, 설정의 이동량은 m, 회전은 rad다.
 """Reproducible joint-local CAD assets; originals and face topology stay intact."""
 import argparse
 import hashlib
@@ -16,9 +17,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'src/ax_description/meshes/parts/AX_1'
 OUTPUT = ROOT / 'src/ax_description/meshes/versions/AX_1_v2'
 
+# 자산 파일의 실제 바이트 SHA-256을 기록한다. 재질 줄바꿈도 보존 대상이다.
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+# 설정된 원점·회전을 정점과 법선에 반영하고 원본/출력 해시·경계·관절 계약을 manifest에 기록한다.
 def generate(output):
     specification = ROOT / 'src/ax_description/config/ax1_asset_v2.yaml'
     limits = ROOT / 'src/ax_description/config/arm_joint_limits.yaml'

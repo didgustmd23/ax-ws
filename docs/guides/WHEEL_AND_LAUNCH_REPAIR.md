@@ -34,8 +34,9 @@ ros2 launch ax_description robot_test.launch.py gui:=false
 ros2 launch ax_description robot_test.launch.py robots:=4
 ```
 
-`ax_arm_test.launch.py`, `ax_2_test.launch.py`, `ax_test_both.launch.py`, `w1_sim.launch.py`는
+`ax_arm_test.launch.py`, `ax_2_test.launch.py`, `ax_test_both.launch.py`는
 공통 런치에 연결되는 호환 진입점이다. Gazebo 월드·clock은 한 번만 생성한다.
+역할 구분 없이 공통 런치를 그대로 호출하던 `w1_sim.launch.py`는 제거했으며 `robot_test.launch.py`를 사용한다.
 로봇별 `robot_description`, `joint_states`, 제어기, 센서 Topic과 TF frame을 분리한다.
 고정 초 타이머 대신 로봇 생성 종료 이벤트 뒤 제어기 spawner를 시작하고 서비스 준비를 기다린다.
 
@@ -93,7 +94,9 @@ ros2 launch ax_description robot_test.launch.py robots:=4
 ```bash
 cd ~/ax-ws
 bash tools/build_ubuntu_repair.sh
-bash tools/run_ubuntu_drive_check.sh --arm-and-lidar
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+python3 tools/verify_drive_direction.py --arm-and-lidar
 python3 tools/audit_robot_geometry.py
 ```
 

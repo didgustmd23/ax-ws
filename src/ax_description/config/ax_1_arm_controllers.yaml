@@ -1,3 +1,4 @@
+# 직접 사용하는 시험 제어기 설정이다. 공통 robot_test 런치는 로봇 namespace별 설정을 별도로 생성하므로 서로 구분한다.
 controller_manager:
   ros__parameters:
     update_rate: 100

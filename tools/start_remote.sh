@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 이미 빌드된 workspace에서 HTTP 리모컨 서버만 실행한다. Gazebo를 자동 생성하지 않는다.
 set -eo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source /opt/ros/jazzy/setup.bash

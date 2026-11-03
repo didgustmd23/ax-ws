@@ -52,6 +52,7 @@ ros2 launch ax_description robot_test.launch.py
 주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
 별도 브라우저 창에서 마우스로 조종하려면 [리모컨 안내](docs/guides/REMOTE_CONTROL.md)를 따른다.
 터미널 없이 실행·종료하려면 **[리모컨 폴더](remote_controller/README.md)의 `install.cmd`를 더블클릭**한다.
+팀원 코드 인계는 [코드 읽는 순서·단위·생성 파일 안내](docs/guides/CODE_GUIDE.md)를 따른다.
 
 ```bash
 bash tools/setup_jazzy.sh

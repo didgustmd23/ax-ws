@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 완료된 주행·팔·LiDAR 회귀 결과만 수집한다. 원시 로그는 log/, 공유 증거는 docs/evidence/에 둔다.
 """Collect only completed tests from the actual Ubuntu workspace."""
 import hashlib
 import json

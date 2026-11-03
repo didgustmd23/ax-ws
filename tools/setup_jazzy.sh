@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 최초 준비용: ROS Jazzy는 미리 설치되어 있어야 하며 apt/rosdep 설치에는 sudo와 네트워크가 필요하다.
 # Ubuntu 24.04 with ROS 2 Jazzy installed; run from any working directory.
 set -eo pipefail
 if [[ ! -f /opt/ros/jazzy/setup.bash ]]; then

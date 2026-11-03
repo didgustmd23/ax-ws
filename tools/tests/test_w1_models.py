@@ -1,3 +1,4 @@
+# 모델 트리·관성·바퀴 위치·토픽 격리·통합 월드·프로세스 소유권을 검사한다.
 """W1 checks: physical validity, resource references and sensor interoperability."""
 import importlib.util
 import json

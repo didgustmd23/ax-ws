@@ -1,3 +1,4 @@
+# 지도 이미지 경로는 이 YAML 기준 상대경로다. resolution은 m/pixel, origin은 지도 원점 x/y(m)와 yaw(rad)다.
 image: warehouse_map.pgm
 mode: trinary
 resolution: 0.050

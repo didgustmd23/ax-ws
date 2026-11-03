@@ -26,6 +26,8 @@ htmlcov/
 *Zone.Identifier
 .DS_Store
 Thumbs.db
+# VS Code local settings and the cpptools symbol database.
+/.vscode/
 
 # Credentials and local runtime configuration.
 # AI harness files are local-only and never committed.

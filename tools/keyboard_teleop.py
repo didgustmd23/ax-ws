@@ -5,6 +5,7 @@ import curses
 import math
 from pathlib import Path
 import time
+import unicodedata
 
 import rclpy
 from rclpy.action import ActionClient
@@ -20,6 +21,18 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 import yaml
 
 JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
+JOINT_LABELS = ['기둥 회전', '어깨', '팔꿈치', '손목', '집게 전체 회전']
+
+def fit_columns(text, columns):
+    result, used = [], 0
+    for char in text:
+        size = 0 if unicodedata.combining(char) else 2 if unicodedata.east_asian_width(char) in ('W', 'F') else 1
+        if used + size > columns:
+            break
+        result.append(char)
+        used += size
+    return ''.join(result)
+
 
 
 def jog_target(positions, index, direction, limits, step=.04):
@@ -42,6 +55,9 @@ class KeyboardTeleop(Node):
         self.limits = yaml.safe_load((share / 'config/arm_joint_limits.yaml').read_text())['joint_limits']
         self.robot = 'robot_1'
         self.joint = 0
+        self.adjust_mode = 'drive'
+        self.drive_scale = 1.0
+        self.arm_step = .04
         self.positions = None
         self.state_time = -math.inf
         self.velocity = (0., 0.)
@@ -49,7 +65,7 @@ class KeyboardTeleop(Node):
         self.pending = False
         self.goal = None
         self.cancel_requested = False
-        self.notice = 'Ready. Focus this terminal; Space = stop, Q = quit.'
+        self.notice = '준비 완료. 이 터미널을 클릭한 뒤 영문 소문자로 조종하세요.'
         self.drive_publishers = {robot: self.create_publisher(TwistStamped,
             f'/ax/{robot}/diff_drive_controller/cmd_vel', 10) for robot in ('robot_1', 'robot_2')}
         self.create_subscription(JointState, '/ax/robot_1/joint_states', self.on_state, qos_profile_sensor_data)
@@ -78,24 +94,24 @@ class KeyboardTeleop(Node):
         self.cancel_requested = True
         if self.goal is not None:
             self.goal.cancel_goal_async()
-        self.notice = 'Stop requested.'
+        self.notice = '정지 요청: 두 로봇 주행 정지 / 진행 중인 팔 동작 취소'
 
     def jog(self, direction):
         if self.robot != 'robot_1':
-            self.notice = 'robot_2 has no arm. Press R to select robot_1.'
+            self.notice = 'AX_2에는 팔이 없습니다. r을 눌러 AX_1을 선택하세요.'
             return
         if self.pending:
-            self.notice = 'Arm step in progress; Space cancels it.'
+            self.notice = '팔 이동 중입니다. 완료 후 다시 입력하거나 스페이스로 취소하세요.'
             return
         if self.positions is None or time.monotonic() - self.state_time > 1.:
-            self.notice = 'Waiting for fresh robot_1 joint states.'
+            self.notice = 'AX_1의 최신 관절 상태를 기다리는 중입니다.'
             return
         if not self.arm.server_is_ready():
-            self.notice = 'Arm controller is not ready.'
+            self.notice = '팔 제어기가 아직 준비되지 않았습니다.'
             return
-        target, duration = jog_target(self.positions, self.joint, direction, self.limits)
+        target, duration = jog_target(self.positions, self.joint, direction, self.limits, self.arm_step)
         if abs(target[self.joint] - self.positions[self.joint]) < .001:
-            self.notice = 'Joint limit reached.'
+            self.notice = '관절 이동 한계에 도달했습니다.'
             return
         self.stop()
         self.cancel_requested = False
@@ -112,14 +128,27 @@ class KeyboardTeleop(Node):
         end.time_from_start.nanosec = round((duration % 1) * 1e9)
         goal.trajectory.points = [start, end]
         self.arm.send_goal_async(goal).add_done_callback(self.on_goal)
-        self.notice = f'Jogging {JOINTS[self.joint]} by {direction * .04:+.2f} rad.'
+        change = target[self.joint] - self.positions[self.joint]
+        self.notice = f'{JOINT_LABELS[self.joint]} 이동 중: {math.degrees(change):+.1f}도'
+
+    def adjust(self, direction):
+        if self.adjust_mode == 'arm':
+            self.arm_step = round(min(.15, max(.01, self.arm_step + direction * .01)), 2)
+            self.notice = f'다음 팔 이동 각도: {math.degrees(self.arm_step):.1f}도'
+        else:
+            self.drive_scale = round(min(2.5, max(.25, self.drive_scale + direction * .25)), 2)
+            # Changing a setting never starts or prolongs motion.
+            self.velocity = (0., 0.)
+            self.key_deadline = 0.
+            self.publish_drive()
+            self.notice = f'주행 {self.drive_scale * .1:.3f} m/s / 회전 {self.drive_scale * .2:.2f} rad/s'
 
     def on_goal(self, future):
         try:
             handle = future.result()
             if not handle.accepted:
                 self.pending = False
-                self.notice = 'Arm goal rejected.'
+                self.notice = '팔 제어기가 이동 명령을 거부했습니다.'
                 return
             self.goal = handle
             handle.get_result_async().add_done_callback(self.on_result)
@@ -132,9 +161,9 @@ class KeyboardTeleop(Node):
     def on_result(self, future):
         try:
             response = future.result()
-            self.notice = ('Arm stopped.' if response.status == 5 else
-                           'Arm step complete.' if response.result.error_code == 0 else
-                           'Arm error: ' + response.result.error_string)
+            self.notice = ('팔 동작을 취소했습니다.' if response.status == 5 else
+                           '팔 이동 완료. 다음 조작을 입력하세요.' if response.result.error_code == 0 else
+                           '팔 오류: ' + response.result.error_string)
         except Exception as exc:
             self.notice = str(exc)
         self.goal = None
@@ -145,24 +174,31 @@ class KeyboardTeleop(Node):
             return False
         if key == ord(' '):
             self.stop()
+        elif key in (ord('+'), ord('='), ord('-')):
+            self.adjust(-1 if key == ord('-') else 1)
         elif key in (ord('r'), ord('R')):
             self.stop()
             self.robot = 'robot_2' if self.robot == 'robot_1' else 'robot_1'
-            self.notice = 'Selected ' + self.robot
+            self.adjust_mode = 'drive'
+            self.notice = '선택: ' + self.robot
         elif ord('1') <= key <= ord('5'):
             self.stop()
             self.joint = key - ord('1')
-            self.notice = 'Selected ' + JOINTS[self.joint]
+            self.adjust_mode = 'arm'
+            self.notice = '선택: ' + JOINTS[self.joint]
         elif key in (ord('i'), ord('k')):
+            self.adjust_mode = 'arm'
             self.jog(1 if key == ord('i') else -1)
         elif key in (ord('w'), ord('s'), ord('a'), ord('d')):
+            self.adjust_mode = 'drive'
             if self.pending:
-                self.notice = 'Stop the arm with Space before driving.'
+                self.notice = '팔 이동 중에는 주행할 수 없습니다. 스페이스로 먼저 정지하세요.'
             else:
-                self.velocity = {ord('w'): (.1, 0.), ord('s'): (-.1, 0.),
-                                 ord('a'): (0., .2), ord('d'): (0., -.2)}[key]
+                linear, angular = .1 * self.drive_scale, .2 * self.drive_scale
+                self.velocity = {ord('w'): (linear, 0.), ord('s'): (-linear, 0.),
+                                 ord('a'): (0., angular), ord('d'): (0., -angular)}[key]
                 self.key_deadline = time.monotonic() + .2
-                self.notice = 'Driving ' + self.robot
+                self.notice = '주행 대상: ' + self.robot
         return True
 
     def screen(self, screen):
@@ -174,20 +210,35 @@ class KeyboardTeleop(Node):
             if key != -1 and not self.key(key):
                 break
             self.publish_drive()
-            lines = ['AX keyboard control - SIMULATION',
-                     f'Robot: {self.robot}    Joint: {self.joint + 1} {JOINTS[self.joint]}',
-                     'R: switch robot | W/S: forward/back | A/D: turn left/right',
-                     '1..5: select arm joint | I/K: + / - 0.04 rad step',
-                     'SPACE: stop both bases + cancel arm | Q: stop and quit',
-                     'Hold driving key (OS key repeat); release stops within ~0.2s.',
-                     'Arm: robot_1 only. No finger open/close or collision avoidance.',
-                     self.notice]
+            lines = [
+                'AX 키보드 조종 | 시뮬레이션',
+                f"선택 로봇: {'AX_1 (팔 로봇)' if self.robot == 'robot_1' else 'AX_2 (운반 로봇)'}  [r: 전환]",
+                f'주행 {self.drive_scale * .1:.3f} m/s | 회전 {self.drive_scale * .2:.2f} rad/s | 팔 1회 {math.degrees(self.arm_step):.1f}도',
+                f"+ / - 조절 대상: {'주행·회전 속도' if self.adjust_mode == 'drive' else '팔 1회 이동 각도'}",
+                '--- 주행: 키를 누르고 있으면 이동 / 떼면 약 0.2초 후 정지 ---',
+                '              w 전진',
+                '    a 좌회전             d 우회전',
+                '              s 후진',
+                '--- AX_1 팔: 숫자로 관절 선택 후 i / k ---',
+                '1 기둥 회전 | 2 어깨 | 3 팔꿈치 | 4 손목 | 5 집게 전체 회전',
+                f'현재 관절: {self.joint + 1}번 {JOINT_LABELS[self.joint]}',
+                'i: +방향 / k: -방향으로 위에 표시된 각도만큼 이동',
+                '+ / -: 값 증가·감소 (=도 증가) | 주행 키→속도, 관절 번호→각도',
+                '스페이스: 두 로봇 주행 정지 + 팔 동작 취소',
+                'q 또는 Ctrl+C: 정지 후 조종 종료 (Gazebo는 유지)',
+                '이 터미널을 클릭하고 영문 소문자로 입력하세요.',
+                '손가락 개폐 / 자동 충돌 회피는 지원하지 않습니다.',
+                '상태: ' + self.notice]
             if self.positions is not None:
-                lines.append('Arm rad: ' + ' '.join(f'{p:+.3f}' for p in self.positions))
+                lines.append('관절 각도(rad): ' + ' '.join(f'{p:+.3f}' for p in self.positions))
             screen.erase()
             height, width = screen.getmaxyx()
             for row, text in enumerate(lines[:max(0, height - 1)]):
-                screen.addnstr(row, 0, text, max(0, width - 1))
+                if width > 1:
+                    try:
+                        screen.addstr(row, 0, fit_columns(text, width - 1))
+                    except curses.error:
+                        pass  # Terminal may have resized between measuring and drawing.
             screen.refresh()
             time.sleep(.025)
 

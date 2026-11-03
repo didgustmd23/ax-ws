@@ -47,6 +47,32 @@ class KeyboardControl(unittest.TestCase):
         teleop.KeyboardTeleop.key(state, ord('w'))
         self.assertEqual(state.velocity, (0., 0.))
 
+    def test_speed_adjustment_stays_below_controller_limits_and_stops(self):
+        calls = []
+        state = SimpleNamespace(adjust_mode='drive', drive_scale=1., arm_step=.04,
+                                velocity=(.1, 0.), key_deadline=10., publish_drive=lambda: calls.append('publish'))
+        for _ in range(30):
+            teleop.KeyboardTeleop.adjust(state, 1)
+        self.assertLessEqual(state.drive_scale * .1, .3)
+        self.assertLessEqual(state.drive_scale * .2, .5)
+        self.assertEqual(state.velocity, (0., 0.))
+        self.assertEqual(state.key_deadline, 0.)
+        for _ in range(30):
+            teleop.KeyboardTeleop.adjust(state, -1)
+        self.assertEqual(state.drive_scale, .25)
+
+    def test_angle_adjustment_does_not_change_speed_or_move(self):
+        state = SimpleNamespace(adjust_mode='arm', drive_scale=1., arm_step=.04)
+        teleop.KeyboardTeleop.adjust(state, 1)
+        self.assertAlmostEqual(state.arm_step, .05)
+        self.assertEqual(state.drive_scale, 1.)
+        for _ in range(30):
+            teleop.KeyboardTeleop.adjust(state, -1)
+        self.assertEqual(state.arm_step, .01)
+        for _ in range(30):
+            teleop.KeyboardTeleop.adjust(state, 1)
+        self.assertEqual(state.arm_step, .15)
+
 
 if __name__ == '__main__':
     unittest.main()

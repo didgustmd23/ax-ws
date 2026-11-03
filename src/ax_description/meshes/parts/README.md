@@ -36,12 +36,12 @@ python3 -m unittest discover -s tools/tests -v
 
 ## AX_1 받침·회전 기둥
 
-`AX_1/arm_01_fixed.obj`는 전체 원본 파츠로 남겨 두고, 같은 폴더에 두 파생 파츠를 만든다.
+`AX_1/arm_base_mount.obj`는 전체 원본 파츠로 남겨 두고, 같은 폴더에 두 파생 파츠를 만든다.
 
 | 파일 | 구성 | URDF 링크 | 표시 색상 |
 |---|---|---|---|
-| `arm_01_support.obj` | 하단 받침·외측 지지대·브래킷·볼트 | `arm_mount_link` | 짙은 회색 |
-| `arm_01_column.obj` | 중앙 원통 표면과 동심 링 3개 | `column_link` | 주황색 |
+| `arm_turret_support.obj` | 하단 받침·외측 지지대·브래킷·볼트 | `arm_turret_support` | 짙은 회색 |
+| `arm_turret_column.obj` | 중앙 원통 표면과 동심 링 3개 | `arm_turret_column` | 주황색 |
 
 좌표가 같은 정점을 연결하여 면 연결 성분 20개를 구분하고, 기존 XY 경계 기준으로 중앙 원통과 링 4개 성분을 회전부에 배정한다. 받침 1,776면 + 회전부 800면 = 원본 2,576면이며, 모든 면은 한 파생 파츠에만 배정된다. 형상 기반 구분이며 링의 실제 기구 귀속은 미확정이다. 두 파생 OBJ만 `ax_column_colors.mtl`로 재질을 바꿔 기존 구분 색상을 유지한다.
 

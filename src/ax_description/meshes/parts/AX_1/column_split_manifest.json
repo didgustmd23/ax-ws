@@ -1,5 +1,5 @@
 {
-  "source": "arm_01_fixed.obj",
+  "source": "arm_base_mount.obj",
   "source_sha256": "a5b9d899c75a3357f2b147bcb1a309c2e4e47a97d4d805e86f37e05c21ab719d",
   "classification": "Central cylindrical surface and 3 collars rotate; all other components remain fixed. Geometry-based assignment; mechanical confirmation required.",
   "tube_length_m": 0.5666586,
@@ -308,7 +308,7 @@
   "outputs": [
     {
       "part": "column",
-      "file": "arm_01_column.obj",
+      "file": "arm_turret_column.obj",
       "vertices": 560,
       "texture_coordinates": 574,
       "normals": 84,
@@ -317,7 +317,7 @@
     },
     {
       "part": "support",
-      "file": "arm_01_support.obj",
+      "file": "arm_turret_support.obj",
       "vertices": 938,
       "texture_coordinates": 1139,
       "normals": 781,

@@ -1,0 +1,419 @@
+{
+  "version": "ax1-joint-local-v2",
+  "units": "mm",
+  "policy": "Preserve original CAD surfaces; bake corrected visual pivots into joint-local mesh coordinates.",
+  "specification_sha256": "3cdbc2963ce3ec0975b34706699d866b90a92d716c16e11108cc33e6fcf35ae7",
+  "joint_limits_sha256": "6624a0f945a4c8c9995773db6f21127c1c4ac74d87641d3577a24795f482fc05",
+  "parts": [
+    {
+      "link": "base_link",
+      "source": "ax_body.obj",
+      "source_sha256": "d44de941a64a45ebb9b2ff9d21fdb8bce61ee173baf8a8d31ca4cb387c9e200b",
+      "file": "base_link.obj",
+      "sha256": "e9f30f608e55408e8ea799cb18672c27bb26127fb47bfdc5b6fb650ea0cadbe5",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 8885,
+      "faces": 16337,
+      "bounds_local_mm": [
+        [
+          -683.0,
+          -387.0,
+          -302.77335000000005
+        ],
+        [
+          683.0,
+          387.0,
+          302.77335
+        ]
+      ],
+      "roundtrip_error_mm": 2.842170943040401e-14
+    },
+    {
+      "link": "arm_mount_link",
+      "source": "arm_turret_support.obj",
+      "source_sha256": "4c470d39054bf867c7ce2b4e302f7ae0d795aa2e7537abb46088dfdf61d317bc",
+      "file": "arm_mount_link.obj",
+      "sha256": "a3c1429722bdf8f7e449302f376f9626cf61ad1b7bfb220a43d4826cdc9bcd79",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 938,
+      "faces": 1776,
+      "bounds_local_mm": [
+        [
+          -135.0,
+          -159.0,
+          0.0
+        ],
+        [
+          110.00009999999997,
+          145.0,
+          714.7769000000001
+        ]
+      ],
+      "roundtrip_error_mm": 1.4210854715202004e-14
+    },
+    {
+      "link": "column_link",
+      "source": "arm_turret_column.obj",
+      "source_sha256": "1c75eadb0713cc26140dcd3567cde6f9c19042a52c55c21923779b662615ba6e",
+      "file": "column_link.obj",
+      "sha256": "b31082df4543f8b4d1aca3cfb951b145fc921166ba7896c81aba45e6debef711",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 560,
+      "faces": 800,
+      "bounds_local_mm": [
+        [
+          -104.0,
+          -104.0,
+          0.0
+        ],
+        [
+          104.0,
+          104.0,
+          566.6586
+        ]
+      ],
+      "roundtrip_error_mm": 0.0
+    },
+    {
+      "link": "arm_rotating_base_link",
+      "source": "arm_shoulder_link.obj",
+      "source_sha256": "a8ac8374b1e69e9a891008d1cec5fa6522af285ffb7a971b3f7caa3e9e1cd9ed",
+      "file": "arm_rotating_base_link.obj",
+      "sha256": "8a215a257d46a66ddf1e390912492d347dc920624c5baaf32a9496c2958a1ceb",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 1434,
+      "faces": 2492,
+      "bounds_local_mm": [
+        [
+          -108.0,
+          -108.0,
+          -20.0
+        ],
+        [
+          137.22789999999998,
+          108.0,
+          190.0
+        ]
+      ],
+      "roundtrip_error_mm": 0.0
+    },
+    {
+      "link": "upper_arm_link",
+      "source": "arm_03_upperarm.obj",
+      "source_sha256": "3cc23d9ef813731f27b8e03341141235b13e6b8f257bbc8ec85fdf3f620b1de4",
+      "file": "upper_arm_link.obj",
+      "sha256": "1b2b0d276891b49011dcac2ac3f819fe24712fe518b6ffc596d5b84a1a8e19a9",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 2546,
+      "faces": 4656,
+      "bounds_local_mm": [
+        [
+          -16.0,
+          -100.0,
+          -100.0
+        ],
+        [
+          140.0,
+          100.0,
+          656.0
+        ]
+      ],
+      "roundtrip_error_mm": 0.0
+    },
+    {
+      "link": "forearm_link",
+      "source": "arm_04_forearm.obj",
+      "source_sha256": "649b21fc8588600249a7e45b586c947d73e94002dcf165c52b5608bb42e60026",
+      "file": "forearm_link.obj",
+      "sha256": "3083bdc8709a4f84f3b697ce828d60357e628d0c3f9b5968021517e51938f320",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 2461,
+      "faces": 4484,
+      "bounds_local_mm": [
+        [
+          0.0,
+          -87.9876,
+          -506.0002000000002
+        ],
+        [
+          173.99999999999994,
+          521.0001,
+          87.98749999999973
+        ]
+      ],
+      "roundtrip_error_mm": 0.0
+    },
+    {
+      "link": "wrist_link",
+      "source": "gripper_wrist_housing.obj",
+      "source_sha256": "e4123fa167865301df06e4c641c255ecb661979a96a7539e65183fb1e8ba691f",
+      "file": "wrist_link.obj",
+      "sha256": "2a8307c267a4499e3a019db6c35004f3c640c771d52959b7954e08a3df262aaf",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 3409,
+      "faces": 6562,
+      "bounds_local_mm": [
+        [
+          -70.00020000000006,
+          -70.0,
+          -273.9999999999998
+        ],
+        [
+          69.99979999999994,
+          70.0,
+          -14.999999999999773
+        ]
+      ],
+      "roundtrip_error_mm": 0.0
+    },
+    {
+      "link": "front_left_wheel",
+      "source": "ax_tire_left_front.obj",
+      "source_sha256": "0bf2b2630bbd8173fdddb5491c305955386bdca41b136990f7c5781480b64d4b",
+      "file": "front_left_wheel.obj",
+      "sha256": "b7463225bd7a55063c038f6676402bdfa64be7db2d03296c980f8e21b242771d",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 3856,
+      "faces": 6948,
+      "bounds_local_mm": [
+        [
+          -196.0,
+          -196.27399999999994,
+          -72.0
+        ],
+        [
+          196.0,
+          196.2740000000001,
+          72.00000000000006
+        ]
+      ],
+      "roundtrip_error_mm": 1.4210854715202004e-14
+    },
+    {
+      "link": "front_right_wheel",
+      "source": "ax_tire_right_front.obj",
+      "source_sha256": "acb2b518d648d9f7a795d7fcedebab6b248dde6247ca1cae139b0165fbf63cfb",
+      "file": "front_right_wheel.obj",
+      "sha256": "7d708bd60c463fe647033f5a2575c5812884c606f7ce60080653b7db06045944",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 3855,
+      "faces": 6946,
+      "bounds_local_mm": [
+        [
+          -196.0,
+          -196.27400000000006,
+          -71.99999999999994
+        ],
+        [
+          196.0,
+          196.27399999999994,
+          72.00000000000009
+        ]
+      ],
+      "roundtrip_error_mm": 5.684341886080802e-14
+    },
+    {
+      "link": "rear_left_wheel",
+      "source": "ax_tire_left_rear.obj",
+      "source_sha256": "3ae030f2295b9fcb9ec1d1ca30c00fc606ac12cc68ee254949aa862f25e68456",
+      "file": "rear_left_wheel.obj",
+      "sha256": "983af5b5c0f6658d0a13d8a52adff5cc587d36b269b598f57c199a5804e3d479",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 3856,
+      "faces": 6948,
+      "bounds_local_mm": [
+        [
+          -196.0,
+          -196.27399999999994,
+          -72.0
+        ],
+        [
+          196.0,
+          196.2740000000001,
+          72.00000000000006
+        ]
+      ],
+      "roundtrip_error_mm": 1.4210854715202004e-14
+    },
+    {
+      "link": "rear_right_wheel",
+      "source": "ax_tire_right_rear.obj",
+      "source_sha256": "00edacd3ab57d35560ada73c6602c3ef5535a6ff38fc35e83bcee0c7375443a3",
+      "file": "rear_right_wheel.obj",
+      "sha256": "6838d590fa572045153f130b965a5e9ac1239a0ad28403a2a3fdc10aecdc9488",
+      "visual_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "vertices": 3856,
+      "faces": 6948,
+      "bounds_local_mm": [
+        [
+          -196.0,
+          -196.27400000000006,
+          -71.99999999999994
+        ],
+        [
+          196.0,
+          196.27399999999994,
+          72.00000000000009
+        ]
+      ],
+      "roundtrip_error_mm": 5.684341886080802e-14
+    }
+  ],
+  "joint_frames": {
+    "front_left_wheel_joint": {
+      "parent": "base_link",
+      "child": "front_left_wheel",
+      "origin": {
+        "xyz": "0.437000 0.311000 -0.19277325",
+        "rpy": "${-pi / 2} 0 0"
+      },
+      "axis": {
+        "xyz": "0 0 1"
+      }
+    },
+    "front_right_wheel_joint": {
+      "parent": "base_link",
+      "child": "front_right_wheel",
+      "origin": {
+        "xyz": "0.437000 -0.311000 -0.19277325",
+        "rpy": "${-pi / 2} 0 0"
+      },
+      "axis": {
+        "xyz": "0 0 1"
+      }
+    },
+    "rear_left_wheel_joint": {
+      "parent": "base_link",
+      "child": "rear_left_wheel",
+      "origin": {
+        "xyz": "-0.443000 0.311000 -0.19277325",
+        "rpy": "${-pi / 2} 0 0"
+      },
+      "axis": {
+        "xyz": "0 0 1"
+      }
+    },
+    "rear_right_wheel_joint": {
+      "parent": "base_link",
+      "child": "rear_right_wheel",
+      "origin": {
+        "xyz": "-0.443000 -0.311000 -0.19277325",
+        "rpy": "${-pi / 2} 0 0"
+      },
+      "axis": {
+        "xyz": "0 0 1"
+      }
+    },
+    "arm_mount_joint": {
+      "parent": "base_link",
+      "child": "arm_mount_link",
+      "origin": {
+        "xyz": "0 0 0.22922675",
+        "rpy": "0 0 0"
+      },
+      "axis": {}
+    },
+    "column_yaw_joint": {
+      "parent": "arm_mount_link",
+      "child": "column_link",
+      "origin": {
+        "xyz": "0 0 0.168",
+        "rpy": "0 0 0"
+      },
+      "axis": {
+        "xyz": "0 0 1"
+      }
+    },
+    "arm_upper_mount_joint": {
+      "parent": "column_link",
+      "child": "arm_rotating_base_link",
+      "origin": {
+        "xyz": "0 0 0.5753438",
+        "rpy": "0 0 0"
+      },
+      "axis": {}
+    },
+    "shoulder_joint": {
+      "parent": "arm_rotating_base_link",
+      "child": "upper_arm_link",
+      "origin": {
+        "xyz": "0.1144427 0 0.1",
+        "rpy": "0 0 0"
+      },
+      "axis": {
+        "xyz": "1 0 0"
+      }
+    },
+    "elbow_joint": {
+      "parent": "upper_arm_link",
+      "child": "forearm_link",
+      "origin": {
+        "xyz": "0.132 0 0.56",
+        "rpy": "0 0 0"
+      },
+      "axis": {
+        "xyz": "1 0 0"
+      }
+    },
+    "wrist_joint": {
+      "parent": "forearm_link",
+      "child": "wrist_link",
+      "origin": {
+        "xyz": "0.09 0.455 -0.44",
+        "rpy": "0 0 0"
+      },
+      "axis": {
+        "xyz": "1 0 0"
+      }
+    }
+  },
+  "joint_frames_sha256": "d44cb5a3d594b5fa0dbaa78f4c3ba84c371b441c99b9c38e6f727756eb63ce1e",
+  "materials_sha256": {
+    "AX_1.mtl": "75f59434de6cc2d42bfc38c99ece3b1afde1a17c7d74a491665b791cc72afd02",
+    "ax_column_colors.mtl": "1567195c431f2120301452c5ceaff5905c2b3082b6ebe97a1cd5c7e7d5cb7497"
+  }
+}

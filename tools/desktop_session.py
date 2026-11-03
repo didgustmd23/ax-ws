@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Start/stop only this workspace's AX simulation, called by Windows shortcuts."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import signal
+import subprocess
+import time
+import urllib.request
+
+
+def process(pid):
+    try:
+        path = Path('/proc') / str(pid)
+        stat = (path / 'stat').read_text().split(') ', 1)[1].split()
+        if stat[0] == 'Z':
+            return None
+        env = dict(item.split(b'=', 1) for item in (path / 'environ').read_bytes().split(b'\0') if b'=' in item)
+        return {'pid': int(pid), 'parent': int(stat[1]), 'start': stat[19],
+                'args': (path / 'cmdline').read_bytes().replace(b'\0', b' ').decode(errors='replace'),
+                'env': {k.decode(): v.decode(errors='replace') for k, v in env.items()}}
+    except (OSError, ValueError):
+        return None
+
+
+def discover(workspace):
+    result = {'launch': [], 'remote': [], 'keyboard': [], 'gazebo': [], 'terminal': []}
+    prefix = str(workspace / 'install')
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit():
+            continue
+        item = process(entry.name)
+        if not item:
+            continue
+        args, env = item['args'], item['env']
+        same = any(path == prefix or path.startswith(prefix + '/')
+                   for path in env.get('AMENT_PREFIX_PATH', '').split(':'))
+        if not same:
+            continue
+        if 'ros2 launch ax_description robot_test.launch.py' in args:
+            result['launch'].append(item)
+        elif 'python3' in args and 'remote_control.py' in args:
+            result['remote'].append(item)
+        elif 'python3' in args and 'keyboard_teleop.py' in args:
+            result['keyboard'].append(item)
+        elif 'bash --rcfile ' in args and str(workspace / 'log/desktop_session/terminal.bash') in args:
+            result['terminal'].append(item)
+        elif args.startswith('gz sim ') or ('gz sim ' in args and ('ruby' in args or '/bin/sh' in args)):
+            result['gazebo'].append(item)
+    return result
+
+
+def descendants(roots):
+    entries = [process(p.name) for p in Path('/proc').iterdir() if p.name.isdigit()]
+    entries = [p for p in entries if p]
+    owned = {p['pid']: p for p in roots}
+    while True:
+        extra = [p for p in entries if p['parent'] in owned and p['pid'] not in owned]
+        if not extra:
+            return list(owned.values())
+        owned.update((p['pid'], p) for p in extra)
+
+
+def alive(item):
+    current = process(item['pid'])
+    return current is not None and current['start'] == item['start']
+
+
+def stop_processes(roots):
+    owned = descendants(roots)
+    for sig, delay in [(signal.SIGINT, 4), (signal.SIGTERM, 2), (signal.SIGKILL, 1)]:
+        for item in owned:
+            if alive(item):
+                try:
+                    os.kill(item['pid'], sig)
+                except ProcessLookupError:
+                    pass
+        end = time.monotonic() + delay
+        while time.monotonic() < end and any(alive(p) for p in owned):
+            time.sleep(.1)
+    remaining = [p['pid'] for p in owned if alive(p)]
+    if remaining:
+        raise RuntimeError('Could not stop session PIDs: ' + str(remaining))
+    return len(owned)
+
+
+def remote_state(port):
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/state', timeout=1) as response:
+            data = json.load(response)
+        return data if data.get('robot') in ('robot_1', 'robot_2') else None
+    except (OSError, ValueError):
+        return None
+
+
+def spawn(workspace, logs, name, command, env):
+    script = logs / (name + '.sh')
+    script.write_text('set -eo pipefail\nsource /opt/ros/jazzy/setup.bash\nsource ' +
+                      shlex.quote(str(workspace / 'install/setup.bash')) + '\nexec ' + shlex.join(command) + '\n')
+    with (logs / (name + '.log')).open('ab', buffering=0) as output:
+        child = subprocess.Popen(['bash', str(script)], cwd=workspace, env=env,
+                                 stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
+                                 start_new_session=True)
+    item = process(child.pid)
+    if not item:
+        raise RuntimeError(name + ' exited at startup; check ' + str(logs))
+    return item
+
+
+def run(args):
+    workspace = Path(args.workspace).expanduser().resolve()
+    if not (workspace / 'src/ax_description').is_dir():
+        raise RuntimeError('Not an AX workspace: ' + str(workspace))
+    logs = workspace / 'log/desktop_session'
+    logs.mkdir(parents=True, exist_ok=True)
+    with (logs / 'session.lock').open('w') as lock:
+        deadline = time.monotonic() + 180
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    raise RuntimeError('Another launcher is still busy')
+                time.sleep(.2)
+        found = discover(workspace)
+        if args.action == 'status':
+            return {'ok': True, 'launch_pids': [p['pid'] for p in found['launch']],
+                    'remote_pids': [p['pid'] for p in found['remote']],
+                    'terminal_pids': [p['pid'] for p in found['terminal']], 'remote_ready': bool(remote_state(args.port))}
+        if args.action == 'stop':
+            roots = [item for group in found.values() for item in group]
+            stopped = stop_processes(roots)
+            (logs / 'session.json').write_text(json.dumps({'running': False}))
+            return {'ok': True, 'stopped': stopped}
+        if not Path('/opt/ros/jazzy/setup.bash').is_file() or not (workspace / 'install/setup.bash').is_file():
+            raise RuntimeError('Install ROS Jazzy and build the workspace first; see RUN_ON_ANOTHER_PC.md')
+        release = dict(line.split('=', 1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)
+        if release.get('ID', '').strip('"') != 'ubuntu' or release.get('VERSION_ID', '').strip('"') != '24.04':
+            raise RuntimeError('Select an Ubuntu 24.04 WSL distribution in the shortcut settings')
+        if args.action == 'remote' and not (workspace / 'tools/start_remote.sh').is_file():
+            raise RuntimeError('Remote files are missing; update the Ubuntu workspace first')
+        if len(found['launch']) > 1 or len(found['remote']) > 1:
+            raise RuntimeError('Duplicate sessions detected. Use AX Stop first')
+        if args.action == 'remote' and found['keyboard']:
+            stop_processes(found['keyboard'])
+        if args.action == 'remote' and remote_state(args.port) and not found['remote']:
+            raise RuntimeError('Port is already used by another session; leave it running or select another port')
+        env = {key: value for key, value in os.environ.items() if key in (
+            'HOME', 'USER', 'LANG', 'DISPLAY', 'WAYLAND_DISPLAY', 'XDG_RUNTIME_DIR',
+            'PULSE_SERVER', 'DBUS_SESSION_BUS_ADDRESS', 'ROS_DOMAIN_ID')}
+        env.update(PATH='/usr/local/bin:/usr/bin:/bin', QT_QPA_PLATFORM='xcb', LIBGL_ALWAYS_SOFTWARE='1',
+                   QT_X11_NO_MITSHM='1', LANG='C.UTF-8')
+        env['GZ_PARTITION'] = (found['launch'][0]['env'].get('GZ_PARTITION', '') if found['launch'] else
+                               'ax-desktop-' + hashlib.sha256(str(workspace).encode()).hexdigest()[:12])
+        created = []
+        reused = bool(found['launch'])
+        remote_only = args.action == 'remote'
+        try:
+            terminal = logs / 'terminal.bash'
+            terminal.write_text('source ~/.bashrc\nsource /opt/ros/jazzy/setup.bash\nsource ' +
+                shlex.quote(str(workspace / 'install/setup.bash')) + '\ncd ' + shlex.quote(str(workspace)) +
+                '\nexport GZ_PARTITION=' + shlex.quote(env['GZ_PARTITION']) +
+                "\ntrap 'exit 0' TERM HUP\n")
+            if not found['launch'] and not remote_only:
+                if found['gazebo']:
+                    raise RuntimeError('Orphan Gazebo processes found; use AX Stop first')
+                found['launch'] = [spawn(workspace, logs, 'gazebo', ['ros2', 'launch', 'ax_description',
+                    'robot_test.launch.py', 'robots:=2', 'tool:=' + args.tool], env)]
+                created.extend(found['launch'])
+            if not remote_only:
+                if not reused:
+                    command = ('source /opt/ros/jazzy/setup.bash; source ' +
+                        shlex.quote(str(workspace / 'install/setup.bash')) + '; python3 ' +
+                        shlex.quote(str(workspace / 'tools/verify_unified_runtime.py')))
+                    deadline = time.monotonic() + 110
+                    ready = False
+                    while time.monotonic() < deadline and alive(found['launch'][0]):
+                        try:
+                            with (logs / 'readiness.log').open('w') as output:
+                                checked = subprocess.run(['bash', '-c', command], cwd=workspace, env=env,
+                                    stdout=output, stderr=subprocess.STDOUT,
+                                    timeout=min(20, max(1, deadline - time.monotonic())))
+                            if checked.returncode == 0:
+                                ready = True
+                                break
+                        except subprocess.TimeoutExpired:
+                            pass
+                        time.sleep(.5)
+                    if not ready:
+                        raise RuntimeError('Robot startup check failed; see ' + str(logs / 'readiness.log'))
+                receipt = {'ok': True, 'reused': reused, 'launch_pid': found['launch'][0]['pid'],
+                           'terminal_rcfile': str(terminal), 'workspace': str(workspace)}
+                (logs / 'session.json').write_text(json.dumps(receipt, indent=2))
+                return receipt
+            if not found['remote']:
+                found['remote'] = [spawn(workspace, logs, 'remote', ['python3',
+                    str(workspace / 'tools/remote_control.py'), '--port', str(args.port)], env)]
+                created.extend(found['remote'])
+            deadline = time.monotonic() + 120
+            while time.monotonic() < deadline:
+                if not all(alive(p) for p in found['launch'] + found['remote']):
+                    raise RuntimeError('Startup process exited; check logs in ' + str(logs))
+                state = remote_state(args.port)
+                if state and (remote_only or reused or state.get('arm_ready')):
+                    break
+                time.sleep(.3)
+            else:
+                raise RuntimeError('Startup timed out; check Gazebo and logs in ' + str(logs))
+            receipt = {'ok': True, 'url': f'http://localhost:{args.port}', 'reused': reused,
+                       'launch_pid': found['launch'][0]['pid'] if found['launch'] else None,
+                       'remote_pid': found['remote'][0]['pid']}
+            (logs / 'session.json').write_text(json.dumps(receipt, indent=2))
+            return receipt
+        except BaseException:
+            if created:
+                stop_processes(created)
+            raise
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])
+    parser.add_argument('--workspace', default='~/ax-play-ws')
+    parser.add_argument('--tool', choices=['robotiq', 'epick'], default='robotiq')
+    parser.add_argument('--port', type=int, default=8765)
+    args = parser.parse_args()
+    try:
+        print(json.dumps(run(args)))
+    except Exception as exc:
+        print(json.dumps({'ok': False, 'error': str(exc)}))
+        raise SystemExit(1)
+
+
+if __name__ == '__main__':
+    main()

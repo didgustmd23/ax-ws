@@ -1,5 +1,7 @@
 # ax-ws
 
+
+
 **ax-ws는 입고 물품을 자동 확인하고, 중앙 LLM이 전체 운반 계획을 수립하며 Fleet이 검증·실행하는 가상 창고 운영 무인 시스템을 개발하는 프로젝트다.** ROS 2 Jazzy와 Gazebo Harmonic을 사용한다.
 
 목표 동작은 다음과 같다. B·C가 입고를 관측하면 D가 중복 없이 작업을 생성한다. 중앙 LLM은 보관 규칙·가용 등록 위치·로봇 상태를 보고 목적지와 전체 계획을 생성하고, D가 용량·예약·권한·통로·예산을 검사해 실행을 조정한다. 조작 로봇이 집기·적재·하역하고 운송 로봇이 적재함으로 이동한다. 같은 역할의 검증된 예비 로봇 재배정도 목표 범위다.
@@ -18,13 +20,43 @@
 
 ## 현재 저장소 상태
 
-현재 저장소는 **설계·일정 단계**다. 작업트리에는 기능 구현 소스가 없고 설계·일정 문서, 공유 구성도, 모델 자산, 공통 인터페이스 타입 초안(`src/ax_interfaces`)만 있다.
+현재 작업트리에는 **A1 모델·센서·시험 구성**이 구현돼 있다. AX_1 V2 관절 로컬 메시, 질량·관성 생성기, 고정 commit EPick description, AX_2 적재함 접촉 센서, 로봇별 namespace·TF와 공통 시험 launch를 제공한다. 관절 범위·자기 충돌·0~2 kg 관성 치구·유지·Action 취소 정지와 기하 TCP 보정을 검증했다. [A1 구현·제한·재현](docs/guides/A1_MODEL_ASSETS.md) · [검증 결과](docs/evidence/a1/). 실제 흡착 부착/해제·B1 보정/동기화·Nav2·Agent·A4 안전 게이트와 G1 관문은 별도 구현·검증 대상이다.
 
 이전 개발 구성(AX_1·AX_2 모델, 로봇별 ros2_control 기본 제어, Gazebo 센서, 개발용 관절 보호 `arm_command_guard`)과 그 인터페이스·검증·팔 사양 문서는 커밋 [`4f85007`](https://github.com/didgustmd23/ax-ws/tree/4f8500755151b2fbcbf35ab9cbca13fb1d71cea9)까지의 Git 이력으로만 남긴다. 이전 구현은 G1(안전 게이트·최종 구동 차단)을 충족하지 않았으며, 이력의 코드·수치·시험 결과를 새 구현의 통과 근거로 쓰지 않는다. 경위와 조회 방법은 [이전 구현 기록](docs/management/TEAM_SCHEDULE.md#이전-구현-기록)을 따른다.
 
 ```bash
 git show 4f85007:docs/guides/INTERFACES.md      # 이전 인터페이스 조회
 git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
+```
+
+<!-- a1-model-entry -->
+## A1 모델 실행·검증
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select epick_description ax_description ax_interfaces robotiq_description
+source install/setup.bash
+ros2 launch ax_description robot_test.launch.py
+```
+
+기본 공구는 EPick이며 `tool:=suction`으로 기존 가상 4컵 헤드를 비교할 수 있다.
+원본 CAD·라이선스를 보존하고 [A1 안내](docs/guides/A1_MODEL_ASSETS.md)의 생성·시험 명령을 따른다.
+[바퀴·시험 월드·런치](docs/guides/WHEEL_AND_LAUNCH_REPAIR.md) · [A1 시험 증거](docs/evidence/a1/).
+
+### 통합 시험 월드와 다른 PC 실행
+
+시험 월드는 `ax_test.world` 하나다. 30×30 m 바닥의 원점 주변은 주행 시험용으로 비워 두고,
+작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
+`robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
+다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
+주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
+별도 브라우저 창에서 마우스로 조종하려면 [리모컨 안내](docs/guides/REMOTE_CONTROL.md)를 따른다.
+터미널 없이 실행·종료하려면 **[리모컨 폴더](remote_controller/README.md)의 `install.cmd`를 더블클릭**한다.
+
+```bash
+bash tools/setup_jazzy.sh
+source install/setup.bash
+ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
 ```
 
 ## 전체 시스템 구성도

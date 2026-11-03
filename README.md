@@ -50,6 +50,7 @@ ros2 launch ax_description robot_test.launch.py
 `robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
 다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
 주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
+별도 브라우저 창에서 마우스로 조종하려면 [리모컨 안내](docs/guides/REMOTE_CONTROL.md)를 따른다.
 
 ```bash
 bash tools/setup_jazzy.sh

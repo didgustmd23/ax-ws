@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AX 로봇 리모컨</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf2f5;color:#172c3a;font-family:system-ui,"맑은 고딕",sans-serif}main{max-width:920px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{margin:0;font-size:26px}h2{font-size:19px;margin:0 0 18px}.tag{background:#dce7ed;border-radius:24px;padding:8px 13px;font-size:13px}.online{background:#d4f4e6;color:#126448}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.card{background:white;border-radius:18px;padding:24px;box-shadow:0 5px 25px #152e3c08}button,select{font:inherit;border:1px solid #d3dee5;border-radius:11px;padding:13px;background:#f5f8fa;color:inherit}button{cursor:pointer;touch-action:none;user-select:none}button:hover{background:#e6f1f3}button:active,.selected{background:#086d75!important;color:white!important;border-color:#086d75}.robots{display:flex;gap:10px;margin:20px 0}.robots button{flex:1}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:310px;margin:22px auto}.pad button{min-height:68px;font-size:18px}.pad .stop{background:#fff0ec;color:#a9331e;border-color:#efb3a7}.blank{visibility:hidden}.adjust{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}.adjust button{font-size:24px;width:54px;padding:6px}.value{text-align:center;flex:1;font-size:23px;font-weight:700}.unit{font-size:12px;font-weight:400;color:#586c7b}.note{font-size:13px;line-height:1.6;color:#596f7d}.wide{width:100%;margin-bottom:16px}.jog{display:flex;gap:12px;margin:20px 0}.jog button{flex:1;font-size:22px}.emergency{width:100%;background:#b93f2f;color:white;border:0;font-weight:700;font-size:20px;margin-top:20px;padding:18px}.emergency:hover{background:#a22e20}.status{padding:15px 0;font-size:14px;min-height:52px}.angles{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px;margin-top:18px;color:#526a78}button:disabled{opacity:.4;cursor:not-allowed}@media(max-width:650px){main{padding:16px}.grid{grid-template-columns:1fr}.card{padding:20px}}
+</style>
+<main>
+<header><h1>AX 로봇 리모컨</h1><span class="tag" id="connection">연결 중</span></header>
+<div class="robots"><button id="robot_1" onclick="selectRobot('robot_1')">AX_1 · 팔 로봇</button><button id="robot_2" onclick="selectRobot('robot_2')">AX_2 · 운반 로봇</button></div>
+<div class="grid">
+<section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 누르고 있으면 이동합니다.<br>버튼에서 손을 떼면 멈춥니다.</p>
+<div class="pad"><span></span><button data-drive="w">▲<br>전진</button><span></span><button data-drive="a">↶<br>좌회전</button><button class="stop" onclick="stopAll()">정지</button><button data-drive="d">↷<br>우회전</button><span></span><button data-drive="s">▼<br>후진</button><span></span></div>
+<div class="adjust"><button onclick="send('speed',-1)">−</button><div class="value"><span id="linear">—</span> <span class="unit">m/s</span></div><button onclick="send('speed',1)">+</button></div>
+<p class="note" style="text-align:center">회전 속도 <strong id="angular">—</strong> rad/s · 주행 속도와 함께 조절</p></section>
+<section class="card"><h2>AX_1 팔 조종</h2><select class="wide" id="joint" onchange="send('joint',Number(this.value))"><option value="0">1 · 기둥 회전</option><option value="1">2 · 어깨</option><option value="2">3 · 팔꿈치</option><option value="3">4 · 손목</option><option value="4">5 · 집게 전체 회전</option></select>
+<p class="note">한 번에 움직이는 각도</p><div class="adjust"><button class="arm-setting" onclick="send('angle',-1)">−</button><div class="value"><span id="step">—</span> <span class="unit">도 / 회</span></div><button class="arm-setting" onclick="send('angle',1)">+</button></div>
+<div class="jog"><button class="arm-jog" onclick="send('jog',-1)">− 방향 이동</button><button class="arm-jog" onclick="send('jog',1)">+ 방향 이동</button></div>
+<p class="note" id="armHint">관절 상태 확인 중</p><div class="angles" id="angles"></div>
+<p class="note">손가락 개폐·자동 충돌 회피는 지원하지 않습니다.<br>팔 이동 속도는 자동 계산되며, 여기서는 이동 각도를 조절합니다.</p></section>
+</div>
+<button class="emergency" onclick="stopAll()">■ 전체 정지 · 팔 동작 취소</button>
+<div class="status" id="status">Ubuntu의 로봇 연결을 기다리고 있습니다.</div>
+</main>
+<script>
+const token='__TOKEN__',client=crypto.randomUUID();let seq=0,held=null,timer=null,connected=false,driveRequest=false;
+async function send(action,value){
+ if(!connected&&action!=='stop')return;
+ const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,client,seq:++seq,action,value})}).catch(()=>null);
+ if(!response||!response.ok){releaseDrive(false);document.getElementById('status').textContent='연결을 확인하세요. 주행 명령을 중단했습니다.';}
+}
+function releaseDrive(sendStop=true){held=null;clearInterval(timer);timer=null;if(sendStop)send('stop');}
+function stopAll(){releaseDrive(false);send('stop');}
+function selectRobot(robot){stopAll();send('robot',robot);}
+async function pulse(){if(!held||driveRequest)return;driveRequest=true;try{await send('drive',held);}finally{driveRequest=false;}}
+for(const button of document.querySelectorAll('[data-drive]')){
+ button.addEventListener('pointerdown',event=>{if(!connected)return;event.preventDefault();releaseDrive(false);held=button.dataset.drive;button.setPointerCapture(event.pointerId);pulse();timer=setInterval(pulse,75);});
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>{if(held)releaseDrive();});
+ button.addEventListener('contextmenu',event=>event.preventDefault());
+}
+window.addEventListener('blur',()=>{if(held)releaseDrive();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll();});
+window.addEventListener('pagehide',()=>{navigator.sendBeacon('/api/command',new Blob([JSON.stringify({token,client,seq:++seq,action:'stop'})],{type:'application/json'}));});
+document.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target.tagName!=='SELECT'){event.preventDefault();stopAll();}});
+async function refresh(){
+ try{
+  const response=await fetch('/api/state',{signal:AbortSignal.timeout(1500)});if(!response.ok)throw Error();const state=await response.json();if(!state.robot)throw Error();connected=true;
+  document.getElementById('connection').textContent='● 연결됨';document.getElementById('connection').className='tag online';
+  for(const robot of ['robot_1','robot_2'])document.getElementById(robot).classList.toggle('selected',state.robot===robot);
+  document.getElementById('linear').textContent=state.linear.toFixed(3);document.getElementById('angular').textContent=state.angular.toFixed(2);document.getElementById('step').textContent=state.step_deg.toFixed(1);
+  if(document.activeElement!==document.getElementById('joint'))document.getElementById('joint').value=state.joint;
+  const arm=state.robot==='robot_1';document.getElementById('joint').disabled=!arm;
+  for(const el of document.querySelectorAll('.arm-jog'))el.disabled=!arm||state.arm_busy||!state.arm_ready;
+  for(const el of document.querySelectorAll('[data-drive]'))el.disabled=state.arm_busy;
+  document.getElementById('armHint').textContent=!arm?'AX_2에는 팔이 없습니다.':state.arm_busy?'팔 이동 중 · 전체 정지로 취소 가능':state.arm_ready?'관절을 고른 뒤 방향 이동 버튼을 누르세요.':'관절 상태 수신 대기 중';
+  const angles=document.getElementById('angles');angles.replaceChildren();state.angles_deg.forEach((value,index)=>{const name=document.createElement('span'),number=document.createElement('span');name.textContent=state.labels[index];number.textContent=value.toFixed(2)+'°';angles.append(name,number);});
+  document.getElementById('status').textContent=state.notice;
+ }catch{connected=false;releaseDrive(false);document.getElementById('connection').textContent='연결 끊김';document.getElementById('connection').className='tag';}
+ setTimeout(refresh,250);
+}refresh();
+</script>
+</html>

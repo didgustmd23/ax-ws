@@ -4,13 +4,15 @@
 import hashlib
 import json
 from pathlib import Path
-from evidence_files import write_test_log
+from evidence_files import kst_today, run_unit_tests, write_test_log
 
 root = Path(__file__).resolve().parents[1]
 runtime = json.loads((root / 'log/repair/drive_directions.json').read_text())
 geometry = json.loads((root / 'log/repair/model_geometry.json').read_text())
-units = (root / 'log/repair/unit_tests.log').read_text()
-if not (runtime.get('passed') and geometry.get('passed') and units.strip().endswith('OK')
+# 단위 테스트는 수집 시점의 코드로 다시 실행한다.
+units_passed, units = run_unit_tests(root)
+run_date = kst_today()
+if not (runtime.get('passed') and geometry.get('passed') and units_passed
         and len(runtime.get('trials', [])) == 8 and len(runtime.get('arm_trials', [])) == 5
         and len(runtime.get('lidar_obstacle_checks', [])) == 4
         and runtime.get('cleanup', {}).get('remaining_count') == 0):
@@ -31,7 +33,7 @@ for directory in [root / 'src/ax_description', root / 'tools']:
         if path.suffix not in ('.py', '.sh', '.yaml', '.xacro', '.world', '.xml', '.json', '.txt'):
             continue
         sources[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-summary = {'date': '2026-11-03', 'execution_workspace': 'Ubuntu ax-ws', 'passed': True,
+summary = {'date': run_date, 'execution_workspace': 'Ubuntu ax-ws', 'passed': True,
            'drive_trials': [{'robot': trial['robot_id'], 'trial': trial['trial'],
                              'forward_distance_m': trial['forward_distance_m'],
                              'yaw_change_rad': trial['yaw_change_rad'], 'passed': trial['passed']}
@@ -44,9 +46,9 @@ summary = {'date': '2026-11-03', 'execution_workspace': 'Ubuntu ax-ws', 'passed'
 (destination / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 (destination / 'README.md').write_text(f'''# 바퀴·런치·모델 회귀 검증
 
-2026-11-03 Ubuntu 실제 작업공간에서 실행한 결과다.
+{run_date} Ubuntu 실제 작업공간에서 실행한 결과다.
 
-- EPick 포함 패키지 4개 빌드, 정적·계약 검사 13개 통과.
+- EPick·ax_control 포함 패키지 빌드, 단위 테스트 전체 통과([검사 로그]({unit_log})).
 - 조작·운송 로봇 각각 전진·후진·좌회전·우회전: 총 8개 통과.
 - 팔 5축 각각 0.15 rad 이동, 실제 관절 상태·Gazebo 자식 링크 회전 확인, 중립 복귀.
 - 중립·팔 동작 후 LiDAR 4개: 근거리 자기 반환·음의 무한대·NaN 검사.

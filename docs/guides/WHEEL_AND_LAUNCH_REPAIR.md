@@ -16,29 +16,31 @@ Ubuntu 터미널에서:
 cd ~/ax-ws
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash
-ros2 launch ax_description robot_test.launch.py
+ros2 launch ax_control simulation.launch.py
 ```
 
 기본값은 AX_1 조작 로봇 1대와 AX_2 운송 로봇 1대, 빈 주행 구역과 테이블·상자를 갖춘 통합 시험 월드, GUI 켜짐이다.
 
 ```bash
 # 조작 로봇만 / 운송 로봇만
-ros2 launch ax_description robot_test.launch.py robot_ids:=robot_1
-ros2 launch ax_description robot_test.launch.py robot_ids:=robot_2
+ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
+ros2 launch ax_control simulation.launch.py robot_ids:=robot_2
 
 # 작업대 2개·상자 1개가 있는 팔 시험 월드
-ros2 launch ax_description robot_test.launch.py world:=ax_test.world
+ros2 launch ax_control simulation.launch.py world:=ax_test.world
 
 # 화면 없는 시험 / 4대 활성
-ros2 launch ax_description robot_test.launch.py gui:=false
-ros2 launch ax_description robot_test.launch.py robots:=4
+ros2 launch ax_control simulation.launch.py gui:=false
+ros2 launch ax_control simulation.launch.py robots:=4
 ```
 
+`ax_control simulation.launch.py`는 `ax_description robot_test.launch.py`(월드·모델·센서)를 포함하고
+`controller_config_dir`로 `ax_control/config`의 제어기 YAML을 넘긴 뒤 로봇별 제어기 spawner와 공구 노드를 띄운다.
 `ax_arm_test.launch.py`, `ax_2_test.launch.py`, `ax_test_both.launch.py`는
-공통 런치에 연결되는 호환 진입점이다. Gazebo 월드·clock은 한 번만 생성한다.
+`robot_test.launch.py`에 연결되는 호환 진입점이며 제어기 없이 모델·센서만 띄운다. Gazebo 월드·clock은 한 번만 생성한다.
 역할 구분 없이 공통 런치를 그대로 호출하던 `w1_sim.launch.py`는 제거했으며 `robot_test.launch.py`를 사용한다.
 로봇별 `robot_description`, `joint_states`, 제어기, 센서 Topic과 TF frame을 분리한다.
-고정 초 타이머 대신 로봇 생성 종료 이벤트 뒤 제어기 spawner를 시작하고 서비스 준비를 기다린다.
+spawner는 controller_manager 서비스가 준비될 때까지 기다린다(최대 120 s).
 
 ## 좌표·바퀴 이름
 
@@ -65,10 +67,11 @@ ros2 launch ax_description robot_test.launch.py robots:=4
 
 ## 이름·설정 정리
 
-- 공통 진입점: `launch/robot_test.launch.py`.
+- 공통 진입점: 제어 포함 `ax_control/launch/simulation.launch.py`, 모델·센서만 `launch/robot_test.launch.py`.
+- 제어기 설정: A2 `ax_control/config`(`common_controllers.yaml`, 모델별 `ax1_controllers.yaml`·`ax2_controllers.yaml`).
 - 주행·작업대·팔 공통 월드: `worlds/ax_test.world` / Gazebo world 이름 `ax_test`.
-- 런치 변수: `robot_namespace`, `robot_description`, `controller_file`, `controller_names`,
-  `spawn_x`, `spawn_y`, `wheel_geometry`, `ROBOT_ROLES`처럼 의미를 드러낸다.
+- 런치 변수: `robot_namespace`, `robot_description`, `controller_config_dir`, `model_mappings`,
+  `spawn_x`, `spawn_y`, `ROBOT_ROLES`처럼 의미를 드러낸다.
 - 생성 치수: `ax2_front_left_wheel_pivot` 등으로 정리하고
   `ax2_ax_tire_left_front_pivot` 같은 중복 이름을 제거했다.
 - 권위 모델은 `ax.urdf.xacro`, `ax_2.urdf.xacro`다.
@@ -93,16 +96,17 @@ ros2 launch ax_description robot_test.launch.py robots:=4
 
 ```bash
 cd ~/ax-ws
-bash tools/build_ubuntu_repair.sh
 source /opt/ros/jazzy/setup.bash
+colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
+python3 tools/generate_physical_properties.py --check
+python3 tools/generate_asset_v2.py --check
 python3 tools/verify_drive_direction.py --arm-and-lidar
 python3 tools/audit_robot_geometry.py
+python3 tools/collect_drive_repair_evidence.py
 ```
 
-`audit_robot_geometry.py`를 별도 실행할 때도 위 ROS/작업공간 setup을 먼저 source한다.
-
-- `log/repair/unit_tests.log`: 물리·트리·프레임·바퀴 위치/축/제어 연결·프로세스 소유권 검사.
+- 단위 테스트(물리·트리·프레임·바퀴 위치/축/제어 연결·프로세스 소유권)는 `collect_drive_repair_evidence.py`가 수집 시점에 다시 실행해 로그를 남긴다.
 - `log/repair/drive_directions.json`: Gazebo 원시 model pose와 joint_states로 전진·후진·좌우 회전 판정.
   odom만으로 성공을 판정하지 않는다.
 - 같은 JSON의 `arm_trials`: 실제 팔 5축 목표 추종·Gazebo 자식 링크 회전 확인 후 중립 복귀.

@@ -7,10 +7,10 @@
 | `epick.yaml` | 개발용 본체/컵 질량 kg, 형상·ToF·TCP 길이 m | Xacro 재전개와 TCP/ToF 검증 |
 | `sensor_mounts.yaml` | 부모 링크 기준 xyz m/rpy rad, ToF 범위·lip 오프셋 m | 장착·시야·자기 차단 확인 |
 | `sensor_contract.yaml` | 토픽·타입·QoS·유효성 계약 | 생산자/소비자 함께 검토 |
-| `ax_1_arm_controllers.yaml` | 직접 시험용 제어기 설정 | 공통 런치가 동적으로 만드는 설정과 구분 |
 | `a1_validation.yaml` | 시험 하중 kg, 시간 s, 오차 rad, 정지 속도 rad/s | 변경된 시험 조건으로 재검증 |
 
 질량·모터·컵 값은 실측 제품 사양이 아닌 개발용 가정이다.
+제어기 설정은 이 폴더가 아니라 A2 `src/ax_control/config`에 있다.
 
 ## JSON 보고서 읽기
 

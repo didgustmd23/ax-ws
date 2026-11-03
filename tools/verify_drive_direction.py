@@ -303,7 +303,7 @@ def main():
     log = output.with_suffix('.log').open('w')
     rclpy.init()
     observer = DriveObserver()
-    process = subprocess.Popen(['ros2', 'launch', 'ax_description', 'robot_test.launch.py',
+    process = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
         'robots:=2', 'gui:=false', 'world:=ax_test.world'],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     observer.launch_process = process

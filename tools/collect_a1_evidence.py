@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-# 이미 완료된 A1 시험 JSON과 로그를 docs/evidence로 모은다. 이 파일 자체가 시험을 실행하지는 않는다.
+# 완료된 A1 Gazebo 시험 JSON을 docs/evidence로 모은다. Gazebo 시험은 실행하지 않고 단위 테스트만 다시 실행한다.
+"""Collect A1 verification results from log/a1 into docs/evidence/a1.
+
+입력: audit_arm_range.py·verify_a1_envelope.py·verify_epick_tcp.py가 log/a1에 남긴 JSON.
+단위 테스트는 수집 시점의 코드로 다시 실행해 로그를 남긴다.
+"""
 import hashlib
 import json
 from pathlib import Path
-from evidence_files import write_test_log
+from evidence_files import kst_today, run_unit_tests, write_test_log
 
 root = Path(__file__).resolve().parents[1]
 logs = root/'log/a1'
@@ -11,14 +16,15 @@ destination = root/'docs/evidence/a1'
 payloads = [json.loads((logs/f'payload_{mass}.json').read_text()) for mass in (0.0, .5, 1.0, 2.0)]
 tcp = json.loads((logs/'tcp_calibration.json').read_text())
 geometry = json.loads((logs/'range_audit.json').read_text())
-units = (root/'log/repair/unit_tests.log').read_text()
-if not all(item['passed'] for item in payloads+[tcp,geometry]) or not units.strip().endswith('OK'):
+units_passed, units = run_unit_tests(root)
+run_date = kst_today()
+if not all(item['passed'] for item in payloads+[tcp,geometry]) or not units_passed:
     raise SystemExit('A1 checks have not all passed')
 destination.mkdir(parents=True, exist_ok=True)
 for path in [logs/'range_audit.json', logs/'tcp_calibration.json'] + [logs/f'payload_{mass}.json' for mass in (0.0,.5,1.0,2.0)]:
     (destination/path.name).write_text(path.read_text().replace(str(root),'<workspace>'))
 unit_log = write_test_log(root, destination, units)
-summary = {'date':'2026-11-03','passed':True,'scope':'A1 configured simulation model; fixed payload fixture',
+summary = {'date':run_date,'passed':True,'scope':'A1 configured simulation model; fixed payload fixture',
     'asset_version':'ax1-joint-local-v2','epick_commit':'d07391307d2d16cacf88daa168ce02839589397e',
     'nominal_axis_samples':sum(len(item['samples']) for item in geometry['joints'].values()),
     'coupled_samples':geometry['coupled_configurations_sampled'],
@@ -47,7 +53,7 @@ for directory in (root/'src/ax_description',root/'src/epick_description',root/'t
 (destination/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 (destination/'README.md').write_text(f'''# A1 모델·EPick·관절 검증
 
-2026-11-03, Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic.
+{run_date}, Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic.
 
 - 관절 좌표계에 맞춘 V2 메시 11개, 원본·출력·재질·관절 프레임·제한 해시 기록.
 - 고정 commit EPick description, BSD-3-Clause 원본·해시 보존, 가상 진공 관절/하드웨어 드라이버 제외.

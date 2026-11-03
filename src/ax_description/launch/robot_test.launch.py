@@ -1,5 +1,10 @@
-# 모델 실행 진입점. 공통 robot_test.launch.py를 사용하고 로봇 선택·월드 인자만 구분한다.
-"""Shared robot test world; one, two or four role-separated robots."""
+# 공통 시험 월드 진입점: 월드·모델·센서 브리지를 띄운다. 제어기 활성화는 ax_control simulation.launch.py가 맡는다.
+"""Shared robot test world; one, two or four role-separated robots.
+
+제어기 설정·활성화는 A2 ax_control이 소유한다. 이 launch는 월드·모델·센서 브리지만 띄우고,
+controller_config_dir가 주어지면 그 폴더의 YAML로 gz_ros2_control 플러그인만 모델에 넣는다.
+제어기 활성화(spawner)와 공구 노드는 ``ros2 launch ax_control simulation.launch.py``가 실행한다.
+"""
 import json
 import os
 from pathlib import Path
@@ -10,43 +15,18 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable
-from launch.event_handlers import OnProcessExit, OnShutdown
+from launch.event_handlers import OnShutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-ARM_JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 # Explicit test-fixture roles; operational role/capability ownership belongs to D2.
 ROBOT_ROLES = {'robot_1': 'MANIPULATOR', 'robot_2': 'TRANSPORTER',
             'robot_3': 'MANIPULATOR', 'robot_4': 'TRANSPORTER'}
-
-
-# 로봇 namespace별 제어기 설정을 임시 YAML로 만든다. 바퀴 반경·윤거는 m, 명령 속도는 m/s와 rad/s다.
-def controller_config(robot_id, manipulator, wheel_geometry):
-    robot_namespace = '/ax/' + robot_id
-    controller_types = {'update_rate': 100,
-             'joint_state_broadcaster': {'type': 'joint_state_broadcaster/JointStateBroadcaster'},
-             'diff_drive_controller': {'type': 'diff_drive_controller/DiffDriveController'}}
-    drive_parameters = {'left_wheel_names': ['front_left_wheel_joint', 'rear_left_wheel_joint'],
-             'right_wheel_names': ['front_right_wheel_joint', 'rear_right_wheel_joint'],
-             'wheel_separation': wheel_geometry['separation'], 'wheel_radius': wheel_geometry['radius'],
-             'base_frame_id': robot_id + '/base_link', 'odom_frame_id': robot_id + '/odom',
-             'tf_frame_prefix_enable': False, 'enable_odom_tf': True,
-             'publish_rate': 30.0, 'cmd_vel_timeout': 0.2,
-             'linear.x.max_velocity': 0.3, 'linear.x.min_velocity': -0.3,
-             'linear.x.has_velocity_limits': True,
-             'angular.z.max_velocity': 0.5, 'angular.z.min_velocity': -0.5,
-             'angular.z.has_velocity_limits': True}
-    configuration = {robot_namespace + '/controller_manager': {'ros__parameters': controller_types},
-              robot_namespace + '/diff_drive_controller': {'ros__parameters': drive_parameters},
-              robot_namespace + '/joint_state_broadcaster': {'ros__parameters': {}}}
-    if manipulator:
-        controller_types['arm_controller'] = {'type': 'joint_trajectory_controller/JointTrajectoryController'}
-        configuration[robot_namespace + '/arm_controller'] = {'ros__parameters': {
-            'joints': ARM_JOINTS, 'command_interfaces': ['position'],
-            'state_interfaces': ['position', 'velocity']}}
-    return configuration
+# 모델별 A2 제어기 설정 파일 이름(controller_config_dir 안). 공통 파일 다음에 읽힌다.
+CONTROLLER_FILES = {'ax.urdf.xacro': 'ax1_controllers.yaml', 'ax_2.urdf.xacro': 'ax2_controllers.yaml'}
+COMMON_CONTROLLER_FILE = 'common_controllers.yaml'
 
 
 # Gazebo 센서 토픽을 로봇별 ROS 경로로 연결한다. 외부 제어 명령을 대신 생성하지 않는다.
@@ -77,14 +57,18 @@ def bridges(robot_id, manipulator, tool='epick'):
     return configuration
 
 
-# 실행 인자를 평가해 모델·센서 브리지·스포너를 구성한다. 제어기는 모델 생성 종료 이벤트 뒤에 시작한다.
+# 실행 인자를 평가해 월드·모델·센서 브리지를 구성한다. 제어기 spawner는 만들지 않는다(ax_control 담당).
 def setup(context):
     package_share = Path(get_package_share_directory('ax_description'))
     robot_count = int(LaunchConfiguration('robots').perform(context))
     if robot_count not in (1, 2, 4):
         raise ValueError('robots must be 1, 2 or 4')
     gui = LaunchConfiguration('gui').perform(context).lower() == 'true'
-    control = LaunchConfiguration('control').perform(context).lower() == 'true'
+    controller_config_dir = LaunchConfiguration('controller_config_dir').perform(context)
+    control = bool(controller_config_dir)
+    if control and not Path(controller_config_dir, COMMON_CONTROLLER_FILE).is_file():
+        raise ValueError('controller_config_dir must contain ' + COMMON_CONTROLLER_FILE)
+    tool_attach = LaunchConfiguration('tool_attach').perform(context).lower() == 'true'
     sensors_enabled = LaunchConfiguration('sensors').perform(context).lower() == 'true'
     tool = LaunchConfiguration('tool').perform(context)
     test_payload_mass = LaunchConfiguration('payload_mass').perform(context)
@@ -105,12 +89,6 @@ def setup(context):
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
-    # Geometry parameters come from generated CAD measurements, not copied wheel constants.
-    import xml.etree.ElementTree as ET
-    geometry_root = ET.parse(package_share / 'urdf' / 'ax_2_geometry.xacro').getroot()
-    geometry_properties = {property_node.attrib['name']: property_node.attrib['value'] for property_node in geometry_root}
-    transporter_wheel_geometry = {'radius': float(geometry_properties['ax2_wheel_radius']),
-                    'separation': float(geometry_properties['ax2_wheel_separation'])}
     spawn_positions = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
     robot_id_selection = LaunchConfiguration('robot_ids').perform(context)
     selected_indices = [int(value.removeprefix('robot_')) - 1 for value in robot_id_selection.split(',')] if robot_id_selection else list(range(robot_count))
@@ -120,15 +98,19 @@ def setup(context):
         robot_id = 'robot_' + str(robot_index + 1)
         manipulator = ROBOT_ROLES[robot_id] == 'MANIPULATOR'
         robot_namespace = '/ax/' + robot_id
-        controller_file = runtime_path / (robot_id + '_controllers.yaml')
-        controller_file.write_text(yaml.safe_dump(controller_config(robot_id, manipulator,
-            {'radius': .19631, 'separation': .622} if manipulator else transporter_wheel_geometry)))
         model_filename = 'ax.urdf.xacro' if manipulator else 'ax_2.urdf.xacro'
-        robot_description = xacro.process_file(str(package_share / 'urdf' / model_filename), mappings={
+        model_mappings = {
             'robot_name': robot_id, 'sensor_robot_id': robot_id,
-            'frame_prefix': robot_id + '/', 'gripper_model': tool,
-            'sensors_enabled': 'true' if sensors_enabled else 'false', 'test_payload_mass': test_payload_mass,
-            'ros_namespace': robot_namespace, 'ros2_control_params': str(controller_file) if control else ''}).toxml()
+            'frame_prefix': robot_id + '/',
+            'sensors_enabled': 'true' if sensors_enabled else 'false',
+            'ros_namespace': robot_namespace,
+            'ros2_control_params': str(Path(controller_config_dir, CONTROLLER_FILES[model_filename])) if control else '',
+            'ros2_control_common_params': str(Path(controller_config_dir, COMMON_CONTROLLER_FILE)) if control else ''}
+        if manipulator:
+            model_mappings.update({'gripper_model': tool, 'test_payload_mass': test_payload_mass,
+                                   'tool_attach': 'true' if tool_attach else 'false'})
+        robot_description = xacro.process_file(str(package_share / 'urdf' / model_filename),
+                                               mappings=model_mappings).toxml()
         actions.append(Node(package='robot_state_publisher', executable='robot_state_publisher',
             namespace=robot_namespace, parameters=[{'robot_description': robot_description, 'use_sim_time': True,
                                       'frame_prefix': robot_id + '/'}],
@@ -139,15 +121,6 @@ def setup(context):
                        '-x', str(spawn_x), '-y', str(spawn_y), '-z', '.42' if manipulator else '.30'],
             output='screen')
         actions.append(spawn_robot)
-        if control:
-            controller_names = ['joint_state_broadcaster', 'diff_drive_controller']
-            if manipulator:
-                controller_names.append('arm_controller')
-            controller_spawner = Node(package='controller_manager', executable='spawner',
-                namespace=robot_namespace, arguments=controller_names + ['--controller-manager', robot_namespace + '/controller_manager',
-                    '--controller-manager-timeout', '120', '--switch-timeout', '60',
-                    '--param-file', str(controller_file)], output='screen')
-            actions.append(RegisterEventHandler(OnProcessExit(target_action=spawn_robot, on_exit=[controller_spawner])))
         if sensors_enabled:
             all_bridges.extend(bridges(robot_id, manipulator, tool))
         if manipulator and sensors_enabled and tool in ('epick', 'suction'):
@@ -169,7 +142,10 @@ def generate_launch_description():
         DeclareLaunchArgument('world', default_value='ax_test.world', choices=['ax_test.world']),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
-        DeclareLaunchArgument('control', default_value='true', choices=['true', 'false']),
+        DeclareLaunchArgument('controller_config_dir', default_value='',
+                              description='A2 ax_control config folder; empty spawns models without ros2_control'),
+        DeclareLaunchArgument('tool_attach', default_value='false', choices=['true', 'false'],
+                              description='Add the A2 suction attach plugin (epick/suction only)'),
         DeclareLaunchArgument('sensors', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('tool', default_value='epick', choices=['epick', 'suction', 'primitive', 'robotiq', 'parallel_wide']),
         DeclareLaunchArgument('payload_mass', default_value='0.0', description='Fixed test mass at TCP, not suction success'),

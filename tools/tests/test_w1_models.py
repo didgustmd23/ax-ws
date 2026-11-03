@@ -15,6 +15,9 @@ from ament_index_python.packages import get_package_share_directory
 
 ROOT = Path(__file__).resolve().parents[2]
 PKG = ROOT / 'src/ax_description'
+# 제어기 설정은 A2 ax_control/config가 소유한다. 공통 파일 다음에 모델별 파일을 읽는다.
+CONTROL_CONFIG = ROOT / 'src/ax_control/config'
+CONTROLLER_FILES = {'ax.urdf.xacro': 'ax1_controllers.yaml', 'ax_2.urdf.xacro': 'ax2_controllers.yaml'}
 
 
 def module(path, name):
@@ -22,6 +25,16 @@ def module(path, name):
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
+
+
+# 공통·모델별 YAML을 노드별 ros__parameters로 합친다(gz_ros2_control의 파일 순서와 같음).
+def controller_parameters(model_filename):
+    import yaml
+    merged = {}
+    for filename in ('common_controllers.yaml', CONTROLLER_FILES[model_filename]):
+        for node, content in yaml.safe_load((CONTROL_CONFIG / filename).read_text()).items():
+            merged.setdefault(node.removeprefix('/**/'), {}).update(content['ros__parameters'])
+    return merged
 
 
 def model(file, robot_id='robot_1'):
@@ -33,11 +46,9 @@ def model(file, robot_id='robot_1'):
 class Models(unittest.TestCase):
     def test_wheel_quadrants_axes_and_controller_sides(self):
         from scipy.spatial.transform import Rotation
-        launch = module(PKG / 'launch/robot_test.launch.py', 'robot_test_launch')
         for filename, manipulator in [('ax.urdf.xacro', True), ('ax_2.urdf.xacro', False)]:
             robot = model(filename)
-            drive = launch.controller_config('robot_1', manipulator,
-                {'radius': .2, 'separation': .6})['/ax/robot_1/diff_drive_controller']['ros__parameters']
+            drive = controller_parameters(filename)['diff_drive_controller']
             for fore_aft in ('front', 'rear'):
                 for side in ('left', 'right'):
                     joint_name = f'{fore_aft}_{side}_wheel_joint'
@@ -144,14 +155,74 @@ class Models(unittest.TestCase):
             manipulator = number % 2 == 1
             entries = launch.bridges(robot_id, manipulator)
             topics.extend(entry['ros_topic_name'] for entry in entries)
-            root = model('ax.urdf.xacro' if manipulator else 'ax_2.urdf.xacro', robot_id)
+            filename = 'ax.urdf.xacro' if manipulator else 'ax_2.urdf.xacro'
+            root = model(filename, robot_id)
             joints = {e.get('name') for e in root.findall('joint')}
-            config = launch.controller_config(robot_id, manipulator, {'radius': .2, 'separation': .6})
-            drive = config['/ax/' + robot_id + '/diff_drive_controller']['ros__parameters']
+            config = controller_parameters(filename)
+            drive = config['diff_drive_controller']
             self.assertTrue(set(drive['left_wheel_names'] + drive['right_wheel_names']) <= joints)
+            self.assertEqual('arm_controller' in config, manipulator)
             if manipulator:
-                self.assertTrue(set(launch.ARM_JOINTS) <= joints)
+                self.assertTrue(set(config['arm_controller']['joints']) <= joints)
         self.assertEqual(len(topics), len(set(topics)))
+
+    def test_controller_wheel_geometry_matches_models(self):
+        # 바퀴 기하: robot_1은 모델 관절 원점, robot_2는 ax_2_geometry.xacro 속성과 같아야 한다.
+        geometry = {node.get('name'): float(node.get('value'))
+                    for node in ET.parse(PKG / 'urdf/ax_2_geometry.xacro').getroot()
+                    if node.get('name', '').startswith('ax2_wheel_')}
+        drive_2 = controller_parameters('ax_2.urdf.xacro')['diff_drive_controller']
+        self.assertAlmostEqual(drive_2['wheel_radius'], geometry['ax2_wheel_radius'], places=9)
+        self.assertAlmostEqual(drive_2['wheel_separation'], geometry['ax2_wheel_separation'], places=6)
+        robot = model('ax.urdf.xacro')
+        left = np.fromstring(robot.find("joint[@name='front_left_wheel_joint']/origin").get('xyz'), sep=' ')
+        right = np.fromstring(robot.find("joint[@name='front_right_wheel_joint']/origin").get('xyz'), sep=' ')
+        drive_1 = controller_parameters('ax.urdf.xacro')['diff_drive_controller']
+        self.assertAlmostEqual(drive_1['wheel_separation'], left[1] - right[1], places=3)
+
+    def test_ros2_control_plugin_reads_common_then_model_config(self):
+        for filename in CONTROLLER_FILES:
+            root = ET.fromstring(xacro.process_file(str(PKG / 'urdf' / filename), mappings={
+                'ros_namespace': '/ax/robot_1',
+                'ros2_control_common_params': '/cfg/common_controllers.yaml',
+                'ros2_control_params': '/cfg/' + CONTROLLER_FILES[filename]}).toxml())
+            plugin = root.find(".//plugin[@name='gz_ros2_control::GazeboSimROS2ControlPlugin']")
+            with self.subTest(model=filename):
+                self.assertEqual([p.text for p in plugin.findall('parameters')],
+                                 ['/cfg/common_controllers.yaml', '/cfg/' + CONTROLLER_FILES[filename]])
+            # 설정이 없으면 플러그인을 만들지 않는다(표시·정적 검사용).
+            bare = ET.fromstring(xacro.process_file(str(PKG / 'urdf' / filename)).toxml())
+            self.assertIsNone(bare.find(".//plugin[@name='gz_ros2_control::GazeboSimROS2ControlPlugin']"))
+
+    def test_tool_attach_offset_matches_epick_tcp_chain(self):
+        # 흡착 플러그인의 tcp_offset은 gripper_base_link → epick_tcp 고정 관절 변환과 같아야 한다.
+        from scipy.spatial.transform import Rotation
+        for tool in ('epick', 'suction'):
+            root = ET.fromstring(xacro.process_file(str(PKG / 'urdf/ax.urdf.xacro'), mappings={
+                'gripper_model': tool, 'tool_attach': 'true', 'ros_namespace': '/ax/robot_1'}).toxml())
+            parents = {joint.find('child').get('link'): joint for joint in root.findall('joint')}
+            link, transform = 'epick_tcp', np.eye(4)
+            while link != 'gripper_base_link':
+                joint = parents[link]
+                self.assertEqual(joint.get('type'), 'fixed')
+                origin = joint.find('origin')
+                step = np.eye(4)
+                if origin is not None:
+                    step[:3, :3] = Rotation.from_euler('xyz', np.fromstring(origin.get('rpy', '0 0 0'), sep=' ')).as_matrix()
+                    step[:3, 3] = np.fromstring(origin.get('xyz', '0 0 0'), sep=' ')
+                transform = step @ transform
+                link = joint.find('parent').get('link')
+            plugin = root.find(".//plugin[@name='ax_control::SuctionAttachSystem']")
+            with self.subTest(tool=tool):
+                self.assertIsNotNone(plugin)
+                self.assertEqual(plugin.findtext('parent_link'), 'gripper_base_link')
+                np.testing.assert_allclose(np.fromstring(plugin.findtext('tcp_offset'), sep=' '),
+                                           transform[:3, 3], atol=1e-4)
+                self.assertEqual(plugin.findtext('command_topic'), '/ax/robot_1/tool/gz_command')
+        # 기본값(tool_attach false)이나 흡착 외 공구에서는 플러그인이 없다.
+        for mappings in ({'gripper_model': 'epick'}, {'gripper_model': 'primitive', 'tool_attach': 'true'}):
+            root = ET.fromstring(xacro.process_file(str(PKG / 'urdf/ax.urdf.xacro'), mappings=mappings).toxml())
+            self.assertIsNone(root.find(".//plugin[@name='ax_control::SuctionAttachSystem']"))
 
     def test_physics_reports_use_current_inputs(self):
         import hashlib

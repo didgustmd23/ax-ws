@@ -34,10 +34,12 @@ git checkout 4f85007 -- src/ax_control          # 필요한 부분만 복원
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-colcon build --packages-select epick_description ax_description ax_interfaces robotiq_description
+colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
-ros2 launch ax_description robot_test.launch.py
+ros2 launch ax_control simulation.launch.py
 ```
+
+제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.
 
 기본 공구는 EPick이며 `tool:=suction`으로 기존 가상 4컵 헤드를 비교할 수 있다.
 원본 CAD·라이선스를 보존하고 [A1 안내](docs/guides/A1_MODEL_ASSETS.md)의 생성·시험 명령을 따른다.
@@ -47,7 +49,7 @@ ros2 launch ax_description robot_test.launch.py
 
 시험 월드는 `ax_test.world` 하나다. 30×30 m 바닥의 원점 주변은 주행 시험용으로 비워 두고,
 작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
-`robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
+`ax_control simulation.launch.py`, `robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
 다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
 주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
 별도 브라우저 창에서 마우스로 조종하려면 [리모컨 안내](docs/guides/REMOTE_CONTROL.md)를 따른다.
@@ -57,7 +59,7 @@ ros2 launch ax_description robot_test.launch.py
 ```bash
 bash tools/setup_jazzy.sh
 source install/setup.bash
-ros2 launch ax_description robot_test.launch.py robots:=2 tool:=robotiq
+ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 ```
 
 ## 전체 시스템 구성도

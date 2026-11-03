@@ -5,8 +5,10 @@
 1. `remote_controller/install.cmd` → `install-shortcuts.ps1`: PC별 경로 탐색과 바로가기 생성.
 2. `remote_controller/ax-launch.ps1`: Windows 창을 열고 Ubuntu 세션 관리자를 호출.
 3. `tools/desktop_session.py`: 소유 프로세스 확인, 중복 실행 잠금, 시작·종료·준비 확인.
-4. `src/ax_description/launch/robot_test.launch.py`: Xacro 전개, 두 로봇 생성, 제어기·센서 브리지 연결.
-5. `tools/remote_control.html` → `remote_control.py` → `keyboard_teleop.py`: 브라우저 입력 → HTTP 큐 → ROS 제어.
+4. `src/ax_control/launch/simulation.launch.py`: A2 제어 진입점. 아래 launch를 포함하고 로봇별 제어기 spawner·흡착 공구 노드를 띄운다.
+   제어기 설정은 `src/ax_control/config`(`common_controllers.yaml` → `ax1_controllers.yaml`·`ax2_controllers.yaml`)가 단일 기준이다.
+5. `src/ax_description/launch/robot_test.launch.py`: Xacro 전개, 로봇 생성, 센서 브리지 연결. 단독 실행 시 제어기 없이 모델·센서만 띄운다.
+6. `tools/remote_control.html` → `remote_control.py` → `keyboard_teleop.py`: 브라우저 입력 → HTTP 큐 → ROS 제어.
 
 Start는 Ubuntu/Gazebo, Remote는 리모컨, Stop은 해당 AX 세션과 전용 창만 다룬다.
 전체 WSL 재시작은 확인창이 있는 `remote_controller/recover.ps1`에만 있다.

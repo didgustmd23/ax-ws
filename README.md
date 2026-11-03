@@ -49,6 +49,7 @@ ros2 launch ax_description robot_test.launch.py
 작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
 `robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
 다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
+주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
 
 ```bash
 bash tools/setup_jazzy.sh

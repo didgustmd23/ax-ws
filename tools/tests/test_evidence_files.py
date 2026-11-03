@@ -23,3 +23,7 @@ class SharedEvidence(unittest.TestCase):
             self.assertNotEqual(a, changed)
             self.assertEqual((first / a).read_text(), 'one\nOK\n')
             self.assertEqual(len(list((root / 'docs/evidence/shared').glob('*.txt'))), 2)
+
+    def test_run_date_is_iso_kst_date(self):
+        # 검증 자료 날짜는 고정값이 아니라 실행 시점의 KST 날짜(YYYY-MM-DD)다.
+        self.assertRegex(evidence.kst_today(), r'^\d{4}-\d{2}-\d{2}$')

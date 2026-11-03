@@ -45,5 +45,5 @@ def stop_tagged(partition=None):
 
 
 if __name__ == '__main__':
-    # Only partitions created by verify_w1_runtime.py are eligible.
+    # 인자 없이 실행하면 verify_* 도구가 만든 'ax-w1-' 접두사 partition의 프로세스만 정리한다.
     print(stop_tagged())

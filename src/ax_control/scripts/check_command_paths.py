@@ -15,6 +15,7 @@ A4 담당자는 여기 쓰인 제어기 입력 이름을 게이트·보호 서�
 """
 
 import argparse
+import re
 import sys
 import time
 
@@ -245,11 +246,13 @@ def run_checks(node):
     expected = (f"{robot_id}/odom", f"{robot_id}/base_link")
     report("tf_odom_base", expected in node.tf_pairs, f"{expected[0]} -> {expected[1]}")
 
+    # 여러 대가 같은 /tf를 쓰므로 robot_<n>/ 접두사가 붙은 프레임은 모두 허용한다.
+    # 접두사가 없는 프레임이 하나라도 있으면 실패다.
     foreign = sorted(
         frame
         for pair in node.tf_pairs
         for frame in pair
-        if not frame.startswith(f"{robot_id}/")
+        if not re.match(r"robot_\d+/", frame)
     )
     report("tf_prefix_only", not foreign, f"접두사 없는 프레임 {foreign[:5]}")
 

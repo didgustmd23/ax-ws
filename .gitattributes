@@ -19,3 +19,4 @@ src/epick_description/LICENSE -text
 *.world text eol=lf
 *.txt text eol=lf
 .gitattributes text eol=lf
+*.cmd text eol=crlf

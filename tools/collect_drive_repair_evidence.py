@@ -3,7 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
-import shutil
+from evidence_files import write_test_log
 
 root = Path(__file__).resolve().parents[1]
 runtime = json.loads((root / 'log/repair/drive_directions.json').read_text())
@@ -21,7 +21,7 @@ for trial in runtime['trials']:
 for name, data in [('drive_directions.json', runtime), ('model_geometry.json', geometry)]:
     serialized = json.dumps(data, indent=2).replace(str(root), '<workspace>')
     (destination / name).write_text(serialized + '\n')
-(destination / 'unit_tests.log').write_text(units)
+unit_log = write_test_log(root, destination, units)
 sources = {}
 for directory in [root / 'src/ax_description', root / 'tools']:
     for path in sorted(directory.rglob('*')):
@@ -41,7 +41,7 @@ summary = {'date': '2026-11-03', 'execution_workspace': 'Ubuntu ax-ws', 'passed'
            'remaining_test_processes': runtime['cleanup']['remaining_count'],
            'source_sha256': sources}
 (destination / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
-(destination / 'README.md').write_text('''# 바퀴·런치·모델 회귀 검증
+(destination / 'README.md').write_text(f'''# 바퀴·런치·모델 회귀 검증
 
 2026-11-03 Ubuntu 실제 작업공간에서 실행한 결과다.
 
@@ -54,7 +54,7 @@ summary = {'date': '2026-11-03', 'execution_workspace': 'Ubuntu ax-ws', 'passed'
 - 시험 태그 프로세스 잔류 0.
 
 [실행·수정 안내](../../guides/WHEEL_AND_LAUNCH_REPAIR.md) · [요약](summary.json) ·
-[실행 상세](drive_directions.json) · [형상·COM](model_geometry.json) · [검사 로그](unit_tests.log)
+[실행 상세](drive_directions.json) · [형상·COM](model_geometry.json) · [검사 로그]({unit_log})
 
 가상 질량·마찰 가정의 짧은 회귀 시험이다. 실물 정격·전체 관절 범위·하중·안전 게이트·정밀 주행 성능을 검증한 결과가 아니다.
 ''')

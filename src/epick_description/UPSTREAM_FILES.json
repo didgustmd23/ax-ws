@@ -20,7 +20,7 @@
     },
     {
       "upstream_path": "epick_description/urdf/helper_macros.xacro",
-      "vendored_path": "upstream/helper_macros.xacro.original",
+      "vendored_path": "urdf/helper_macros.xacro",
       "sha256": "7032605850130171fe017f0408726876bf9f3a4ae1a2c3bf750bc73144c57325"
     },
     {

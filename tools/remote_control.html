@@ -9,7 +9,7 @@
 <header><h1>AX 로봇 리모컨</h1><span class="tag" id="connection">연결 중</span></header>
 <div class="robots"><button id="robot_1" onclick="selectRobot('robot_1')">AX_1 · 팔 로봇</button><button id="robot_2" onclick="selectRobot('robot_2')">AX_2 · 운반 로봇</button></div>
 <div class="grid">
-<section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 누르고 있으면 이동합니다.<br>버튼에서 손을 떼면 멈춥니다.</p>
+<section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 한 번 누르면 계속 이동합니다.<br>멈추려면 정지 버튼을 누르세요.</p><p class="note" id="driveState" role="status">주행 정지 상태</p>
 <div class="pad"><span></span><button data-drive="w">▲<br>전진</button><span></span><button data-drive="a">↶<br>좌회전</button><button class="stop" onclick="stopAll()">정지</button><button data-drive="d">↷<br>우회전</button><span></span><button data-drive="s">▼<br>후진</button><span></span></div>
 <div class="adjust"><button onclick="send('speed',-1)">−</button><div class="value"><span id="linear">—</span> <span class="unit">m/s</span></div><button onclick="send('speed',1)">+</button></div>
 <p class="note" style="text-align:center">회전 속도 <strong id="angular">—</strong> rad/s · 주행 속도와 함께 조절</p></section>
@@ -23,22 +23,34 @@
 <div class="status" id="status">Ubuntu의 로봇 연결을 기다리고 있습니다.</div>
 </main>
 <script>
-const token='__TOKEN__',client=crypto.randomUUID();let seq=0,held=null,timer=null,connected=false,driveRequest=false;
+const token='__TOKEN__',client=crypto.randomUUID();let seq=0,activeDirection=null,timer=null,connected=false,driveRequest=false;
 async function send(action,value){
  if(!connected&&action!=='stop')return;
- const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,client,seq:++seq,action,value})}).catch(()=>null);
+ if(['robot','joint','jog','angle'].includes(action))releaseDrive(false);
+ const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,client,seq:++seq,action,value}),signal:AbortSignal.timeout(1500)}).catch(()=>null);
  if(!response||!response.ok){releaseDrive(false);document.getElementById('status').textContent='연결을 확인하세요. 주행 명령을 중단했습니다.';}
 }
-function releaseDrive(sendStop=true){held=null;clearInterval(timer);timer=null;if(sendStop)send('stop');}
+function showDrive(){
+ for(const button of document.querySelectorAll('[data-drive]')){
+  const selected=button.dataset.drive===activeDirection;
+  button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+ }
+ const names={w:'전진',s:'후진',a:'좌회전',d:'우회전'};
+ document.getElementById('driveState').textContent=activeDirection?names[activeDirection]+' 주행 중 · 정지 버튼으로 멈추세요.':'주행 정지 상태';
+}
+function releaseDrive(sendStop=true){activeDirection=null;clearInterval(timer);timer=null;showDrive();if(sendStop)send('stop');}
 function stopAll(){releaseDrive(false);send('stop');}
 function selectRobot(robot){stopAll();send('robot',robot);}
-async function pulse(){if(!held||driveRequest)return;driveRequest=true;try{await send('drive',held);}finally{driveRequest=false;}}
+async function pulse(){if(!activeDirection||driveRequest)return;driveRequest=true;try{await send('drive',activeDirection);}finally{driveRequest=false;}}
+function startDrive(direction){
+ if(!connected)return;
+ releaseDrive(false);activeDirection=direction;showDrive();pulse();timer=setInterval(pulse,75);
+}
 for(const button of document.querySelectorAll('[data-drive]')){
- button.addEventListener('pointerdown',event=>{if(!connected)return;event.preventDefault();releaseDrive(false);held=button.dataset.drive;button.setPointerCapture(event.pointerId);pulse();timer=setInterval(pulse,75);});
- for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>{if(held)releaseDrive();});
+ button.setAttribute('aria-pressed','false');
+ button.addEventListener('click',()=>startDrive(button.dataset.drive));
  button.addEventListener('contextmenu',event=>event.preventDefault());
 }
-window.addEventListener('blur',()=>{if(held)releaseDrive();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll();});
 window.addEventListener('pagehide',()=>{navigator.sendBeacon('/api/command',new Blob([JSON.stringify({token,client,seq:++seq,action:'stop'})],{type:'application/json'}));});
 document.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target.tagName!=='SELECT'){event.preventDefault();stopAll();}});
@@ -52,6 +64,7 @@ async function refresh(){
   const arm=state.robot==='robot_1';document.getElementById('joint').disabled=!arm;
   for(const el of document.querySelectorAll('.arm-jog'))el.disabled=!arm||state.arm_busy||!state.arm_ready;
   for(const el of document.querySelectorAll('[data-drive]'))el.disabled=state.arm_busy;
+  if(state.arm_busy&&activeDirection)releaseDrive(false);
   document.getElementById('armHint').textContent=!arm?'AX_2에는 팔이 없습니다.':state.arm_busy?'팔 이동 중 · 전체 정지로 취소 가능':state.arm_ready?'관절을 고른 뒤 방향 이동 버튼을 누르세요.':'관절 상태 수신 대기 중';
   const angles=document.getElementById('angles');angles.replaceChildren();state.angles_deg.forEach((value,index)=>{const name=document.createElement('span'),number=document.createElement('span');name.textContent=state.labels[index];number.textContent=value.toFixed(2)+'°';angles.append(name,number);});
   document.getElementById('status').textContent=state.notice;

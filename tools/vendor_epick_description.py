@@ -25,7 +25,7 @@ def main():
         source = UPSTREAM / relative
         if relative == 'LICENSE':
             destination = package / 'LICENSE'
-        elif relative.endswith('.stl'):
+        elif relative.endswith('.stl') or relative.endswith('/helper_macros.xacro'):
             destination = package / relative.removeprefix('epick_description/')
         else:
             destination = package / 'upstream' / (Path(relative).name + '.original')
@@ -33,9 +33,7 @@ def main():
         shutil.copyfile(source, destination)
         manifest['files'].append({'upstream_path': relative, 'vendored_path': destination.relative_to(package).as_posix(),
                                   'sha256': hashlib.sha256(source.read_bytes()).hexdigest()})
-    helper = UPSTREAM / 'epick_description/urdf/helper_macros.xacro'
     (package / 'urdf').mkdir(exist_ok=True)
-    shutil.copyfile(helper, package / 'urdf/helper_macros.xacro')
     body = (UPSTREAM / 'epick_description/urdf/epick_body.xacro').read_text()
     body = body.replace("prefix:=^|''", "prefix:=^|'' virtual_mass:=0.71")
     body = body.replace('<link name="${body_link}">', '''<link name="${body_link}">

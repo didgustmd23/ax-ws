@@ -2,7 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
-import shutil
+from evidence_files import write_test_log
 
 root = Path(__file__).resolve().parents[1]
 logs = root/'log/a1'
@@ -16,7 +16,7 @@ if not all(item['passed'] for item in payloads+[tcp,geometry]) or not units.stri
 destination.mkdir(parents=True, exist_ok=True)
 for path in [logs/'range_audit.json', logs/'tcp_calibration.json'] + [logs/f'payload_{mass}.json' for mass in (0.0,.5,1.0,2.0)]:
     (destination/path.name).write_text(path.read_text().replace(str(root),'<workspace>'))
-(destination/'unit_tests.log').write_text(units)
+unit_log = write_test_log(root, destination, units)
 summary = {'date':'2026-11-03','passed':True,'scope':'A1 configured simulation model; fixed payload fixture',
     'asset_version':'ax1-joint-local-v2','epick_commit':'d07391307d2d16cacf88daa168ce02839589397e',
     'nominal_axis_samples':sum(len(item['samples']) for item in geometry['joints'].values()),
@@ -44,7 +44,7 @@ for directory in (root/'src/ax_description',root/'src/epick_description',root/'t
             continue
         summary['source_sha256'][path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
 (destination/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
-(destination/'README.md').write_text('''# A1 모델·EPick·관절 검증
+(destination/'README.md').write_text(f'''# A1 모델·EPick·관절 검증
 
 2026-11-03, Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic.
 
@@ -56,7 +56,7 @@ for directory in (root/'src/ax_description',root/'src/epick_description',root/'t
 - 각 하중에서 Action 취소 후 실제 정지·유지: 4개.
 - 컵 접촉면 기준 ToF/TCP 평면 거리: 3개.
 
-[구현·제한·재현 방법](../../guides/A1_MODEL_ASSETS.md) · [수치 요약](summary.json)
+[구현·제한·재현 방법](../../guides/A1_MODEL_ASSETS.md) · [수치 요약](summary.json) · [검사 로그]({unit_log})
 
 시험 하중은 고정 관성 치구이며 흡착 성공의 증거가 아니다. 질량·컵 구성은 가상 설정이다.
 범위 검사는 단축/샘플 조건이며 전체 결합 공간·실물 정격·A4 안전 게이트의 인증이 아니다.

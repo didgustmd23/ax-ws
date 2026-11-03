@@ -10,7 +10,7 @@
 - 각 하중에서 Action 취소 후 실제 정지·유지: 4개.
 - 컵 접촉면 기준 ToF/TCP 평면 거리: 3개.
 
-[구현·제한·재현 방법](../../guides/A1_MODEL_ASSETS.md) · [수치 요약](summary.json)
+[구현·제한·재현 방법](../../guides/A1_MODEL_ASSETS.md) · [수치 요약](summary.json) · [검사 로그](../shared/unit_tests-58ea9a484dd7a61c.txt)
 
 시험 하중은 고정 관성 치구이며 흡착 성공의 증거가 아니다. 질량·컵 구성은 가상 설정이다.
 범위 검사는 단축/샘플 조건이며 전체 결합 공간·실물 정격·A4 안전 게이트의 인증이 아니다.

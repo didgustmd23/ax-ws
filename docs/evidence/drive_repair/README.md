@@ -11,6 +11,6 @@
 - 시험 태그 프로세스 잔류 0.
 
 [실행·수정 안내](../../guides/WHEEL_AND_LAUNCH_REPAIR.md) · [요약](summary.json) ·
-[실행 상세](drive_directions.json) · [형상·COM](model_geometry.json) · [검사 로그](unit_tests.log)
+[실행 상세](drive_directions.json) · [형상·COM](model_geometry.json) · [검사 로그](../shared/unit_tests-58ea9a484dd7a61c.txt)
 
 가상 질량·마찰 가정의 짧은 회귀 시험이다. 실물 정격·전체 관절 범위·하중·안전 게이트·정밀 주행 성능을 검증한 결과가 아니다.

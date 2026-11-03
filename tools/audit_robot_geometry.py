@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 두 로봇의 중립 자세에서 링크별 질량·전체 COM·메시 포함 여부·SDF 관절 보존을 검사한다.
 """Independent COM, mesh containment and converted articulation audit."""
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ WORKSPACE = Path(__file__).resolve().parents[1]
 ARM_JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 
 
+# 링크 원점의 xyz/rpy를 변환 행렬로 바꿔 중립 자세의 질량 위치를 합산한다.
 def transform(element):
     result = np.eye(4)
     if element is not None:
@@ -24,6 +26,7 @@ def transform(element):
     return result
 
 
+# 설치된 모델을 펼쳐 COM·관성·메시 포함·SDF 변환을 검사하고 log/repair에 수치 결과를 기록한다.
 def main():
     share = Path(get_package_share_directory('ax_description'))
     output = WORKSPACE / 'log/repair/model_geometry.json'

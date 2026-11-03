@@ -2,8 +2,8 @@
   "version": "ax1-joint-local-v2",
   "units": "mm",
   "policy": "Preserve original CAD surfaces; bake corrected visual pivots into joint-local mesh coordinates.",
-  "specification_sha256": "3cdbc2963ce3ec0975b34706699d866b90a92d716c16e11108cc33e6fcf35ae7",
-  "joint_limits_sha256": "6624a0f945a4c8c9995773db6f21127c1c4ac74d87641d3577a24795f482fc05",
+  "specification_sha256": "9b96475fbd9b8a3a97cff891b97462be4652f7b991d15505732b7e8a880ebd45",
+  "joint_limits_sha256": "fef97f598c38349012c890ab4cf27c6872589d0db546639e505c4221f1e732fd",
   "parts": [
     {
       "link": "base_link",

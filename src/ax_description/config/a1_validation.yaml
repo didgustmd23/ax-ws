@@ -1,3 +1,4 @@
+# A1 시험 조건이다. 하중은 kg, 시간은 s, 위치 오차는 rad, 정지 속도는 rad/s다. poses 배열 순서는 기둥/어깨/팔꿈치/손목/집게 회전이다.
 payloads_kg: [0.0, 0.5, 1.0, 2.0]
 repetitions: 3
 hold_seconds: 1.0

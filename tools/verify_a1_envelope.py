@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# EPick의 고정 하중 치구로 범위·유지·취소 정지를 검증한다. 실제 흡착 성공이나 실물 안전성을 인증하지 않는다.
 """A1 simulation range/load/hold/cancel tests; fixed payload is a test fixture."""
 import argparse
 import json
@@ -31,6 +32,7 @@ from w1_processes import stop_tagged
 WORKSPACE = Path(__file__).resolve().parents[1]
 
 class Observer(Node):
+    # 시험 관측기: ROS 시각/관절과 Gazebo 실제 차체 자세를 함께 수집한다.
     def __init__(self, geometry, settings):
         super().__init__('a1_range_load_observer')
         self.geometry, self.settings = geometry, settings
@@ -44,18 +46,22 @@ class Observer(Node):
         self.arm = ActionClient(self, FollowJointTrajectory, '/ax/robot_1/arm_controller/follow_joint_trajectory')
         self.last_zero = 0.0
 
+    # /clock을 초 단위로 변환한다. 시험 진행량은 시뮬레이션 시간으로 계산한다.
     def clock(self, message):
         self.sim_time = message.clock.sec + message.clock.nanosec * 1e-9
 
+    # 실제 joint_states를 이름별 위치(rad)·속도(rad/s)로 저장한다.
     def state(self, message):
         self.positions = dict(zip(message.name, message.position))
         self.velocities = dict(zip(message.name, message.velocity))
 
+    # Gazebo 실제 robot_1 자세를 보관해 차체 기울기를 감시한다.
     def pose(self, message):
         for pose in message.pose:
             if pose.name == 'robot_1':
                 self.base_pose = pose
 
+    # 실행 생존을 확인하며 베이스 정지 명령을 유지한다. 기울기 0.25 rad 초과 시 시험을 중단한다.
     def spin(self):
         if self.launch_process.poll() is not None:
             raise RuntimeError('Gazebo launch exited')
@@ -71,6 +77,7 @@ class Observer(Node):
             if tilt > .25:
                 raise RuntimeError('Base tilt exceeds 0.25 rad; test stopped')
 
+    # 관측 조건을 기다리되 실제 시간 기준 제한을 두어 시뮬레이터 정지 시 무한 대기하지 않는다.
     def wait(self, predicate, timeout=180):
         deadline = time.monotonic() + timeout
         while not predicate():
@@ -78,17 +85,21 @@ class Observer(Node):
                 raise TimeoutError('A1 observation/action timed out')
             self.spin()
 
+    # 시뮬레이션 시간이 지정 초만큼 진행하도록 기다린다.
     def advance(self, seconds):
         target = self.sim_time + seconds
         self.wait(lambda: self.sim_time >= target, max(45, seconds*10))
 
+    # ROS 비동기 응답을 관측·정지 유지와 함께 기다린다.
     def future(self, future, timeout=180):
         self.wait(future.done, timeout)
         return future.result()
 
+    # 공통 ARM_JOINTS 순서의 현재 위치(rad)를 돌려준다.
     def current(self):
         return [self.positions[joint] for joint in ARM_JOINTS]
 
+    # 보수 경로 선별을 통과한 궤적만 전송하고 속도·가속도 기준으로 시험 시간을 정한다.
     def goal(self, target, seconds=None):
         start = self.current()
         screened = self.geometry.screen_path(start, target, step=.05)
@@ -112,6 +123,7 @@ class Observer(Node):
             raise RuntimeError('Trajectory goal rejected')
         return handle
 
+    # 궤적 성공 후 유지 구간의 최대 관절 오차를 계산한다.
     def move_hold(self, label, target):
         handle = self.goal(target)
         response = self.future(handle.get_result_async())
@@ -130,6 +142,7 @@ class Observer(Node):
         print(json.dumps(result), flush=True)
         return result
 
+    # 이동 도중 취소를 요청하고 실제 속도와 위치 드리프트를 별도로 관측한다.
     def stop_test(self):
         self.move_hold('before_stop_home', [0.0]*5)
         handle = self.goal([.4, -.3, .3, -.2, .2], seconds=6)
@@ -152,6 +165,7 @@ class Observer(Node):
         print(json.dumps({'stop_test': result}), flush=True)
         return result
 
+# 하중별 별도 partition/domain으로 시험을 실행하고 자기 프로세스만 정리한다.
 def run_payload(payload, settings, output_directory):
     partition = 'ax-w1-a1-' + uuid.uuid4().hex
     os.environ.update(GZ_PARTITION=partition, ROS_DOMAIN_ID=str(20+secrets.randbelow(76)),

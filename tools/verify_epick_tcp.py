@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 컵 끝면 앞에 기준 평면을 생성하여 ToF 거리와 TCP 기하 오프셋을 비교한다. 실물 컵 변형 보정은 아니다.
 """Calibrate the configured undeformed cup plane against Gazebo ToF returns."""
 import json
 import math

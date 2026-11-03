@@ -1,3 +1,4 @@
+# 공유 msg/srv/action 타입 생성 목록이다. 새 인터페이스는 파일 생성과 이 목록 등록을 함께 해야 한다.
 cmake_minimum_required(VERSION 3.8)
 project(ax_interfaces)
 

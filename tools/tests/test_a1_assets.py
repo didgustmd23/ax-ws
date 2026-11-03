@@ -1,3 +1,4 @@
+# 외부 원본 해시·V2 자산·EPick 프레임·시험용 충돌 선별을 검사한다. 실제 흡착이나 안전 인증 시험이 아니다.
 import hashlib
 import json
 from pathlib import Path

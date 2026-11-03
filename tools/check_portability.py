@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 공구 5종과 로봇 2종의 설치 자산 경로를 검사한다. 다른 물리 PC 실행을 대신하는 검사는 아니다.
 """Check installed resources for every selectable tool without PC-specific paths."""
 from pathlib import Path
 import re

@@ -1,3 +1,4 @@
+# V2 재생성 명세. OBJ 단위는 mm지만 xyz 이동량은 m, rpy는 rad다. mass_kg는 가상 질량 예산이다. 원본 CAD를 직접 수정하지 않는다.
 version: ax1-joint-local-v2
 units: mm
 policy: Preserve original CAD surfaces; bake corrected visual pivots into joint-local mesh coordinates.

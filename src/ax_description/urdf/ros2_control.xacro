@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!-- Gazebo와 ros2_control의 공통 접점. 바퀴는 velocity, 팔은 position 명령이며 플러그인은 모델당 하나다. -->
 <!-- ros2_control 하드웨어 인터페이스와 gz_ros2_control 플러그인 공통 매크로.
      이 파일의 플러그인이 바퀴·팔·손가락의 유일한 Gazebo 구동 주체다.
      Gazebo DiffDrive·JointPositionController·JointStatePublisher를 같은 관절에 함께 두지 않는다. -->

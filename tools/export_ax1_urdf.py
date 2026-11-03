@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ax.urdf.xacro가 원본이며 ax_1.urdf는 생성물이다. 프레임·질량 수정은 원본 Xacro와 설정에서 한다.
 """Refresh the old ax_1.urdf name from the authoritative articulated Xacro."""
 from pathlib import Path
 import shutil

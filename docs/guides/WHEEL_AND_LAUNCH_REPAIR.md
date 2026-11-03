@@ -36,8 +36,9 @@ ros2 launch ax_control simulation.launch.py robots:=4
 
 `ax_control simulation.launch.py`는 `ax_description robot_test.launch.py`(월드·모델·센서)를 포함하고
 `controller_config_dir`로 `ax_control/config`의 제어기 YAML을 넘긴 뒤 로봇별 제어기 spawner와 공구 노드를 띄운다.
-`ax_arm_test.launch.py`, `ax_2_test.launch.py`, `ax_test_both.launch.py`, `w1_sim.launch.py`는
+`ax_arm_test.launch.py`, `ax_2_test.launch.py`, `ax_test_both.launch.py`는
 `robot_test.launch.py`에 연결되는 호환 진입점이며 제어기 없이 모델·센서만 띄운다. Gazebo 월드·clock은 한 번만 생성한다.
+역할 구분 없이 공통 런치를 그대로 호출하던 `w1_sim.launch.py`는 제거했으며 `robot_test.launch.py`를 사용한다.
 로봇별 `robot_description`, `joint_states`, 제어기, 센서 Topic과 TF frame을 분리한다.
 spawner는 controller_manager 서비스가 준비될 때까지 기다린다(최대 120 s).
 

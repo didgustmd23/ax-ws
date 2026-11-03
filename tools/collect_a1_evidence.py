@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 완료된 A1 Gazebo 시험 JSON을 docs/evidence로 모은다. Gazebo 시험은 실행하지 않고 단위 테스트만 다시 실행한다.
 """Collect A1 verification results from log/a1 into docs/evidence/a1.
 
 입력: audit_arm_range.py·verify_a1_envelope.py·verify_epick_tcp.py가 log/a1에 남긴 JSON.

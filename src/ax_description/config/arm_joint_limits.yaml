@@ -1,3 +1,4 @@
+# 팔 5축 공통 제한. 위치 rad, 속도 rad/s, 가속도 rad/s², effort N·m. 개발용 값이며 실물 정격이 아니다. 변경 후 자산 manifest를 재생성한다.
 # Development limits, shared by asset manifest, URDF and verification.
 joint_limits:
   column_yaw_joint:

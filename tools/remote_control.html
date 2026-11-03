@@ -2,34 +2,42 @@
 <html lang="ko">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AX 로봇 리모컨</title>
+<!-- 팀원 안내: 표시 전용 스타일. 실제 이동·정지는 아래 JavaScript와 ROS 서버에서 처리한다. -->
 <style>
 *{box-sizing:border-box}body{margin:0;background:#edf2f5;color:#172c3a;font-family:system-ui,"맑은 고딕",sans-serif}main{max-width:920px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{margin:0;font-size:26px}h2{font-size:19px;margin:0 0 18px}.tag{background:#dce7ed;border-radius:24px;padding:8px 13px;font-size:13px}.online{background:#d4f4e6;color:#126448}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.card{background:white;border-radius:18px;padding:24px;box-shadow:0 5px 25px #152e3c08}button,select{font:inherit;border:1px solid #d3dee5;border-radius:11px;padding:13px;background:#f5f8fa;color:inherit}button{cursor:pointer;touch-action:none;user-select:none}button:hover{background:#e6f1f3}button:active,.selected{background:#086d75!important;color:white!important;border-color:#086d75}.robots{display:flex;gap:10px;margin:20px 0}.robots button{flex:1}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:310px;margin:22px auto}.pad button{min-height:68px;font-size:18px}.pad .stop{background:#fff0ec;color:#a9331e;border-color:#efb3a7}.blank{visibility:hidden}.adjust{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}.adjust button{font-size:24px;width:54px;padding:6px}.value{text-align:center;flex:1;font-size:23px;font-weight:700}.unit{font-size:12px;font-weight:400;color:#586c7b}.note{font-size:13px;line-height:1.6;color:#596f7d}.wide{width:100%;margin-bottom:16px}.jog{display:flex;gap:12px;margin:20px 0}.jog button{flex:1;font-size:22px}.emergency{width:100%;background:#b93f2f;color:white;border:0;font-weight:700;font-size:20px;margin-top:20px;padding:18px}.emergency:hover{background:#a22e20}.status{padding:15px 0;font-size:14px;min-height:52px}.angles{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px;margin-top:18px;color:#526a78}button:disabled{opacity:.4;cursor:not-allowed}@media(max-width:650px){main{padding:16px}.grid{grid-template-columns:1fr}.card{padding:20px}}
 </style>
 <main>
+<!-- 팀원 안내: 로봇 선택과 연결 표시. 연결됨은 HTTP/상태 연결이며 집기 성공 판정이 아니다. -->
 <header><h1>AX 로봇 리모컨</h1><span class="tag" id="connection">연결 중</span></header>
 <div class="robots"><button id="robot_1" onclick="selectRobot('robot_1')">AX_1 · 팔 로봇</button><button id="robot_2" onclick="selectRobot('robot_2')">AX_2 · 운반 로봇</button></div>
 <div class="grid">
+<!-- 팀원 안내: 주행은 클릭 후 유지된다. 정지 또는 연결 만료로 반복 전송을 끊는다. -->
 <section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 한 번 누르면 계속 이동합니다.<br>멈추려면 정지 버튼을 누르세요.</p><p class="note" id="driveState" role="status">주행 정지 상태</p>
 <div class="pad"><span></span><button data-drive="w">▲<br>전진</button><span></span><button data-drive="a">↶<br>좌회전</button><button class="stop" onclick="stopAll()">정지</button><button data-drive="d">↷<br>우회전</button><span></span><button data-drive="s">▼<br>후진</button><span></span></div>
 <div class="adjust"><button onclick="send('speed',-1)">−</button><div class="value"><span id="linear">—</span> <span class="unit">m/s</span></div><button onclick="send('speed',1)">+</button></div>
 <p class="note" style="text-align:center">회전 속도 <strong id="angular">—</strong> rad/s · 주행 속도와 함께 조절</p></section>
+<!-- 팀원 안내: 팔 명령은 robot_1에만 보낸다. 각도는 클릭 1회 이동량이며 별도의 팔 속도 설정이 아니다. -->
 <section class="card"><h2>AX_1 팔 조종</h2><select class="wide" id="joint" onchange="send('joint',Number(this.value))"><option value="0">1 · 기둥 회전</option><option value="1">2 · 어깨</option><option value="2">3 · 팔꿈치</option><option value="3">4 · 손목</option><option value="4">5 · 집게 전체 회전</option></select>
 <p class="note">한 번에 움직이는 각도</p><div class="adjust"><button class="arm-setting" onclick="send('angle',-1)">−</button><div class="value"><span id="step">—</span> <span class="unit">도 / 회</span></div><button class="arm-setting" onclick="send('angle',1)">+</button></div>
 <div class="jog"><button class="arm-jog" onclick="send('jog',-1)">− 방향 이동</button><button class="arm-jog" onclick="send('jog',1)">+ 방향 이동</button></div>
 <p class="note" id="armHint">관절 상태 확인 중</p><div class="angles" id="angles"></div>
 <p class="note">손가락 개폐·자동 충돌 회피는 지원하지 않습니다.<br>팔 이동 속도는 자동 계산되며, 여기서는 이동 각도를 조절합니다.</p></section>
 </div>
+<!-- 팀원 안내: 전체 정지는 두 베이스를 0 속도로 하고 이 리모컨의 팔 Action을 취소한다. -->
 <button class="emergency" onclick="stopAll()">■ 전체 정지 · 팔 동작 취소</button>
 <div class="status" id="status">Ubuntu의 로봇 연결을 기다리고 있습니다.</div>
 </main>
 <script>
+// 팀원 안내: 서버가 페이지에 넣은 실행별 토큰과 브라우저별 client/seq를 사용한다. 재시작 후에는 새로고침해야 한다.
 const token='__TOKEN__',client=crypto.randomUUID();let seq=0,activeDirection=null,timer=null,connected=false,driveRequest=false;
+// 팀원 안내: 202 응답은 접수 의미다. arm 관련 설정/명령은 연속 주행을 해제해 완료 뒤 갑자기 주행이 재개되지 않게 한다.
 async function send(action,value){
  if(!connected&&action!=='stop')return;
  if(['robot','joint','jog','angle'].includes(action))releaseDrive(false);
  const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,client,seq:++seq,action,value}),signal:AbortSignal.timeout(1500)}).catch(()=>null);
  if(!response||!response.ok){releaseDrive(false);document.getElementById('status').textContent='연결을 확인하세요. 주행 명령을 중단했습니다.';}
 }
+// 팀원 안내: 강조 표시와 주행 문구는 이 브라우저의 입력 상태다. 실제 이동 확인은 Gazebo/관절 상태로 판단한다.
 function showDrive(){
  for(const button of document.querySelectorAll('[data-drive]')){
   const selected=button.dataset.drive===activeDirection;
@@ -38,10 +46,14 @@ function showDrive(){
  const names={w:'전진',s:'후진',a:'좌회전',d:'우회전'};
  document.getElementById('driveState').textContent=activeDirection?names[activeDirection]+' 주행 중 · 정지 버튼으로 멈추세요.':'주행 정지 상태';
 }
+// 팀원 안내: UI 타이머를 해제하면 새 주행 명령이 중단된다. 서버는 마지막 명령 이후 약 0.2초에 0 속도를 보낸다.
 function releaseDrive(sendStop=true){activeDirection=null;clearInterval(timer);timer=null;showDrive();if(sendStop)send('stop');}
+// 팀원 안내: 타이머를 먼저 끊고 정지를 보내야 이전 반복 주행이 정지 직후 덮어쓰지 않는다.
 function stopAll(){releaseDrive(false);send('stop');}
 function selectRobot(robot){stopAll();send('robot',robot);}
+// 팀원 안내: 클릭 한 번을 75 ms 주기 명령으로 유지한다. 이전 HTTP 요청이 진행 중이면 중복 전송하지 않는다.
 async function pulse(){if(!activeDirection||driveRequest)return;driveRequest=true;try{await send('drive',activeDirection);}finally{driveRequest=false;}}
+// 팀원 안내: 다른 방향으로 전환할 때도 기존 타이머부터 제거해 동시에 두 방향을 반복하지 않는다.
 function startDrive(direction){
  if(!connected)return;
  releaseDrive(false);activeDirection=direction;showDrive();pulse();timer=setInterval(pulse,75);
@@ -51,9 +63,11 @@ for(const button of document.querySelectorAll('[data-drive]')){
  button.addEventListener('click',()=>startDrive(button.dataset.drive));
  button.addEventListener('contextmenu',event=>event.preventDefault());
 }
+// 팀원 안내: 창을 최소화/탭 숨김 상태로 두거나 닫으면 정지 요청을 보낸다. 다시 보여도 자동 주행 재개는 하지 않는다.
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll();});
 window.addEventListener('pagehide',()=>{navigator.sendBeacon('/api/command',new Blob([JSON.stringify({token,client,seq:++seq,action:'stop'})],{type:'application/json'}));});
 document.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target.tagName!=='SELECT'){event.preventDefault();stopAll();}});
+// 팀원 안내: 250 ms 뒤 상태를 다시 조회한다. 화면은 degree, ROS 제어부는 rad를 사용한다.
 async function refresh(){
  try{
   const response=await fetch('/api/state',{signal:AbortSignal.timeout(1500)});if(!response.ok)throw Error();const state=await response.json();if(!state.robot)throw Error();connected=true;
@@ -68,6 +82,7 @@ async function refresh(){
   document.getElementById('armHint').textContent=!arm?'AX_2에는 팔이 없습니다.':state.arm_busy?'팔 이동 중 · 전체 정지로 취소 가능':state.arm_ready?'관절을 고른 뒤 방향 이동 버튼을 누르세요.':'관절 상태 수신 대기 중';
   const angles=document.getElementById('angles');angles.replaceChildren();state.angles_deg.forEach((value,index)=>{const name=document.createElement('span'),number=document.createElement('span');name.textContent=state.labels[index];number.textContent=value.toFixed(2)+'°';angles.append(name,number);});
   document.getElementById('status').textContent=state.notice;
+// 팀원 안내: 상태 조회가 실패하면 연속 주행을 해제한다. 재연결은 표시만 복구하며 이동을 재시작하지 않는다.
  }catch{connected=false;releaseDrive(false);document.getElementById('connection').textContent='연결 끊김';document.getElementById('connection').className='tag';}
  setTimeout(refresh,250);
 }refresh();

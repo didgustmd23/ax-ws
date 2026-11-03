@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 고정된 외부 commit의 description만 선별 도입한다. 라이선스·원본 해시를 보존하고 하드웨어 드라이버는 포함하지 않는다.
 """Vendor the design-approved description subset, never its hardware driver."""
 import hashlib
 import json
@@ -10,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT / 'log/vendor_epick'
 COMMIT = 'd07391307d2d16cacf88daa168ce02839589397e'
 
+# upstream HEAD가 고정 commit인지 먼저 확인하고 description·원본 증빙·라이선스·해시를 갱신한다.
 def main():
     if subprocess.check_output(['git', '-C', str(UPSTREAM), 'rev-parse', 'HEAD'], text=True).strip() != COMMIT:
         raise SystemExit('Unexpected upstream commit')

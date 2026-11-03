@@ -1,3 +1,4 @@
+# EPick 가상 공구 설정. 질량 kg, 길이/오프셋 m, 회전 rad. ToF lip_offset은 센서 원점에서 컵 끝면까지이며 흡착 성공 판정이 아니다.
 # Development single-cup baseline; product mass/inertia and final cup selection remain assumptions.
 body_mass_kg: 0.71
 cup_mass_kg: 0.04

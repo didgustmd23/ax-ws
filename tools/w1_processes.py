@@ -1,3 +1,4 @@
+# 시험 partition과 PID 시작 시각으로 소유권을 확인한다. 다른 Gazebo나 재사용된 PID를 종료하지 않기 위한 공용 도구다.
 """Find only processes tagged with the unique AX W1 Gazebo partition."""
 import os
 from pathlib import Path
@@ -5,6 +6,7 @@ import signal
 import time
 
 
+# 환경의 GZ_PARTITION이 시험 태그와 일치하는 프로세스의 PID·시작 시각을 수집한다.
 def tagged_processes(partition=None):
     result = {}
     for path in Path('/proc').iterdir():
@@ -24,6 +26,7 @@ def tagged_processes(partition=None):
     return result
 
 
+# 자기 시험 태그와 시작 시각이 일치하는 프로세스만 단계적으로 종료한다.
 def stop_tagged(partition=None):
     signalled = set()
     for sig, delay in ((signal.SIGTERM, 3), (signal.SIGKILL, 1)):

@@ -1,3 +1,4 @@
+# 센서 토픽/형식/유효성의 공통 계약이다. 센서 장착 위치는 sensor_mounts.yaml에서 관리한다.
 # W1 sensor baseline. SI units, ideal Gazebo measurements, no calibrated hardware noise.
 # Geometric extrinsics are in sensor_mounts.yaml; CameraInfo is the intrinsic source.
 schema_version: 1

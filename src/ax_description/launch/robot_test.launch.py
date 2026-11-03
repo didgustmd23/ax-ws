@@ -1,3 +1,4 @@
+# 공통 시험 월드 진입점: 월드·모델·센서 브리지를 띄운다. 제어기 활성화는 ax_control simulation.launch.py가 맡는다.
 """Shared robot test world; one, two or four role-separated robots.
 
 제어기 설정·활성화는 A2 ax_control이 소유한다. 이 launch는 월드·모델·센서 브리지만 띄우고,
@@ -28,9 +29,11 @@ CONTROLLER_FILES = {'ax.urdf.xacro': 'ax1_controllers.yaml', 'ax_2.urdf.xacro': 
 COMMON_CONTROLLER_FILE = 'common_controllers.yaml'
 
 
+# Gazebo 센서 토픽을 로봇별 ROS 경로로 연결한다. 외부 제어 명령을 대신 생성하지 않는다.
 def bridges(robot_id, manipulator, tool='epick'):
     sensor_namespace = '/ax/' + robot_id + '/sensors/'
     configuration = []
+    # 센서 스트림은 GZ_TO_ROS 방향과 SENSOR_DATA QoS로 등록한다.
     def add_sensor_bridge(suffix, ros_type, gz_type, ros_suffix=None):
         configuration.append({'ros_topic_name': sensor_namespace + (ros_suffix or suffix),
                        'gz_topic_name': sensor_namespace + suffix, 'ros_type_name': ros_type,
@@ -54,6 +57,7 @@ def bridges(robot_id, manipulator, tool='epick'):
     return configuration
 
 
+# 실행 인자를 평가해 월드·모델·센서 브리지를 구성한다. 제어기 spawner는 만들지 않는다(ax_control 담당).
 def setup(context):
     package_share = Path(get_package_share_directory('ax_description'))
     robot_count = int(LaunchConfiguration('robots').perform(context))
@@ -132,6 +136,7 @@ def setup(context):
     return actions
 
 
+# launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('world', default_value='ax_test.world', choices=['ax_test.world']),

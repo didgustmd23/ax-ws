@@ -35,10 +35,14 @@ $desktopDir = [IO.Path]::GetFullPath($ShortcutDirectory)
 New-Item -ItemType Directory -Path $desktopDir -Force | Out-Null
 $shell = New-Object -ComObject WScript.Shell
 $names = @{Start=('AX '+[char]0xC2E4+[char]0xD589); Stop=('AX '+[char]0xC885+[char]0xB8CC); Remote=('AX '+[char]0xB9AC+[char]0xBAA8+[char]0xCEE8)}
-foreach ($action in @('Start', 'Remote', 'Stop')) {
+$names.Recover = 'AX '+[char]0xD654+[char]0xBA74+' '+[char]0xBCF5+[char]0xAD6C
+foreach ($action in @('Start', 'Remote', 'Stop', 'Recover')) {
     $shortcut = $shell.CreateShortcut((Join-Path $desktopDir ($names[$action]+'.lnk')))
     $shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
     $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'ax-launch.ps1')+'" -Action '+$action
+    if ($action -eq 'Recover') {
+        $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'recover.ps1')+'"'
+    }
     $shortcut.WorkingDirectory = $repoDir
     $shortcut.WindowStyle = 7
     $shortcut.Description = 'AX simulation '+$action

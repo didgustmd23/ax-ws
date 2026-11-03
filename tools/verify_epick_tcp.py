@@ -37,7 +37,7 @@ readings = []
 subscription = observer.create_subscription(Range, '/ax/robot_1/sensors/tool_tof/raw',
     lambda message: readings.append(message.range), qos_profile_sensor_data)
 log = (output/'tcp_calibration.log').open('w')
-process = subprocess.Popen(['ros2', 'launch', 'ax_description', 'robot_test.launch.py',
+process = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
     'robot_ids:=robot_1', 'gui:=false', 'tool:=epick'], stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
 observer.launch_process = process
 report = {'scope': 'geometric calibration of configured cup; not hardware compliance/pressure calibration', 'cases': []}

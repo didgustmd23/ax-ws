@@ -11,6 +11,9 @@
     <!-- 설정 파일이 비어 있으면 gz_ros2_control 플러그인 없이 표시·정적 검사용 모델만 만든다. -->
     <xacro:arg name="ros_namespace" default=""/>
     <xacro:arg name="ros2_control_params" default=""/>
+    <xacro:arg name="ros2_control_common_params" default=""/>
+    <!-- true면 A2 흡착 부착·해제 플러그인을 넣는다. epick·suction 공구에서만 의미가 있다. -->
+    <xacro:arg name="tool_attach" default="false"/>
     <xacro:property name="model_name" value="$(arg robot_name)"/>
     <xacro:property name="frames" value="$(arg frame_prefix)"/>
     <xacro:include filename="sensors.xacro"/>
@@ -606,7 +609,7 @@
 
     <!-- 구동·상태는 ros2_control 하나로 처리한다. 바퀴 4개는 diff_drive_controller,
          팔 5축은 joint_trajectory_controller, primitive 손가락은 위치 그룹 제어기가 명령한다.
-         W1 제어기 이름·주기·바퀴 간격(0.622 m)·반경(0.19631 m)은 launch/w1_sim.launch.py가 설정한다.
+         제어기 이름·주기·바퀴 간격·반경은 A2 ax_control/config(common_controllers.yaml, ax1_controllers.yaml)가 정한다.
          최종 안전 게이트·팔 보호 서버는 A4 후속 구현 대상이다. -->
     <ros2_control name="${model_name}_gz_system" type="system">
         <hardware>
@@ -632,5 +635,13 @@
     <xacro:ax_wheel_contact link="front_right_wheel"/>
     <xacro:ax_wheel_contact link="rear_left_wheel"/>
     <xacro:ax_wheel_contact link="rear_right_wheel"/>
-    <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"/>
+    <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"
+                              common_params_file="$(arg ros2_control_common_params)"/>
+
+    <!-- gripper_base_link → epick_tcp 거리(m). 공구 기하가 바뀌면 tools/tests/test_w1_models.py가 불일치를 잡는다. -->
+    <xacro:property name="tool_attach_tcp_offsets" value="${dict(epick=0.1373, suction=0.082)}"/>
+    <xacro:if value="${'$(arg tool_attach)' == 'true' and '$(arg gripper_model)' in tool_attach_tcp_offsets}">
+        <xacro:ax_tool_attach namespace="$(arg ros_namespace)"
+                              tcp_offset="${tool_attach_tcp_offsets['$(arg gripper_model)']}"/>
+    </xacro:if>
 </robot>

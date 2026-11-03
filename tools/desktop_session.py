@@ -41,7 +41,7 @@ def discover(workspace):
                    for path in env.get('AMENT_PREFIX_PATH', '').split(':'))
         if not same:
             continue
-        if 'ros2 launch ax_description robot_test.launch.py' in args:
+        if 'ros2 launch ax_control simulation.launch.py' in args:
             result['launch'].append(item)
         elif 'python3' in args and 'remote_control.py' in args:
             result['remote'].append(item)
@@ -169,8 +169,8 @@ def run(args):
             if not found['launch'] and not remote_only:
                 if found['gazebo']:
                     raise RuntimeError('Orphan Gazebo processes found; use AX Stop first')
-                found['launch'] = [spawn(workspace, logs, 'gazebo', ['ros2', 'launch', 'ax_description',
-                    'robot_test.launch.py', 'robots:=2', 'tool:=' + args.tool], env)]
+                found['launch'] = [spawn(workspace, logs, 'gazebo', ['ros2', 'launch', 'ax_control',
+                    'simulation.launch.py', 'robots:=2', 'tool:=' + args.tool], env)]
                 created.extend(found['launch'])
             if not remote_only:
                 if not reused:

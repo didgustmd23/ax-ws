@@ -1,0 +1,11 @@
+# robot_2 계열(AX_2, 적재함) 제어기 설정. 공통 설정은 common_controllers.yaml에 있다.
+# 모델: ax_description/urdf/ax_2.urdf.xacro. 팔 제어기는 없다. 길이 m, 각도 rad.
+
+# 바퀴 기하. ax_description/urdf/ax_2_geometry.xacro의 ax2_wheel_separation·ax2_wheel_radius와 같아야 한다.
+/**/diff_drive_controller:
+  ros__parameters:
+    wheel_separation: 0.836695
+    wheel_radius: 0.149900663548
+    # 스키드 조향의 유효 윤거 보정 = odom 예측 회전/실제 회전.
+    # A1 drive_repair 증거(제자리 회전 좌·우 각 1회)에서 계산한 값이다. A2 직접 재측정 전 잠정값.
+    wheel_separation_multiplier: 1.1318

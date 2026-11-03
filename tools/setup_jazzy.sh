@@ -14,7 +14,7 @@ if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]]; then
 fi
 rosdep update
 rosdep install --from-paths src --ignore-src --rosdistro jazzy -r -y
-colcon build --packages-up-to ax_description ax_interfaces
+colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
 python3 tools/check_portability.py
-printf '\nReady: source install/setup.bash && ros2 launch ax_description robot_test.launch.py\n'
+printf '\nReady: source install/setup.bash && ros2 launch ax_control simulation.launch.py\n'

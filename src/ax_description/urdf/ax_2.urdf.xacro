@@ -7,6 +7,7 @@
   <!-- ros2_control namespace와 launch가 만든 제어기 설정 파일. 비어 있으면 플러그인을 만들지 않는다. -->
   <xacro:arg name="ros_namespace" default=""/>
   <xacro:arg name="ros2_control_params" default=""/>
+  <xacro:arg name="ros2_control_common_params" default=""/>
   <xacro:property name="model_name" value="$(arg robot_name)"/>
   <xacro:property name="frames" value="$(arg frame_prefix)"/>
   <xacro:include filename="ax_2_geometry.xacro"/>
@@ -160,5 +161,6 @@
   <xacro:ax_wheel_contact link="front_right_wheel"/>
   <xacro:ax_wheel_contact link="rear_left_wheel"/>
   <xacro:ax_wheel_contact link="rear_right_wheel"/>
-  <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"/>
+  <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"
+                            common_params_file="$(arg ros2_control_common_params)"/>
 </robot>

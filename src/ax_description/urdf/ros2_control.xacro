@@ -37,12 +37,17 @@
     </xacro:macro>
 
     <!-- 모델당 controller_manager 하나를 namespace 아래에 만든다.
-         params_file이 비어 있으면(RViz 표시·정적 검사) 플러그인을 생성하지 않는다. -->
-    <xacro:macro name="ax_gz_ros2_control" params="namespace params_file">
+         제어기 설정 YAML은 A2 ax_control/config가 소유하며 launch가 절대 경로로 넘긴다
+         (common_params_file: 모든 로봇 공통, params_file: 모델별).
+         params_file이 비어 있으면(RViz 표시·정적 검사·제어 없는 시험) 플러그인을 생성하지 않는다. -->
+    <xacro:macro name="ax_gz_ros2_control" params="namespace params_file common_params_file:=''">
         <xacro:if value="${params_file != ''}">
             <gazebo>
                 <plugin filename="gz_ros2_control-system"
                         name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                    <xacro:if value="${common_params_file != ''}">
+                        <parameters>${common_params_file}</parameters>
+                    </xacro:if>
                     <parameters>${params_file}</parameters>
                     <!-- 제어기가 명령 인터페이스를 잡지 않은 관절에는 속도 0 명령을 준다(effort 상한 안에서 유지). -->
                     <hold_joints>true</hold_joints>
@@ -58,5 +63,21 @@
                 </plugin>
             </gazebo>
         </xacro:if>
+    </xacro:macro>
+
+    <!-- A2 흡착 부착·해제 Gazebo 플러그인(ax_control의 ax_suction_attach_system).
+         Gazebo가 고정 관절을 합치므로 epick_tcp 대신 gripper_base_link를 부모로 두고 TCP까지 거리(tcp_offset, m)를 넘긴다.
+         max_attach_distance(m)는 계약에 값이 없어 개발용으로 정한 잠정값이다.
+         진공·접촉 물리는 없으며 조건을 만족하면 고정 관절로 잇는다. 라이브러리 경로는 ax_control launch가 설정한다. -->
+    <xacro:macro name="ax_tool_attach" params="namespace tcp_offset max_attach_distance:=0.12">
+        <gazebo>
+            <plugin filename="ax_suction_attach_system" name="ax_control::SuctionAttachSystem">
+                <parent_link>gripper_base_link</parent_link>
+                <tcp_offset>${tcp_offset} 0 0</tcp_offset>
+                <max_attach_distance>${max_attach_distance}</max_attach_distance>
+                <command_topic>${namespace}/tool/gz_command</command_topic>
+                <state_topic>${namespace}/tool/gz_state</state_topic>
+            </plugin>
+        </gazebo>
     </xacro:macro>
 </robot>

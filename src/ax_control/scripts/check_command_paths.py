@@ -18,6 +18,8 @@ import argparse
 import re
 import sys
 import time
+from pathlib import Path
+import yaml
 
 import rclpy
 from control_msgs.action import FollowJointTrajectory
@@ -47,7 +49,10 @@ WHEEL_JOINTS = [
 ARM_TARGET = [0.3, 0.2, 0.2, 0.2, 0.3]
 ARM_TOLERANCE_RAD = 0.01
 WHEEL_STOPPED_RAD_S = 0.01
-DRIVE_SPEED_M_S = 0.3
+# 조종기와 같은 공통 설정을 읽어 시험 속도가 이전 값에 머무르지 않도록 한다.
+_control = yaml.safe_load((Path(__file__).resolve().parents[1] /
+    'config/common_controllers.yaml').read_text(encoding='utf-8'))
+DRIVE_SPEED_M_S = _control['/**/ax_keyboard_teleop']['ros__parameters']['default_linear_speed']
 DRIVE_SECONDS = 2.0
 STOP_WAIT_SECONDS = 3.0
 

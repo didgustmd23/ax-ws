@@ -23,7 +23,8 @@
                params="parent:=^
                        origin_xyz:=^|'0 0 0'
                        origin_rpy:=^|'0 0 0'
-                       prefix:=^|'' virtual_mass:=0.71">
+                       prefix:=^|'' virtual_mass:=0.71
+                       virtual_com:='0 0 0' virtual_inertia:=${None}">
 
     <!-- Constants -->
     <xacro:property name="base_link" value="${prefix}epick_base_link"/>
@@ -42,10 +43,17 @@
     <!-- EPick Body -->
     <link name="${body_link}">
       <!-- AX simulation mass assumption; upstream provides no product inertia. -->
-      <inertial><mass value="${virtual_mass}"/>
+      <inertial><origin xyz="${virtual_com}"/><mass value="${virtual_mass}"/>
+        <!-- AX 비교용 가상 관성. 지정하지 않으면 기존 원통 근사를 사용한다. -->
+        <xacro:if value="${virtual_inertia is not None}">
+          <inertia ixx="${virtual_inertia['ixx']}" iyy="${virtual_inertia['iyy']}" izz="${virtual_inertia['izz']}"
+                   ixy="${virtual_inertia['ixy']}" ixz="${virtual_inertia['ixz']}" iyz="${virtual_inertia['iyz']}"/>
+        </xacro:if>
+        <xacro:unless value="${virtual_inertia is not None}">
         <inertia ixx="${virtual_mass*(3*body_collision_radius**2+body_length**2)/12}"
                  iyy="${virtual_mass*(3*body_collision_radius**2+body_length**2)/12}"
                  izz="${virtual_mass*body_collision_radius**2/2}" ixy="0" ixz="0" iyz="0"/>
+        </xacro:unless>
       </inertial>
       <visual>
         <!-- Shifted backwards since the mesh origin is at the base end -->

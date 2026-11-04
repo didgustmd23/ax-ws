@@ -159,7 +159,9 @@ def run(args):
         selected_world = getattr(args, 'world', 'ax_test.world')
         launch_tool = args.tool
         if args.action == 'start' and getattr(args, 'switch_world', False):
-            installed_world = workspace / 'install/ax_description/share/ax_description/worlds' / selected_world
+            package_share = workspace / 'install/ax_description/share/ax_description'
+            installed_world = (package_share / 'world_assets/aws_small_warehouse/aws_warehouse_harmonic.world'
+                               if selected_world == 'aws_warehouse.world' else package_share / 'worlds' / selected_world)
             if not installed_world.is_file():
                 raise RuntimeError('Selected world is not installed. Build ax_description in the Ubuntu workspace first')
             if found['launch']:
@@ -204,7 +206,7 @@ def run(args):
                 if not reused:
                     command = ('source /opt/ros/jazzy/setup.bash; source ' +
                         shlex.quote(str(workspace / 'install/setup.bash')) + '; python3 ' +
-                        shlex.quote(str(workspace / 'tools/verify_unified_runtime.py')))
+                        shlex.quote(str(workspace / 'tools/verify_unified_runtime.py')) + ' --world ' + shlex.quote(selected_world))
                     deadline = time.monotonic() + 110
                     ready = False
                     while time.monotonic() < deadline and alive(found['launch'][0]):
@@ -257,7 +259,7 @@ def main():
     parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])
     parser.add_argument('--workspace', default='~/ax-play-ws')
     parser.add_argument('--tool', choices=['robotiq', 'epick'], default='robotiq')
-    parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world'], default='ax_test.world')
+    parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world'], default='ax_test.world')
     parser.add_argument('--switch-world', action='store_true', help='Switch the owned AX session if another world is active')
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()

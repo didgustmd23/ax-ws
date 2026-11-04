@@ -1,11 +1,25 @@
 # EPick 가상 공구 설정. 질량 kg, 길이/오프셋 m, 회전 rad. ToF lip_offset은 센서 원점에서 컵 끝면까지이며 흡착 성공 판정이 아니다.
-# Development single-cup baseline; product mass/inertia and final cup selection remain assumptions.
-body_mass_kg: 0.71
+# 집게 기본 자세와 물리 특성을 맞춘 단일 컵 비교 모델. 실물 제품 사양이 아니다.
+body_mass_kg: 0.87086427304
 cup_mass_kg: 0.04
-cup_radius_m: 0.012
+# 화면에서 구분하기 쉽도록 컵 지름을 24mm에서 40mm로 확대한다.
+# 높이는 유지하므로 컵 끝면·TCP·ToF 기준 거리는 바뀌지 않는다. 실물 제품 치수는 아니다.
+cup_radius_m: 0.020
 cup_height_m: 0.015
 body_length_m: 0.1023
 tcp_stroke_compensation_m: 0.0
 tof_xyz: '0.060 0 0.095'
 tof_rpy: '0 -1.5707963267948966 0'
 tof_lip_offset_m: 0.0223
+
+# Robotiq 2F-85 기본 손가락 자세·무부하 기준으로 질량·무게중심·관성을 맞춘다.
+# 컵 0.04kg·ToF 0.01kg을 포함한 공구 합계는 0.92086427304kg이다.
+# 아래 원점·관성은 epick_body 좌표계 기준이다. 집게·컵·ToF 구성을 바꾸면 재계산한다.
+body_com_xyz: -0.0006989014565727227 -4.5400619153766084e-05 -0.0071421867048997306
+body_inertia:
+  ixx: 0.001052497248714372
+  iyy: 0.0018080238636805092
+  izz: 0.0011083322601597794
+  ixy: 4.0981253836299215e-06
+  ixz: 3.073301080899458e-05
+  iyz: 2.7062504328885e-06

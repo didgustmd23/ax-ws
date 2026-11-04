@@ -61,6 +61,7 @@ try {
         $list.SetBounds(20, 50, 410, 30)
         [void]$list.Items.Add('기존 시험 월드 (30 x 30 m)')
         [void]$list.Items.Add('창고 월드 (20 x 15 m)')
+        [void]$list.Items.Add('AWS 물류 창고 (선반·집기 / 지붕 없음)')
         $list.SelectedIndex = 0
         $note = New-Object Windows.Forms.Label
         $note.Text = "다른 월드가 실행 중이면 AX 세션을 종료하고 전환합니다.`r`n같은 월드는 다시 생성하지 않습니다."
@@ -78,7 +79,7 @@ try {
         $form.CancelButton = $cancel
         try {
             if ($form.ShowDialog() -ne [Windows.Forms.DialogResult]::OK) { return }
-            $world = @('ax_test.world', 'planned/ax_warehouse.world')[$list.SelectedIndex]
+            $world = @('ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world')[$list.SelectedIndex]
         } finally { $form.Dispose() }
         $worldArguments = @('--world', $world, '--switch-world')
         $Action = 'Start'

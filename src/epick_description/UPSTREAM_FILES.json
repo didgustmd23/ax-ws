@@ -40,12 +40,12 @@
     }
   ],
   "adaptations": [
-    "epick_body.xacro: add configurable virtual cylinder mass/inertia only",
+    "epick_body.xacro: add configurable virtual mass/COM/inertia with cylinder fallback",
     "Hardware driver and MoveIt virtual vacuum joint are excluded from active macros",
     "AX cup, ToF mount and TCP are defined in ax_description/urdf/epick_adapter.xacro"
   ],
   "adapted_sha256": {
-    "urdf/epick_body.xacro": "4af5657cf1383d8b67f97bf1b03d402b4b0b873f2559cb1d14c9772198d518b4",
+    "urdf/epick_body.xacro": "6511534eb037200fbe1e93e9797d90588188c81e3dd7620d6449dc9099d29c93",
     "urdf/helper_macros.xacro": "7032605850130171fe017f0408726876bf9f3a4ae1a2c3bf750bc73144c57325"
   }
 }

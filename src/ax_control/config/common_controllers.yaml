@@ -28,3 +28,27 @@
     enable_odom_tf: true
     # 명령이 끊긴 뒤 제어기가 스스로 멈추는 시간(s). A4 게이트의 0.2 s 만료 뒤에서 받치는 값이다.
     cmd_vel_timeout: 0.5
+    # 정지 출발 후 약 2초에 1m 이동하는 AX 시뮬레이션 목표값.
+    # 속도 0.67 m/s, 가속도 0.67 m/s²: 1초 가속 + 1초 정속 = 이론상 1.005m.
+    # 제조사 공식 사양이 아닌 개발용 설정이다.
+    linear.x.max_velocity: 0.67
+    linear.x.min_velocity: -0.67
+    linear.x.max_acceleration: 0.67
+    linear.x.max_deceleration: -0.67
+    linear.x.max_acceleration_reverse: -0.67
+    linear.x.max_deceleration_reverse: 0.67
+    # 각속도는 Stretch의 공식값이 아닌 AX 개발용 제한이다.
+    angular.z.max_velocity: 0.50
+    angular.z.min_velocity: -0.50
+    angular.z.max_acceleration: 0.20
+    angular.z.max_deceleration: -0.20
+    angular.z.max_acceleration_reverse: -0.20
+    angular.z.max_deceleration_reverse: 0.20
+    publish_limited_velocity: true
+
+# 조종 UI도 이 파일에서 동일한 주행 범위를 읽는다.
+/**/ax_keyboard_teleop:
+  ros__parameters:
+    default_linear_speed: 0.67
+    minimum_linear_speed: 0.04
+    default_angular_speed: 0.20

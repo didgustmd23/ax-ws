@@ -3,16 +3,20 @@
 """Local browser remote for AX simulation; ROS stays inside Ubuntu."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import argparse
+import fcntl
 import json
 import math
 from pathlib import Path
 import queue
 import secrets
 import signal
+import shlex
+import subprocess
 import threading
 import time
 
-from keyboard_teleop import KeyboardTeleop, JOINT_LABELS, rclpy, SignalHandlerOptions
+from keyboard_teleop import KeyboardTeleop, JOINT_LABELS, DRIVE_PROFILE, rclpy, SignalHandlerOptions
+from desktop_session import discover, stop_processes, spawn, alive
 
 
 # 허용 명령·값·클라이언트 식별자·순서를 검사한다. bool은 Python에서 int의 하위형이므로 정수와 구분한다.
@@ -25,6 +29,8 @@ def validate_command(data):
         pass
     elif action == 'robot' and value in ('robot_1', 'robot_2'):
         pass
+    elif action == 'tool' and value in ('epick', 'robotiq'):
+        pass
     elif action == 'joint' and type(value) is int and 0 <= value < 5:
         pass
     elif action in ('speed', 'angle', 'jog') and type(value) is int and value in (-1, 1):
@@ -32,10 +38,10 @@ def validate_command(data):
     elif action in ('set_speed', 'set_angle'):
         if type(value) not in (int, float) or not math.isfinite(value):
             raise ValueError('A finite numeric setting is required')
-        minimum, maximum = (.025, 3.0) if action == 'set_speed' else (math.degrees(.01), 90.0)
+        minimum, maximum = (DRIVE_PROFILE['minimum_linear'], DRIVE_PROFILE['maximum_linear']) if action == 'set_speed' else (math.degrees(.01), 90.0)
         if not minimum <= value <= maximum:
             raise ValueError('Setting outside permitted range')
-    elif action == 'stop':
+    elif action in ('stop', 'reset'):
         value = None
     else:
         raise ValueError('Invalid command or value')
@@ -54,6 +60,71 @@ class Remote:
         self.token = secrets.token_urlsafe(24)
         self.last_seen = time.monotonic()
         self.sequences = {}
+        self.resetting = False
+        self.reset_result = queue.Queue()
+        self.tool = None
+        self.tool_checked = 0.
+
+    # Gazebo와 제어기를 함께 새로 시작한다. 리모컨 서버는 유지하며 기존 launch 인자를 보존한다.
+    # 작업공간 잠금은 바탕화면 실행/종료와의 경합을 막는다. ROS 객체는 이 작업 스레드에서 만지지 않는다.
+    def restart_simulation(self, tool=None):
+        workspace = Path(__file__).resolve().parents[1]
+        logs = workspace / 'log/desktop_session'
+        try:
+            logs.mkdir(parents=True, exist_ok=True)
+            with (logs / 'session.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                found = discover(workspace)
+                if len(found['launch']) != 1:
+                    raise RuntimeError('이 작업 폴더의 실행 중인 시뮬레이션 하나가 필요합니다.')
+                current = found['launch'][0]
+                arguments = shlex.split(current['args'])
+                index = arguments.index('launch')
+                if arguments[index:index + 3] != ['launch', 'ax_control', 'simulation.launch.py']:
+                    raise RuntimeError('AX 실행 인자를 확인할 수 없습니다.')
+                command = ['ros2'] + arguments[index:]
+                if tool is not None:
+                    # 다른 실행 인자는 유지하고 장착 공구만 바꾼다. 셸 문자열로 실행하지 않는다.
+                    command = [arg for arg in command if not arg.startswith('tool:=')]
+                    command.append('tool:=' + tool)
+                env = current['env'].copy()
+                stop_processes(found['keyboard'] + found['launch'] + found['gazebo'])
+                child = spawn(workspace, logs, 'gazebo', command, env)
+                # 센서를 끈 실행도 지원한다. 실행 인자에 지정된 로봇의 제어기 활성화를 확인한다.
+                options = dict(arg.split(':=', 1) for arg in arguments if ':=' in arg)
+                robots = options.get('robot_ids', '').split(',') if options.get('robot_ids') else [
+                    'robot_' + str(i + 1) for i in range(int(options.get('robots', '2')))]
+                deadline = time.monotonic() + 110
+                while time.monotonic() < deadline and alive(child):
+                    try:
+                        ready = True
+                        with (logs / 'readiness.log').open('w') as output:
+                            for robot in robots:
+                                result = subprocess.run(['ros2', 'control', 'list_controllers', '-c',
+                                    '/ax/' + robot + '/controller_manager'], cwd=workspace, env=env,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                    timeout=min(8, max(1, deadline - time.monotonic())))
+                                output.write(result.stdout)
+                                expected = ['joint_state_broadcaster', 'diff_drive_controller']
+                                if int(robot.split('_')[1]) % 2:
+                                    expected.append('arm_controller')
+                                ready = ready and result.returncode == 0 and all(any(
+                                    line.startswith(name + ' ') and 'active' in line and 'inactive' not in line
+                                    for line in result.stdout.splitlines()) for name in expected)
+                        if ready:
+                            if tool is not None:
+                                self.tool = tool
+                            message = ('공구 교체 완료: ' + ('EPick 흡착판' if tool == 'epick' else 'Robotiq 집게') + ' 장착. 로봇과 월드가 시작 상태로 돌아왔습니다.'
+                                       if tool else '초기화 완료: 로봇과 월드가 시작 상태로 돌아왔습니다.')
+                            self.reset_result.put((True, message))
+                            return
+                    except subprocess.TimeoutExpired:
+                        pass
+                    time.sleep(.5)
+                stop_processes([child])
+                raise RuntimeError('재소환 준비 확인 실패: log/desktop_session/readiness.log를 확인하세요.')
+        except Exception as exc:
+            self.reset_result.put((False, '초기화 실패: ' + str(exc)))
 
     # 단일 ROS 스레드에서 큐 명령을 실행한다. 늦게 도착한 이전 주행 명령은 새 정지를 덮어쓰지 못한다.
     def apply(self, node, data, received):
@@ -62,6 +133,22 @@ class Remote:
         if seq <= self.sequences.get(client, 0):
             return
         self.sequences[client] = seq
+        # 복구 중 받은 조작은 버린다. 지연된 복구 이전 명령도 재시작 후 실행하지 않는다.
+        if self.resetting or received < getattr(self, 'reset_finished', 0.):
+            return
+        if action in ('reset', 'tool'):
+            if action == 'tool' and node.robot != 'robot_1':
+                node.notice = '공구 교체는 AX_1 팔 로봇을 선택해 주세요.'
+                return
+            if action == 'tool' and value == self.tool:
+                node.notice = '이미 장착된 공구입니다.'
+                return
+            node.stop()
+            self.resetting = True
+            node.notice = ('공구 교체 중: 현재 월드에서 선택한 공구로 다시 소환합니다.' if action == 'tool' else
+                           '초기화 중: 현재 월드에서 로봇과 제어기를 다시 시작합니다.')
+            threading.Thread(target=self.restart_simulation, args=(value if action == 'tool' else None,), daemon=True).start()
+            return
         if action == 'drive':
             if time.monotonic() - received <= .2:
                 node.key(ord(value))
@@ -81,9 +168,9 @@ class Remote:
             node.jog(value)
         elif action in ('set_speed', 'set_angle'):
             if action == 'set_speed':
-                node.drive_scale = value / .1
+                node.drive_scale = value / DRIVE_PROFILE['default_linear']
                 node.adjust_mode = 'drive'
-                node.notice = f'주행 {value:.3f} m/s / 회전 {value * 2:.2f} rad/s'
+                node.notice = f'주행 {node.linear_speed:.3f} m/s / 회전 {node.angular_speed:.2f} rad/s'
             else:
                 node.arm_step = math.radians(value)
                 node.adjust_mode = 'arm'
@@ -95,13 +182,35 @@ class Remote:
 
     # ROS 내부 상태를 브라우저용 복사본으로 만든다. 내부 각도 rad를 화면용 degree로 변환한다.
     def update(self, node):
+        # 수동 launch·월드 선택으로 실행한 공구도 표시한다. 복구 중에는 이전 장착 표시를 유지한다.
+        if not self.resetting and time.monotonic() - self.tool_checked > 2:
+            self.tool_checked = time.monotonic()
+            launches = discover(Path(__file__).resolve().parents[1])['launch']
+            self.tool = next((arg.split(':=', 1)[1] for arg in shlex.split(launches[0]['args'])
+                              if arg.startswith('tool:=')), 'epick') if len(launches) == 1 else None
+        try:
+            success, message = self.reset_result.get_nowait()
+            self.reset_finished = time.monotonic()
+            self.resetting = False
+            if success:
+                node.pending = False
+                node.goal = None
+                node.cancel_requested = True
+            node.velocity = (0., 0.)
+            node.key_deadline = 0.
+            node.notice = message
+        except queue.Empty:
+            pass
         self.state = {
             'robot': node.robot, 'joint': node.joint, 'labels': JOINT_LABELS,
-            'linear': round(node.drive_scale * .1, 3),
-            'angular': round(node.drive_scale * .2, 2),
+            'linear': round(node.linear_speed, 3),
+            'angular': round(node.angular_speed, 3),
+            'drive_profile': DRIVE_PROFILE,
             'step_deg': round(math.degrees(node.arm_step), 3),
             'angles_deg': [round(math.degrees(p), 2) for p in node.positions] if node.positions else [],
             'arm_busy': node.pending, 'notice': node.notice,
+            'resetting': self.resetting,
+            'tool': self.tool,
             'arm_ready': node.positions is not None and time.monotonic() - node.state_time < 1,
         }
 
@@ -174,7 +283,7 @@ def main():
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_for(remote))
     server.daemon_threads = True
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
-    node = KeyboardTeleop(max_drive_scale=30.0, max_arm_step=math.pi / 2)
+    node = KeyboardTeleop(max_arm_step=math.pi / 2)
     node.notice = '준비 완료. 리모컨에서 로봇과 동작을 선택하세요.'
     signal.signal(signal.SIGTERM, stop_signal_handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()

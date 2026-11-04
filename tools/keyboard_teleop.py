@@ -24,6 +24,21 @@ import yaml
 JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 JOINT_LABELS = ['기둥 회전', '어깨', '팔꿈치', '손목', '집게 전체 회전']
 
+# 제어기와 조종기의 값이 달라지지 않도록 기존 공통 YAML을 함께 사용한다.
+_control = yaml.safe_load((Path(__file__).resolve().parents[1] /
+    'src/ax_control/config/common_controllers.yaml').read_text(encoding='utf-8'))
+_drive = _control['/**/diff_drive_controller']['ros__parameters']
+_teleop = _control['/**/ax_keyboard_teleop']['ros__parameters']
+DRIVE_PROFILE = {
+    'default_linear': _teleop['default_linear_speed'],
+    'minimum_linear': _teleop['minimum_linear_speed'],
+    'maximum_linear': _drive['linear.x.max_velocity'],
+    'default_angular': _teleop['default_angular_speed'],
+    'maximum_angular': _drive['angular.z.max_velocity'],
+    'acceleration': _drive['linear.x.max_acceleration'],
+    'deceleration': abs(_drive['linear.x.max_deceleration']),
+}
+
 # 한글은 보통 두 칸을 차지하므로 문자 수가 아니라 터미널 표시 폭으로 잘라낸다.
 def fit_columns(text, columns):
     result, used = [], 0
@@ -53,7 +68,7 @@ def jog_target(positions, index, direction, limits, step=.04):
 
 class KeyboardTeleop(Node):
     # 시뮬레이션 시계를 쓰며, 두 주행 제어기와 AX_1 팔 Action만 연결한다.
-    def __init__(self, max_drive_scale=2.5, max_arm_step=.15):
+    def __init__(self, max_drive_scale=None, max_arm_step=.15):
         super().__init__('ax_keyboard_teleop', parameter_overrides=[Parameter('use_sim_time', value=True)])
         share = Path(get_package_share_directory('ax_description'))
         self.limits = yaml.safe_load((share / 'config/arm_joint_limits.yaml').read_text())['joint_limits']
@@ -61,7 +76,9 @@ class KeyboardTeleop(Node):
         self.joint = 0
         self.adjust_mode = 'drive'
         self.drive_scale = 1.0
-        self.max_drive_scale = max_drive_scale
+        self.min_drive_scale = DRIVE_PROFILE['minimum_linear'] / DRIVE_PROFILE['default_linear']
+        cap = DRIVE_PROFILE['maximum_linear'] / DRIVE_PROFILE['default_linear']
+        self.max_drive_scale = min(cap, max_drive_scale) if max_drive_scale is not None else cap
         self.arm_step = .04
         self.max_arm_step = max_arm_step
         self.positions = None
@@ -76,6 +93,14 @@ class KeyboardTeleop(Node):
             f'/ax/{robot}/diff_drive_controller/cmd_vel', 10) for robot in ('robot_1', 'robot_2')}
         self.create_subscription(JointState, '/ax/robot_1/joint_states', self.on_state, qos_profile_sensor_data)
         self.arm = ActionClient(self, FollowJointTrajectory, '/ax/robot_1/arm_controller/follow_joint_trajectory')
+
+    @property
+    def linear_speed(self):
+        return self.drive_scale * DRIVE_PROFILE['default_linear']
+
+    @property
+    def angular_speed(self):
+        return min(DRIVE_PROFILE['maximum_angular'], self.drive_scale * DRIVE_PROFILE['default_angular'])
 
     # 팔 5축이 모두 들어온 상태만 저장한다. 최신성 판정에는 실제 경과 시간(monotonic)을 쓴다.
     def on_state(self, msg):
@@ -147,12 +172,13 @@ class KeyboardTeleop(Node):
             self.arm_step = min(self.max_arm_step, round(max(.01, self.arm_step + direction * .01), 2))
             self.notice = f'다음 팔 이동 각도: {math.degrees(self.arm_step):.1f}도'
         else:
-            self.drive_scale = round(min(self.max_drive_scale, max(.25, self.drive_scale + direction * .25)), 2)
+            self.drive_scale = min(self.max_drive_scale, max(self.min_drive_scale,
+                round(self.drive_scale + direction * .25, 2)))
             # Changing a setting never starts or prolongs motion.
             self.velocity = (0., 0.)
             self.key_deadline = 0.
             self.publish_drive()
-            self.notice = f'주행 {self.drive_scale * .1:.3f} m/s / 회전 {self.drive_scale * .2:.2f} rad/s'
+            self.notice = f'주행 {self.linear_speed:.3f} m/s / 회전 {self.angular_speed:.2f} rad/s'
 
     # 수락 응답보다 먼저 정지를 눌렀다면 수락 직후 취소해 지연된 동작 시작을 막는다.
     def on_goal(self, future):
@@ -208,7 +234,7 @@ class KeyboardTeleop(Node):
             if self.pending:
                 self.notice = '팔 이동 중에는 주행할 수 없습니다. 스페이스로 먼저 정지하세요.'
             else:
-                linear, angular = .1 * self.drive_scale, .2 * self.drive_scale
+                linear, angular = self.linear_speed, self.angular_speed
                 self.velocity = {ord('w'): (linear, 0.), ord('s'): (-linear, 0.),
                                  ord('a'): (0., angular), ord('d'): (0., -angular)}[key]
                 self.key_deadline = time.monotonic() + .2
@@ -228,7 +254,7 @@ class KeyboardTeleop(Node):
             lines = [
                 'AX 키보드 조종 | 시뮬레이션',
                 f"선택 로봇: {'AX_1 (팔 로봇)' if self.robot == 'robot_1' else 'AX_2 (운반 로봇)'}  [r: 전환]",
-                f'주행 {self.drive_scale * .1:.3f} m/s | 회전 {self.drive_scale * .2:.2f} rad/s | 팔 1회 {math.degrees(self.arm_step):.1f}도',
+                f'주행 {self.linear_speed:.3f} m/s | 회전 {self.angular_speed:.2f} rad/s | 팔 1회 {math.degrees(self.arm_step):.1f}도',
                 f"+ / - 조절 대상: {'주행·회전 속도' if self.adjust_mode == 'drive' else '팔 1회 이동 각도'}",
                 '--- 주행: 키를 누르고 있으면 이동 / 떼면 약 0.2초 후 정지 ---',
                 '              w 전진',

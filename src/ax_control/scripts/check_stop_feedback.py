@@ -2,6 +2,8 @@
 """A2 개발용 정지 피드백 측정. 제어기 측정값과 Gazebo 실제 속도를 비교한다.
 
 정지 기준은 INTERFACE_CONTRACT D-06이다. 판정 소유자는 A4이며 이 도구는 측정만 한다.
+Gazebo 실제 값: 차체는 모델 자세, 팔은 링크 자세로 다시 계산한 관절각의 차분 속도다(gazebo_observer.py).
+joint_states와 다른 경로이므로 두 정지 시각을 독립 관측끼리 비교할 수 있다.
 Gazebo 실제 값은 시험 비교용이므로 운영 판정에 쓰지 않는다.
 제어기를 A4 없이 직접 구동하므로 격리된 개발 시뮬레이션에서만 실행한다.
 
@@ -39,6 +41,8 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
+
+from gazebo_observer import GazeboObserver, fetch_robot_description, joint_speed_series
 
 # D-06 실제 정지 판정 값
 STOP_LINEAR_M_S = 0.01
@@ -172,6 +176,9 @@ class StopFeedbackRecorder(Node):
         self.truth_linear = None
         self.truth_angular = None
         self.truth_xy = None
+        # 팔 실제 속도는 main에서 연결하는 Gazebo 링크 관측기로 계산한다.
+        self.observer = None
+        self.truth_arm = None
 
         self.samples = []
         self.last_sample_time = None
@@ -272,8 +279,23 @@ class StopFeedbackRecorder(Node):
         self.truth_linear = distance / elapsed
         self.truth_angular = abs(wrap_angle(end[3] - start[3])) / elapsed
 
+    # Gazebo 링크 자세로 다시 계산한 팔 관절각에서 최근 창의 최대 관절 속도(rad/s)를 구한다
+    def update_truth_arm(self, now):
+        history = [
+            (item["stamp"], item["joints"])
+            for item in self.observer.since(now - 2.0 * TRUTH_WINDOW_SECONDS)
+            if item["stamp"] <= now
+        ]
+        series = joint_speed_series(history, TRUTH_WINDOW_SECONDS)
+
+        if series:
+            self.truth_arm = series[-1][1]
+
     # 모든 값이 준비되면 일정 간격으로 표본을 저장한다
     def record_sample(self, now):
+        if self.observer is not None:
+            self.update_truth_arm(now)
+
         values = (
             self.odom_linear,
             self.odom_angular,
@@ -281,6 +303,7 @@ class StopFeedbackRecorder(Node):
             self.truth_angular,
             self.arm_speed,
             self.wheel_speed,
+            self.truth_arm,
         )
 
         if any(value is None for value in values):
@@ -381,7 +404,7 @@ def evaluate(name, samples, cut_time):
 
     # 제어기 측정값 기준 D-06 판정
     def odom_stopped(sample):
-        _, _, odom_v, odom_w, _, _, arm, _ = sample
+        _, _, odom_v, odom_w, _, _, arm, _, _ = sample
 
         return (
             odom_v <= STOP_LINEAR_M_S
@@ -389,14 +412,14 @@ def evaluate(name, samples, cut_time):
             and arm <= STOP_ARM_RAD_S
         )
 
-    # Gazebo 실제 값 기준 D-06 판정
+    # Gazebo 실제 값 기준 D-06 판정. 팔도 joint_states가 아닌 Gazebo 링크 자세 기준이다
     def truth_stopped(sample):
-        _, _, _, _, truth_v, truth_w, arm, _ = sample
+        _, _, _, _, truth_v, truth_w, _, _, truth_arm = sample
 
         return (
             truth_v <= STOP_LINEAR_M_S
             and truth_w <= STOP_ANGULAR_RAD_S
-            and arm <= STOP_ARM_RAD_S
+            and truth_arm <= STOP_ARM_RAD_S
         )
 
     odom_stop = first_stable_stop(after, odom_stopped)
@@ -541,8 +564,21 @@ def main():
     node = StopFeedbackRecorder(arguments.robot_id, truth_poses)
 
     try:
+        # 팔 실제 속도용 Gazebo 링크 관측기. 관절각 재계산에 실행 중인 모델의 URDF를 쓴다.
+        urdf = fetch_robot_description(
+            node,
+            arguments.robot_id,
+            spin=lambda: rclpy.spin_once(node, timeout_sec=0.05),
+        )
+        node.observer = GazeboObserver(arguments.robot_id, urdf, ARM_JOINTS, "gripper_base_link", None)
+        node.observer.start()
+
         failures = run_checks(node)
     finally:
+        # 종료 중 Gazebo 전송 스레드가 Python 콜백을 부르지 않도록 구독부터 해제한다.
+        if node.observer is not None:
+            node.observer.stop()
+
         node.destroy_node()
         rclpy.shutdown()
         reader.terminate()

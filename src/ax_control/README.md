@@ -53,17 +53,23 @@ A4 게이트는 아직 없다. 지금은 제어기를 누구나 직접 호출할
 | `joint_states` | 100 Hz | 관절 위치·속도 | 바퀴 `effort`는 NaN이므로 쓰지 않는다 |
 | `diff_drive_controller/odom` | 50 Hz | 선속도·각속도 | 바퀴 회전으로 계산하므로 차체 미끄러짐을 보지 못한다 |
 
-임시 모델 무부하, 시뮬레이션 시간 기준 1회 측정값이다. 명령 종료부터 D-06 값 안으로 들어오기 시작한 시점까지이며, A4의 0.5 s 유지 시간은 포함하지 않는다.
+현재 모델(EPick) 무부하, 시뮬레이션 시간 기준 1회 측정값이다(2026-11-04, `check_stop_feedback.py`).
+명령 종료부터 D-06 값 안으로 들어오기 시작한 시점까지이며, A4의 0.5 s 유지 시간은 포함하지 않는다.
+"보고값"은 odom·`joint_states`, "Gazebo 실제"는 차체 모델 자세와 팔 링크 자세로 다시 계산한 관절각 속도다.
+물리 설정(effort·질량)이 잠정값이므로 성능값이 아니라 측정 경로 확인용이다.
 
-| 시나리오 | odom 기준 | Gazebo 실제 | odom 정지 후 실제 이동 |
+| 시나리오 | 보고값 기준 | Gazebo 실제 | 보고값 정지 후 실제 이동 |
 |---|---|---|---|
-| 직진 0.3 m/s | 0.723 s | 0.757 s | 0.7 mm |
-| 직진 0.8 m/s | 1.647 s | 1.647 s | 0.3 mm |
-| 제자리 회전 0.5 rad/s | 0.768 s | 0.768 s | 0.0 mm |
-| 호 주행 0.3 m/s, 0.3 rad/s | 0.705 s | 1.589 s | 40.4 mm |
-| 팔 이동·복귀 | 0.36 s | 0.36 s | 0.0 mm |
+| 직진 0.3 m/s | 0.729 s | 0.763 s | 0.7 mm |
+| 직진 0.8 m/s | 1.777 s | 1.641 s | 0.0 mm |
+| 제자리 회전 0.5 rad/s | 0.739 s | 0.773 s | 0.0 mm |
+| 호 주행 0.3 m/s, 0.3 rad/s | 0.592 s | 0.760 s | 0.6 mm |
+| 팔 이동 | 0.316 s | 0.348 s | 0.0 mm |
+| 팔 복귀 | 0.355 s | 0.390 s | 0.0 mm |
 
-호 주행에서는 odom이 정지를 먼저 보고한다. odom만으로 실제 정지를 판정하면 차체가 아직 움직일 수 있다.
+호 주행에서는 odom이 정지를 먼저 보고한다. 이전 임시 모델 측정에서는 odom 정지 뒤 차체가 40.4 mm 더 움직였다.
+odom만으로 실제 정지를 판정하면 차체가 아직 움직일 수 있다.
+이전 표의 팔 행은 두 열 모두 `joint_states` 기준이었고, 지금은 Gazebo 링크 자세 기준으로 따로 잰다.
 Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
 ## 흡착 부착·해제
@@ -83,6 +89,8 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 - 플러그인 부모는 `gripper_base_link`이고 `epick_tcp`까지 거리는 EPick 0.1373 m, 가상 4컵 0.082 m다(`ax.urdf.xacro`). 공구 기하와 어긋나면 `tools/tests/test_w1_models.py`가 실패한다.
 - 물체 이름은 Gazebo 모델 이름과 같아야 하며 공백을 쓸 수 없다.
 - 진공·접촉 물리는 없다. 조건을 만족하면 고정 관절로 잇는다.
+- EPick 흡착컵은 아직 만들지 않았다. 모델의 `epick_suction_cup`(반지름 12 mm 원기둥)은 위치만 잡은 임시 형상이다.
+  컵이 확정되면 TCP 거리(`tool_attach_tcp_offsets`), 부착 거리, ToF `lip_offset_m`, 시험 상자 위치(`BOX_BELOW_TCP_M`), `check_payload_tracking.py`의 뻗은 자세 충돌 선별을 함께 다시 확인한다.
 - 받침면에 닿은 채 수평으로 끌면 팔이 움직이지 않는 것을 확인했다. 부착 뒤 먼저 들어 올려야 한다.
 
 ## 개발 시험
@@ -90,10 +98,17 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 ```bash
 python3 src/ax_control/scripts/check_command_paths.py --robot-id robot_1
 python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
-python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1
+python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0]
+python3 src/ax_control/scripts/check_payload_tracking.py --robot-id robot_1 [--masses 0 0.5 1 2] [--repeats 3]
 ```
 
 `check_command_paths.py`는 시뮬레이션 실행 중 제어기를 A4 없이 직접 구동해 관절 상태, 바퀴 구동·정지, 팔 궤적, 잘못된 관절 거부, TF 접두사를 점검한다.
-`check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다.
-`check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다.
+`check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다. 팔의 실제 값은 Gazebo 링크 자세로 다시 계산한 관절각 속도다.
+`check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다. 상자 질량은 `--box-mass`(kg, 기본 1.0)로 바꾼다.
+`check_payload_tracking.py`는 흡착으로 붙인 상자로 단계 하중(기본 0·0.5·1·2 kg) 추종·유지·운반 중 취소 정지를 시험한다.
+
+- 자세: A1 검증 자세 3개와 공구 하향으로 어깨 축에서 TCP까지 수평 약 1.0 m(`reach_side`)·1.29 m(`reach_max`)인 자세. 충돌 선별(매단 상자 포함)과 관절 한계 여유 0.1 rad 이상으로 골랐다.
+- 독립 관측: `joint_states` 위치·속도와 함께 Gazebo 링크 자세로 다시 계산한 관절각(`gazebo_observer.py`), TCP 기준 상자 상대 위치(미끄러짐), 상자 실제 높이(들어 올림·낙하), 차체 기울기를 기록한다.
+- 구조 판정만 PASS/FAIL이다: Action 성공, 두 관측 일치(1e-3 rad), 부착 신호와 실제 위치 일치, effort가 URDF 한계의 95% 미만, 차체 기울기 0.25 rad 이하. 추종 오차·정지 시간·effort 비율은 기준 없이 기록만 한다.
+- 결과는 `log/a2_payload/<KST 시각>/`의 단계별 JSON과 `summary.json`이다. 물리 설정이 잠정값이므로 기록값을 AX 하중 성능으로 쓰지 않는다. 부착은 고정 관절이라 상자가 떨어지지 않은 것은 흡착력 검증이 아니다.
 모두 운영 경로가 아니므로 격리된 개발 시뮬레이션에서만 실행한다.

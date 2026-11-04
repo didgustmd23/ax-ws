@@ -35,6 +35,7 @@ import subprocess
 import sys
 import threading
 import time
+import yaml
 from collections import deque
 from zoneinfo import ZoneInfo
 
@@ -535,6 +536,12 @@ def run_checks(node, repeats=1):
     )
     print(f"[INFO] 위치·속도 NaN 관절: {sorted(node.joint_nan_names)}", flush=True)
 
+    # 저속 비교 조건은 유지하고 최대 속도 시험은 현재 공통 상한을 사용한다.
+    control = yaml.safe_load((Path(__file__).resolve().parents[1] /
+        'config/common_controllers.yaml').read_text(encoding='utf-8'))
+    drive = control['/**/diff_drive_controller']['ros__parameters']
+    maximum_linear = drive['linear.x.max_velocity']
+    maximum_angular = drive['angular.z.max_velocity']
     feedback = {
         "joint_states_hz": node.joint_meter.rate(),
         "joint_states_max_gap_s": node.joint_meter.max_gap,
@@ -546,8 +553,8 @@ def run_checks(node, repeats=1):
 
     scenarios = [
         ("직진 0.3 m/s", 0.3, 0.0, 3.0),
-        ("직진 0.8 m/s", 0.8, 0.0, 3.0),
-        ("제자리 회전 0.5 rad/s", 0.0, 0.5, 3.0),
+        (f"직진 상한 {maximum_linear:g} m/s", maximum_linear, 0.0, 3.0),
+        (f"제자리 회전 상한 {maximum_angular:g} rad/s", 0.0, maximum_angular, 3.0),
         ("호 주행", 0.3, 0.3, 3.0),
     ]
 

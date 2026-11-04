@@ -31,6 +31,14 @@ from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 WORKSPACE = Path(__file__).resolve().parents[1]
+# 기본 속도와 정지 대기 시간을 실제 제어기 설정에서 읽는다.
+_control = yaml.safe_load((WORKSPACE / 'src/ax_control/config/common_controllers.yaml').read_text(encoding='utf-8'))
+_drive = _control['/**/diff_drive_controller']['ros__parameters']
+_teleop = _control['/**/ax_keyboard_teleop']['ros__parameters']
+LINEAR_SPEED = _teleop['default_linear_speed']
+ANGULAR_SPEED = _teleop['default_angular_speed']
+STOP_SETTLE_SECONDS = max(LINEAR_SPEED / abs(_drive['linear.x.max_deceleration']),
+                          ANGULAR_SPEED / abs(_drive['angular.z.max_deceleration'])) + .3
 
 WHEELS = ['front_left_wheel_joint', 'front_right_wheel_joint',
           'rear_left_wheel_joint', 'rear_right_wheel_joint']
@@ -164,7 +172,7 @@ class DriveObserver(Node):
         start_joints = dict(self.joints[robot_id])
         self.advance(1.5, robot_id, linear, angular)
         self.command()
-        self.advance(.4)
+        self.advance(STOP_SETTLE_SECONDS)
         end_pose = self.poses[robot_id]
         forward_distance = ((end_pose[0] - start_pose[0]) * math.cos(start_pose[3])
                             + (end_pose[1] - start_pose[1]) * math.sin(start_pose[3]))
@@ -316,8 +324,8 @@ def main():
                 break
             if args.robot_id != 'all' and args.robot_id != robot_id:
                 continue
-            for name, linear, angular in [('forward', .12, 0.0), ('reverse', -.12, 0.0),
-                                          ('turn_left', 0.0, .3), ('turn_right', 0.0, -.3)]:
+            for name, linear, angular in [('forward', LINEAR_SPEED, 0.0), ('reverse', -LINEAR_SPEED, 0.0),
+                                          ('turn_left', 0.0, ANGULAR_SPEED), ('turn_right', 0.0, -ANGULAR_SPEED)]:
                 if args.trial != 'all' and args.trial != name:
                     continue
                 report['trials'].append(observer.trial(robot_id, name, linear, angular))

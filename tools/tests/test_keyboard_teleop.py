@@ -50,20 +50,27 @@ class KeyboardControl(unittest.TestCase):
 
     def test_speed_adjustment_stays_below_controller_limits_and_stops(self):
         calls = []
-        state = SimpleNamespace(adjust_mode='drive', drive_scale=1., arm_step=.04,
+        # ROS 노드를 시작하지 않고 실제 속도 계산 속성과 현재 공통 제한을 사용한다.
+        class DriveState(SimpleNamespace):
+            linear_speed = teleop.KeyboardTeleop.linear_speed
+            angular_speed = teleop.KeyboardTeleop.angular_speed
+        profile = teleop.DRIVE_PROFILE
+        state = DriveState(adjust_mode='drive', drive_scale=1., arm_step=.04,
+                                min_drive_scale=profile['minimum_linear'] / profile['default_linear'],
+                                max_drive_scale=profile['maximum_linear'] / profile['default_linear'],
                                 velocity=(.1, 0.), key_deadline=10., publish_drive=lambda: calls.append('publish'))
         for _ in range(30):
             teleop.KeyboardTeleop.adjust(state, 1)
-        self.assertLessEqual(state.drive_scale * .1, .3)
-        self.assertLessEqual(state.drive_scale * .2, .5)
+        self.assertAlmostEqual(state.linear_speed, profile['maximum_linear'])
+        self.assertLessEqual(state.angular_speed, profile['maximum_angular'])
         self.assertEqual(state.velocity, (0., 0.))
         self.assertEqual(state.key_deadline, 0.)
         for _ in range(30):
             teleop.KeyboardTeleop.adjust(state, -1)
-        self.assertEqual(state.drive_scale, .25)
+        self.assertAlmostEqual(state.linear_speed, profile['minimum_linear'])
 
     def test_angle_adjustment_does_not_change_speed_or_move(self):
-        state = SimpleNamespace(adjust_mode='arm', drive_scale=1., arm_step=.04)
+        state = SimpleNamespace(adjust_mode='arm', drive_scale=1., arm_step=.04, max_arm_step=.15)
         teleop.KeyboardTeleop.adjust(state, 1)
         self.assertAlmostEqual(state.arm_step, .05)
         self.assertEqual(state.drive_scale, 1.)

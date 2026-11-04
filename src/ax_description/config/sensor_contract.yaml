@@ -1,7 +1,7 @@
 # 센서 토픽/형식/유효성의 공통 계약이다. 센서 장착 위치는 sensor_mounts.yaml에서 관리한다.
 # W1 sensor baseline. SI units, ideal Gazebo measurements, no calibrated hardware noise.
 # Geometric extrinsics are in sensor_mounts.yaml; CameraInfo is the intrinsic source.
-schema_version: 1
+schema_version: 2
 topic_root: /ax/{robot_id}/sensors
 frame_root: '{robot_id}/'
 qos: {reliability: best_effort, durability: volatile, depth: 5}
@@ -20,6 +20,10 @@ cameras:
   rgbd_suffixes: [image, depth_image, points, camera_info]
   depth_unit: m
   depth_clip_m: [0.05, 5.0]
+  processed_rgbd_suffixes: [processed/image, processed/depth_image, processed/camera_info, processed/points]
+  processed_points_axes: {right: '+X', down: '+Y', forward: '+Z'}
+  # Harmonic 원시 points는 축/투영이 CameraInfo와 맞지 않을 수 있으므로
+  # 3D 소비자는 B1이 깊이와 CameraInfo로 재생성한 processed/points를 사용한다.
 lidar:
   names: [front_lidar, rear_lidar]
   rate_hz: 10
@@ -30,21 +34,21 @@ lidar:
 imu: {rate_hz: 100, suffix: imu}
 tool_tof:
   role: manipulator
-  tool: suction
-  simulated_source: suction_tof/scan
+  tools: [epick, suction]
+  simulated_sources: {epick: epick_tof/scan, suction: suction_tof/scan}
   simulated_type: sensor_msgs/msg/LaserScan
   raw_topic: tool_tof/raw
   raw_type: sensor_msgs/msg/Range
   frame: tool_tof_link
   rate_hz: 30
   range_m: [0.02, 0.40]
-  lip_offset_m: 0.031
+  lip_offset_m: {epick: 0.0223, suction: 0.031}
   invalid: NaN
   too_far: '+inf'
   too_close: '-inf'
   semantics: distance_from_sensor_origin_not_suction_success
   processed_topic: tool_tof
-  processed_status: W2_preprocessing_not_implemented
+  processed_status: B1_input_validation_implemented
 cargo_contact:
   role: transporter
   suffix: cargo_contact

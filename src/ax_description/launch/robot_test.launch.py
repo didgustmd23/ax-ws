@@ -52,7 +52,7 @@ def bridges(robot_id, manipulator, tool='epick'):
     add_sensor_bridge('imu', 'sensor_msgs/msg/Imu', 'gz.msgs.IMU')
     if manipulator and tool in ('epick', 'suction'):
         add_sensor_bridge(('epick_tof' if tool == 'epick' else 'suction_tof') + '/scan', 'sensor_msgs/msg/LaserScan', 'gz.msgs.LaserScan')
-    else:
+    if not manipulator:
         add_sensor_bridge('cargo_contact', 'ros_gz_interfaces/msg/Contacts', 'gz.msgs.Contacts')
     return configuration
 
@@ -77,15 +77,22 @@ def setup(context):
     # Fresh per-run files prevent concurrent launch instances overwriting configurations.
     runtime = tempfile.TemporaryDirectory(prefix='ax-w1-')
     runtime_path = Path(runtime.name)
-    resources = os.pathsep.join([str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
+    selected_world = LaunchConfiguration('world').perform(context)
+    aws_assets = package_share / 'world_assets/aws_small_warehouse'
+    resources = os.pathsep.join([str(aws_assets / 'upstream'), str(aws_assets / 'upstream/models'),
+                                 str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
                                  str(Path(get_package_share_directory('epick_description')).parent),
                                  os.environ.get('GZ_SIM_RESOURCE_PATH', '')])
     actions = [SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH', resources),
                RegisterEventHandler(OnShutdown(on_shutdown=lambda event, ctx: runtime.cleanup()))]
-    world = package_share / 'worlds' / LaunchConfiguration('world').perform(context)
+    world = (aws_assets / 'aws_warehouse_harmonic.world' if selected_world == 'aws_warehouse.world' else
+             package_share / 'worlds' / selected_world)
+    if not world.is_file():
+        raise ValueError('Selected world is not installed; rebuild ax_description: ' + str(world))
     actions.append(IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world)}.items()))
+        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world),
+                          'on_exit_shutdown': 'true'}.items()))
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
@@ -139,7 +146,8 @@ def setup(context):
 # launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='ax_test.world', choices=['ax_test.world']),
+        DeclareLaunchArgument('world', default_value='ax_test.world',
+                              choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world']),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('controller_config_dir', default_value='',

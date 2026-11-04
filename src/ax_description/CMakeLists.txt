@@ -22,4 +22,10 @@ install(
 
 install(PROGRAMS scripts/tof_range.py DESTINATION lib/${PROJECT_NAME})
 
+# 외부 창고 자산도 패키지에 설치하여 다른 PC·설치 경로에서 동일하게 찾는다.
+install(
+  DIRECTORY ../../world_assets/aws_small_warehouse
+  DESTINATION share/${PROJECT_NAME}/world_assets
+)
+
 ament_package()

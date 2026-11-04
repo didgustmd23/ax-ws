@@ -15,13 +15,35 @@ spec.loader.exec_module(desktop)
 
 
 class SessionOwnership(unittest.TestCase):
+    def test_remote_does_not_reuse_launch_after_gazebo_died(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'src/ax_description').mkdir(parents=True)
+            (root / 'install').mkdir()
+            (root / 'install/setup.bash').touch()
+            (root / 'tools').mkdir()
+            (root / 'tools/start_remote.sh').touch()
+            old = {'launch': [{'pid': 123, 'env': {}}], 'remote': [{'pid': 125}],
+                   'keyboard': [], 'gazebo': [], 'terminal': []}
+            cleaned = dict(old, launch=[])
+            args = SimpleNamespace(workspace=directory, action='remote', tool='epick', port=8765)
+            with patch.object(desktop, 'discover', side_effect=[old, cleaned]), \
+                    patch.object(desktop, 'stop_processes') as stop, \
+                    patch.object(desktop, 'spawn') as spawn, \
+                    patch.object(desktop, 'alive', return_value=True), \
+                    patch.object(desktop, 'remote_state', return_value={'robot': 'robot_1'}):
+                result = desktop.run(args)
+            stop.assert_called_once_with(old['launch'])
+            spawn.assert_not_called()
+            self.assertIsNone(result['launch_pid'])
+
     def test_start_reuses_gazebo_without_starting_remote(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'src/ax_description').mkdir(parents=True)
             (root / 'install').mkdir()
             (root / 'install/setup.bash').touch()
-            found = {'launch': [{'pid': 123, 'env': {}}], 'remote': [], 'keyboard': [], 'gazebo': []}
+            found = {'launch': [{'pid': 123, 'env': {}}], 'remote': [], 'keyboard': [], 'gazebo': [{'pid': 124}]}
             args = SimpleNamespace(workspace=directory, action='start', tool='robotiq', port=8765)
             with patch.object(desktop, 'discover', return_value=found), \
                     patch.object(desktop, 'spawn') as spawn, patch.object(desktop, 'remote_state') as remote:

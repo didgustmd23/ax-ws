@@ -14,6 +14,7 @@ from controller_manager_msgs.srv import ListControllers
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', type=Path)
+parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world'], default='ax_test.world')
 args = parser.parse_args()
 rclpy.init()
 node = rclpy.create_node('ax_unified_runtime_check')
@@ -30,22 +31,32 @@ for robot in ('robot_1', 'robot_2'):
             lambda msg, topic=topic: readings.update({topic: {'samples': len(msg.ranges),
                 'nan': sum(math.isnan(value) for value in msg.ranges)}}), qos_profile_sensor_data)
 futures = {}
+controllers = {}
+next_query = 0.
 deadline = time.monotonic() + 90
 while time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=.1)
     for robot, client in clients.items():
-        if robot not in futures and client.service_is_ready():
+        # 센서가 준비되기 전에는 제어기 로딩과 서비스 요청이 경쟁하지 않게 기다린다.
+        if len(readings) == 6 and time.monotonic() >= next_query and robot not in futures and client.service_is_ready():
             futures[robot] = client.call_async(ListControllers.Request())
-    if len(readings) == 6 and len(futures) == 2 and all(f.done() for f in futures.values()):
-        if all(all(c.state == 'active' for c in f.result().controller) for f in futures.values()):
+    if len(futures) == 2 and all(f.done() for f in futures.values()):
+        controllers = {robot: {c.name: c.state for c in f.result().controller}
+                       for robot, f in futures.items() if f.result()}
+        # 시작 직후 빈 목록도 반환된다. 빈 목록을 준비 완료로 보지 않고 다시 조회한다.
+        if len(readings) == 6 and all(all(controllers.get(robot, {}).get(name) == 'active'
+                for name in (('joint_state_broadcaster', 'diff_drive_controller', 'arm_controller')
+                             if robot == 'robot_1' else ('joint_state_broadcaster', 'diff_drive_controller')))
+                for robot in clients):
             break
         futures.clear()
-controllers = {robot: {c.name: c.state for c in f.result().controller}
-               for robot, f in futures.items() if f.done() and f.result()}
+        next_query = time.monotonic() + 1.
 scene = subprocess.run(['gz', 'service', '-s', '/world/ax_test/scene/info',
     '--reqtype', 'gz.msgs.Empty', '--reptype', 'gz.msgs.Scene', '--timeout', '5000', '--req', ''],
     capture_output=True, text=True, check=True).stdout
-names = ('robot_1', 'robot_2', 'station_src', 'station_dst', 'test_box', 'ground_plane')
+names = (('robot_1', 'robot_2', 'aws_robomaker_warehouse_ShelfF_01_001', 'aws_robomaker_warehouse_GroundB_01_001')
+         if args.world == 'aws_warehouse.world' else
+         ('robot_1', 'robot_2', 'station_src', 'station_dst', 'test_box', 'ground_plane'))
 entities = {name: f'name: "{name}"' in scene for name in names}
 passed = len(readings) == 6 and all(entities.values())
 for robot in ('robot_1', 'robot_2'):

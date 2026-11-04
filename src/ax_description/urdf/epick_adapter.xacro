@@ -1,18 +1,52 @@
 <?xml version="1.0"?>
-<!-- 외부 EPick 본체와 AX 단일 컵/TCP를 연결한다. 모든 원점은 부모 링크 기준이며 제조사 실물 보정값이 아니다. -->
+<!-- 참고 사진을 바탕으로 만든 AX 다중 컵 헤드. 이름·TCP 계약은 유지하며 실물 EPick 제품 사양이 아니다. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:include filename="$(find epick_description)/urdf/epick_body.xacro"/>
+  <xacro:macro name="parcel_cup_collision" params="settings column row">
+    <collision>
+      <origin xyz="${(column-(settings['head_visual']['columns']-1)/2)*settings['head_visual']['pitch_m']} ${(row-(settings['head_visual']['rows']-1)/2)*settings['head_visual']['pitch_m']} 0"/>
+      <geometry><cylinder radius="${settings['cup_radius_m']}" length="${settings['cup_height_m']}"/></geometry>
+    </collision>
+  </xacro:macro>
+  <xacro:macro name="parcel_cup_row" params="settings row columns">
+    <xacro:if value="${len(columns) > 0}">
+      <xacro:parcel_cup_collision settings="${settings}" column="${columns[0]}" row="${row}"/>
+      <xacro:parcel_cup_row settings="${settings}" row="${row}" columns="${columns[1:]}"/>
+    </xacro:if>
+  </xacro:macro>
+  <xacro:macro name="parcel_cup_rows" params="settings rows">
+    <xacro:if value="${len(rows) > 0}">
+      <xacro:parcel_cup_row settings="${settings}" row="${rows[0]}" columns="${list(python.range(settings['head_visual']['columns']))}"/>
+      <xacro:parcel_cup_rows settings="${settings}" rows="${rows[1:]}"/>
+    </xacro:if>
+  </xacro:macro>
   <xacro:macro name="ax_epick" params="parent">
     <xacro:property name="settings" value="${xacro.load_yaml('../config/epick.yaml')}"/>
-    <xacro:epick_body parent="${parent}" origin_xyz="0.02 0 0" origin_rpy="0 ${pi/2} 0"
-                       prefix="" virtual_mass="${settings['body_mass_kg']}"/>
+    <link name="epick_base_link"/>
+    <joint name="epick_mount_joint" type="fixed"><parent link="${parent}"/><child link="epick_base_link"/><origin xyz="0.02 0 0" rpy="0 ${pi/2} 0"/></joint>
+    <link name="epick_body">
+      <!-- 재질 없는 STL에 색상을 직접 지정하여 전체 헤드를 단일 회색으로 표시한다. -->
+      <visual>
+        <geometry><mesh filename="package://ax_description/meshes/tools/parcel_suction_head.stl"/></geometry>
+        <material name="parcel_head_dark_gray"><color rgba="0.20 0.23 0.26 1"/></material>
+      </visual>
+      <!-- 목·브래킷·호스까지 포함하는 보수적인 상자. 길이 단위는 m다. -->
+      <collision><geometry><box size="${settings['head_visual']['width_m']} ${settings['head_visual']['depth_m']} ${settings['body_length_m']}"/></geometry></collision>
+      <inertial><origin xyz="${settings['body_com_xyz']}"/><mass value="${settings['body_mass_kg']}"/>
+        <inertia ixx="${settings['body_inertia']['ixx']}" iyy="${settings['body_inertia']['iyy']}" izz="${settings['body_inertia']['izz']}"
+                 ixy="${settings['body_inertia']['ixy']}" ixz="${settings['body_inertia']['ixz']}" iyz="${settings['body_inertia']['iyz']}"/>
+      </inertial>
+    </link>
+    <joint name="epick_body_joint" type="fixed"><parent link="epick_base_link"/><child link="epick_body"/><origin xyz="0 0 ${settings['body_length_m']/2}"/></joint>
     <link name="epick_suction_cup">
-      <visual><geometry><cylinder radius="${settings['cup_radius_m']}" length="${settings['cup_height_m']}"/></geometry></visual>
-      <collision><geometry><cylinder radius="${settings['cup_radius_m']}" length="${settings['cup_height_m']}"/></geometry></collision>
+      <!-- 컵 외형은 본체 STL에 함께 넣고 충돌 형상은 실제 컵 배열 위치에 나눈다. -->
+      <xacro:parcel_cup_rows settings="${settings}" rows="${list(python.range(settings['head_visual']['rows']))}"/>
+      <xacro:property name="pitch" value="${settings['head_visual']['pitch_m']}"/>
+      <xacro:property name="variance_x" value="${pitch**2*(settings['head_visual']['columns']**2-1)/12}"/>
+      <xacro:property name="variance_y" value="${pitch**2*(settings['head_visual']['rows']**2-1)/12}"/>
       <inertial><mass value="${settings['cup_mass_kg']}"/>
-        <inertia ixx="${settings['cup_mass_kg']*(3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12}"
-                 iyy="${settings['cup_mass_kg']*(3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12}"
-                 izz="${settings['cup_mass_kg']*settings['cup_radius_m']**2/2}" ixy="0" ixz="0" iyz="0"/>
+        <inertia ixx="${settings['cup_mass_kg']*((3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12+variance_y)}"
+                 iyy="${settings['cup_mass_kg']*((3*settings['cup_radius_m']**2+settings['cup_height_m']**2)/12+variance_x)}"
+                 izz="${settings['cup_mass_kg']*(settings['cup_radius_m']**2/2+variance_x+variance_y)}" ixy="0" ixz="0" iyz="0"/>
       </inertial>
     </link>
     <joint name="epick_cup_joint" type="fixed"><parent link="epick_body"/><child link="epick_suction_cup"/>

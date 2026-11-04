@@ -21,7 +21,6 @@ python3 tools/split_robot_meshes.py
 python3 tools/sim/ax_regen_physics.py check
 # 생성 결과 교체가 필요할 때만 명시적으로 실행
 python3 tools/sim/ax_regen_physics.py regen
-python3 -m unittest discover -s tools/tests -v
 ```
 
 `split_robot_meshes.py --output-dir /tmp/ax_mesh_parts`로 별도 폴더에도 생성할 수 있다. 각 폴더의 `manifest.json`에 원본·재질 SHA-256, 오브젝트 대응, 정점·UV·법선·면 수와 출력 해시를 기록한다. 원본 오브젝트를 제거·개명할 때에는 이전 manifest와 대조하여 더 이상 생성하지 않는 파츠를 별도로 정리해야 한다.

@@ -61,6 +61,8 @@ def controller_spawners(robot_id):
         "--controller-manager", f"{namespace}/controller_manager",
         "--controller-manager-timeout", "120",
         "--switch-timeout", "60",
+        # GUI·소프트웨어 렌더링 중 느린 응답을 10초마다 재전송하지 않는다.
+        "--service-call-timeout", "60",
     ]
 
     # 상태 발행과 팔 제어기

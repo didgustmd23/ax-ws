@@ -37,16 +37,23 @@ def main():
                                   'sha256': hashlib.sha256(source.read_bytes()).hexdigest()})
     (package / 'urdf').mkdir(exist_ok=True)
     body = (UPSTREAM / 'epick_description/urdf/epick_body.xacro').read_text()
-    body = body.replace("prefix:=^|''", "prefix:=^|'' virtual_mass:=0.71")
+    body = body.replace("prefix:=^|''", "prefix:=^|'' virtual_mass:=0.71\n                       virtual_com:='0 0 0' virtual_inertia:=${None}")
     body = body.replace('<link name="${body_link}">', '''<link name="${body_link}">
       <!-- AX simulation mass assumption; upstream provides no product inertia. -->
-      <inertial><mass value="${virtual_mass}"/>
+      <inertial><origin xyz="${virtual_com}"/><mass value="${virtual_mass}"/>
+        <!-- AX 비교용 가상 관성. 지정하지 않으면 기존 원통 근사를 사용한다. -->
+        <xacro:if value="${virtual_inertia is not None}">
+          <inertia ixx="${virtual_inertia['ixx']}" iyy="${virtual_inertia['iyy']}" izz="${virtual_inertia['izz']}"
+                   ixy="${virtual_inertia['ixy']}" ixz="${virtual_inertia['ixz']}" iyz="${virtual_inertia['iyz']}"/>
+        </xacro:if>
+        <xacro:unless value="${virtual_inertia is not None}">
         <inertia ixx="${virtual_mass*(3*body_collision_radius**2+body_length**2)/12}"
                  iyy="${virtual_mass*(3*body_collision_radius**2+body_length**2)/12}"
                  izz="${virtual_mass*body_collision_radius**2/2}" ixy="0" ixz="0" iyz="0"/>
+        </xacro:unless>
       </inertial>''')
     (package / 'urdf/epick_body.xacro').write_text(body)
-    manifest['adaptations'] = ['epick_body.xacro: add configurable virtual cylinder mass/inertia only',
+    manifest['adaptations'] = ['epick_body.xacro: add configurable virtual mass/COM/inertia with cylinder fallback',
         'Hardware driver and MoveIt virtual vacuum joint are excluded from active macros',
         'AX cup, ToF mount and TCP are defined in ax_description/urdf/epick_adapter.xacro']
     manifest['adapted_sha256'] = {name: hashlib.sha256((package/name).read_bytes()).hexdigest()

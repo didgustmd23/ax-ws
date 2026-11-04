@@ -41,7 +41,7 @@ ros2 launch ax_control simulation.launch.py
 
 제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.
 
-기본 공구는 EPick이며 `tool:=suction`으로 기존 가상 4컵 헤드를 비교할 수 있다.
+기본 모델 공구는 **다중 흡착판 · 12컵**(`tool:=epick`)이며 교체 공구는 **손가락 집게 · Robotiq 2F-85**(`tool:=robotiq`)다. `epick`은 기존 연결을 유지하는 호환 이름으로 실제 EPick 제품 형상을 뜻하지 않는다. `tool:=suction`은 기존 가상 4컵 헤드 비교용이다. [부품 이름·미리보기](src/ax_description/meshes/README.md)
 원본 CAD·라이선스를 보존하고 [A1 안내](docs/guides/A1_MODEL_ASSETS.md)의 생성·시험 명령을 따른다.
 [바퀴·시험 월드·런치](docs/guides/WHEEL_AND_LAUNCH_REPAIR.md) · [A1 시험 증거](docs/evidence/a1/).
 
@@ -49,6 +49,8 @@ ros2 launch ax_control simulation.launch.py
 
 시험 월드는 `ax_test.world` 하나다. 30×30 m 바닥의 원점 주변은 주행 시험용으로 비워 두고,
 작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
+Planned warehouse: `src/ax_description/worlds/planned/ax_warehouse.world` (stored separately; not used by the default launch).
+선택 실행: `ros2 launch ax_control simulation.launch.py world:=planned/ax_warehouse.world`.
 `ax_control simulation.launch.py`, `robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
 다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
 주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
@@ -61,6 +63,79 @@ bash tools/setup_jazzy.sh
 source install/setup.bash
 ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 ```
+
+## B1 센서 전처리 (개발 중)
+
+모델·제어 시뮬레이션을 실행한 뒤 별도 터미널에서 아래 명령으로 연결한다.
+Gazebo와 같은 ROS 환경을 source하고 `tool`은 실행 중인 모델과 맞춘다.
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select ax_perception
+source install/setup.bash
+ros2 launch ax_perception sensors.launch.py tool:=epick
+```
+
+원본은 보존한다. 로봇별 `sensors/tool_tof`(계약 경로),
+`sensors/{front,rear}_lidar/scan_filtered`, 카메라의 `processed/image_raw`,
+RGB-D의 `processed/{image,depth_image,camera_info,points}`를 제공한다.
+RGB-D는 같은 광학 frame·크기, 측정 시각 차이 0.03 s 이내의 묶음만 내보낸다.
+깊이는 32FC1 m 기준 0.05~5 m 밖·무효값을 NaN으로 유지한다.
+원본 측정 시각은 바꾸지 않는다. 수신 시각이 아닌 측정 시각 기준
+0.5 s 초과 지연·0.05 s 초과 미래·역행·중복·잘못된 frame은 거절한다.
+이 수치는 조정 가능한 개발용 초기 파라미터다.
+
+`sensors/health`는 표준 DiagnosticArray 기반 개발용 진단 경로다.
+2 s 수신 누락 시 STALE이며, 안전 허용이나 적재 완료를 의미하지 않는다.
+ToF +inf/-inf는 원뜻을 보존하며 NaN은 유효하지 않은 측정이다.
+처리 점군은 깊이와 CameraInfo로 재생성하며 X=오른쪽, Y=아래, Z=전방인
+광학 좌표계다. 원시 Gazebo `points`는 축·투영이 CameraInfo와 다를 수 있어
+3D 소비자는 `processed/points`를 사용한다. 단안·무왜곡·정렬 RGB-D만 지원하며
+스테레오 투영 오프셋이나 비영 왜곡계수는 거절한다.
+실물 내외부 보정과 소비자와의 최종 건강 상태 계약은 남아 있다.
+
+## C1 상자 검출 (개발용 기준 모델)
+
+현재 시험 월드의 0.2 m `test_box` 한 종류로 시작한다.
+[YOLO11n](https://docs.ultralytics.com/models/yolo11/)을 사용하며 학습용 시뮬레이터 정답과
+운영 영상 추론을 구분한다. 수집기는 임시 RGB-D 카메라로 보이는 상자 표면을 라벨링하고
+카메라를 제거한다. 학습·검증·평가는 시점 영역을 나누며 상자 없는 영상도 포함한다.
+로봇과 물체는 이동하지 않는다. 더 다양한 배경·가림·물품과 실물 영상은 추가해야 한다.
+
+Ubuntu 작업공간 루트에서 실행한다. CPU 전용 환경을 별도로 만들며
+시스템 ROS Python은 바꾸지 않는다. 버전은 설치 스크립트에 고정한다.
+
+```bash
+bash tools/setup_vision.sh
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+source .venv-vision/bin/activate
+# 기존 ax_test 시뮬레이션 실행 중 수집 (출력 폴더가 이미 있으면 새 이름 지정)
+python tools/collect_box_dataset.py
+# 수집 완료 후 학습. 출력 폴더가 이미 있으면 --output으로 다른 이름 지정
+python tools/train_box_detector.py
+```
+
+데이터는 `vision_data/box_v1`, 가중치는 `vision_models/box_v1/weights/best.pt`에 저장한다.
+데이터 YAML의 영상 경로는 해당 YAML 기준 상대경로다. 데이터·학습 결과·가상환경은 Git에서 제외한다.
+모델 가중치는 저장소에 포함하지 않으므로 다른 PC에서는 수집·학습하거나 별도 전달받아야 한다.
+설치에는 네트워크와 venv 패키지 설치 시 sudo가 필요할 수 있다.
+
+B1 전처리를 실행한 상태에서 같은 가상환경의 별도 터미널로 연결한다.
+
+```bash
+python src/ax_perception/scripts/object_detection.py \
+  --weights vision_models/box_v1/weights/best.pt \
+  --ros-args -r __ns:=/ax/robot_1 -p use_sim_time:=true
+```
+
+기본 입력은 로봇 namespace 아래 `sensors/front_rgb/processed/image_raw`,
+출력은 `perception/detections` (`vision_msgs/Detection2DArray`)다.
+클래스·신뢰도·픽셀 상자·원본 영상 시각을 보존하고 물리 물체 ID는 미확정으로 둔다.
+3D pose나 입고 사건은 추정해서 발행하지 않는다. 진단은 `perception/detection_health`다.
+입력이 오래되거나 잘못된 frame이면 거절하고, 누적 영상 대신 최신 영상만 처리한다.
+CPU 기본값은 최대 2회/s이며 실제 속도는 PC 부하에 따라 달라진다.
+수집 영상의 시뮬레이터 정답은 이 추론 노드에 전달하지 않는다.
 
 ## 전체 시스템 구성도
 

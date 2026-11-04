@@ -6,36 +6,60 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#edf2f5;color:#172c3a;font-family:system-ui,"맑은 고딕",sans-serif}main{max-width:920px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{margin:0;font-size:26px}h2{font-size:19px;margin:0 0 18px}.tag{background:#dce7ed;border-radius:24px;padding:8px 13px;font-size:13px}.online{background:#d4f4e6;color:#126448}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.card{background:white;border-radius:18px;padding:24px;box-shadow:0 5px 25px #152e3c08}button,select{font:inherit;border:1px solid #d3dee5;border-radius:11px;padding:13px;background:#f5f8fa;color:inherit}button{cursor:pointer;touch-action:none;user-select:none}button:hover{background:#e6f1f3}button:active,.selected{background:#086d75!important;color:white!important;border-color:#086d75}.robots{display:flex;gap:10px;margin:20px 0}.robots button{flex:1}.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:310px;margin:22px auto}.pad button{min-height:68px;font-size:18px}.pad .stop{background:#fff0ec;color:#a9331e;border-color:#efb3a7}.blank{visibility:hidden}.adjust{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}.adjust button{font-size:24px;width:54px;padding:6px}.value{text-align:center;flex:1;font-size:23px;font-weight:700}.unit{font-size:12px;font-weight:400;color:#586c7b}.note{font-size:13px;line-height:1.6;color:#596f7d}.wide{width:100%;margin-bottom:16px}.jog{display:flex;gap:12px;margin:20px 0}.jog button{flex:1;font-size:22px}.emergency{width:100%;background:#b93f2f;color:white;border:0;font-weight:700;font-size:20px;margin-top:20px;padding:18px}.emergency:hover{background:#a22e20}.status{padding:15px 0;font-size:14px;min-height:52px}.angles{display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px;margin-top:18px;color:#526a78}button:disabled{opacity:.4;cursor:not-allowed}@media(max-width:650px){main{padding:16px}.grid{grid-template-columns:1fr}.card{padding:20px}}
 </style>
+<style>
+.numeric{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}.numeric label{font-size:13px;color:#526a78}.numeric input{font:inherit;width:110px;min-width:0;border:1px solid #d3dee5;border-radius:9px;padding:10px}.numeric button{padding:10px 14px}.numeric input:focus{outline:2px solid #086d75;outline-offset:1px}
+</style>
 <main>
 <!-- 팀원 안내: 로봇 선택과 연결 표시. 연결됨은 HTTP/상태 연결이며 집기 성공 판정이 아니다. -->
 <header><h1>AX 로봇 리모컨</h1><span class="tag" id="connection">연결 중</span></header>
 <div class="robots"><button id="robot_1" onclick="selectRobot('robot_1')">AX_1 · 팔 로봇</button><button id="robot_2" onclick="selectRobot('robot_2')">AX_2 · 운반 로봇</button></div>
+<section class="card"><h2>AX_1 공구 교체</h2><p id="mountedTool" role="status">장착 공구 확인 중</p>
+<div class="jog"><button data-tool="epick" onclick="send('tool','epick')">다중 흡착판 · 12컵 장착</button><button data-tool="robotiq" onclick="send('tool','robotiq')">손가락 집게 · Robotiq 2F-85 장착</button></div>
+<p class="note">한 번에 공구 하나만 장착합니다. 교체하면 현재 월드를 재시작하여 두 로봇·팔·상자가 시작 상태로 돌아갑니다. 교체 중에는 조작할 수 없습니다. 개발 시험용이며 실물 자동 탈부착 기능은 아닙니다.</p></section>
 <div class="grid">
 <!-- 팀원 안내: 주행은 클릭 후 유지된다. 정지 또는 연결 만료로 반복 전송을 끊는다. -->
-<section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 한 번 누르면 계속 이동합니다.<br>멈추려면 정지 버튼을 누르세요.</p><p class="note" id="driveState" role="status">주행 정지 상태</p>
+<section class="card"><h2>주행 조종</h2><p class="note">방향 버튼을 한 번 누르면 계속 이동합니다.<br>정지 명령 후에는 설정된 감속도로 속도가 줄어듭니다.</p><p class="note" id="driveState" role="status">주행 정지 상태</p>
 <div class="pad"><span></span><button data-drive="w">▲<br>전진</button><span></span><button data-drive="a">↶<br>좌회전</button><button class="stop" onclick="stopAll()">정지</button><button data-drive="d">↷<br>우회전</button><span></span><button data-drive="s">▼<br>후진</button><span></span></div>
 <div class="adjust"><button onclick="send('speed',-1)">−</button><div class="value"><span id="linear">—</span> <span class="unit">m/s</span></div><button onclick="send('speed',1)">+</button></div>
-<p class="note" style="text-align:center">회전 속도 <strong id="angular">—</strong> rad/s · 주행 속도와 함께 조절</p></section>
+<form class="numeric" onsubmit="applyNumber(event,'set_speed','speedInput')"><label for="speedInput">주행 속도 입력</label><input id="speedInput" type="number" min="0.04" max="0.67" step="any" inputmode="decimal" required aria-label="주행 속도 m/s"><span class="unit">m/s</span><button type="submit">적용</button></form>
+<p class="note" style="text-align:center">회전 속도 <strong id="angular">—</strong> rad/s · 주행 속도와 함께 조절<br><span id="driveLimits">속도 설정 확인 중</span><br>회전 제한은 AX 개발용 설정입니다.</p></section>
 <!-- 팀원 안내: 팔 명령은 robot_1에만 보낸다. 각도는 클릭 1회 이동량이며 별도의 팔 속도 설정이 아니다. -->
-<section class="card"><h2>AX_1 팔 조종</h2><select class="wide" id="joint" onchange="send('joint',Number(this.value))"><option value="0">1 · 기둥 회전</option><option value="1">2 · 어깨</option><option value="2">3 · 팔꿈치</option><option value="3">4 · 손목</option><option value="4">5 · 집게 전체 회전</option></select>
-<p class="note">한 번에 움직이는 각도</p><div class="adjust"><button class="arm-setting" onclick="send('angle',-1)">−</button><div class="value"><span id="step">—</span> <span class="unit">도 / 회</span></div><button class="arm-setting" onclick="send('angle',1)">+</button></div>
+<section class="card"><h2>AX_1 팔 조종</h2><select class="wide" id="joint" onchange="send('joint',Number(this.value))"><option value="0">1 · 기둥 회전</option><option value="1">2 · 어깨</option><option value="2">3 · 팔꿈치</option><option value="3">4 · 손목</option><option value="4">5 · 공구 전체 회전</option></select>
+<p class="note">한 번에 움직이는 각도 · 최대 90° (관절 위치 제한 적용)</p><div class="adjust"><button class="arm-setting" onclick="send('angle',-1)">−</button><div class="value"><span id="step">—</span> <span class="unit">도 / 회</span></div><button class="arm-setting" onclick="send('angle',1)">+</button></div>
+<form class="numeric" onsubmit="applyNumber(event,'set_angle','angleInput')"><label for="angleInput">1회 이동 각도 입력</label><input class="arm-setting" id="angleInput" type="number" min="0.573" max="90" step="any" inputmode="decimal" required aria-label="관절 1회 이동 각도 도"><span class="unit">도</span><button class="arm-setting" type="submit">적용</button></form>
 <div class="jog"><button class="arm-jog" onclick="send('jog',-1)">− 방향 이동</button><button class="arm-jog" onclick="send('jog',1)">+ 방향 이동</button></div>
 <p class="note" id="armHint">관절 상태 확인 중</p><div class="angles" id="angles"></div>
 <p class="note">손가락 개폐·자동 충돌 회피는 지원하지 않습니다.<br>팔 이동 속도는 자동 계산되며, 여기서는 이동 각도를 조절합니다.</p></section>
 </div>
 <!-- 팀원 안내: 전체 정지는 두 베이스를 0 속도로 하고 이 리모컨의 팔 Action을 취소한다. -->
 <button class="emergency" onclick="stopAll()">■ 전체 정지 · 팔 동작 취소</button>
+<button class="wide" id="resetSimulation" style="margin-top:16px" onclick="resetSimulation()">↻ 전체 로봇 초기화 · 다시 소환</button>
+<p class="note">넘어지거나 끼었을 때 사용하세요. 현재 월드를 다시 열어 두 로봇·팔·상자를 시작 상태로 되돌립니다. 리모컨은 유지되며 초기화 완료 후 방향 버튼을 다시 눌러야 움직입니다.</p>
 <div class="status" id="status">Ubuntu의 로봇 연결을 기다리고 있습니다.</div>
 </main>
 <script>
 // 팀원 안내: 서버가 페이지에 넣은 실행별 토큰과 브라우저별 client/seq를 사용한다. 재시작 후에는 새로고침해야 한다.
 const token='__TOKEN__',client=crypto.randomUUID();let seq=0,activeDirection=null,timer=null,connected=false,driveRequest=false;
+const pendingInputs={};
+for(const id of ['speedInput','angleInput'])document.getElementById(id).addEventListener('input',()=>{document.getElementById(id).dataset.dirty='true';delete pendingInputs[id];});
+async function applyNumber(event,action,id){
+ event.preventDefault();const input=document.getElementById(id);
+ if(!input.reportValidity())return;
+ const value=input.valueAsNumber;if(!Number.isFinite(value))return;
+ if(await send(action,value)){pendingInputs[id]=value;input.dataset.dirty='true';}
+}
+function updateNumber(id,value,digits){
+ const input=document.getElementById(id);
+ if(pendingInputs[id]!==undefined&&Math.abs(value-pendingInputs[id])<Math.pow(10,-digits)){delete pendingInputs[id];input.dataset.dirty='false';}
+ if(document.activeElement!==input&&input.dataset.dirty!=='true')input.value=value.toFixed(digits);
+}
 // 팀원 안내: 202 응답은 접수 의미다. arm 관련 설정/명령은 연속 주행을 해제해 완료 뒤 갑자기 주행이 재개되지 않게 한다.
 async function send(action,value){
- if(!connected&&action!=='stop')return;
- if(['robot','joint','jog','angle'].includes(action))releaseDrive(false);
+ if(!connected&&action!=='stop')return false;
+ if(['robot','joint','jog','angle','set_speed','set_angle','reset','tool'].includes(action))releaseDrive(false);
  const response=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,client,seq:++seq,action,value}),signal:AbortSignal.timeout(1500)}).catch(()=>null);
  if(!response||!response.ok){releaseDrive(false);document.getElementById('status').textContent='연결을 확인하세요. 주행 명령을 중단했습니다.';}
+ return Boolean(response&&response.ok);
 }
 // 팀원 안내: 강조 표시와 주행 문구는 이 브라우저의 입력 상태다. 실제 이동 확인은 Gazebo/관절 상태로 판단한다.
 function showDrive(){
@@ -50,6 +74,11 @@ function showDrive(){
 function releaseDrive(sendStop=true){activeDirection=null;clearInterval(timer);timer=null;showDrive();if(sendStop)send('stop');}
 // 팀원 안내: 타이머를 먼저 끊고 정지를 보내야 이전 반복 주행이 정지 직후 덮어쓰지 않는다.
 function stopAll(){releaseDrive(false);send('stop');}
+async function resetSimulation(){
+ releaseDrive(false);
+ const button=document.getElementById('resetSimulation');button.disabled=true;
+ if(!await send('reset'))button.disabled=false;
+}
 function selectRobot(robot){stopAll();send('robot',robot);}
 // 팀원 안내: 클릭 한 번을 75 ms 주기 명령으로 유지한다. 이전 HTTP 요청이 진행 중이면 중복 전송하지 않는다.
 async function pulse(){if(!activeDirection||driveRequest)return;driveRequest=true;try{await send('drive',activeDirection);}finally{driveRequest=false;}}
@@ -74,10 +103,22 @@ async function refresh(){
   document.getElementById('connection').textContent='● 연결됨';document.getElementById('connection').className='tag online';
   for(const robot of ['robot_1','robot_2'])document.getElementById(robot).classList.toggle('selected',state.robot===robot);
   document.getElementById('linear').textContent=state.linear.toFixed(3);document.getElementById('angular').textContent=state.angular.toFixed(2);document.getElementById('step').textContent=state.step_deg.toFixed(1);
+  const profile=state.drive_profile;if(!profile)throw Error();
+  document.getElementById('speedInput').min=profile.minimum_linear;document.getElementById('speedInput').max=profile.maximum_linear;
+  document.getElementById('driveLimits').textContent='AX 시뮬레이션: 기본 '+profile.default_linear.toFixed(2)+' / 최대 '+profile.maximum_linear.toFixed(2)+' m/s · 가감속 '+profile.acceleration.toFixed(2)+' m/s²';
+  updateNumber('speedInput',state.linear,3);updateNumber('angleInput',state.step_deg,3);
   if(document.activeElement!==document.getElementById('joint'))document.getElementById('joint').value=state.joint;
   const arm=state.robot==='robot_1';document.getElementById('joint').disabled=!arm;
+  for(const el of document.querySelectorAll('.arm-setting'))el.disabled=!arm;
   for(const el of document.querySelectorAll('.arm-jog'))el.disabled=!arm||state.arm_busy||!state.arm_ready;
   for(const el of document.querySelectorAll('[data-drive]'))el.disabled=state.arm_busy;
+  document.getElementById('resetSimulation').disabled=Boolean(state.resetting);
+  document.getElementById('resetSimulation').textContent=state.resetting?'↻ 초기화 중… 잠시 기다려 주세요':'↻ 전체 로봇 초기화 · 다시 소환';
+  if(state.resetting){releaseDrive(false);for(const el of document.querySelectorAll('button,input,select'))if(!el.classList.contains('emergency')&&!el.classList.contains('stop'))el.disabled=true;}
+  else{for(const el of document.querySelectorAll('button,input'))if(!el.classList.contains('arm-setting')&&!el.classList.contains('arm-jog')&&!el.hasAttribute('data-drive'))el.disabled=false;}
+  const toolNames={epick:'다중 흡착판 · 12컵',robotiq:'손가락 집게 · Robotiq 2F-85'};
+  document.getElementById('mountedTool').textContent=(state.resetting?'초기화·공구 교체 중 · 기존 공구: ':'현재 장착: ')+(toolNames[state.tool]||state.tool||'실행 중인 AX 확인 필요');
+  for(const el of document.querySelectorAll('[data-tool]')){const mounted=el.dataset.tool===state.tool;el.classList.toggle('selected',mounted);el.setAttribute('aria-pressed',String(mounted));el.disabled=!arm||state.resetting||mounted;}
   if(state.arm_busy&&activeDirection)releaseDrive(false);
   document.getElementById('armHint').textContent=!arm?'AX_2에는 팔이 없습니다.':state.arm_busy?'팔 이동 중 · 전체 정지로 취소 가능':state.arm_ready?'관절을 고른 뒤 방향 이동 버튼을 누르세요.':'관절 상태 수신 대기 중';
   const angles=document.getElementById('angles');angles.replaceChildren();state.angles_deg.forEach((value,index)=>{const name=document.createElement('span'),number=document.createElement('span');name.textContent=state.labels[index];number.textContent=value.toFixed(2)+'°';angles.append(name,number);});

@@ -2,7 +2,7 @@
 param(
     [string]$Distro,
     [string]$Workspace,
-    [ValidateSet('robotiq', 'epick')][string]$Tool = 'robotiq',
+    [ValidateSet('robotiq', 'epick')][string]$Tool = 'epick',
     [ValidateRange(1024, 65535)][int]$Port = 8765,
     [string]$ShortcutDirectory = [Environment]::GetFolderPath('Desktop')
 )
@@ -38,10 +38,21 @@ New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 $desktopDir = [IO.Path]::GetFullPath($ShortcutDirectory)
 New-Item -ItemType Directory -Path $desktopDir -Force | Out-Null
 $shell = New-Object -ComObject WScript.Shell
-$names = @{Start=('AX '+[char]0xC2E4+[char]0xD589); Stop=('AX '+[char]0xC885+[char]0xB8CC); Remote=('AX '+[char]0xB9AC+[char]0xBAA8+[char]0xCEE8)}
+$names = @{Stop=('AX '+[char]0xC885+[char]0xB8CC); Remote=('AX '+[char]0xB9AC+[char]0xBAA8+[char]0xCEE8)}
 $names.Recover = 'AX '+[char]0xD654+[char]0xBA74+' '+[char]0xBCF5+[char]0xAD6C
+$names.ChooseWorld = 'AX 월드 선택'
+# 이 저장소가 만든 이전 AX 실행 바로가지만 제거한다. 다른 작업공간 것은 유지한다.
+$legacyPath = Join-Path $desktopDir (('AX '+[char]0xC2E4+[char]0xD589)+'.lnk')
+if (Test-Path -LiteralPath $legacyPath) {
+    $legacy = $shell.CreateShortcut($legacyPath)
+    if ($legacy.WorkingDirectory -eq $repoDir -and
+        ($legacy.Arguments -match '\-Action Start' -or $legacy.TargetPath -eq (Join-Path $PSScriptRoot 'start.cmd'))) {
+        Remove-Item -LiteralPath $legacyPath
+        Write-Output ('Removed: '+$legacyPath)
+    }
+}
 # 바로가기는 이 PC에서 생성하므로 실행 시 절대경로를 써도 저장소의 이식성과 모순되지 않는다.
-foreach ($action in @('Start', 'Remote', 'Stop', 'Recover')) {
+foreach ($action in @('Remote', 'Stop', 'Recover', 'ChooseWorld')) {
     $shortcut = $shell.CreateShortcut((Join-Path $desktopDir ($names[$action]+'.lnk')))
     $shortcut.TargetPath = Join-Path $PSHOME 'powershell.exe'
     $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'ax-launch.ps1')+'" -Action '+$action
@@ -50,6 +61,7 @@ foreach ($action in @('Start', 'Remote', 'Stop', 'Recover')) {
     }
     $shortcut.WorkingDirectory = $repoDir
     $shortcut.WindowStyle = 7
+    if ($action -eq 'ChooseWorld') { $shortcut.WindowStyle = 1 }
     $shortcut.Description = 'AX simulation '+$action
     $shortcut.Save()
     Write-Output ('Created: '+(Join-Path $desktopDir ($names[$action]+'.lnk')))

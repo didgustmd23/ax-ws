@@ -35,14 +35,21 @@ python3 tools/generate_physical_properties.py --check
 `src/epick_description/`에 본체 STL, description helper, 원본 사본·라이선스·파일 해시를 보존한다.
 원본에는 제품 관성이 없어 본체와 컵에 명시적인 가상 질량·관성을 추가했다.
 
-기본 `tool:=epick`은 본체와 단일 컵을 생성한다. 기존 `tool:=suction` 4컵 헤드는 비교용이다.
+기본 `tool:=epick`은 사용자 참고 사진을 바탕으로 만든 하우징·주름관·12컵 헤드를 생성한다. 전체 색상은 단일 짙은 회색이다. EPick 제품 CAD를 그대로 재현한 모델은 아니다. 기존 `tool:=suction` 4컵 헤드는 비교용이다.
 하드웨어 드라이버, fake 압력/물체 감지, MoveIt용 `gripper` 진공 revolute 관절은 활성 모델에 넣지 않는다.
 흡착 성공 신호를 생성하지 않으며 진공 부착/해제 동작을 구현한 것으로 보고하지 않는다.
 
 `config/epick.yaml`은 개발용 컵 크기·가상 질량·ToF 위치·TCP 보정을 관리한다.
-현재 단일 컵 반경 0.012 m, 높이 0.015 m, 본체 길이 0.1023 m다.
+현재 임시 헤드 폭 170mm·깊이 130mm, 컵 4×3개, 컵별 지름 28mm다. 장착 기준에서 접촉면까지 길이는 117.3mm이며 기존 TCP 위치를 유지한다.
+`config/epick.yaml`의 `head_visual`과 컵 치수를 수정하고 `python3 tools/generate_parcel_suction_head.py`, `python3 tools/export_ax1_urdf.py`를 실행하면 외형·가상 관성을 다시 생성한다. 이후 필요한 패키지를 빌드한다.
+외형은 `meshes/tools/parcel_suction_head.stl`이며 색상은 `epick_adapter.xacro`에서 지정한다. OBJ/MTL 재질 때문에 흰색으로 표시되는 문제를 피하도록 재질 없는 STL을 사용한다. 본체는 보수적인 상자, 컵은 12개 원통으로 충돌을 구성한다. ToF는 넓어진 헤드 바깥의 105mm 위치로 옮겨 자기 차단을 피한다.
+교체 비교를 위해 다중 흡착판 · 12컵의 가상 질량·무게중심·관성을 손가락 집게 · Robotiq 2F-85의 기본 손가락 자세에 맞췄다.
+흡착판 본체 0.87086427304kg + 컵 0.04kg + ToF 0.01kg = 0.92086427304kg으로 집게 말단 총질량과 같다.
+장착점 `gripper_base_link` 기준 공구 무게중심은 약 (0.0674194, -0.00004294, 0.00000939)m다.
+외형·충돌·TCP는 각 공구의 기하를 유지한다. 손가락 자세가 바뀌거나 물체를 다른 위치에 잡으면 질량 분포도 달라진다.
+실물 부품 동등성이나 전체 동적 안정성 보장이 아닌 무부하 시뮬레이션 비교 설정이다. 집게·컵·ToF 구성을 바꾸면 다시 계산해야 한다.
 `epick_tcp`는 변형되지 않은 컵 끝면, `tool_tof_link`는 실제 ToF 측정 원점이다.
-ToF는 공구 축에서 0.06 m 떨어진 위치의 평행 광선이며 컵 전체 접촉을 뜻하지 않는다.
+ToF는 공구 축에서 0.105 m 떨어진 위치의 평행 광선이며 컵 전체 접촉이나 12컵 개별 흡착 성공을 뜻하지 않는다.
 
 TCP/ToF 보정 시험은 컵 끝면에서 0.10·0.05·0 m 떨어진 기준 평면을 Gazebo에 배치한다.
 센서 원점~컵 끝면 오프셋 0.0223 m에 각 간격을 더한 기대 거리와 비교한다.
@@ -70,11 +77,9 @@ source /opt/ros/jazzy/setup.bash
 colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
 python3 tools/export_ax1_urdf.py
-python3 -m unittest discover -s tools/tests -v
 python3 tools/audit_arm_range.py
 python3 tools/verify_a1_envelope.py
 python3 tools/verify_epick_tcp.py
-python3 tools/collect_a1_evidence.py   # log/a1 결과와 단위 테스트를 docs/evidence/a1에 수집
 ```
 
 기본 실행은 `ros2 launch ax_control simulation.launch.py`다. 제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.

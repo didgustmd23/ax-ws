@@ -24,7 +24,7 @@ Start는 Ubuntu/Gazebo, Remote는 리모컨, Stop은 해당 AX 세션과 전용 
 | 충돌·질량·관성 | `tools/generate_physical_properties.py` | 물리 Xacro·JSON 보고서 |
 | 관절 제한 | `config/arm_joint_limits.yaml` | URDF와 시험·키보드 도구에서 공통 사용 |
 | 센서 장착 | `config/sensor_mounts.yaml` | `urdf/sensors.xacro`에서 사용 |
-| EPick 컵·TCP | `config/epick.yaml`, `urdf/epick_adapter.xacro` | 외부 본체와 AX 어댑터 합성 |
+| 다중 흡착판 · 12컵·TCP | `config/epick.yaml`, `urdf/epick_adapter.xacro` | 사진 기반 자체 형상. epick은 호환 이름 |
 | 통합 시험 배치 | `worlds/ax_test.world` | 로봇 생성은 월드가 아니라 launch가 담당 |
 
 표의 `urdf/`, `config/`, `worlds/`는 `src/ax_description/` 기준이다.
@@ -57,7 +57,6 @@ ROS 환경을 불러온 workspace 루트에서:
 ```bash
 python3 tools/generate_asset_v2.py --check
 python3 tools/check_portability.py
-python3 -m unittest discover -s tools/tests -v
 ```
 
 프로세스 종료 시험은 자신이 만든 시험 프로세스만 정리하도록 구성돼 있다.

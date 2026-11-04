@@ -51,7 +51,6 @@ ROS 설치 경로 `/opt/ros/jazzy`는 정상이며 특정 사용자의 PC 경로
 
 ```bash
 python3 tools/check_portability.py
-python3 -m unittest discover -s tools/tests -v
 # 두 로봇 실행 중, 별도 터미널에서
 python3 tools/verify_unified_runtime.py
 ```

@@ -1,6 +1,6 @@
 ﻿# Windows 진입점: Start는 Ubuntu/Gazebo만, Remote는 리모컨만, Stop은 AX 전용 창까지 종료한다.
 param(
-    [ValidateSet('Start', 'Remote', 'Stop', 'Status')][string]$Action = 'Start',
+    [ValidateSet('Start', 'Remote', 'Stop', 'Status', 'ChooseWorld')][string]$Action = 'Start',
     [string]$Distro,
     [string]$Workspace
 )
@@ -42,10 +42,51 @@ try {
     if (-not $Workspace) { $Workspace = if ($config) { $config.workspace } else { '~/ax-play-ws' } }
     $tool = if ($config) { $config.tool } else { 'robotiq' }
     $port = if ($config) { [int]$config.port } else { 8765 }
+    $worldArguments = @()
+    if ($Action -eq 'ChooseWorld') {
+        Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
+        $form = New-Object Windows.Forms.Form
+        $form.Text = 'AX 월드 선택'
+        $form.ClientSize = New-Object Drawing.Size(450, 220)
+        $form.StartPosition = 'CenterScreen'
+        $form.FormBorderStyle = 'FixedDialog'
+        $form.MaximizeBox = $false
+        $form.MinimizeBox = $false
+        $label = New-Object Windows.Forms.Label
+        $label.Text = '실행할 월드를 선택하세요.'
+        $label.SetBounds(20, 18, 410, 24)
+        $list = New-Object Windows.Forms.ComboBox
+        $list.DropDownStyle = 'DropDownList'
+        $list.SetBounds(20, 50, 410, 30)
+        [void]$list.Items.Add('기존 시험 월드 (30 x 30 m)')
+        [void]$list.Items.Add('창고 월드 (20 x 15 m)')
+        $list.SelectedIndex = 0
+        $note = New-Object Windows.Forms.Label
+        $note.Text = "다른 월드가 실행 중이면 AX 세션을 종료하고 전환합니다.`r`n같은 월드는 다시 생성하지 않습니다."
+        $note.SetBounds(20, 95, 410, 45)
+        $open = New-Object Windows.Forms.Button
+        $open.Text = '열기'
+        $open.SetBounds(220, 165, 100, 32)
+        $open.DialogResult = [Windows.Forms.DialogResult]::OK
+        $cancel = New-Object Windows.Forms.Button
+        $cancel.Text = '취소'
+        $cancel.SetBounds(330, 165, 100, 32)
+        $cancel.DialogResult = [Windows.Forms.DialogResult]::Cancel
+        $form.Controls.AddRange(@($label, $list, $note, $open, $cancel))
+        $form.AcceptButton = $open
+        $form.CancelButton = $cancel
+        try {
+            if ($form.ShowDialog() -ne [Windows.Forms.DialogResult]::OK) { return }
+            $world = @('ax_test.world', 'planned/ax_warehouse.world')[$list.SelectedIndex]
+        } finally { $form.Dispose() }
+        $worldArguments = @('--world', $world, '--switch-world')
+        $Action = 'Start'
+    }
 # WSL의 초기 작업 폴더도 저장소 루트로 맞춰 tools 상대경로가 사용자 이름에 의존하지 않게 한다.
     Push-Location -LiteralPath $repoDir
     try {
-        $raw = & wsl.exe -d $Distro --exec python3 tools/desktop_session.py ($Action.ToLowerInvariant()) --workspace $Workspace --tool $tool --port $port
+        $raw = & wsl.exe -d $Distro --exec python3 tools/desktop_session.py ($Action.ToLowerInvariant()) --workspace $Workspace --tool $tool --port $port @worldArguments
         $exitCode = $LASTEXITCODE
     } finally { Pop-Location }
 # Python은 stdout 마지막 줄에 JSON을 출력한다. JSON의 ok와 프로세스 종료 코드를 모두 확인한다.
@@ -53,6 +94,10 @@ try {
     if ($exitCode -ne 0 -or -not $result.ok) { throw $result.error }
 # AX 터미널은 전용 창/고정 제목으로 열어 Stop에서 다른 사용자 탭과 구분한다.
     if ($Action -eq 'Start') {
+        if ($result.world_switched) {
+            [void](Close-RemoteWindows)
+            [void][AxRemoteWindow]::Close('Ubuntu 24.04 - AX')
+        }
         $shell = New-Object -ComObject WScript.Shell
         if (-not $shell.AppActivate('Ubuntu 24.04 - AX')) {
             $terminal = Get-Command wt.exe -ErrorAction SilentlyContinue

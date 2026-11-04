@@ -103,10 +103,8 @@ python3 tools/generate_physical_properties.py --check
 python3 tools/generate_asset_v2.py --check
 python3 tools/verify_drive_direction.py --arm-and-lidar
 python3 tools/audit_robot_geometry.py
-python3 tools/collect_drive_repair_evidence.py
 ```
 
-- 단위 테스트(물리·트리·프레임·바퀴 위치/축/제어 연결·프로세스 소유권)는 `collect_drive_repair_evidence.py`가 수집 시점에 다시 실행해 로그를 남긴다.
 - `log/repair/drive_directions.json`: Gazebo 원시 model pose와 joint_states로 전진·후진·좌우 회전 판정.
   odom만으로 성공을 판정하지 않는다.
 - 같은 JSON의 `arm_trials`: 실제 팔 5축 목표 추종·Gazebo 자식 링크 회전 확인 후 중립 복귀.

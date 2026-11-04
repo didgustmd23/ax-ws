@@ -53,7 +53,7 @@ def jog_target(positions, index, direction, limits, step=.04):
 
 class KeyboardTeleop(Node):
     # 시뮬레이션 시계를 쓰며, 두 주행 제어기와 AX_1 팔 Action만 연결한다.
-    def __init__(self):
+    def __init__(self, max_drive_scale=2.5, max_arm_step=.15):
         super().__init__('ax_keyboard_teleop', parameter_overrides=[Parameter('use_sim_time', value=True)])
         share = Path(get_package_share_directory('ax_description'))
         self.limits = yaml.safe_load((share / 'config/arm_joint_limits.yaml').read_text())['joint_limits']
@@ -61,7 +61,9 @@ class KeyboardTeleop(Node):
         self.joint = 0
         self.adjust_mode = 'drive'
         self.drive_scale = 1.0
+        self.max_drive_scale = max_drive_scale
         self.arm_step = .04
+        self.max_arm_step = max_arm_step
         self.positions = None
         self.state_time = -math.inf
         self.velocity = (0., 0.)
@@ -142,10 +144,10 @@ class KeyboardTeleop(Node):
     # 주행 속도 배율 또는 다음 팔 이동 각도만 변경한다. 진행 중인 팔 궤적의 속도를 바꾸지는 않는다.
     def adjust(self, direction):
         if self.adjust_mode == 'arm':
-            self.arm_step = round(min(.15, max(.01, self.arm_step + direction * .01)), 2)
+            self.arm_step = min(self.max_arm_step, round(max(.01, self.arm_step + direction * .01), 2))
             self.notice = f'다음 팔 이동 각도: {math.degrees(self.arm_step):.1f}도'
         else:
-            self.drive_scale = round(min(2.5, max(.25, self.drive_scale + direction * .25)), 2)
+            self.drive_scale = round(min(self.max_drive_scale, max(.25, self.drive_scale + direction * .25)), 2)
             # Changing a setting never starts or prolongs motion.
             self.velocity = (0., 0.)
             self.key_deadline = 0.

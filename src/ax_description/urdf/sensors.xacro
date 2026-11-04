@@ -127,6 +127,11 @@
         sx="0.05"
         sy="0.06"
         sz="0.04"/>
+    <!-- 독립 카메라를 같은 Gazebo 링크로 합치면 센서 시스템이 둘을
+         스테레오 쌍으로 취급해 잘못된 CameraInfo Tx를 만들 수 있다. -->
+    <gazebo reference="${name}_joint">
+      <preserveFixedJoint>true</preserveFixedJoint>
+    </gazebo>
     <link name="${name}_optical_frame"/>
     <joint name="${name}_optical_joint" type="fixed">
       <parent link="${name}_link"/>
@@ -144,6 +149,17 @@
           <optical_frame_id>${frame_prefix}${name}_optical_frame</optical_frame_id>
           <camera_info_topic>${topic_prefix}/${name}/camera_info</camera_info_topic>
           <horizontal_fov>${pi/3}</horizontal_fov>
+          <!-- 렌더링과 CameraInfo가 동일한 단안 투영을 사용한다. -->
+          <lens>
+            <type>gnomonical</type>
+            <intrinsics>
+              <fx>${320/tan(pi/6)}</fx>
+              <fy>${320/tan(pi/6)}</fy>
+              <cx>320</cx>
+              <cy>240</cy>
+              <s>0</s>
+            </intrinsics>
+          </lens>
           <image>
             <width>640</width>
             <height>480</height>

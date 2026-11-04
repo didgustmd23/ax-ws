@@ -52,7 +52,7 @@ def bridges(robot_id, manipulator, tool='epick'):
     add_sensor_bridge('imu', 'sensor_msgs/msg/Imu', 'gz.msgs.IMU')
     if manipulator and tool in ('epick', 'suction'):
         add_sensor_bridge(('epick_tof' if tool == 'epick' else 'suction_tof') + '/scan', 'sensor_msgs/msg/LaserScan', 'gz.msgs.LaserScan')
-    else:
+    if not manipulator:
         add_sensor_bridge('cargo_contact', 'ros_gz_interfaces/msg/Contacts', 'gz.msgs.Contacts')
     return configuration
 
@@ -139,7 +139,8 @@ def setup(context):
 # launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='ax_test.world', choices=['ax_test.world']),
+        DeclareLaunchArgument('world', default_value='ax_test.world',
+                              choices=['ax_test.world', 'planned/ax_warehouse.world']),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('controller_config_dir', default_value='',

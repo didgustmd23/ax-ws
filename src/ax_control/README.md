@@ -80,7 +80,7 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 안전 정지나 A3 무응답으로 물체를 자동 해제하지 않으며, 해제는 명시적 `RELEASE`로만 한다.
 
 - 부착 조건은 `epick_tcp`와 물체 링크 중심의 거리 0.12 m 이하다. 계약에 값이 없어 정한 개발용 잠정값이고 `ax_description/urdf/ros2_control.xacro`의 `ax_tool_attach` 매크로에 있다.
-- 플러그인 부모는 `gripper_base_link`이고 `epick_tcp`까지 거리는 EPick 0.1373 m, 가상 4컵 0.082 m다(`ax.urdf.xacro`). 공구 기하와 어긋나면 `tools/tests/test_w1_models.py`가 실패한다.
+- 플러그인 부모는 `gripper_base_link`이고 `epick_tcp`까지 거리는 EPick 0.1373 m, 가상 4컵 0.082 m다(`ax.urdf.xacro`). 공구 기하를 바꾸면 TCP 거리 설정도 함께 확인한다.
 - 물체 이름은 Gazebo 모델 이름과 같아야 하며 공백을 쓸 수 없다.
 - 진공·접촉 물리는 없다. 조건을 만족하면 고정 관절로 잇는다.
 - 받침면에 닿은 채 수평으로 끌면 팔이 움직이지 않는 것을 확인했다. 부착 뒤 먼저 들어 올려야 한다.

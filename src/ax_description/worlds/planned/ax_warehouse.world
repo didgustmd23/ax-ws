@@ -1,0 +1,486 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sdf version="1.8">
+  <world name="ax_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands" />
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster" />
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu" />
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact" />
+    <physics name="warehouse_test_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <gravity>0 0 -9.80665</gravity>
+    <light name="sun" type="directional">
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <scene>
+      <ambient>0.65 0.65 0.65 1</ambient>
+      <background>0.8 0.85 0.9 1</background>
+      <shadows>false</shadows>
+    </scene>
+    <!--20 x 15 m clear interior: X=-10..10, Y=-7.5..7.5. No external assets or network downloads.-->
+    <model name="ground_plane">
+      <static>true</static>
+      <pose>0 0 -0.05 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>20.4 15.4 0.1</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>20.4 15.4 0.1</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.53 0.55 0.57 1</ambient>
+            <diffuse>0.53 0.55 0.57 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <!--Walls: 0.2 m thick, 2.5 m high; inner faces define the usable 20 x 15 m warehouse.-->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 7.6 1.25 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>20.4 0.2 2.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>20.4 0.2 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.72 0.75 0.78 1</ambient>
+            <diffuse>0.72 0.75 0.78 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -7.6 1.25 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>20.4 0.2 2.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>20.4 0.2 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.72 0.75 0.78 1</ambient>
+            <diffuse>0.72 0.75 0.78 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>10.1 0 1.25 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.2 15 2.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.2 15 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.72 0.75 0.78 1</ambient>
+            <diffuse>0.72 0.75 0.78 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-10.1 0 1.25 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.2 15 2.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.2 15 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.72 0.75 0.78 1</ambient>
+            <diffuse>0.72 0.75 0.78 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <!--Solid conservative rack approximations, not pickable shelves. Main aisles are 3.0 m wide; north bypass is 2.5 m.-->
+    <model name="rack_1">
+      <static>true</static>
+      <pose>-5.5 3 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.24 0.30 0.35 1</ambient>
+            <diffuse>0.24 0.30 0.35 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="rack_2">
+      <static>true</static>
+      <pose>-1.5 3 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.24 0.30 0.35 1</ambient>
+            <diffuse>0.24 0.30 0.35 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="rack_3">
+      <static>true</static>
+      <pose>2.5 3 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1 4 1.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.24 0.30 0.35 1</ambient>
+            <diffuse>0.24 0.30 0.35 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <!--Short single-robot test passage: X=3.0..4.9, Y=3.5..5.0, clear width 1.9 m. It is not a two-robot passing lane.-->
+    <model name="rack_narrow">
+      <static>true</static>
+      <pose>5.4 4.25 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1 1.5 1.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1 1.5 1.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.24 0.30 0.35 1</ambient>
+            <diffuse>0.24 0.30 0.35 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <!--Visual-only floor zones: no collision or invisible robot restrictions. Source/destination table heights remain 0.8 m.-->
+    <model name="zone_inbound">
+      <static>true</static>
+      <pose>8 3 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>3 2</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.24 0.55 0.32 1</ambient>
+            <diffuse>0.24 0.55 0.32 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="zone_storage">
+      <static>true</static>
+      <pose>8 -3 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>3 2</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.70 0.48 0.22 1</ambient>
+            <diffuse>0.70 0.48 0.22 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="zone_handoff">
+      <static>true</static>
+      <pose>7 0 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>4 2.5</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.27 0.49 0.68 1</ambient>
+            <diffuse>0.27 0.49 0.68 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="zone_wait_robot_1">
+      <static>true</static>
+      <pose>0 -5.5 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>2.2 2.2</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.31 0.42 0.64 1</ambient>
+            <diffuse>0.31 0.42 0.64 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="zone_wait_robot_2">
+      <static>true</static>
+      <pose>3 -5.5 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>2.2 2.2</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.38 0.35 0.62 1</ambient>
+            <diffuse>0.38 0.35 0.62 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <model name="zone_sensor_test">
+      <static>true</static>
+      <pose>-5 -4.5 0.002 0 0 0</pose>
+      <link name="marking">
+        <visual name="marking">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>6 4</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.62 0.62 0.56 1</ambient>
+            <diffuse>0.62 0.62 0.56 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+    <!--Keep station_src at (8,3), station_dst at (8,-3), and the existing 0.2 m / 0.5 kg box for tool compatibility.-->
+    <model name="station_src">
+      <static>true</static>
+      <pose>8 3 0.4 0 0 0</pose>
+      <link name="table">
+        <collision name="table_collision">
+          <geometry>
+            <box>
+              <size>1.0 1.0 0.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="table_visual">
+          <geometry>
+            <box>
+              <size>1.0 1.0 0.8</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>0.3 0.4 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <model name="station_dst">
+      <static>true</static>
+      <pose>8 -3 0.4 0 0 0</pose>
+      <link name="table">
+        <collision name="table_collision">
+          <geometry>
+            <box>
+              <size>1.0 1.0 0.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="table_visual">
+          <geometry>
+            <box>
+              <size>1.0 1.0 0.8</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>0.5 0.4 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <model name="test_box">
+      <pose>8 3 0.91 0 0 0</pose>
+      <link name="box">
+        <inertial>
+          <mass>0.5</mass>
+          <inertia>
+            <ixx>0.003333333333</ixx>
+            <iyy>0.003333333333</iyy>
+            <izz>0.003333333333</izz>
+          </inertia>
+        </inertial>
+        <collision name="box_collision">
+          <geometry>
+            <box>
+              <size>0.2 0.2 0.2</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="box_visual">
+          <geometry>
+            <box>
+              <size>0.2 0.2 0.2</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>0.9 0.45 0.1 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <!--Reference board west of the empty 6 x 4 m test zone. Approach from +X; distances require sensor-origin calibration.-->
+    <model name="sensor_reference_board">
+      <static>true</static>
+      <pose>-8.8 -4.5 0.7 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.04 0.8 0.8</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>0.04 0.8 0.8</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.85 0.85 0.85 1</ambient>
+            <diffuse>0.85 0.85 0.85 1</diffuse>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

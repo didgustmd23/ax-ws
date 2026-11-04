@@ -639,7 +639,7 @@
     <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"
                               common_params_file="$(arg ros2_control_common_params)"/>
 
-    <!-- gripper_base_link → epick_tcp 거리(m). 공구 기하가 바뀌면 tools/tests/test_w1_models.py가 불일치를 잡는다. -->
+    <!-- gripper_base_link → epick_tcp 거리(m). 공구 기하를 바꾸면 이 거리도 함께 확인한다. -->
     <xacro:property name="tool_attach_tcp_offsets" value="${dict(epick=0.1373, suction=0.082)}"/>
     <xacro:if value="${'$(arg tool_attach)' == 'true' and '$(arg gripper_model)' in tool_attach_tcp_offsets}">
         <xacro:ax_tool_attach namespace="$(arg ros_namespace)"

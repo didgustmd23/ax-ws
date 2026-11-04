@@ -29,6 +29,12 @@ def validate_command(data):
         pass
     elif action in ('speed', 'angle', 'jog') and type(value) is int and value in (-1, 1):
         pass
+    elif action in ('set_speed', 'set_angle'):
+        if type(value) not in (int, float) or not math.isfinite(value):
+            raise ValueError('A finite numeric setting is required')
+        minimum, maximum = (.025, 3.0) if action == 'set_speed' else (math.degrees(.01), 90.0)
+        if not minimum <= value <= maximum:
+            raise ValueError('Setting outside permitted range')
     elif action == 'stop':
         value = None
     else:
@@ -73,6 +79,19 @@ class Remote:
         elif action == 'jog':
             node.adjust_mode = 'arm'
             node.jog(value)
+        elif action in ('set_speed', 'set_angle'):
+            if action == 'set_speed':
+                node.drive_scale = value / .1
+                node.adjust_mode = 'drive'
+                node.notice = f'주행 {value:.3f} m/s / 회전 {value * 2:.2f} rad/s'
+            else:
+                node.arm_step = math.radians(value)
+                node.adjust_mode = 'arm'
+                node.notice = f'다음 팔 이동 각도: {value:.3f}도'
+            # 설정 변경은 이동 명령이 아니다. 진행 중인 팔 궤적은 바꾸지 않는다.
+            node.velocity = (0., 0.)
+            node.key_deadline = 0.
+            node.publish_drive()
 
     # ROS 내부 상태를 브라우저용 복사본으로 만든다. 내부 각도 rad를 화면용 degree로 변환한다.
     def update(self, node):
@@ -80,7 +99,7 @@ class Remote:
             'robot': node.robot, 'joint': node.joint, 'labels': JOINT_LABELS,
             'linear': round(node.drive_scale * .1, 3),
             'angular': round(node.drive_scale * .2, 2),
-            'step_deg': round(math.degrees(node.arm_step), 2),
+            'step_deg': round(math.degrees(node.arm_step), 3),
             'angles_deg': [round(math.degrees(p), 2) for p in node.positions] if node.positions else [],
             'arm_busy': node.pending, 'notice': node.notice,
             'arm_ready': node.positions is not None and time.monotonic() - node.state_time < 1,
@@ -155,7 +174,7 @@ def main():
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_for(remote))
     server.daemon_threads = True
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
-    node = KeyboardTeleop()
+    node = KeyboardTeleop(max_drive_scale=30.0, max_arm_step=math.pi / 2)
     node.notice = '준비 완료. 리모컨에서 로봇과 동작을 선택하세요.'
     signal.signal(signal.SIGTERM, stop_signal_handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()

@@ -57,7 +57,6 @@ ROS 환경을 불러온 workspace 루트에서:
 ```bash
 python3 tools/generate_asset_v2.py --check
 python3 tools/check_portability.py
-python3 -m unittest discover -s tools/tests -v
 ```
 
 프로세스 종료 시험은 자신이 만든 시험 프로세스만 정리하도록 구성돼 있다.

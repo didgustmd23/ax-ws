@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ax_perception</name>
+  <version>0.1.0</version>
+  <description>B1 sensor validation, RGB-D synchronization and diagnostics.</description>
+  <maintainer email="didgustmd23@gmail.com">AX Team</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

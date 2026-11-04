@@ -56,3 +56,8 @@ Thumbs.db
 
 # Local Archify sources, HTML, export helpers, fonts and verification receipts.
 /.archify/
+
+# C1 local Python environment, training images/labels and learned weights.
+/.venv-vision/
+/vision_data/
+/vision_models/

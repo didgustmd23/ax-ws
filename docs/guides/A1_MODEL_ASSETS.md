@@ -70,11 +70,9 @@ source /opt/ros/jazzy/setup.bash
 colcon build --packages-up-to ax_description ax_interfaces ax_control
 source install/setup.bash
 python3 tools/export_ax1_urdf.py
-python3 -m unittest discover -s tools/tests -v
 python3 tools/audit_arm_range.py
 python3 tools/verify_a1_envelope.py
 python3 tools/verify_epick_tcp.py
-python3 tools/collect_a1_evidence.py   # log/a1 결과와 단위 테스트를 docs/evidence/a1에 수집
 ```
 
 기본 실행은 `ros2 launch ax_control simulation.launch.py`다. 제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.

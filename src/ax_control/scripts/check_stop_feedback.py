@@ -2,15 +2,21 @@
 """A2 개발용 정지 피드백 측정. 제어기 측정값과 Gazebo 실제 속도를 비교한다.
 
 정지 기준은 INTERFACE_CONTRACT D-06이다. 판정 소유자는 A4이며 이 도구는 측정만 한다.
+Gazebo 실제 값: 차체는 모델 자세, 팔은 링크 자세로 다시 계산한 관절각의 차분 속도다(gazebo_observer.py).
+joint_states와 다른 경로이므로 두 정지 시각을 독립 관측끼리 비교할 수 있다.
 Gazebo 실제 값은 시험 비교용이므로 운영 판정에 쓰지 않는다.
 제어기를 A4 없이 직접 구동하므로 격리된 개발 시뮬레이션에서만 실행한다.
 
 실행 순서
   터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
-  터미널 2: python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
+  터미널 2: python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1 [--repeats 5]
+
+--repeats N이면 시나리오마다 N회 측정하고 평균±표준편차를 출력한다. 주행 시나리오는 측정 뒤
+반대 명령으로 되돌아가 출발점 근처를 유지한다. 결과는 기본으로 log/a2_stop_feedback/<KST 시각>/result.json이다.
+물리 설정(질량·마찰·effort)이 잠정값이면 정지 시간도 잠정값이며 성능값으로 쓰지 않는다.
 
 출력 읽는 법
-  [INFO]  피드백 주기·최대 간격·지연과 NaN이 있는 관절
+  [INFO]  피드백 주기·최대 간격·지연과 NaN이 있는 관절, 시나리오별 반복 통계
   [PASS]  시나리오별 정지 시간. PASS는 정지가 확인됐다는 뜻이지 값이 좋다는 뜻이 아니다
   "odom 정지 후 실제 이동"이 크면 odom이 먼저 정지를 보고한 것이다
 
@@ -20,16 +26,18 @@ A4 판정에 필요한 0.5 s 유지 시간은 포함하지 않는다.
 """
 
 import argparse
+from datetime import datetime
 import json
 import math
+from pathlib import Path
 import queue
 import subprocess
 import sys
 import threading
 import time
-from pathlib import Path
 import yaml
 from collections import deque
+from zoneinfo import ZoneInfo
 
 import rclpy
 from control_msgs.action import FollowJointTrajectory
@@ -41,6 +49,10 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
+
+from gazebo_observer import GazeboObserver, fetch_robot_description, joint_speed_series, summarize
+
+WORKSPACE = Path(__file__).resolve().parents[3]
 
 # D-06 실제 정지 판정 값
 STOP_LINEAR_M_S = 0.01
@@ -174,6 +186,9 @@ class StopFeedbackRecorder(Node):
         self.truth_linear = None
         self.truth_angular = None
         self.truth_xy = None
+        # 팔 실제 속도는 main에서 연결하는 Gazebo 링크 관측기로 계산한다.
+        self.observer = None
+        self.truth_arm = None
 
         self.samples = []
         self.last_sample_time = None
@@ -274,8 +289,23 @@ class StopFeedbackRecorder(Node):
         self.truth_linear = distance / elapsed
         self.truth_angular = abs(wrap_angle(end[3] - start[3])) / elapsed
 
+    # Gazebo 링크 자세로 다시 계산한 팔 관절각에서 최근 창의 최대 관절 속도(rad/s)를 구한다
+    def update_truth_arm(self, now):
+        history = [
+            (item["stamp"], item["joints"])
+            for item in self.observer.since(now - 2.0 * TRUTH_WINDOW_SECONDS)
+            if item["stamp"] <= now
+        ]
+        series = joint_speed_series(history, TRUTH_WINDOW_SECONDS)
+
+        if series:
+            self.truth_arm = series[-1][1]
+
     # 모든 값이 준비되면 일정 간격으로 표본을 저장한다
     def record_sample(self, now):
+        if self.observer is not None:
+            self.update_truth_arm(now)
+
         values = (
             self.odom_linear,
             self.odom_angular,
@@ -283,6 +313,7 @@ class StopFeedbackRecorder(Node):
             self.truth_angular,
             self.arm_speed,
             self.wheel_speed,
+            self.truth_arm,
         )
 
         if any(value is None for value in values):
@@ -377,13 +408,13 @@ def first_stable_stop(samples, is_stopped):
     return start
 
 
-# 명령 종료 뒤 표본에서 두 관측의 정지 시각과 차이를 계산한다
+# 명령 종료 뒤 표본에서 두 관측의 정지 시각과 차이를 계산한다. 정지를 확인하지 못하면 None
 def evaluate(name, samples, cut_time):
     after = [sample for sample in samples if sample[0] >= cut_time]
 
     # 제어기 측정값 기준 D-06 판정
     def odom_stopped(sample):
-        _, _, odom_v, odom_w, _, _, arm, _ = sample
+        _, _, odom_v, odom_w, _, _, arm, _, _ = sample
 
         return (
             odom_v <= STOP_LINEAR_M_S
@@ -391,14 +422,14 @@ def evaluate(name, samples, cut_time):
             and arm <= STOP_ARM_RAD_S
         )
 
-    # Gazebo 실제 값 기준 D-06 판정
+    # Gazebo 실제 값 기준 D-06 판정. 팔도 joint_states가 아닌 Gazebo 링크 자세 기준이다
     def truth_stopped(sample):
-        _, _, _, _, truth_v, truth_w, arm, _ = sample
+        _, _, _, _, truth_v, truth_w, _, _, truth_arm = sample
 
         return (
             truth_v <= STOP_LINEAR_M_S
             and truth_w <= STOP_ANGULAR_RAD_S
-            and arm <= STOP_ARM_RAD_S
+            and truth_arm <= STOP_ARM_RAD_S
         )
 
     odom_stop = first_stable_stop(after, odom_stopped)
@@ -407,7 +438,7 @@ def evaluate(name, samples, cut_time):
     if odom_stop is None or truth_stop is None:
         print(f"[FAIL] {name}: 정지 미확인 odom {odom_stop}, 실제 {truth_stop}", flush=True)
 
-        return False
+        return None
 
     moving = [sample for sample in samples if sample[0] < cut_time]
     linear_error = max(
@@ -432,12 +463,50 @@ def evaluate(name, samples, cut_time):
         flush=True,
     )
 
-    return True
+    return {
+        "odom_stop_s": odom_stop - cut_time,
+        "truth_stop_s": truth_stop - cut_time,
+        "slide_after_odom_stop_m": slide,
+        "max_linear_difference_m_s": linear_error,
+        "max_angular_difference_rad_s": angular_error,
+    }
 
 
-# 시나리오를 실행하고 실패 건수를 돌려준다
-def run_checks(node):
+# 시나리오별 반복 결과의 평균·표준편차·범위를 출력하고 사전으로 돌려준다
+def summarize_results(results):
+    summary = {}
+
+    for name, runs in results.items():
+        values = [run for run in runs if run is not None]
+        summary[name] = {
+            "runs": len(runs),
+            "stopped": len(values),
+            **{key: summarize([run[key] for run in values]) for key in (
+                "odom_stop_s", "truth_stop_s", "slide_after_odom_stop_m",
+            )},
+        }
+
+        odom, truth, slide = (summary[name][key] for key in ("odom_stop_s", "truth_stop_s", "slide_after_odom_stop_m"))
+
+        if odom is None or truth is None:
+            print(f"[INFO] {name}: 정지 확인 {len(values)}/{len(runs)}회", flush=True)
+            continue
+
+        print(
+            f"[INFO] {name} ({len(values)}/{len(runs)}회): "
+            f"odom {odom['mean']:.3f}±{odom['std']:.3f} s, 실제 {truth['mean']:.3f}±{truth['std']:.3f} s, "
+            f"odom 정지 후 실제 이동 최대 {slide['max'] * 1000:.1f} mm",
+            flush=True,
+        )
+
+    return summary
+
+
+# 시나리오를 repeats회 실행하고 (실패 건수, 시나리오별 결과, 피드백 품질)을 돌려준다
+# 주행 시나리오마다 측정 뒤 반대 명령으로 되돌아가 출발점 근처를 유지한다(되돌아가는 구간은 측정하지 않음).
+def run_checks(node, repeats=1):
     failures = 0
+    results = {}
 
     deadline = time.monotonic() + 20.0
 
@@ -447,7 +516,7 @@ def run_checks(node):
     if node.last_sample_time is None:
         print("[FAIL] 측정값 수신 없음(joint_states·odom·ground_truth)", flush=True)
 
-        return 1
+        return 1, results, {}
 
     node.joint_meter.reset()
     node.odom_meter.reset()
@@ -473,6 +542,15 @@ def run_checks(node):
     drive = control['/**/diff_drive_controller']['ros__parameters']
     maximum_linear = drive['linear.x.max_velocity']
     maximum_angular = drive['angular.z.max_velocity']
+    feedback = {
+        "joint_states_hz": node.joint_meter.rate(),
+        "joint_states_max_gap_s": node.joint_meter.max_gap,
+        "joint_states_max_age_s": node.max_joint_age,
+        "odom_hz": node.odom_meter.rate(),
+        "odom_max_gap_s": node.odom_meter.max_gap,
+        "nan_joints": sorted(node.joint_nan_names),
+    }
+
     scenarios = [
         ("직진 0.3 m/s", 0.3, 0.0, 3.0),
         (f"직진 상한 {maximum_linear:g} m/s", maximum_linear, 0.0, 3.0),
@@ -480,42 +558,50 @@ def run_checks(node):
         ("호 주행", 0.3, 0.3, 3.0),
     ]
 
-    for name, linear, angular, seconds in scenarios:
-        node.samples.clear()
+    for repeat in range(1, repeats + 1):
+        for name, linear, angular, seconds in scenarios:
+            node.samples.clear()
 
-        cut_time = node.run_drive(linear, angular, seconds)
-        node.settle_after(cut_time)
+            cut_time = node.run_drive(linear, angular, seconds)
+            node.settle_after(cut_time)
 
-        if not evaluate(name, node.samples, cut_time):
-            failures += 1
+            result = evaluate(f"{name} #{repeat}", node.samples, cut_time)
+            results.setdefault(name, []).append(result)
+            failures += 0 if result else 1
+
+            # 같은 경로를 거꾸로 되돌아간다. 측정하지 않는다.
+            node.settle_after(node.run_drive(-linear, -angular, seconds))
 
     if not node.arm_client.wait_for_server(timeout_sec=10.0):
         print("[FAIL] 팔 Action 서버 없음", flush=True)
 
-        return failures + 1
+        return failures + 1, results, feedback
 
     arm_targets = [
         ("팔 이동", [0.6, 0.3, 0.3, 0.2, 0.3]),
         ("팔 복귀", [0.0, 0.0, 0.0, 0.0, 0.0]),
     ]
 
-    for name, positions in arm_targets:
-        node.samples.clear()
+    for repeat in range(1, repeats + 1):
+        for name, positions in arm_targets:
+            node.samples.clear()
 
-        cut_time = node.run_arm(positions, 2)
+            cut_time = node.run_arm(positions, 2)
 
-        if cut_time is None:
-            print(f"[FAIL] {name}: 궤적 거절", flush=True)
-            failures += 1
+            if cut_time is None:
+                print(f"[FAIL] {name} #{repeat}: 궤적 거절", flush=True)
+                results.setdefault(name, []).append(None)
+                failures += 1
 
-            continue
+                continue
 
-        node.settle_after(cut_time)
+            node.settle_after(cut_time)
 
-        if not evaluate(name, node.samples, cut_time):
-            failures += 1
+            result = evaluate(f"{name} #{repeat}", node.samples, cut_time)
+            results.setdefault(name, []).append(result)
+            failures += 0 if result else 1
 
-    return failures
+    return failures, results, feedback
 
 
 # 시험 전용으로 Gazebo 자세 출력을 읽기 시작한다. launch에는 넣지 않는다
@@ -540,7 +626,21 @@ def start_truth_reader(robot_id, poses):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--robot-id", default="robot_1")
+    parser.add_argument("--repeats", type=int, default=1, help="시나리오별 반복 횟수")
+    parser.add_argument("--output", type=Path, default=None, help="결과 폴더(기본 log/a2_stop_feedback/<KST 시각>)")
     arguments = parser.parse_args()
+
+    if arguments.repeats < 1:
+        parser.error("--repeats는 1 이상")
+
+    stamp = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d_%H%M%S")
+    output = arguments.output or WORKSPACE / "log/a2_stop_feedback" / stamp
+
+    if output.exists() and any(output.iterdir()):
+        parser.error(f"{output}이 비어 있지 않음")
+
+    output.mkdir(parents=True, exist_ok=True)
+    failures, results, feedback = 1, {}, {}
 
     truth_poses = queue.Queue()
     reader = start_truth_reader(arguments.robot_id, truth_poses)
@@ -549,13 +649,45 @@ def main():
     node = StopFeedbackRecorder(arguments.robot_id, truth_poses)
 
     try:
-        failures = run_checks(node)
+        # 팔 실제 속도용 Gazebo 링크 관측기. 관절각 재계산에 실행 중인 모델의 URDF를 쓴다.
+        urdf = fetch_robot_description(
+            node,
+            arguments.robot_id,
+            spin=lambda: rclpy.spin_once(node, timeout_sec=0.05),
+        )
+        node.observer = GazeboObserver(arguments.robot_id, urdf, ARM_JOINTS, "gripper_base_link", None)
+        node.observer.start()
+
+        failures, results, feedback = run_checks(node, arguments.repeats)
     finally:
+        # 종료 중 Gazebo 전송 스레드가 Python 콜백을 부르지 않도록 구독부터 해제한다.
+        if node.observer is not None:
+            node.observer.stop()
+
         node.destroy_node()
         rclpy.shutdown()
         reader.terminate()
         reader.wait(timeout=5)
 
+    summary = summarize_results(results)
+
+    record = {
+        "robot_id": arguments.robot_id,
+        "repeats": arguments.repeats,
+        "criterion": {
+            "linear_m_s": STOP_LINEAR_M_S,
+            "angular_rad_s": STOP_ANGULAR_RAD_S,
+            "arm_rad_s": STOP_ARM_RAD_S,
+            "hold_s": STOP_HOLD_SECONDS,
+        },
+        "feedback": feedback,
+        "runs": results,
+        "summary": summary,
+        "note": "Provisional physics (mass, friction, effort). Measured values are not stop performance.",
+    }
+    (output / "result.json").write_text(json.dumps(record, indent=2, ensure_ascii=False, default=float) + "\n")
+
+    print(f"결과: {output / 'result.json'}", flush=True)
     print(f"실패 {failures}건", flush=True)
     sys.exit(1 if failures else 0)
 

@@ -62,3 +62,7 @@ python3 -m unittest discover -s tools/tests -v
 
 프로세스 종료 시험은 자신이 만든 시험 프로세스만 정리하도록 구성돼 있다.
 실제 Gazebo 전체 회귀 도구는 별도의 시험 세션을 실행하므로 단순 문서 확인과 구분한다.
+
+A2 제어 시험 도구는 `src/ax_control/scripts/check_*.py`이며 실행 중인 격리 시뮬레이션에 붙어 동작한다.
+사용법·판정 범위는 [ax_control 안내](../../src/ax_control/README.md#개발-시험)를 따른다.
+Gazebo 독립 관측(링크 자세 → 관절각·TCP·물체 자세)은 `gazebo_observer.py` 하나에 두고, 순수 계산은 `tools/tests/test_gazebo_observer.py`가 Gazebo 없이 검사한다.

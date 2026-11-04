@@ -6,7 +6,9 @@
 
 실행 순서
   터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
-  터미널 2: python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1
+  터미널 2: python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0]
+
+상자 질량은 --box-mass(kg, 기본 1.0)로 바꾼다. 물리 진행을 기다리는 구간은 시뮬레이션 시간 기준이다.
 
 주의
 - 실제 A3·A4가 떠 있으면 같은 서비스·토픽이 겹치므로 그 환경에서 실행하지 않는다.
@@ -64,23 +66,33 @@ ATTACH_TIMEOUT_SECONDS = 3.0
 # 모의 A3는 내용을 검사하지 않지만 계약 형식(소문자 16진수 32자)은 맞춘다.
 GOAL_ID = "0123456789abcdef0123456789abcdef"
 
+# 상자 질량 기본값(kg). 시험용 값이며 실제 물품 규격이 아니다.
+DEFAULT_BOX_MASS_KG = 1.0
+MAX_BOX_MASS_KG = 5.0
+
 # 상자와 받침대가 같이 쓰는 SDF. 플러그인이 첫 링크를 쓰므로 링크는 하나만 둔다.
 BOX_SDF = """<sdf version="1.9"><model name="{name}"><static>{static}</static>
-<link name="link"><inertial><mass>1.0</mass><inertia><ixx>0.004</ixx><iyy>0.004</iyy>
-<izz>0.004</izz></inertia></inertial>
+<link name="link"><inertial><mass>{mass}</mass><inertia><ixx>{ixx}</ixx><iyy>{iyy}</iyy>
+<izz>{izz}</izz></inertia></inertial>
 <collision name="c"><geometry><box><size>{sx} {sy} {sz}</size></box></geometry></collision>
 <visual name="v"><geometry><box><size>{sx} {sy} {sz}</size></box></geometry></visual>
 </link></model></sdf>"""
 
 
-# 월드에 상자 모델을 만든다
-def spawn_box(name, position, size, static):
+# 월드에 상자 모델을 만든다. 관성은 질량(kg)과 크기(m)로 속이 찬 직육면체 공식에서 계산한다.
+def spawn_box(name, position, size, static, mass=DEFAULT_BOX_MASS_KG):
+    sx, sy, sz = size
+
     sdf = BOX_SDF.format(
         name=name,
         static=str(static).lower(),
-        sx=size[0],
-        sy=size[1],
-        sz=size[2],
+        mass=mass,
+        ixx=mass * (sy ** 2 + sz ** 2) / 12.0,
+        iyy=mass * (sx ** 2 + sz ** 2) / 12.0,
+        izz=mass * (sx ** 2 + sy ** 2) / 12.0,
+        sx=sx,
+        sy=sy,
+        sz=sz,
     )
 
     subprocess.run(
@@ -116,6 +128,24 @@ def model_position(name):
         raise RuntimeError(f"{name} 위치를 읽지 못함: {output[:120]}")
 
     return [float(value) for value in match.group(1).split()]
+
+
+# 시험이 만든 모델을 월드에서 지운다. 지우지 못하면 False
+def remove_model(name):
+    result = subprocess.run(
+        [
+            "gz", "service", "-s", "/world/ax_test/remove",
+            "--reqtype", "gz.msgs.Entity",
+            "--reptype", "gz.msgs.Boolean",
+            "--timeout", "5000",
+            "--req", f'name: "{name}" type: MODEL',
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    return result.returncode == 0 and "data: true" in result.stdout
 
 
 # A3·A4 모의 상대와 시험 클라이언트를 겸하는 노드
@@ -252,6 +282,18 @@ class ToolAttachTester(Node):
 
         return False
 
+    # 시뮬레이션 시간이 seconds만큼 지나도록 기다린다. 물리 진행을 기다릴 때 쓴다.
+    # 실시간 비율이 낮아도 같은 물리 시간을 보장하며, 시뮬레이터가 멈추면 벽시계 상한에서 실패한다.
+    def wait_sim(self, seconds, wall_limit_seconds=120.0):
+        target = self.get_clock().now().nanoseconds * 1e-9 + seconds
+        deadline = time.monotonic() + wall_limit_seconds
+
+        while self.get_clock().now().nanoseconds * 1e-9 < target:
+            if time.monotonic() > deadline:
+                raise RuntimeError("시뮬레이션 시간이 진행되지 않음")
+
+            time.sleep(0.01)
+
     # 기둥 회전과 어깨를 움직인다
     def move_arm(self, yaw, shoulder=0.0):
         point = JointTrajectoryPoint()
@@ -303,8 +345,8 @@ class ToolAttachTester(Node):
         raise RuntimeError("epick_tcp TF 없음")
 
 
-# 시나리오를 실행하고 실패 건수를 돌려준다
-def run_checks(node):
+# 시나리오를 실행하고 실패 건수를 돌려준다. box_mass는 부착 대상 상자 질량(kg)이다
+def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
     failures = 0
     attach = ToolCommand.Request.ATTACH
     release = ToolCommand.Request.RELEASE
@@ -332,7 +374,7 @@ def run_checks(node):
     )
 
     node.move_arm(PICK_YAW_RAD)
-    time.sleep(1.0)
+    node.wait_sim(1.0)
 
     # 시험 무대: TCP 바로 아래 받침대 위 상자(box_11)와 멀리 떨어진 바닥 상자(box_12)
     tcp = node.tcp_position()
@@ -345,9 +387,9 @@ def run_checks(node):
         [STAND_SIZE_M, STAND_SIZE_M, stand_height],
         True,
     )
-    spawn_box("box_11", [tcp[0], tcp[1], box_z], [BOX_SIZE_M] * 3, False)
-    spawn_box("box_12", [1.5, 1.5, FLOOR_BOX_Z_M], [BOX_SIZE_M] * 3, False)
-    time.sleep(2.0)
+    spawn_box("box_11", [tcp[0], tcp[1], box_z], [BOX_SIZE_M] * 3, False, box_mass)
+    spawn_box("box_12", [1.5, 1.5, FLOOR_BOX_Z_M], [BOX_SIZE_M] * 3, False, box_mass)
+    node.wait_sim(2.0)
 
     # 먼 물체는 수락돼도 실제로 붙지 않아야 한다.
     response = node.send_tool(attach, "box_12")
@@ -398,7 +440,7 @@ def run_checks(node):
     # 신호만 믿지 않고 Gazebo 실제 위치로 물체가 팔을 따라오는지 확인한다.
     before = model_position("box_11")
     node.move_arm(PICK_YAW_RAD, LIFT_SHOULDER_RAD)
-    time.sleep(1.0)
+    node.wait_sim(1.0)
     lifted = model_position("box_11")
     report(
         "들어 올림",
@@ -407,7 +449,7 @@ def run_checks(node):
     )
 
     node.move_arm(CARRY_YAW_RAD, LIFT_SHOULDER_RAD)
-    time.sleep(1.0)
+    node.wait_sim(1.0)
     after = model_position("box_11")
     moved = sum((a - b) ** 2 for a, b in zip(after, lifted)) ** 0.5
     report(
@@ -418,7 +460,7 @@ def run_checks(node):
 
     # 안전 정지 상태를 흉내 낸다. 물체가 자동으로 떨어지면 안 된다.
     node.arm_allowed = False
-    time.sleep(1.5)
+    node.wait_sim(1.5)
     held = model_position("box_11")
     state = node.attach_state
     report(
@@ -443,7 +485,7 @@ def run_checks(node):
     # 해제 신호와 실제 낙하를 함께 확인한다.
     response = node.send_tool(release, "box_11")
     released = node.wait_attached(False)
-    time.sleep(2.0)
+    node.wait_sim(2.0)
     final = model_position("box_11")
     report(
         "해제",
@@ -458,7 +500,16 @@ def run_checks(node):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--robot-id", default="robot_1")
+    parser.add_argument(
+        "--box-mass",
+        type=float,
+        default=DEFAULT_BOX_MASS_KG,
+        help="부착 대상 상자 질량(kg). 시험값이며 흡착력 검증이 아니다",
+    )
     arguments = parser.parse_args()
+
+    if not 0.0 < arguments.box_mass <= MAX_BOX_MASS_KG:
+        parser.error(f"--box-mass는 0 초과 {MAX_BOX_MASS_KG} kg 이하")
 
     rclpy.init()
 
@@ -471,7 +522,7 @@ def main():
     thread.start()
 
     try:
-        failures = run_checks(node)
+        failures = run_checks(node, arguments.box_mass)
     finally:
         executor.shutdown()
         node.destroy_node()

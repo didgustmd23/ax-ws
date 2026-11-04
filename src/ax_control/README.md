@@ -26,8 +26,10 @@ ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false
 
 | 모델 | `wheel_separation_multiplier` | 근거 |
 |---|---|---|
-| AX_1 | 1.2315 | 임시 모델 실측. A1 모델 drive_repair 증거(제자리 회전 좌·우 각 1회)에서 계산한 1.232와 일치 |
-| AX_2 | 1.1318 | A1 drive_repair 증거에서 계산한 잠정값. A2 직접 재측정 필요 |
+| AX_1 | 1.2315 | 임시 모델 실측. A1 모델 drive_repair 증거의 1.232와 일치. `check_wheel_calibration.py` 측정(2026-11-04, 좌·우 각 2회) 권장 1.2321 |
+| AX_2 | 1.1318 | A1 drive_repair 증거에서 계산한 잠정값. `check_wheel_calibration.py` 측정(2026-11-04, 좌·우 각 2회) 권장 1.1291 |
+
+두 측정 모두 현재값과 0.3 % 안쪽으로 맞아 설정은 바꾸지 않았다. 물리 설정(질량·마찰·robot_2 차체)이 확정되면 같은 도구로 다시 재고 반영 여부를 정한다.
 
 ## A4 연결 지점
 
@@ -97,13 +99,15 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
 ```bash
 python3 src/ax_control/scripts/check_command_paths.py --robot-id robot_1
-python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1
+python3 src/ax_control/scripts/check_stop_feedback.py --robot-id robot_1 [--repeats 5]
+python3 src/ax_control/scripts/check_wheel_calibration.py --robot-id robot_2 [--repeats 3]
 python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0]
 python3 src/ax_control/scripts/check_payload_tracking.py --robot-id robot_1 [--masses 0 0.5 1 2] [--repeats 3]
 ```
 
 `check_command_paths.py`는 시뮬레이션 실행 중 제어기를 A4 없이 직접 구동해 관절 상태, 바퀴 구동·정지, 팔 궤적, 잘못된 관절 거부, TF 접두사를 점검한다.
-`check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다. 팔의 실제 값은 Gazebo 링크 자세로 다시 계산한 관절각 속도다.
+`check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다. 팔의 실제 값은 Gazebo 링크 자세로 다시 계산한 관절각 속도다. `--repeats`로 반복하면 평균·표준편차를 내고, 주행 시나리오는 측정 뒤 반대 명령으로 되돌아간다. 결과는 `log/a2_stop_feedback/<KST 시각>/result.json`이다.
+`check_wheel_calibration.py`는 제자리 회전(좌·우)과 직진(전·후진)을 반복하며 odom 값과 Gazebo 실제 값의 비율로 `wheel_separation_multiplier` 권장값과 `left/right_wheel_radius_multiplier` 참고값을 계산한다. 실행 중인 제어기의 파라미터를 읽으며 설정 파일은 바꾸지 않는다. 결과는 `log/a2_wheel_calibration/<KST 시각>/result.json`이다.
 `check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다. 상자 질량은 `--box-mass`(kg, 기본 1.0)로 바꾼다.
 `check_payload_tracking.py`는 흡착으로 붙인 상자로 단계 하중(기본 0·0.5·1·2 kg) 추종·유지·운반 중 취소 정지를 시험한다.
 

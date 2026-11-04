@@ -233,6 +233,44 @@ def joint_speed_series(history, window):
     return series
 
 
+# 4×4 자세 또는 3×3 회전에서 월드 Z축 둘레 yaw(rad, -pi~pi)를 구한다.
+def yaw_of(matrix):
+    return math.atan2(float(matrix[1, 0]), float(matrix[0, 0]))
+
+
+# 사원수(x, y, z, w)의 yaw(rad)를 구한다. odom 메시지 방향 해석에 쓴다.
+def quaternion_yaw(x, y, z, w):
+    return math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+
+
+# -pi~pi로 감긴 각도 목록을 이어 붙여 누적 각도(rad)로 푼다. 한 표본 사이 회전은 pi 미만이라고 가정한다.
+def unwrap_angles(angles):
+    result = []
+
+    for angle in angles:
+        if not result:
+            result.append(angle)
+            continue
+
+        step = math.atan2(math.sin(angle - result[-1]), math.cos(angle - result[-1]))
+        result.append(result[-1] + step)
+
+    return result
+
+
+# 값 목록의 평균·표본 표준편차·최소·최대를 돌려준다. 값이 없으면 None
+def summarize(values):
+    values = [value for value in values if value is not None and math.isfinite(value)]
+
+    if not values:
+        return None
+
+    mean = sum(values) / len(values)
+    spread = math.sqrt(sum((value - mean) ** 2 for value in values) / (len(values) - 1)) if len(values) > 1 else 0.0
+
+    return {"count": len(values), "mean": mean, "std": spread, "min": min(values), "max": max(values)}
+
+
 # 시각순 두 표본 목록 [(시각, 값)]을 가장 가까운 시각끼리 짝짓는다. max_gap 초를 넘는 짝은 버린다.
 def nearest_pairs(first, second, max_gap):
     pairs = []
@@ -428,6 +466,81 @@ class GazeboObserver:
             time.sleep(0.05)
 
         return False
+
+
+# 지정한 모델들의 Gazebo 월드 자세를 시각별로 기록한다. 팔이 없는 로봇(robot_2)의 차체 관측에도 쓴다.
+class ModelPoseTracker:
+    # 기록할 모델 이름과 월드 이름을 정한다. start()를 불러야 연결된다.
+    def __init__(self, names, world="ax_test", history_seconds=60.0):
+        self.names = set(names)
+        self.world = world
+        self.history_seconds = history_seconds
+        self.lock = threading.Lock()
+        self.history = {name: deque() for name in self.names}
+        self.node = None
+
+    # 자세 토픽을 구독한다.
+    def start(self):
+        from gz.msgs10.pose_v_pb2 import Pose_V
+        from gz.transport13 import Node
+
+        self.node = Node()
+
+        if not self.node.subscribe(Pose_V, f"/world/{self.world}/dynamic_pose/info", self.on_pose):
+            raise RuntimeError("dynamic_pose 구독 실패")
+
+    # 대상 모델 자세를 측정 시각과 함께 저장한다.
+    def on_pose(self, message):
+        stamp = message.header.stamp.sec + message.header.stamp.nsec * 1e-9
+
+        with self.lock:
+            for pose in message.pose:
+                if pose.name not in self.names:
+                    continue
+
+                history = self.history[pose.name]
+
+                # 시뮬레이션 리셋으로 시각이 되돌아가면 이력을 비운다.
+                if history and stamp < history[-1][0]:
+                    history.clear()
+
+                history.append((stamp, pose_matrix(
+                    (pose.position.x, pose.position.y, pose.position.z),
+                    (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w),
+                )))
+
+                while history and stamp - history[0][0] > self.history_seconds:
+                    history.popleft()
+
+    # since 시각 이후 (시각, 4×4 자세) 목록
+    def since(self, name, since):
+        with self.lock:
+            return [item for item in self.history[name] if item[0] >= since]
+
+    # 가장 최근 (시각, 4×4 자세). 없으면 None
+    def latest(self, name):
+        with self.lock:
+            return self.history[name][-1] if self.history[name] else None
+
+    # stamp(시뮬레이션 s)까지 관측이 들어올 때까지 기다린다.
+    def wait_until(self, name, stamp, timeout_seconds=30.0):
+        deadline = time.monotonic() + timeout_seconds
+
+        while time.monotonic() < deadline:
+            latest = self.latest(name)
+
+            if latest is not None and latest[0] >= stamp:
+                return True
+
+            time.sleep(0.02)
+
+        return False
+
+    # 구독을 해제한다. 프로세스 종료 전에 부른다.
+    def stop(self):
+        if self.node is not None:
+            self.node.unsubscribe(f"/world/{self.world}/dynamic_pose/info")
+            self.node = None
 
 
 # 물체 자세를 TCP 좌표계로 옮긴다. 부착 중 미끄러짐(상대 이동) 계산에 쓴다.

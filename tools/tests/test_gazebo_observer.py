@@ -157,5 +157,55 @@ class ObserverMath(unittest.TestCase):
         np.testing.assert_allclose(observer.in_tcp_frame(tcp, box)[:3, 3], [0, 0, 0.085], atol=1e-12)
 
 
+    def test_yaw_and_unwrap(self):
+        pose = observer.origin_matrix([0, 0, 0], [0, 0, 2.5])
+        self.assertAlmostEqual(observer.yaw_of(pose), 2.5)
+        self.assertAlmostEqual(observer.quaternion_yaw(0, 0, math.sin(0.4), math.cos(0.4)), 0.8)
+
+        # 한 바퀴 넘게 돈 각도 열을 풀면 누적 회전이 나온다.
+        wrapped = [math.atan2(math.sin(0.3 * index), math.cos(0.3 * index)) for index in range(30)]
+        self.assertAlmostEqual(observer.unwrap_angles(wrapped)[-1], 0.3 * 29, places=9)
+
+    def test_summarize_ignores_missing(self):
+        stats = observer.summarize([1.0, 2.0, None, 3.0, math.nan])
+        self.assertEqual(stats['count'], 3)
+        self.assertAlmostEqual(stats['mean'], 2.0)
+        self.assertAlmostEqual(stats['std'], 1.0)
+        self.assertIsNone(observer.summarize([None]))
+
+
+# 바퀴 보정 도구의 순수 계산(누적 회전·부호 있는 이동·권장 multiplier)
+calibration_spec = importlib.util.spec_from_file_location(
+    'check_wheel_calibration', ROOT / 'src/ax_control/scripts/check_wheel_calibration.py')
+
+
+class WheelCalibrationMath(unittest.TestCase):
+    def setUp(self):
+        import sys
+
+        sys.path.insert(0, str(ROOT / 'src/ax_control/scripts'))
+
+        try:
+            self.calibration = importlib.util.module_from_spec(calibration_spec)
+            calibration_spec.loader.exec_module(self.calibration)
+        except ImportError as error:
+            self.skipTest(f'ROS 환경 필요: {error}')
+
+    def test_accumulated_rotation_over_pi(self):
+        samples = [(index * 0.1, math.atan2(math.sin(0.5 * index * 0.1), math.cos(0.5 * index * 0.1)))
+                   for index in range(81)]
+        self.assertAlmostEqual(self.calibration.accumulated_rotation(samples), 4.0, places=9)
+        self.assertIsNone(self.calibration.accumulated_rotation(samples[:1]))
+
+    def test_signed_distance_follows_heading(self):
+        self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (1, 1), math.pi / 4), math.sqrt(2))
+        self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (-1, 0), 0.0), -1.0)
+
+    def test_recommended_multiplier(self):
+        # odom이 실제보다 10 % 크게 돌면 multiplier를 10 % 키운다.
+        self.assertAlmostEqual(self.calibration.recommended_separation_multiplier(1.2, [1.1, 1.1, None]), 1.32)
+        self.assertIsNone(self.calibration.recommended_separation_multiplier(1.2, [None]))
+
+
 if __name__ == '__main__':
     unittest.main()

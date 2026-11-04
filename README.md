@@ -41,7 +41,7 @@ ros2 launch ax_control simulation.launch.py
 
 제어기(바퀴·팔)와 흡착 공구 경로는 A2 `ax_control`이 띄운다. `ros2 launch ax_description robot_test.launch.py`는 제어기 없이 모델·센서만 띄우는 시험용이다.
 
-기본 공구는 EPick이며 `tool:=suction`으로 기존 가상 4컵 헤드를 비교할 수 있다.
+기본 모델 공구는 **다중 흡착판 · 12컵**(`tool:=epick`)이며 교체 공구는 **손가락 집게 · Robotiq 2F-85**(`tool:=robotiq`)다. `epick`은 기존 연결을 유지하는 호환 이름으로 실제 EPick 제품 형상을 뜻하지 않는다. `tool:=suction`은 기존 가상 4컵 헤드 비교용이다. [부품 이름·미리보기](src/ax_description/meshes/README.md)
 원본 CAD·라이선스를 보존하고 [A1 안내](docs/guides/A1_MODEL_ASSETS.md)의 생성·시험 명령을 따른다.
 [바퀴·시험 월드·런치](docs/guides/WHEEL_AND_LAUNCH_REPAIR.md) · [A1 시험 증거](docs/evidence/a1/).
 

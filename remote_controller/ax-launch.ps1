@@ -40,7 +40,7 @@ try {
     $config = if (Test-Path -LiteralPath $configPath) { Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json } else { $null }
     if (-not $Distro) { $Distro = if ($config) { $config.distro } else { 'Ubuntu-24.04' } }
     if (-not $Workspace) { $Workspace = if ($config) { $config.workspace } else { '~/ax-play-ws' } }
-    $tool = if ($config) { $config.tool } else { 'robotiq' }
+    $tool = if ($config) { $config.tool } else { 'epick' }
     $port = if ($config) { [int]$config.port } else { 8765 }
     $worldArguments = @()
     if ($Action -eq 'ChooseWorld') {

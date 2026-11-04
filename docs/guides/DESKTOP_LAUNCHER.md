@@ -9,7 +9,7 @@ Windows PowerShell에서 저장소 루트 기준:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\remote_controller\install-shortcuts.ps1
 ```
 
-Ubuntu 배포판과 `~/ax-play-ws` 또는 `~/ax-ws` 작업 폴더를 자동으로 찾으며 기본 공구는 Robotiq다.
+Ubuntu 배포판과 `~/ax-play-ws` 또는 `~/ax-ws` 작업 폴더를 자동으로 찾으며 신규 바로가기의 기본 공구는 다중 흡착판 · 12컵이다. 실행값 `epick`은 호환 이름이다. 기존 개인 설정이 있으면 유지하며 리모컨에서 손가락 집게 · Robotiq 2F-85와 교체할 수 있다.
 다른 PC의 폴더가 다르면 설치할 때 지정한다.
 
 ```powershell

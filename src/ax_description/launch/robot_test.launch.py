@@ -91,7 +91,8 @@ def setup(context):
         raise ValueError('Selected world is not installed; rebuild ax_description: ' + str(world))
     actions.append(IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world)}.items()))
+        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world),
+                          'on_exit_shutdown': 'true'}.items()))
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]

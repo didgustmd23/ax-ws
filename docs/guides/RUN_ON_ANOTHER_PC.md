@@ -29,7 +29,7 @@ ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 
 ```bash
 ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
-# 기본 공구 EPick
+# 기본 모델 공구: 다중 흡착판 · 12컵(epick은 호환 실행값)
 ros2 launch ax_control simulation.launch.py robots:=2 tool:=epick
 # GUI 없이 실행 (센서 렌더링에는 EGL 지원 필요)
 ros2 launch ax_control simulation.launch.py gui:=false

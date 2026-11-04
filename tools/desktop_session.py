@@ -140,7 +140,8 @@ def run(args):
         if args.action == 'status':
             return {'ok': True, 'launch_pids': [p['pid'] for p in found['launch']],
                     'remote_pids': [p['pid'] for p in found['remote']],
-                    'terminal_pids': [p['pid'] for p in found['terminal']], 'remote_ready': bool(remote_state(args.port))}
+                    'terminal_pids': [p['pid'] for p in found['terminal']], 'remote_ready': bool(remote_state(args.port)),
+                    'simulation_alive': bool(found['launch'] and found['gazebo'])}
         if args.action == 'stop':
             roots = [item for group in found.values() for item in group]
             stopped = stop_processes(roots)
@@ -155,6 +156,10 @@ def run(args):
             raise RuntimeError('Remote files are missing; update the Ubuntu workspace first')
         if len(found['launch']) > 1 or len(found['remote']) > 1:
             raise RuntimeError('Duplicate sessions detected. Use AX Stop first')
+        # Gazebo가 사라지고 launch만 남은 이전 실패 세션은 재사용하지 않는다.
+        if found['launch'] and not found['gazebo']:
+            stop_processes(found['launch'] + found['keyboard'])
+            found = discover(workspace)
         switched_world = False
         selected_world = getattr(args, 'world', 'ax_test.world')
         launch_tool = args.tool
@@ -209,18 +214,28 @@ def run(args):
                         shlex.quote(str(workspace / 'tools/verify_unified_runtime.py')) + ' --world ' + shlex.quote(selected_world))
                     deadline = time.monotonic() + 110
                     ready = False
-                    while time.monotonic() < deadline and alive(found['launch'][0]):
+                    # 서비스 응답 대기 중인 검사기를 20초마다 죽이지 않는다.
+                    # 한 검사기를 유지해 서버가 응답할 클라이언트가 사라지는 상황을 줄인다.
+                    with (logs / 'readiness.log').open('w') as output:
+                        checked = subprocess.Popen(['bash', '-c', command], cwd=workspace, env=env,
+                            stdout=output, stderr=subprocess.STDOUT)
                         try:
-                            with (logs / 'readiness.log').open('w') as output:
-                                checked = subprocess.run(['bash', '-c', command], cwd=workspace, env=env,
-                                    stdout=output, stderr=subprocess.STDOUT,
-                                    timeout=min(20, max(1, deadline - time.monotonic())))
-                            if checked.returncode == 0:
-                                ready = True
-                                break
-                        except subprocess.TimeoutExpired:
-                            pass
-                        time.sleep(.5)
+                            while time.monotonic() < deadline and alive(found['launch'][0]):
+                                if checked.poll() is not None:
+                                    ready = checked.returncode == 0
+                                    break
+                                time.sleep(.5)
+                        finally:
+                            if checked.poll() is None:
+                                # 먼저 시뮬레이션을 정리한 뒤 미완료 검사기를 종료한다.
+                                stop_processes(created)
+                                created.clear()
+                                checked.terminate()
+                                try:
+                                    checked.wait(timeout=5)
+                                except subprocess.TimeoutExpired:
+                                    checked.kill()
+                                    checked.wait()
                     if not ready:
                         raise RuntimeError('Robot startup check failed; see ' + str(logs / 'readiness.log'))
                 receipt = {'ok': True, 'reused': reused, 'launch_pid': found['launch'][0]['pid'],
@@ -258,7 +273,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])
     parser.add_argument('--workspace', default='~/ax-play-ws')
-    parser.add_argument('--tool', choices=['robotiq', 'epick'], default='robotiq')
+    parser.add_argument('--tool', choices=['robotiq', 'epick'], default='epick')
     parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world'], default='ax_test.world')
     parser.add_argument('--switch-world', action='store_true', help='Switch the owned AX session if another world is active')
     parser.add_argument('--port', type=int, default=8765)

@@ -1,5 +1,6 @@
 # 외부 원본 해시·V2 자산·EPick 프레임·시험용 충돌 선별을 검사한다. 실제 흡착이나 안전 인증 시험이 아니다.
 import hashlib
+import struct
 import json
 from pathlib import Path
 import sys
@@ -15,6 +16,23 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from arm_geometry import ArmGeometry, ARM_JOINTS
 
 class A1Assets(unittest.TestCase):
+    def test_photo_head_dimensions_cups_and_tof_clearance(self):
+        settings = yaml.safe_load((ROOT/'src/ax_description/config/epick.yaml').read_text())
+        shape = settings['head_visual']
+        mesh = ROOT/'src/ax_description/meshes/tools/parcel_suction_head.stl'
+        data = mesh.read_bytes()
+        self.assertEqual(len(data), 84+50*struct.unpack_from('<I', data, 80)[0])
+        vertices = np.array([record[3:12] for record in struct.iter_unpack('<12fH', data[84:])]).reshape(-1, 3)
+        np.testing.assert_allclose(np.ptp(vertices, axis=0),
+            [shape['width_m'], shape['depth_m'], settings['body_length_m']+settings['cup_height_m']], atol=1e-8)
+        robot = ArmGeometry().robot
+        cup = robot.find("link[@name='epick_suction_cup']")
+        self.assertEqual(len(cup.findall('collision')), shape['rows']*shape['columns'])
+        tof_x = float(settings['tof_xyz'].split()[0])
+        self.assertGreater(tof_x, shape['width_m']/2+.01)
+        self.assertAlmostEqual(settings['tof_lip_offset_m'],
+            settings['body_length_m']+settings['cup_height_m']-float(settings['tof_xyz'].split()[2]))
+
     def test_upstream_license_and_hashes(self):
         package = ROOT / 'src/epick_description'
         manifest = json.loads((package/'UPSTREAM_FILES.json').read_text())

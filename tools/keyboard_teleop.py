@@ -22,7 +22,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 import yaml
 
 JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
-JOINT_LABELS = ['기둥 회전', '어깨', '팔꿈치', '손목', '집게 전체 회전']
+JOINT_LABELS = ['기둥 회전', '어깨', '팔꿈치', '손목', '공구 전체 회전']
 
 # 제어기와 조종기의 값이 달라지지 않도록 기존 공통 YAML을 함께 사용한다.
 _control = yaml.safe_load((Path(__file__).resolve().parents[1] /
@@ -261,7 +261,7 @@ class KeyboardTeleop(Node):
                 '    a 좌회전             d 우회전',
                 '              s 후진',
                 '--- AX_1 팔: 숫자로 관절 선택 후 i / k ---',
-                '1 기둥 회전 | 2 어깨 | 3 팔꿈치 | 4 손목 | 5 집게 전체 회전',
+                '1 기둥 회전 | 2 어깨 | 3 팔꿈치 | 4 손목 | 5 공구 전체 회전',
                 f'현재 관절: {self.joint + 1}번 {JOINT_LABELS[self.joint]}',
                 'i: +방향 / k: -방향으로 위에 표시된 각도만큼 이동',
                 '+ / -: 값 증가·감소 (=도 증가) | 주행 키→속도, 관절 번호→각도',

@@ -32,11 +32,13 @@ for robot in ('robot_1', 'robot_2'):
                 'nan': sum(math.isnan(value) for value in msg.ranges)}}), qos_profile_sensor_data)
 futures = {}
 controllers = {}
+next_query = 0.
 deadline = time.monotonic() + 90
 while time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=.1)
     for robot, client in clients.items():
-        if robot not in futures and client.service_is_ready():
+        # 센서가 준비되기 전에는 제어기 로딩과 서비스 요청이 경쟁하지 않게 기다린다.
+        if len(readings) == 6 and time.monotonic() >= next_query and robot not in futures and client.service_is_ready():
             futures[robot] = client.call_async(ListControllers.Request())
     if len(futures) == 2 and all(f.done() for f in futures.values()):
         controllers = {robot: {c.name: c.state for c in f.result().controller}
@@ -48,6 +50,7 @@ while time.monotonic() < deadline:
                 for robot in clients):
             break
         futures.clear()
+        next_query = time.monotonic() + 1.
 scene = subprocess.run(['gz', 'service', '-s', '/world/ax_test/scene/info',
     '--reqtype', 'gz.msgs.Empty', '--reptype', 'gz.msgs.Scene', '--timeout', '5000', '--req', ''],
     capture_output=True, text=True, check=True).stdout

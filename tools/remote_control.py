@@ -114,7 +114,7 @@ class Remote:
                         if ready:
                             if tool is not None:
                                 self.tool = tool
-                            message = ('공구 교체 완료: ' + ('EPick 흡착판' if tool == 'epick' else 'Robotiq 집게') + ' 장착. 로봇과 월드가 시작 상태로 돌아왔습니다.'
+                            message = ('공구 교체 완료: ' + ('다중 흡착판 · 12컵' if tool == 'epick' else '손가락 집게 · Robotiq 2F-85') + ' 장착. 로봇과 월드가 시작 상태로 돌아왔습니다.'
                                        if tool else '초기화 완료: 로봇과 월드가 시작 상태로 돌아왔습니다.')
                             self.reset_result.put((True, message))
                             return

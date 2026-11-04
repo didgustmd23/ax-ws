@@ -2,7 +2,7 @@
 param(
     [string]$Distro,
     [string]$Workspace,
-    [ValidateSet('robotiq', 'epick')][string]$Tool = 'robotiq',
+    [ValidateSet('robotiq', 'epick')][string]$Tool = 'epick',
     [ValidateRange(1024, 65535)][int]$Port = 8765,
     [string]$ShortcutDirectory = [Environment]::GetFolderPath('Desktop')
 )

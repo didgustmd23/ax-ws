@@ -218,8 +218,13 @@ class SensorProcessing(Node):
             # 일치한 프레임과 그 이전은 버려 중복 쌍 발행·무한 적체를 막는다.
             while queues[key] and stamp(queues[key][0]) <= stamp(msg):
                 queues[key].popleft()
-        self.health[name + '/synchronized'].update(received=time.monotonic(), ok=True,
-                                                  reason=f'RGB-D skew {max(times)-min(times):.6f} s; valid depth fraction {valid_ratio:.4f}')
+        # 동기화 성공과 거리 정보의 유효성은 별개다. 전부 무효인 점군도
+        # 그대로 발행해 이전 관측으로 대체하지 않되, 소비자에게 오류를 알린다.
+        reason = f'RGB-D skew {max(times)-min(times):.6f} s; valid depth fraction {valid_ratio:.4f}'
+        if valid_ratio == 0:
+            reason = 'No valid depth measurements; ' + reason
+        self.health[name + '/synchronized'].update(received=time.monotonic(),
+                                                  ok=valid_ratio > 0, reason=reason)
         self.outputs[name, 'points'].publish(cloud)
 
     def report(self):

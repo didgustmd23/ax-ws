@@ -172,9 +172,10 @@ def run(args):
             if found['launch']:
                 arguments = shlex.split(found['launch'][0].get('args', ''))
                 active_world = next((value.split(':=', 1)[1] for value in arguments if value.startswith('world:=')), 'ax_test.world')
-                if active_world != selected_world:
-                    # 월드만 바꿀 때 현재 공구 선택을 유지한다. 다른 작업공간은 건드리지 않는다.
-                    launch_tool = next((value.split(':=', 1)[1] for value in arguments if value.startswith('tool:=')), args.tool)
+                active_tool = next((value.split(':=', 1)[1] for value in arguments if value.startswith('tool:=')), 'epick')
+                if active_world != selected_world or active_tool != launch_tool:
+                    # 바로가기 시작은 설정된 기본 공구를 적용한다. 같은 월드라도
+                    # 이전 세션의 집게를 재사용해 흡착판 선택을 무시하지 않는다.
                     stop_processes([item for group in found.values() for item in group])
                     found = discover(workspace)
                     if any(found.values()):

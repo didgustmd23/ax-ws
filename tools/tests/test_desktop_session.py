@@ -15,6 +15,26 @@ spec.loader.exec_module(desktop)
 
 
 class SessionOwnership(unittest.TestCase):
+    def test_world_selection_restarts_same_world_with_wrong_tool(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'src/ax_description').mkdir(parents=True)
+            world = root / 'install/ax_description/share/ax_description/worlds/ax_test.world'
+            world.parent.mkdir(parents=True)
+            world.touch()
+            (root / 'install/setup.bash').touch()
+            found = {'launch': [{'pid': 123, 'env': {},
+                                'args': 'ros2 launch ax_control simulation.launch.py tool:=robotiq world:=ax_test.world'}],
+                     'gazebo': [{'pid': 124}], 'remote': [], 'keyboard': [], 'terminal': []}
+            args = SimpleNamespace(workspace=directory, action='start', tool='epick',
+                                   world='ax_test.world', switch_world=True, port=8765)
+            # 재시작 대상 선택을 검사하며 실제 프로세스는 종료하지 않는다.
+            with patch.object(desktop, 'discover', return_value=found), \
+                    patch.object(desktop, 'stop_processes', side_effect=RuntimeError('restart selected')) as stop:
+                with self.assertRaisesRegex(RuntimeError, 'restart selected'):
+                    desktop.run(args)
+            stop.assert_called_once_with(found['launch'] + found['gazebo'])
+
     def test_remote_does_not_reuse_launch_after_gazebo_died(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

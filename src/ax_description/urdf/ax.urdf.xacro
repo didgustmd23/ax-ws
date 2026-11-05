@@ -444,6 +444,15 @@
                                include_ros2_control="false">
             <origin xyz="0.02 0 0" rpy="0 ${pi / 2} 0"/>
         </xacro:robotiq_gripper>
+        <!-- 열린 기본 자세의 안쪽 패드 높이 중앙:
+             0.05490452 - 0.00376347 + 0.04718515
+             + (0.01301548 + 0.05101934)/2 = 0.13034361 m.
+             실물 보정값이 아닌 현재 collision 메시 기준이며 +Z가 접근 방향이다. -->
+        <link name="robotiq_grasp_frame"/>
+        <joint name="robotiq_grasp_frame_joint" type="fixed">
+            <parent link="robotiq_85_base_link"/><child link="robotiq_grasp_frame"/>
+            <origin xyz="0 0 0.13034361"/>
+        </joint>
     </xacro:if>
 
     <xacro:if value="${use_primitive_gripper}">
@@ -569,13 +578,19 @@
     </xacro:if>
     <xacro:unless value="${use_suction_gripper}">
         <joint name="epick_tcp_joint" type="fixed">
-            <parent link="gripper_base_link"/>
+            <parent link="${'robotiq_grasp_frame' if use_robotiq_gripper else 'gripper_base_link'}"/>
             <child link="epick_tcp"/>
             <origin xyz="0 0 0" rpy="0 0 0"/>
         </joint>
     </xacro:unless>
 
     </xacro:unless>
+
+    <!-- 공구 공통 TCP 별칭. 기존 소비자의 epick_tcp 계약도 동일 위치로 유지한다. -->
+    <link name="tool_tcp"/>
+    <joint name="tool_tcp_joint" type="fixed">
+        <parent link="epick_tcp"/><child link="tool_tcp"/>
+    </joint>
 
     <xacro:if value="${float('$(arg test_payload_mass)') > 0}">
       <link name="test_payload_link">
@@ -640,7 +655,7 @@
                               common_params_file="$(arg ros2_control_common_params)"/>
 
     <!-- gripper_base_link → epick_tcp 거리(m). 공구 기하를 바꾸면 이 거리도 함께 확인한다. -->
-    <xacro:property name="tool_attach_tcp_offsets" value="${dict(epick=0.1373, suction=0.082)}"/>
+    <xacro:property name="tool_attach_tcp_offsets" value="${dict(epick=0.15034361, suction=0.082)}"/>
     <xacro:if value="${'$(arg tool_attach)' == 'true' and '$(arg gripper_model)' in tool_attach_tcp_offsets}">
         <xacro:ax_tool_attach namespace="$(arg ros_namespace)"
                               tcp_offset="${tool_attach_tcp_offsets['$(arg gripper_model)']}"/>

@@ -22,7 +22,9 @@
   <xacro:macro name="ax_epick" params="parent">
     <xacro:property name="settings" value="${xacro.load_yaml('../config/epick.yaml')}"/>
     <link name="epick_base_link"/>
-    <joint name="epick_mount_joint" type="fixed"><parent link="${parent}"/><child link="epick_base_link"/><origin xyz="0.02 0 0" rpy="0 ${pi/2} 0"/></joint>
+    <!-- 집게 패드 중앙 TCP(0.15034361 m)에 컵 접촉면을 맞추는 가상 어댑터.
+         컵 길이 0.1173 m는 유지하고 장착부만 13.04361 mm 앞으로 옮긴다. -->
+    <joint name="epick_mount_joint" type="fixed"><parent link="${parent}"/><child link="epick_base_link"/><origin xyz="0.03304361 0 0" rpy="0 ${pi/2} 0"/></joint>
     <link name="epick_body">
       <!-- 재질 없는 STL에 색상을 직접 지정하여 전체 헤드를 단일 회색으로 표시한다. -->
       <visual>

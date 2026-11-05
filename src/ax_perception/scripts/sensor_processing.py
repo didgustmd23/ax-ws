@@ -8,12 +8,19 @@ from collections import deque
 from copy import deepcopy
 import math
 import time
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import numpy as np
 import rclpy
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data as SENSOR
+from rclpy.qos import QoSProfile, DurabilityPolicy
+from rclpy.time import Time
+from tf2_ros import Buffer, TransformListener, TransformException
+from std_msgs.msg import String
+from ament_index_python.packages import get_package_share_directory
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from sensor_msgs.msg import CameraInfo, Image, LaserScan, Range, PointCloud2, PointField
 
@@ -29,6 +36,93 @@ def checked_distance(value, minimum, maximum):
     if math.isnan(value) or math.isinf(value):
         return value
     return -math.inf if value < minimum else math.inf if value > maximum else value
+
+
+def rotation_matrix(x, y, z, w):
+    q = np.array([x, y, z, w], dtype=float)
+    norm = np.linalg.norm(q)
+    if not np.isfinite(q).all() or norm < 1e-12:
+        raise ValueError('Invalid rotation')
+    x, y, z, w = q / norm
+    return np.array([[1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w)],
+                     [2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w)],
+                     [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)]])
+
+
+def body_triangles(description):
+    """차체 visual OBJ를 사용한다. 큰 collision 상자로 실제 빈 공간까지 지우지 않는다."""
+    robot = ET.fromstring(description)
+    base = robot.find("link[@name='base_link']")
+    if base is None:
+        raise ValueError('Missing base_link')
+    chunks = []
+    for visual in base.findall('visual'):
+        mesh = visual.find('geometry/mesh')
+        if mesh is None:
+            raise ValueError('Body self-filter requires OBJ visual geometry')
+        uri = mesh.get('filename', '')
+        if not uri.startswith('package://'):
+            raise ValueError('Body mesh must use package URI')
+        package, relative = uri[10:].split('/', 1)
+        if Path(relative).is_absolute() or '..' in Path(relative).parts:
+            raise ValueError('Unsupported body mesh path')
+        folder = Path(get_package_share_directory(package))
+        path = (folder / relative).resolve()
+        # colcon --symlink-install의 메시 링크는 소스 폴더를 가리킬 수 있다.
+        if path.suffix.lower() != '.obj':
+            raise ValueError('Unsupported body mesh path')
+        vertices, faces = [], []
+        for line in path.read_text().splitlines():
+            row = line.split()
+            if not row:
+                continue
+            if row[0] == 'v':
+                vertices.append(list(map(float, row[1:4])))
+            elif row[0] == 'f':
+                indices = [int(token.split('/')[0]) for token in row[1:]]
+                indices = [i-1 if i > 0 else len(vertices)+i for i in indices]
+                faces.extend([[indices[0], indices[i], indices[i+1]] for i in range(1, len(indices)-1)])
+        triangles = np.asarray(vertices)[np.asarray(faces)] * np.fromstring(mesh.get('scale', '1 1 1'), sep=' ')
+        element = visual.find('origin')
+        xyz = np.zeros(3) if element is None else np.fromstring(element.get('xyz', '0 0 0'), sep=' ')
+        r, p, y = np.zeros(3) if element is None else np.fromstring(element.get('rpy', '0 0 0'), sep=' ')
+        # URDF 고정축 회전 Rz(yaw) Ry(pitch) Rx(roll).
+        cr, sr, cp, sp, cy, sy = math.cos(r), math.sin(r), math.cos(p), math.sin(p), math.cos(y), math.sin(y)
+        rotation = np.array([[cy*cp, cy*sp*sr-sy*cr, cy*sp*cr+sy*sr],
+                             [sy*cp, sy*sp*sr+cy*cr, sy*sp*cr-cy*sr], [-sp, cp*sr, cp*cr]])
+        chunks.append(triangles @ rotation.T + xyz)
+    if not chunks:
+        raise ValueError('Missing body mesh')
+    result = np.concatenate(chunks)
+    if not np.isfinite(result).all():
+        raise ValueError('Invalid body vertices')
+    return result
+
+
+def ray_body_distance(start, direction, triangles):
+    """센서 +X 광선과 차체 메시의 첫 교차 거리. 측정 최소거리 안쪽도 검사한다."""
+    if not np.isfinite(start).all() or not np.isfinite(direction).all():
+        raise ValueError('Invalid sensor transform')
+    a = triangles[:, 0]
+    e1, e2 = triangles[:, 1]-a, triangles[:, 2]-a
+    h = np.cross(np.broadcast_to(direction, e2.shape), e2)
+    det = np.einsum('ij,ij->i', e1, h)
+    valid = np.abs(det) > 1e-10
+    inv = np.zeros(len(det))
+    inv[valid] = 1 / det[valid]
+    s = start-a
+    u = inv*np.einsum('ij,ij->i', s, h)
+    q = np.cross(s, e1)
+    v = inv*(q @ direction)
+    distance = inv*np.einsum('ij,ij->i', e2, q)
+    valid &= (u >= -1e-8) & (v >= -1e-8) & (u+v <= 1+1e-8) & (distance > 1e-5)
+    return float(distance[valid].min()) if valid.any() else math.inf
+
+
+def body_blocks_measurement(measured, expected, maximum, tolerance):
+    # 차체보다 분명히 가까운 물체는 유지한다. 경계에서 구분 불가능한 값은 무효다.
+    return (math.isfinite(expected) and expected <= maximum and
+            not (measured == -math.inf or math.isfinite(measured) and measured < expected-tolerance))
 
 
 def checked_image(message, depth=False):
@@ -105,7 +199,8 @@ class SensorProcessing(Node):
         defaults = {'robot_id': 'robot_1', 'manipulator': True, 'tool_tof': True,
                     'max_age_s': 0.5, 'future_tolerance_s': 0.05,
                     'sync_slop_s': 0.03, 'missing_timeout_s': 2.0,
-                    'depth_min_m': 0.05, 'depth_max_m': 5.0}
+                    'depth_min_m': 0.05, 'depth_max_m': 5.0,
+                    'tof_body_filter': True, 'tof_body_tolerance_m': 0.005}
         for name, value in defaults.items():
             self.declare_parameter(name, value)
         self.cfg = {name: self.get_parameter(name).value for name in defaults}
@@ -114,6 +209,16 @@ class SensorProcessing(Node):
                 raise ValueError(name + ' must be positive')
         checked_distance(1.0, self.cfg['depth_min_m'], self.cfg['depth_max_m'])
         self.robot = self.cfg['robot_id']
+        if not math.isfinite(self.cfg['tof_body_tolerance_m']) or self.cfg['tof_body_tolerance_m'] < 0:
+            raise ValueError('tof_body_tolerance_m must be nonnegative')
+        self.body_mesh = None
+        self.body_error = 'Waiting for robot_description'
+        if self.cfg['tool_tof'] and self.cfg['tof_body_filter']:
+            # 시뮬레이션 시계 초기화 시 TF 캐시도 같은 시계로 초기화한다.
+            self.tf_buffer = Buffer(node=self)
+            self.tf_listener = TransformListener(self.tf_buffer, self)
+            self.description_sub = self.create_subscription(String, 'robot_description', self.description,
+                QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.health, self.last_stamp, self.buffers, self.outputs = {}, {}, {}, {}
         self.clock_previous = 0.0
         self.owned_subs = []
@@ -169,10 +274,37 @@ class SensorProcessing(Node):
                 state.update(ok=False, reason=str(error))
         self.owned_subs.append(self.create_subscription(cls, 'sensors/' + suffix, receive, SENSOR))
 
+    def description(self, message):
+        try:
+            self.body_mesh = body_triangles(message.data)
+            self.body_error = ''
+        except (ValueError, OSError, ET.ParseError, LookupError, IndexError, TypeError) as error:
+            self.body_mesh = None
+            self.body_error = 'Body model unavailable: ' + str(error)
+
     def tof(self, message):
         result = deepcopy(message)
         result.range = checked_distance(message.range, message.min_range, message.max_range)
+        reason = ''
+        if self.cfg['tof_body_filter']:
+            try:
+                if self.body_mesh is None:
+                    raise ValueError(self.body_error)
+                # 최신 TF가 아니라 측정 시각의 TF로 팔 자세를 맞춘다.
+                transform = self.tf_buffer.lookup_transform(self.robot + '/base_link',
+                    message.header.frame_id, Time.from_msg(message.header.stamp)).transform
+                q, t = transform.rotation, transform.translation
+                direction = rotation_matrix(q.x, q.y, q.z, q.w)[:, 0]
+                expected = ray_body_distance(np.array([t.x, t.y, t.z]), direction, self.body_mesh)
+                if body_blocks_measurement(result.range, expected, message.max_range, self.cfg['tof_body_tolerance_m']):
+                    reason = f'ToF ray blocked by robot body at {expected:.4f} m'
+            except (TransformException, ValueError) as error:
+                reason = 'ToF self-filter unavailable: ' + str(error)
+            if reason:
+                result.range = math.nan
         self.tof_pub.publish(result)
+        if reason:
+            raise ValueError(reason)
         if math.isnan(result.range):
             raise ValueError('Invalid ToF measurement (NaN)')
 

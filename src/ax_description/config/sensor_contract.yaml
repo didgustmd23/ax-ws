@@ -49,6 +49,12 @@ tool_tof:
   semantics: distance_from_sensor_origin_not_suction_success
   processed_topic: tool_tof
   processed_status: B1_input_validation_implemented
+  # B1 기본 동작: robot_description의 base_link visual OBJ와 측정 시각 TF로
+  # ToF +X 광선의 차체 교차 거리를 계산한다. 원본 raw는 변경하지 않는다.
+  # 차체보다 5 mm 이상 가까운 관측은 유지하고, 차체 반사/차체 뒤 관측은
+  # processed에서 NaN + sensors/health ERROR로 표시한다. 경계 5 mm는 판별 불가다.
+  # 모델/TF가 없을 때도 NaN이다. 맑은 광선의 +inf, 가까운 -inf 의미는 유지한다.
+  # 팔/공구 전체 자기 필터나 위험 판정·정지·흡착 성공 판단을 대체하지 않는다.
 cargo_contact:
   role: transporter
   suffix: cargo_contact

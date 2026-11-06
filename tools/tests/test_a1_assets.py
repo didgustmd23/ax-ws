@@ -16,6 +16,41 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from arm_geometry import ArmGeometry, ARM_JOINTS
 
 class A1Assets(unittest.TestCase):
+    def test_interchangeable_tool_tcp_geometry(self):
+        from arm_geometry import origin
+        source = ROOT / 'src/ax_description/urdf/ax.urdf.xacro'
+        for tool, distance in (('epick', .15034361), ('robotiq', .15034361)):
+            robot = ET.fromstring(xacro.process_file(str(source), mappings={
+                'gripper_model': tool, 'sensors_enabled': 'false'}).toxml())
+            frames = {'base_link': np.eye(4)}
+            pending = list(robot.findall('joint'))
+            while pending:
+                count = len(pending)
+                for joint in pending[:]:
+                    parent = joint.find('parent').get('link')
+                    if parent in frames:
+                        frames[joint.find('child').get('link')] = frames[parent] @ origin(joint.find('origin'))
+                        pending.remove(joint)
+                self.assertLess(len(pending), count, 'Disconnected model')
+            relative = np.linalg.inv(frames['gripper_base_link']) @ frames['tool_tcp']
+            np.testing.assert_allclose(relative[:3, 3], [distance, 0, 0], atol=1e-8)
+            np.testing.assert_allclose(relative[:3, 2], [1, 0, 0], atol=1e-8)
+            np.testing.assert_allclose(frames['tool_tcp'], frames['epick_tcp'], atol=1e-12)
+            if tool == 'epick':
+                np.testing.assert_allclose(frames['tool_tcp'], frames['epick_tip'], atol=1e-12)
+            else:
+                # 실제 collision 패드의 안쪽 평면 중앙 높이와 TCP를 비교한다.
+                share = Path(get_package_share_directory('robotiq_description'))
+                heights = []
+                for side, sign in (('left', -1), ('right', 1)):
+                    data = (share / f'meshes/collision/2f_85/{side}_finger_tip.stl').read_bytes()
+                    vertices = np.array([r[3:12] for r in struct.iter_unpack('<12fH', data[84:])]).reshape(-1, 3)
+                    pad = vertices[vertices[:, 0]*sign > .025]
+                    center = np.array([0., 0., (pad[:, 2].min()+pad[:, 2].max())/2, 1.])
+                    local = np.linalg.inv(frames['robotiq_85_base_link']) @ frames[f'robotiq_85_{side}_finger_tip_link'] @ center
+                    heights.append(local[2])
+                self.assertAlmostEqual(np.mean(heights), .13034361, places=7)
+
     def test_photo_head_dimensions_cups_and_tof_clearance(self):
         settings = yaml.safe_load((ROOT/'src/ax_description/config/epick.yaml').read_text())
         shape = settings['head_visual']

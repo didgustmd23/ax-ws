@@ -1,6 +1,9 @@
 import rclpy
 from rclpy.action import ActionServer, GoalResponse
 from rclpy.node import Node
+from rclpy.executors import ExternalShutdownException
+from rclpy.qos import QoSProfile, DurabilityPolicy
+from std_msgs.msg import String
 
 from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.msg import LoadState, ResultStatus
@@ -12,6 +15,9 @@ class MockExecutor(Node):
         # 시험 입력일 뿐 실제 센서나 Gazebo 관측이 아니다.
         self.declare_parameter('mock_load', 'UNKNOWN')
         self.seen = set()
+        self.result_display = self.create_publisher(
+            String, '/a3_mock/result_display',
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.server = ActionServer(
             self,
             ExecuteLocalTask,
@@ -65,6 +71,7 @@ class MockExecutor(Node):
             goal_handle.abort()
 
         self.get_logger().info(result.status.detail)
+        self.result_display.publish(String(data=value if value in ('STOWED', 'EMPTY') else 'UNKNOWN'))
         return result
 
 
@@ -73,11 +80,12 @@ def main(args=None):
     node = MockExecutor()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

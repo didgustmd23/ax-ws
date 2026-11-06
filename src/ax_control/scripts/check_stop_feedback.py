@@ -35,11 +35,13 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import yaml
 from collections import deque
 from zoneinfo import ZoneInfo
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
@@ -50,7 +52,15 @@ from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from gazebo_observer import GazeboObserver, fetch_robot_description, joint_speed_series, summarize
+from gazebo_observer import (
+    GazeboObserver,
+    describe_environment,
+    fetch_robot_description,
+    joint_speed_series,
+    read_urdf_joints,
+    summarize,
+)
+from result_record import write_json_atomic
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 
@@ -77,11 +87,30 @@ WHEEL_JOINTS = [
 TRUTH_TOPIC = "/world/ax_test/dynamic_pose/info"
 TRUTH_WINDOW_SECONDS = 0.1
 SAMPLE_PERIOD_SECONDS = 0.02
-# 명령 종료 뒤 기록 구간(시뮬레이션 시간 s). 정지(최대 약 1.7 s)와 D-06 유지 0.5 s를 담는다.
+# 명령 종료 뒤 최소 기록 구간(시뮬레이션 시간 s). 주행 시나리오는 감속 제한으로 계산한 값과 비교해 긴 쪽을 쓴다.
 SETTLE_SIM_SECONDS = 3.0
+# 감속 시간과 D-06 유지 시간 뒤에 더 기록하는 여유(s). Gazebo 속도 차분 창·표본 간격의 지연을 담는다.
+SETTLE_MARGIN_SECONDS = 1.0
 IDLE_WALL_SECONDS = 3.0
 # 시뮬레이션 시간 대기의 벽시계 상한(s). 실시간 비율이 낮아도 여기까지 기다린다.
 SIM_WAIT_WALL_LIMIT_SECONDS = 120.0
+
+
+# 주행 명령 종료 뒤 기록 구간(s)을 계산한다. drive는 diff_drive_controller 파라미터 사전이다.
+# 명령 속도에서 감속 제한으로 멈추는 시간 + D-06 유지 시간 + 여유를 쓰며 최소 SETTLE_SIM_SECONDS다.
+# 가속 제한으로 명령 속도에 못 미친 채 끊겨도 감속 시간은 이 값보다 짧으므로 보수적인 상한이다.
+def drive_settle_seconds(linear, angular, drive):
+    stop_times = []
+
+    for speed, prefix in ((linear, "linear.x"), (angular, "angular.z")):
+        deceleration = abs(drive.get(f"{prefix}.max_deceleration") or 0.0)
+
+        if speed and deceleration > 0.0:
+            stop_times.append(abs(speed) / deceleration)
+
+    window = max(stop_times, default=0.0) + STOP_HOLD_SECONDS + SETTLE_MARGIN_SECONDS
+
+    return max(SETTLE_SIM_SECONDS, window)
 
 
 # 각도 차이를 -pi~pi 범위로 정규화한다
@@ -240,6 +269,10 @@ class StopFeedbackRecorder(Node):
                 if math.isnan(value):
                     self.joint_nan_names.add(name)
 
+        # 팔이 없는 로봇이면 속도를 갱신하지 않는다. 대상 오류는 main에서 URDF로 안내한다.
+        if any(joint not in names for joint in WHEEL_JOINTS + ARM_JOINTS):
+            return
+
         self.wheel_speed = max(
             abs(message.velocity[names.index(joint)])
             for joint in WHEEL_JOINTS
@@ -348,8 +381,8 @@ class StopFeedbackRecorder(Node):
         return True
 
     # 명령 종료 시각부터 시뮬레이션 시간 기준 기록 구간을 채운다
-    def settle_after(self, cut_time):
-        if not self.spin_until_sim(cut_time + SETTLE_SIM_SECONDS):
+    def settle_after(self, cut_time, seconds=SETTLE_SIM_SECONDS):
+        if not self.spin_until_sim(cut_time + seconds):
             print("[WARN] 시뮬레이션 시간이 진행되지 않아 기록 구간을 다 채우지 못함", flush=True)
 
     # 속도 명령을 시뮬레이션 시간 기준으로 지정 시간 보낸 뒤 끊고 그 시각을 돌려준다
@@ -473,7 +506,7 @@ def evaluate(name, samples, cut_time):
 
 
 # 시나리오별 반복 결과의 평균·표준편차·범위를 출력하고 사전으로 돌려준다
-def summarize_results(results):
+def summarize_results(results, report=True):
     summary = {}
 
     for name, runs in results.items():
@@ -487,6 +520,9 @@ def summarize_results(results):
         }
 
         odom, truth, slide = (summary[name][key] for key in ("odom_stop_s", "truth_stop_s", "slide_after_odom_stop_m"))
+
+        if not report:
+            continue
 
         if odom is None or truth is None:
             print(f"[INFO] {name}: 정지 확인 {len(values)}/{len(runs)}회", flush=True)
@@ -502,21 +538,52 @@ def summarize_results(results):
     return summary
 
 
-# 시나리오를 repeats회 실행하고 (실패 건수, 시나리오별 결과, 피드백 품질)을 돌려준다
-# 주행 시나리오마다 측정 뒤 반대 명령으로 되돌아가 출발점 근처를 유지한다(되돌아가는 구간은 측정하지 않음).
-def run_checks(node, repeats=1):
-    failures = 0
-    results = {}
+# 결과 기록의 뼈대를 만든다. status는 running → completed·failed·interrupted로 바뀐다.
+def new_record(robot_id, repeats):
+    return {
+        "robot_id": robot_id,
+        "repeats": repeats,
+        "status": "running",
+        "error": None,
+        "last_scenario": None,
+        "failures": 0,
+        "criterion": {
+            "linear_m_s": STOP_LINEAR_M_S,
+            "angular_rad_s": STOP_ANGULAR_RAD_S,
+            "arm_rad_s": STOP_ARM_RAD_S,
+            "hold_s": STOP_HOLD_SECONDS,
+        },
+        "feedback": {},
+        "runs": {},
+        "summary": {},
+        "note": "Provisional physics (mass, friction, effort). Measured values are not stop performance.",
+    }
 
+
+# 기록을 임시 파일에 쓴 뒤 바꿔 넣는다. 쓰는 도중 중단돼도 이전 result.json이 깨지지 않는다.
+def write_record(path, record, report=False):
+    record["summary"] = summarize_results(record["runs"], report)
+    write_json_atomic(path, record)
+
+
+# 시나리오 한 건의 결과를 기록에 넣고 바로 저장한다
+def add_result(record, save, name, label, result):
+    record["runs"].setdefault(name, []).append(result)
+    record["last_scenario"] = label
+    record["failures"] += 0 if result else 1
+    save()
+
+
+# 시나리오를 repeats회 실행하고 결과를 record에 쌓는다. 시나리오가 끝날 때마다 save()로 저장한다.
+# 주행 시나리오마다 측정 뒤 반대 명령으로 되돌아가 출발점 근처를 유지한다(되돌아가는 구간은 측정하지 않음).
+def run_checks(node, record, save, repeats=1):
     deadline = time.monotonic() + 20.0
 
     while node.last_sample_time is None and time.monotonic() < deadline:
         rclpy.spin_once(node, timeout_sec=0.05)
 
     if node.last_sample_time is None:
-        print("[FAIL] 측정값 수신 없음(joint_states·odom·ground_truth)", flush=True)
-
-        return 1, results, {}
+        raise RuntimeError("측정값 수신 없음(joint_states·odom·ground_truth)")
 
     node.joint_meter.reset()
     node.odom_meter.reset()
@@ -542,7 +609,7 @@ def run_checks(node, repeats=1):
     drive = control['/**/diff_drive_controller']['ros__parameters']
     maximum_linear = drive['linear.x.max_velocity']
     maximum_angular = drive['angular.z.max_velocity']
-    feedback = {
+    record["feedback"] = {
         "joint_states_hz": node.joint_meter.rate(),
         "joint_states_max_gap_s": node.joint_meter.max_gap,
         "joint_states_max_age_s": node.max_joint_age,
@@ -550,6 +617,7 @@ def run_checks(node, repeats=1):
         "odom_max_gap_s": node.odom_meter.max_gap,
         "nan_joints": sorted(node.joint_nan_names),
     }
+    save()
 
     scenarios = [
         ("직진 0.3 m/s", 0.3, 0.0, 3.0),
@@ -562,20 +630,24 @@ def run_checks(node, repeats=1):
         for name, linear, angular, seconds in scenarios:
             node.samples.clear()
 
+            # 감속 제한으로 정지가 길어져도 D-06 유지 구간까지 기록하도록 창을 계산한다.
+            window = drive_settle_seconds(linear, angular, drive)
+
             cut_time = node.run_drive(linear, angular, seconds)
-            node.settle_after(cut_time)
+            node.settle_after(cut_time, window)
 
             result = evaluate(f"{name} #{repeat}", node.samples, cut_time)
-            results.setdefault(name, []).append(result)
-            failures += 0 if result else 1
+
+            if result:
+                result["record_window_s"] = window
+
+            add_result(record, save, name, f"{name} #{repeat}", result)
 
             # 같은 경로를 거꾸로 되돌아간다. 측정하지 않는다.
-            node.settle_after(node.run_drive(-linear, -angular, seconds))
+            node.settle_after(node.run_drive(-linear, -angular, seconds), window)
 
     if not node.arm_client.wait_for_server(timeout_sec=10.0):
-        print("[FAIL] 팔 Action 서버 없음", flush=True)
-
-        return failures + 1, results, feedback
+        raise RuntimeError("팔 Action 서버 없음\n" + describe_environment(node, node.robot_id))
 
     arm_targets = [
         ("팔 이동", [0.6, 0.3, 0.3, 0.2, 0.3]),
@@ -590,18 +662,14 @@ def run_checks(node, repeats=1):
 
             if cut_time is None:
                 print(f"[FAIL] {name} #{repeat}: 궤적 거절", flush=True)
-                results.setdefault(name, []).append(None)
-                failures += 1
+                add_result(record, save, name, f"{name} #{repeat}", None)
 
                 continue
 
             node.settle_after(cut_time)
 
             result = evaluate(f"{name} #{repeat}", node.samples, cut_time)
-            results.setdefault(name, []).append(result)
-            failures += 0 if result else 1
-
-    return failures, results, feedback
+            add_result(record, save, name, f"{name} #{repeat}", result)
 
 
 # 시험 전용으로 Gazebo 자세 출력을 읽기 시작한다. launch에는 넣지 않는다
@@ -640,7 +708,14 @@ def main():
         parser.error(f"{output}이 비어 있지 않음")
 
     output.mkdir(parents=True, exist_ok=True)
-    failures, results, feedback = 1, {}, {}
+    path = output / "result.json"
+    record = new_record(arguments.robot_id, arguments.repeats)
+
+    # 중간 저장 함수. 시작 즉시 running 상태로 한 번 써 둔다.
+    def save():
+        write_record(path, record)
+
+    save()
 
     truth_poses = queue.Queue()
     reader = start_truth_reader(arguments.robot_id, truth_poses)
@@ -655,39 +730,55 @@ def main():
             arguments.robot_id,
             spin=lambda: rclpy.spin_once(node, timeout_sec=0.05),
         )
-        node.observer = GazeboObserver(arguments.robot_id, urdf, ARM_JOINTS, "gripper_base_link", None)
-        node.observer.start()
 
-        failures, results, feedback = run_checks(node, arguments.repeats)
+        # 팔 시나리오가 있으므로 팔 관절이 없는 로봇(robot_2)은 측정 대상이 아니다.
+        missing = [joint for joint in ARM_JOINTS + WHEEL_JOINTS if joint not in read_urdf_joints(urdf)]
+
+        if missing:
+            raise RuntimeError(f"{arguments.robot_id}에 없는 관절: {', '.join(missing)}. 이 도구는 팔 로봇(robot_1 등) 전용")
+
+        node.observer = GazeboObserver(arguments.robot_id, urdf, ARM_JOINTS, "gripper_base_link", None)
+
+        try:
+            node.observer.start()
+        except RuntimeError as error:
+            raise RuntimeError(f"{error}\n{describe_environment(node, arguments.robot_id)}") from None
+
+        run_checks(node, record, save, arguments.repeats)
+        record["status"] = "completed"
+
+    # Ctrl+C는 rclpy 종료 처리에 따라 두 예외 중 하나로 올라온다.
+    except (KeyboardInterrupt, ExternalShutdownException):
+        record["status"] = "interrupted"
+        record["error"] = "사용자 중단(Ctrl+C)"
+
+    except Exception as error:
+        traceback.print_exc()
+        record["status"] = "failed"
+        record["error"] = f"{type(error).__name__}: {error}"
+
     finally:
         # 종료 중 Gazebo 전송 스레드가 Python 콜백을 부르지 않도록 구독부터 해제한다.
         if node.observer is not None:
             node.observer.stop()
 
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
         reader.terminate()
         reader.wait(timeout=5)
 
-    summary = summarize_results(results)
+        # 정리 뒤 최종 기록을 남긴다. 중간 저장본을 마지막 상태로 덮어쓴다.
+        write_record(path, record, report=True)
 
-    record = {
-        "robot_id": arguments.robot_id,
-        "repeats": arguments.repeats,
-        "criterion": {
-            "linear_m_s": STOP_LINEAR_M_S,
-            "angular_rad_s": STOP_ANGULAR_RAD_S,
-            "arm_rad_s": STOP_ARM_RAD_S,
-            "hold_s": STOP_HOLD_SECONDS,
-        },
-        "feedback": feedback,
-        "runs": results,
-        "summary": summary,
-        "note": "Provisional physics (mass, friction, effort). Measured values are not stop performance.",
-    }
-    (output / "result.json").write_text(json.dumps(record, indent=2, ensure_ascii=False, default=float) + "\n")
+    failures = record["failures"]
+    status = record["status"]
 
-    print(f"결과: {output / 'result.json'}", flush=True)
+    print(f"결과: {path} (status={status})", flush=True)
+
+    if status != "completed":
+        print(f"[FAIL] 측정 중단: {record['error']} (마지막 완료: {record['last_scenario'] or '없음'})", flush=True)
+        sys.exit(130 if status == "interrupted" else 1)
+
     print(f"실패 {failures}건", flush=True)
     sys.exit(1 if failures else 0)
 

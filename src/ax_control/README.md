@@ -62,23 +62,24 @@ A4 게이트는 아직 없다. 지금은 제어기를 누구나 직접 호출할
 | `joint_states` | 100 Hz | 관절 위치·속도 | 바퀴 `effort`는 NaN이므로 쓰지 않는다 |
 | `diff_drive_controller/odom` | 50 Hz | 선속도·각속도 | 바퀴 회전으로 계산하므로 차체 미끄러짐을 보지 못한다 |
 
-아래는 main에서 가져온 EPick 무부하 측정 기록이다(2026-11-04, `check_stop_feedback.py`). su의 현재 가감속 제한·공구 질량 설정으로 재시험한 결과는 아니다.
+현재 주행 제한(직진 0.67 m/s·0.67 m/s², 회전 0.50 rad/s·0.20 rad/s²)과 12컵 헤드, 무부하에서 잰 2회 평균이다(2026-11-06, `check_stop_feedback.py --repeats 2`).
 명령 종료부터 D-06 값 안으로 들어오기 시작한 시점까지이며, A4의 0.5 s 유지 시간은 포함하지 않는다.
 "보고값"은 odom·`joint_states`, "Gazebo 실제"는 차체 모델 자세와 팔 링크 자세로 다시 계산한 관절각 속도다.
-물리 설정(effort·질량)이 잠정값이므로 성능값이 아니라 측정 경로 확인용이다.
+물리 설정(effort·질량·마찰)이 잠정값이므로 성능값이 아니라 측정 경로 확인용이다.
 
 | 시나리오 | 보고값 기준 | Gazebo 실제 | 보고값 정지 후 실제 이동 |
 |---|---|---|---|
-| 직진 0.3 m/s | 0.729 s | 0.763 s | 0.7 mm |
-| 직진 0.8 m/s | 1.777 s | 1.641 s | 0.0 mm |
-| 제자리 회전 0.5 rad/s | 0.739 s | 0.773 s | 0.0 mm |
-| 호 주행 0.3 m/s, 0.3 rad/s | 0.592 s | 0.760 s | 0.6 mm |
-| 팔 이동 | 0.316 s | 0.348 s | 0.0 mm |
-| 팔 복귀 | 0.355 s | 0.390 s | 0.0 mm |
+| 직진 0.3 m/s | 0.955 s | 0.955 s | 0.0 mm |
+| 직진 상한 0.67 m/s | 1.525 s | 1.508 s | 0.0 mm |
+| 제자리 회전 상한 0.5 rad/s | 2.928 s | 2.910 s | 0.0 mm |
+| 호 주행 0.3 m/s, 0.3 rad/s | 1.924 s | 1.924 s | 0.0 mm |
+| 팔 이동 | 0.347 s | 0.381 s | 0.0 mm |
+| 팔 복귀 | 0.361 s | 0.395 s | 0.0 mm |
 
-호 주행에서는 odom이 정지를 먼저 보고한다. 이전 임시 모델 측정에서는 odom 정지 뒤 차체가 40.4 mm 더 움직였다.
+감속 제한 때문에 정지가 길어졌다. 특히 회전은 감속 0.20 rad/s²라 상한에서 약 2.9 s가 걸린다.
+그래서 주행 시나리오의 기록 구간은 고정 3 s가 아니라 "명령 속도 ÷ 감속 제한 + D-06 유지 0.5 s + 여유 1 s"(최소 3 s)로 계산한다.
+제한 전 측정(2026-11-04)에서는 호 주행 때 odom이 실제보다 0.17 s 먼저 정지를 보고했고, 이전 임시 모델에서는 odom 정지 뒤 차체가 40.4 mm 더 움직였다.
 odom만으로 실제 정지를 판정하면 차체가 아직 움직일 수 있다.
-이전 표의 팔 행은 두 열 모두 `joint_states` 기준이었고, 지금은 Gazebo 링크 자세 기준으로 따로 잰다.
 Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
 ## 흡착 부착·해제
@@ -112,10 +113,12 @@ python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-ma
 python3 src/ax_control/scripts/check_payload_tracking.py --robot-id robot_1 [--masses 0 0.5 1 2] [--repeats 3]
 ```
 
+정지 피드백·바퀴 보정·부착·하중 시험 도구는 시뮬레이션과 같은 `ROS_DOMAIN_ID`·`GZ_PARTITION`·`ROS_AUTOMATIC_DISCOVERY_RANGE`에서 실행해야 한다. 대상(robot_description·제어기 서비스·Gazebo 월드)을 찾지 못하면 현재 환경 변수, 다른 노드가 발행 중인 로봇 ID, 발행자가 있는 Gazebo 월드와 원인 추정을 함께 출력한다. `check_stop_feedback.py`는 팔 시나리오가 있어 팔 로봇 전용이다. 정지 피드백·바퀴 보정·부착 결과의 `status`는 `completed`·`failed`·`interrupted`(Ctrl+C, 종료 코드 130)이며, 중단돼도 `result.json`을 남긴다. 정지 피드백은 시나리오마다, 부착 시험은 판정마다 중간 저장하므로 `last_scenario`·`last_check`까지의 결과가 보존된다.
+
 `check_command_paths.py`는 시뮬레이션 실행 중 제어기를 A4 없이 직접 구동해 관절 상태, 바퀴 구동·정지, 팔 궤적, 잘못된 관절 거부, TF 접두사를 점검한다.
 `check_stop_feedback.py`는 피드백 주기와 시나리오별 정지 시간을 재고 제어기 측정값을 Gazebo 실제 값과 비교한다. 팔의 실제 값은 Gazebo 링크 자세로 다시 계산한 관절각 속도다. `--repeats`로 반복하면 평균·표준편차를 내고, 주행 시나리오는 측정 뒤 반대 명령으로 되돌아간다. 결과는 `log/a2_stop_feedback/<KST 시각>/result.json`이다.
 `check_wheel_calibration.py`는 제자리 회전(좌·우)과 직진(전·후진)을 반복하며 odom 값과 Gazebo 실제 값의 비율로 `wheel_separation_multiplier` 권장값과 `left/right_wheel_radius_multiplier` 참고값을 계산한다. 실행 중인 제어기의 파라미터를 읽으며 설정 파일은 바꾸지 않는다. 결과는 `log/a2_wheel_calibration/<KST 시각>/result.json`이다.
-`check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다. 상자 질량은 `--box-mass`(kg, 기본 1.0)로 바꾼다.
+`check_tool_attach.py`는 A3·A4 모의 상대를 띄우고 상자를 만들어 부착·거절·재전송·안전 정지 중 유지·해제를 시험한다. 시뮬레이션을 새로 띄운 뒤 한 번만 실행한다. 상자 질량은 `--box-mass`(kg, 기본 1.0)로 바꾼다. 결과는 `log/a2_tool_attach/<KST 시각>/result.json`이며 판정별 측정값(`values`: 상승량·이동량·높이·거부 사유)과 시험 배치(`scene`: TCP·상자·받침대 위치)를 남긴다.
 `check_payload_tracking.py`는 흡착으로 붙인 상자로 단계 하중(기본 0·0.5·1·2 kg) 추종·유지·운반 중 취소 정지를 시험한다.
 
 - 자세: A1 검증 자세 3개와 공구 하향으로 어깨 축에서 TCP까지 수평 약 1.0 m(`reach_side`)·1.29 m(`reach_max`)인 자세. 충돌 선별(매단 상자 포함)과 관절 한계 여유 0.1 rad 이상으로 골랐다.

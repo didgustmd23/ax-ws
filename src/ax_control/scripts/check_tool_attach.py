@@ -6,14 +6,15 @@
 
 실행 순서
   터미널 1: ros2 launch ax_control simulation.launch.py robot_ids:=robot_1
-  터미널 2: python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0]
+  터미널 2: python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0] [--output 폴더]
 
 상자 질량은 --box-mass(kg, 기본 1.0)로 바꾼다. 물리 진행을 기다리는 구간은 시뮬레이션 시간 기준이다.
 
 주의
 - 실제 A3·A4가 떠 있으면 같은 서비스·토픽이 겹치므로 그 환경에서 실행하지 않는다.
 - 상자 이름이 고정이라 같은 시뮬레이션에서 두 번 실행할 수 없다. 재시작 후 실행한다.
-- 판정은 [PASS]/[FAIL]로 출력하고 실패가 있으면 종료 코드 1을 돌려준다.
+- 판정은 [PASS]/[FAIL]로 출력하고 실패가 있으면 종료 코드 1, Ctrl+C면 130을 돌려준다.
+- 결과는 기본으로 log/a2_tool_attach/<KST 시각>/result.json이다. 판정마다 중간 저장하므로 중단돼도 남는다.
 
 시험 항목
   초기 상태, 먼 물체, A4 불허, A3 거부, A3 무응답, 부착, 재전송, 인자 다른 재전송,
@@ -21,12 +22,16 @@
 """
 
 import argparse
+from datetime import datetime
+from pathlib import Path
 import re
 import subprocess
 import sys
 import threading
 import time
+import traceback
 import uuid
+from zoneinfo import ZoneInfo
 
 import rclpy
 import tf2_ros
@@ -35,11 +40,16 @@ from ax_interfaces.srv import CheckCommandLease, ToolCommand
 from control_msgs.action import FollowJointTrajectory
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from trajectory_msgs.msg import JointTrajectoryPoint
+
+from gazebo_observer import describe_environment
+from result_record import write_json_atomic
+
+WORKSPACE = Path(__file__).resolve().parents[3]
 
 ARM_JOINTS = [
     "column_yaw_joint",
@@ -345,24 +355,44 @@ class ToolAttachTester(Node):
         raise RuntimeError("epick_tcp TF 없음")
 
 
-# 시나리오를 실행하고 실패 건수를 돌려준다. box_mass는 부착 대상 상자 질량(kg)이다
-def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
-    failures = 0
+# 결과 기록의 뼈대를 만든다. status는 running → completed·failed·interrupted로 바뀐다.
+def new_record(robot_id, box_mass):
+    return {
+        "robot_id": robot_id,
+        "box_mass_kg": box_mass,
+        "status": "running",
+        "error": None,
+        "last_check": None,
+        "failures": 0,
+        "scene": {},
+        "checks": [],
+        "note": "Fixed-joint attach. Holding the box is not a suction force check.",
+    }
+
+
+# 판정 한 건을 출력하고 기록에 넣은 뒤 바로 저장한다. values는 숫자로 남길 측정값이다.
+def add_check(record, save, name, passed, detail, **values):
+    passed = bool(passed)
+    print(f"[{'PASS' if passed else 'FAIL'}] {name}: {detail}", flush=True)
+
+    record["checks"].append({"name": name, "passed": passed, "detail": detail, "values": values})
+    record["last_check"] = name
+    record["failures"] += 0 if passed else 1
+    save()
+
+
+# 시나리오를 실행하고 판정을 record에 쌓는다. box_mass는 부착 대상 상자 질량(kg)이다
+def run_checks(node, record, save, box_mass=DEFAULT_BOX_MASS_KG):
     attach = ToolCommand.Request.ATTACH
     release = ToolCommand.Request.RELEASE
 
-    # 판정 한 줄을 출력하고 실패를 센다
-    def report(name, passed, detail):
-        nonlocal failures
-
-        failures += 0 if passed else 1
-        print(f"[{'PASS' if passed else 'FAIL'}] {name}: {detail}", flush=True)
+    # 판정 한 줄을 출력하고 기록한다
+    def report(name, passed, detail, **values):
+        add_check(record, save, name, passed, detail, **values)
 
     # 준비 확인. 모의 A4 상태가 공구 노드에 도착할 시간도 준다.
     if not node.tool_client.wait_for_service(timeout_sec=15.0):
-        report("tool_command", False, "서비스 없음")
-
-        return failures
+        raise RuntimeError("tool_command 서비스 없음\n" + describe_environment(node, node.robot_id))
 
     node.arm_client.wait_for_server(timeout_sec=10.0)
     time.sleep(1.0)
@@ -389,6 +419,17 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
     )
     spawn_box("box_11", [tcp[0], tcp[1], box_z], [BOX_SIZE_M] * 3, False, box_mass)
     spawn_box("box_12", [1.5, 1.5, FLOOR_BOX_Z_M], [BOX_SIZE_M] * 3, False, box_mass)
+
+    # 흡착컵·TCP 보정값이 바뀌면 배치를 비교할 수 있도록 시험 무대를 남긴다.
+    record["scene"] = {
+        "tcp_m": list(tcp),
+        "box_11_m": [tcp[0], tcp[1], box_z],
+        "box_12_m": [1.5, 1.5, FLOOR_BOX_Z_M],
+        "stand_height_m": stand_height,
+        "box_size_m": BOX_SIZE_M,
+    }
+    save()
+
     node.wait_sim(2.0)
 
     # 먼 물체는 수락돼도 실제로 붙지 않아야 한다.
@@ -403,20 +444,20 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
     node.arm_allowed = False
     time.sleep(0.2)
     response = node.send_tool(attach, "box_11")
-    report("arm_allowed 거부", not response.accepted, f"사유 {response.reason_code}")
+    report("arm_allowed 거부", not response.accepted, f"사유 {response.reason_code}", reason_code=response.reason_code)
     node.arm_allowed = True
     time.sleep(0.2)
 
     node.lease_allowed = False
     response = node.send_tool(attach, "box_11")
-    report("lease 거부", not response.accepted, f"사유 {response.reason_code}")
+    report("lease 거부", not response.accepted, f"사유 {response.reason_code}", reason_code=response.reason_code)
     node.lease_allowed = True
 
     # 서비스를 지워 A3가 사라진 상황을 만든다.
     node.destroy_service(node.lease_server)
     time.sleep(0.3)
     response = node.send_tool(attach, "box_11")
-    report("A3 무응답 거부", not response.accepted, f"사유 {response.reason_code}")
+    report("A3 무응답 거부", not response.accepted, f"사유 {response.reason_code}", reason_code=response.reason_code)
     node.lease_server = node.start_lease_server()
     time.sleep(1.0)
 
@@ -435,7 +476,7 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
     )
 
     response = node.send_tool(attach, "box_11", request_id=request_id, generation=2)
-    report("인자 다른 재전송", not response.accepted, f"사유 {response.reason_code}")
+    report("인자 다른 재전송", not response.accepted, f"사유 {response.reason_code}", reason_code=response.reason_code)
 
     # 신호만 믿지 않고 Gazebo 실제 위치로 물체가 팔을 따라오는지 확인한다.
     before = model_position("box_11")
@@ -446,6 +487,7 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
         "들어 올림",
         lifted[2] - before[2] > MIN_LIFT_M,
         f"상승 {lifted[2] - before[2]:.3f} m",
+        lift_m=lifted[2] - before[2],
     )
 
     node.move_arm(CARRY_YAW_RAD, LIFT_SHOULDER_RAD)
@@ -456,6 +498,8 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
         "팔 추종",
         moved > MOVE_TOLERANCE_M and after[2] > FLOOR_BOX_Z_M + 0.5,
         f"이동 {moved:.3f} m, 높이 {after[2]:.3f} m",
+        moved_m=moved,
+        height_m=after[2],
     )
 
     # 안전 정지 상태를 흉내 낸다. 물체가 자동으로 떨어지면 안 된다.
@@ -463,14 +507,20 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
     node.wait_sim(1.5)
     held = model_position("box_11")
     state = node.attach_state
+
+    if state is None:
+        raise RuntimeError("attach_state 수신 없음")
+
     report(
         "안전 정지 중 유지",
         state.attached and held[2] > FLOOR_BOX_Z_M + 0.5,
         f"attached {state.attached}, 높이 {held[2]:.3f} m",
+        attached=state.attached,
+        height_m=held[2],
     )
 
     response = node.send_tool(release, "box_11")
-    report("안전 정지 중 해제 거부", not response.accepted, f"사유 {response.reason_code}")
+    report("안전 정지 중 해제 거부", not response.accepted, f"사유 {response.reason_code}", reason_code=response.reason_code)
     node.arm_allowed = True
     time.sleep(0.2)
 
@@ -491,9 +541,9 @@ def run_checks(node, box_mass=DEFAULT_BOX_MASS_KG):
         "해제",
         response.accepted and released and final[2] < FLOOR_BOX_Z_M + 0.05,
         f"신호 {released}, 바닥 높이 {final[2]:.3f} m",
+        released=released,
+        height_m=final[2],
     )
-
-    return failures
 
 
 # 명령행 인자를 읽어 점검을 실행한다
@@ -506,10 +556,27 @@ def main():
         default=DEFAULT_BOX_MASS_KG,
         help="부착 대상 상자 질량(kg). 시험값이며 흡착력 검증이 아니다",
     )
+    parser.add_argument("--output", type=Path, default=None, help="결과 폴더(기본 log/a2_tool_attach/<KST 시각>)")
     arguments = parser.parse_args()
 
     if not 0.0 < arguments.box_mass <= MAX_BOX_MASS_KG:
         parser.error(f"--box-mass는 0 초과 {MAX_BOX_MASS_KG} kg 이하")
+
+    stamp = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d_%H%M%S")
+    output = arguments.output or WORKSPACE / "log/a2_tool_attach" / stamp
+
+    if output.exists() and any(output.iterdir()):
+        parser.error(f"{output}이 비어 있지 않음")
+
+    output.mkdir(parents=True, exist_ok=True)
+    path = output / "result.json"
+    record = new_record(arguments.robot_id, arguments.box_mass)
+
+    # 중간 저장 함수. 시작 즉시 running 상태로 한 번 써 둔다.
+    def save():
+        write_json_atomic(path, record)
+
+    save()
 
     rclpy.init()
 
@@ -518,18 +585,47 @@ def main():
     executor.add_node(node)
 
     # 시나리오가 순차로 대기하므로 콜백은 별도 스레드에서 처리한다.
-    thread = threading.Thread(target=executor.spin, daemon=True)
+    # Ctrl+C로 rclpy가 닫히면 executor 스레드는 조용히 끝내고 중단 기록은 main 스레드가 남긴다.
+    def spin():
+        try:
+            executor.spin()
+        except ExternalShutdownException:
+            pass
+
+    thread = threading.Thread(target=spin, daemon=True)
     thread.start()
 
     try:
-        failures = run_checks(node, arguments.box_mass)
+        run_checks(node, record, save, arguments.box_mass)
+        record["status"] = "completed"
+
+    # Ctrl+C는 rclpy 종료 처리에 따라 두 예외 중 하나로 올라온다.
+    except (KeyboardInterrupt, ExternalShutdownException):
+        record["status"] = "interrupted"
+        record["error"] = "사용자 중단(Ctrl+C)"
+
+    except Exception as error:
+        traceback.print_exc()
+        record["status"] = "failed"
+        record["error"] = f"{type(error).__name__}: {error}"
+
     finally:
         executor.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
-    print(f"실패 {failures}건", flush=True)
-    sys.exit(1 if failures else 0)
+        # 정리 뒤 최종 기록을 남긴다. 중간 저장본을 마지막 상태로 덮어쓴다.
+        save()
+
+    status = record["status"]
+    print(f"결과: {path} (status={status})", flush=True)
+
+    if status != "completed":
+        print(f"[FAIL] 점검 중단: {record['error']} (마지막 판정: {record['last_check'] or '없음'})", flush=True)
+        sys.exit(130 if status == "interrupted" else 1)
+
+    print(f"실패 {record['failures']}건", flush=True)
+    sys.exit(1 if record["failures"] else 0)
 
 
 if __name__ == "__main__":

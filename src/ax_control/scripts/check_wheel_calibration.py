@@ -33,12 +33,12 @@ from zoneinfo import ZoneInfo
 import rclpy
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
-from rclpy.executors import SingleThreadedExecutor
+from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
 
-from gazebo_observer import ModelPoseTracker, quaternion_yaw, summarize, unwrap_angles, yaw_of
+from gazebo_observer import ModelPoseTracker, describe_environment, quaternion_yaw, summarize, unwrap_angles, yaw_of
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 
@@ -123,7 +123,9 @@ class WheelCalibrator(Node):
     # 실행 중인 diff_drive_controller 파라미터를 읽는다
     def read_parameters(self):
         if not self.parameters.wait_for_services(timeout_sec=15.0):
-            raise RuntimeError("diff_drive_controller 파라미터 서비스 없음")
+            raise RuntimeError(
+                "diff_drive_controller 파라미터 서비스 없음\n" + describe_environment(self, self.robot_id),
+            )
 
         future = self.parameters.get_parameters(PARAMETERS)
         deadline = time.monotonic() + 10.0
@@ -175,7 +177,9 @@ class WheelCalibrator(Node):
     # 두 관측이 stamp까지 도착할 때까지 기다린다
     def wait_records(self, stamp, wall_limit_seconds=30.0):
         if not self.truth.wait_until(self.robot_id, stamp, wall_limit_seconds):
-            raise RuntimeError("Gazebo 관측이 구간 끝까지 도착하지 않음")
+            raise RuntimeError(
+                "Gazebo 관측이 구간 끝까지 도착하지 않음\n" + describe_environment(self, self.robot_id),
+            )
 
         deadline = time.monotonic() + wall_limit_seconds
 
@@ -354,33 +358,59 @@ def main():
     # 콜백은 별도 스레드 하나에서 처리한다(/clock 1 kHz 부하로 다중 스레드 executor가 밀리는 것을 피함).
     executor = SingleThreadedExecutor()
     executor.add_node(node)
-    threading.Thread(target=executor.spin, daemon=True).start()
+
+    # Ctrl+C로 rclpy가 닫히면 executor 스레드는 조용히 끝낸다. 중단 기록은 main 스레드가 남긴다.
+    def spin():
+        try:
+            executor.spin()
+        except ExternalShutdownException:
+            pass
+
+    threading.Thread(target=spin, daemon=True).start()
 
     checks = []
     result = {}
+    status = "running"
 
     try:
         node.truth.start()
         result = run(node, arguments, checks)
         print_summary(result)
+        status = "completed"
 
     except RuntimeError as error:
         check(checks, "측정 진행", False, str(error))
+        status = "failed"
+
+    # Ctrl+C는 rclpy 종료 처리에 따라 두 예외 중 하나로 올라온다.
+    except (KeyboardInterrupt, ExternalShutdownException):
+        check(checks, "측정 진행", False, "사용자 중단(Ctrl+C)")
+        status = "interrupted"
 
     finally:
-        # 어떤 경우에도 정지 명령을 남기고, Gazebo 구독을 먼저 해제한다.
-        node.publish(0.0, 0.0)
+        # 정지 명령을 남기고 Gazebo 구독을 먼저 해제한다.
+        # Ctrl+C로 rclpy 컨텍스트가 이미 닫혔으면 발행이 실패하므로 제어기의 cmd_vel 시간 초과 정지에 맡긴다.
+        try:
+            node.publish(0.0, 0.0)
+        except Exception as error:
+            print(f"[INFO] 정지 명령 발행 생략(rclpy 종료): {error}", flush=True)
+
         node.truth.stop()
         executor.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
+    result["status"] = status
     result["checks"] = checks
     (output / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False, default=float) + "\n")
 
     failures = sum(1 for item in checks if not item["passed"])
     print(f"결과: {output / 'result.json'}", flush=True)
-    print(f"구조 판정 실패 {failures}건", flush=True)
+    print(f"구조 판정 실패 {failures}건 (status={status})", flush=True)
+
+    if status == "interrupted":
+        sys.exit(130)
+
     sys.exit(1 if failures else 0)
 
 

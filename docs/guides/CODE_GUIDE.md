@@ -65,3 +65,4 @@ python3 tools/check_portability.py
 A2 제어 시험 도구는 `src/ax_control/scripts/check_*.py`이며 실행 중인 격리 시뮬레이션에 붙어 동작한다.
 사용법·판정 범위는 [ax_control 안내](../../src/ax_control/README.md#개발-시험)를 따른다.
 Gazebo 독립 관측(링크 자세 → 관절각·TCP·물체 자세)은 `gazebo_observer.py` 하나에 두고, 순수 계산은 `tools/tests/test_gazebo_observer.py`가 Gazebo 없이 검사한다.
+결과 파일 쓰기(임시 파일 교체 저장)는 `result_record.py`에 두고, 도구별 결과 기록은 `tools/tests/test_stop_feedback.py`·`test_tool_attach.py`가 검사한다.

@@ -62,6 +62,7 @@ from check_tool_attach import (
 )
 from gazebo_observer import (
     GazeboObserver,
+    describe_environment,
     fetch_robot_description,
     first_stable_below,
     in_tcp_frame,
@@ -657,16 +658,20 @@ def main():
         urdf = fetch_robot_description(node, arguments.robot_id)
 
         node.observer = GazeboObserver(arguments.robot_id, urdf, ARM_JOINTS, "gripper_base_link", "epick_tcp")
-        node.observer.start()
+
+        try:
+            node.observer.start()
+        except RuntimeError as error:
+            raise RuntimeError(f"{error}\n{describe_environment(node, arguments.robot_id)}") from None
 
         if not node.observer.wait_ready():
-            raise RuntimeError("Gazebo 관측 없음")
+            raise RuntimeError("Gazebo 관측 없음\n" + describe_environment(node, arguments.robot_id))
 
         if not node.tool_client.wait_for_service(timeout_sec=15.0):
-            raise RuntimeError("tool_command 서비스 없음")
+            raise RuntimeError("tool_command 서비스 없음\n" + describe_environment(node, arguments.robot_id))
 
         if not node.arm_client.wait_for_server(timeout_sec=15.0):
-            raise RuntimeError("팔 Action 서버 없음")
+            raise RuntimeError("팔 Action 서버 없음\n" + describe_environment(node, arguments.robot_id))
 
         # 모의 A4 상태가 공구 노드에 도착하고 joint_states가 쌓일 시간을 준다.
         time.sleep(1.0)

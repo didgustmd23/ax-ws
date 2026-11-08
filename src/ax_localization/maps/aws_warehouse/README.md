@@ -92,4 +92,4 @@ sha256sum src/ax_localization/maps/aws_warehouse/map.{yaml,pgm} src/ax_localizat
 - 참조 지도와 SLAM이 같은 앞 LiDAR 스캔을 쓰므로, LiDAR 높이 밖 장애물이나 가림은 둘 다 놓칠 수 있다.
 - `stop_gate`는 odom 기준이다. odom과 Gazebo 실제 자세가 어긋날 수 있으므로 odom 기준 정지 확인만으로 실제 정지나 지도 품질을 보장하지 않는다. 11-08 원본 월드 짧은 시험(`log/b2_mapping/20261108_164821`)에서 odom은 약 6.8 m 이동을 기록했지만 Gazebo 실제 자세는 거의 움직이지 않았다. 원인은 확인하지 않았다.
 - 재로딩 확인은 지도 파일 수준이며 slam_toolbox pose graph 재로딩은 포함하지 않는다.
-- AMCL 위치 추정·`map→odom` 신뢰성, 작업대·통로 등록, Nav2 연결은 이 지도 전달 범위가 아니다.
+- AMCL 위치 추정·`map→odom` 신뢰성, 작업대·통로 등록, Nav2 연결은 이 지도 전달 범위가 아니다. 위치 추정 실행(개발용)은 [패키지 안내](../../README.md#위치-추정amcl--개발용)에 있다.

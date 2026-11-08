@@ -65,8 +65,22 @@ class A1Assets(unittest.TestCase):
         self.assertEqual(len(cup.findall('collision')), shape['rows']*shape['columns'])
         tof_x = float(settings['tof_xyz'].split()[0])
         self.assertGreater(tof_x, shape['width_m']/2+.01)
-        self.assertAlmostEqual(settings['tof_lip_offset_m'],
-            settings['body_length_m']+settings['cup_height_m']-float(settings['tof_xyz'].split()[2]))
+        from scipy.spatial.transform import Rotation
+        xyz = np.fromstring(settings['tof_xyz'], sep=' ')
+        rotation = Rotation.from_euler('xyz', np.fromstring(settings['tof_rpy'], sep=' ')).as_matrix()
+        direction = rotation[:, 0]
+        lip = settings['body_length_m']+settings['cup_height_m']
+        self.assertAlmostEqual(settings['tof_normal_cosine'], direction[2])
+        self.assertAlmostEqual(settings['tof_lip_offset_m'], (lip-xyz[2])/direction[2])
+        for gap in (0., .05, .15, .30):
+            hit = xyz + direction*((lip+gap-xyz[2])/direction[2])
+            self.assertTrue(np.all(np.abs(hit[:2]) < .1), 'ToF must hit centered 20 cm box')
+        contact = xyz + direction*settings['tof_lip_offset_m']
+        outer_cup_x = (shape['columns']-1)/2*shape['pitch_m']+settings['cup_radius_m']
+        self.assertGreater(contact[0], outer_cup_x)
+        # 센서 본체를 기울여도 하우징의 최대 외곽보다 바깥에 있어야 한다.
+        half = np.abs(rotation) @ np.array([.006, .01, .01])
+        self.assertGreater(xyz[0]-half[0], shape['width_m']/2)
 
     def test_upstream_license_and_hashes(self):
         package = ROOT / 'src/epick_description'

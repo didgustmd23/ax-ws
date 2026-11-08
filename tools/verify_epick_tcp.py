@@ -65,7 +65,7 @@ try:
             check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)
         observer.advance(1.0)
         actual = float(np.median(readings[-10:]))
-        expected = gap + epick['tof_lip_offset_m']
+        expected = gap / epick.get('tof_normal_cosine', 1.0) + epick['tof_lip_offset_m']
         entry = {'gap_from_cup_lip_m': gap, 'expected_tof_m': expected, 'measured_tof_m': actual,
                  'bias_m': actual-expected, 'passed': math.isfinite(actual) and abs(actual-expected) < .002}
         report['cases'].append(entry)

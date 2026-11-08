@@ -22,6 +22,9 @@ cameras:
   depth_clip_m: [0.05, 5.0]
   processed_rgbd_suffixes: [processed/image, processed/depth_image, processed/camera_info, processed/points]
   processed_points_axes: {right: '+X', down: '+Y', forward: '+Z'}
+  # sensors/health에서 */synchronized는 시각 정렬 성공,
+  # */depth_valid는 유효 깊이 존재를 각각 진단한다.
+  # depth_valid의 valid_depth_fraction 값: 전체 무효 0, 일부 유효 0~1, 전체 유효 1.
   # Harmonic 원시 points는 축/투영이 CameraInfo와 맞지 않을 수 있으므로
   # 3D 소비자는 B1이 깊이와 CameraInfo로 재생성한 processed/points를 사용한다.
 lidar:
@@ -42,7 +45,10 @@ tool_tof:
   frame: tool_tof_link
   rate_hz: 30
   range_m: [0.02, 0.40]
-  lip_offset_m: {epick: 0.0223, suction: 0.031}
+  lip_offset_m: {epick: 0.0237311643262128, suction: 0.031}
+  # 컵 평면과 물체 평면이 평행할 때 법선 간격=(range-lip_offset)*normal_cosine.
+  # epick ToF는 상자 안쪽으로 20도 기울어져 있다. raw는 여전히 광선상 거리다.
+  normal_cosine: {epick: 0.9396926207859084, suction: 1.0}
   invalid: NaN
   too_far: '+inf'
   too_close: '-inf'
@@ -55,6 +61,9 @@ tool_tof:
   # processed에서 NaN + sensors/health ERROR로 표시한다. 경계 5 mm는 판별 불가다.
   # 모델/TF가 없을 때도 NaN이다. 맑은 광선의 +inf, 가까운 -inf 의미는 유지한다.
   # 팔/공구 전체 자기 필터나 위험 판정·정지·흡착 성공 판단을 대체하지 않는다.
+  # 측정 시각 TF가 늦으면 B1의 유한 큐(최대 10개)에서 tof_tf_wait_s(기본 0.15 s)만
+  # 기다린 뒤 처리한다. 현재 시각 TF로 대체하지 않으며 대기 중 오래된 입력은 버린다.
+  # 시뮬레이션 시각 역행 시 동기화/ToF 큐·이전 시각·센서 정상 진단을 초기화한다.
 cargo_contact:
   role: transporter
   suffix: cargo_contact

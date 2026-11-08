@@ -14,6 +14,20 @@ spec.loader.exec_module(remote)
 
 
 class BrowserRemote(unittest.TestCase):
+    def test_controller_readiness_with_and_without_ansi(self):
+        for colored in (False, True):
+            for state in ('active', 'inactive'):
+                name, status = 'arm_controller', state
+                if colored:
+                    name = '\x1b[92m' + name + '\x1b[0m'
+                    status = '\x1b[92m' + status + '\x1b[0m'
+                line = f'{name}\tjoint_trajectory_controller/JointTrajectoryController  {status}\n'
+                self.assertEqual(remote.controllers_active(line, ['arm_controller']), state == 'active')
+                self.assertFalse(remote.controllers_active(line, ['diff_drive_controller']))
+        self.assertFalse(remote.controllers_active('arm_controller_extra type active', ['arm_controller']))
+        self.assertFalse(remote.controllers_active('arm_controller type active_error', ['arm_controller']))
+        self.assertFalse(remote.controllers_active('warning: arm_controller is active', ['arm_controller']))
+
     def command(self, action, value=None, seq=1):
         return {'action': action, 'value': value, 'seq': seq, 'client': 'test'}
 

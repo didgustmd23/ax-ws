@@ -1,0 +1,128 @@
+{
+ "robot": "robot_2",
+ "condition": "s005_robot_2",
+ "status": "completed",
+ "rotations": [],
+ "paths": [],
+ "stop_tests": {
+  "linear_0.67": {
+   "command": [
+    0.67,
+    0,
+    4.0
+   ],
+   "status": "completed",
+   "reason": null,
+   "stop": {
+    "odom_stop_s": 1.052999999999999,
+    "truth_stop_s": 1.0380000000000003,
+    "odom_confirmed": true,
+    "truth_confirmed": true
+   },
+   "slide_after_odom_stop_m": 0.0,
+   "tilt_max_rad": {
+    "roll": 1.0670952805880632e-11,
+    "pitch": 3.373000305111611e-06
+   },
+   "motion": {
+    "truth_m": 2.6866996520600215,
+    "odom_m": 2.686700000012317,
+    "start_world": [
+     2.5000000000951137,
+     -1.4999999999993605,
+     -2.1427026314278292e-19
+    ],
+    "end_world": [
+     5.186699652155135,
+     -1.4999999980886607,
+     -5.0281305215731706e-11
+    ]
+   }
+  },
+  "angular_0.5": {
+   "command": [
+    0,
+    0.5,
+    6.0
+   ],
+   "status": "completed",
+   "reason": null,
+   "stop": {
+    "odom_stop_s": 2.453999999999997,
+    "truth_stop_s": 2.4449999999999967,
+    "odom_confirmed": true,
+    "truth_confirmed": true
+   },
+   "slide_after_odom_stop_m": 0.00040909667612375335,
+   "tilt_max_rad": {
+    "roll": 1.4020794464319419e-11,
+    "pitch": 3.677219703608927e-10
+   },
+   "motion": {
+    "truth_m": 0.011253268071460746,
+    "odom_m": 5.356145658476368e-13,
+    "start_world": [
+     5.186699652155135,
+     -1.4999999980886607,
+     -5.0281305215731706e-11
+    ],
+    "end_world": [
+     5.1814716471407625,
+     -1.5099651376189358,
+     3.0110933726674007
+    ]
+   }
+  },
+  "curve_0.3_0.3": {
+   "command": [
+    0.3,
+    0.3,
+    4.0
+   ],
+   "status": "completed",
+   "reason": null,
+   "stop": {
+    "odom_stop_s": 1.4639999999999986,
+    "truth_stop_s": 1.456000000000003,
+    "odom_confirmed": true,
+    "truth_confirmed": true
+   },
+   "slide_after_odom_stop_m": 0.00035299821949014496,
+   "tilt_max_rad": {
+    "roll": 5.28062988114208e-11,
+    "pitch": 1.0560717041717396e-09
+   },
+   "motion": {
+    "truth_m": 1.1481393294203734,
+    "odom_m": 1.1406640260455454,
+    "start_world": [
+     5.1814716471407625,
+     -1.5099651376189358,
+     3.0110933726674007
+    ],
+    "end_world": [
+     4.075016203085224,
+     -1.8165271543165789,
+     -2.065325611897221
+    ]
+   }
+  }
+ },
+ "controller_limits": {
+  "linear.x.max_velocity": 0.67,
+  "linear.x.max_acceleration": 0.67,
+  "angular.z.max_velocity": 0.5,
+  "angular.z.max_acceleration": 0.2
+ },
+ "base_link_in_model": [
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "clock": {
+  "sim_s": 41.183,
+  "wall_s": 73.8032989860003,
+  "rtf": 0.5580102863398013
+ }
+}

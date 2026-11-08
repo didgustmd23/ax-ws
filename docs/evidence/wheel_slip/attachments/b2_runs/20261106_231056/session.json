@@ -1,0 +1,11 @@
+{
+  "world": "aws_warehouse.world",
+  "world_condition": "light_collision",
+  "wheel_condition": "slip1=0.05",
+  "robot_id": "robot_2",
+  "scan": "filtered",
+  "render": "d3d12-nvidia",
+  "ROS_DOMAIN_ID": "66",
+  "GZ_PARTITION": "ax-b2-20261106_231056-292914",
+  "note": "light_collision·wheel slip1은 임시 사본 조건이며 운영 모델이 아니고 지도 채택(--adopt) 대상이 아니다"
+}

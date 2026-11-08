@@ -1,0 +1,67 @@
+{
+ "base": {
+  "rot_translation_max": 0.6659068848452241,
+  "rot_centre_max": 0.3336790048612966,
+  "turn_ratio": 0.9996461742820056,
+  "straight_ratio": 0.9999446361132747,
+  "straight_lateral_max": 9.790596718767253e-11,
+  "stop_lin": 1.0349999999999966,
+  "stop_ang": 2.4439999999999884,
+  "slide_max": 6.630444872311991e-05,
+  "load5_max": 0.6701625284571814,
+  "contact_ok": true,
+  "rtf": 0.5144939879717648
+ },
+ "S005": {
+  "rot_translation_max": 0.00911924178115073,
+  "rot_centre_max": 0.00518783745650296,
+  "turn_ratio": 0.9996316470557206,
+  "straight_ratio": 0.9999483812664137,
+  "straight_lateral_max": 3.269999071263026e-10,
+  "stop_lin": 1.0420000000000016,
+  "stop_ang": 2.4429999999999836,
+  "slide_max": 0.00039258587963487447,
+  "load5_max": 0.01564946659065866,
+  "contact_ok": true,
+  "rtf": 0.5188934438226162,
+  "checks": {
+   "rotation_translation": true,
+   "rotation_centre": 1.0,
+   "turn_ratio_change": true,
+   "straight_ratio_change": true,
+   "straight_lateral": true,
+   "stop_linear": true,
+   "stop_angular": true,
+   "stop_slide": true,
+   "load_translation": true,
+   "contact": true
+  },
+  "accepted": true
+ },
+ "S020": {
+  "rot_translation_max": 0.019130886663805018,
+  "rot_centre_max": 0.012014412755781056,
+  "turn_ratio": 0.9996180956019884,
+  "straight_ratio": 0.9999685469247271,
+  "straight_lateral_max": 0.00011722613293790353,
+  "stop_lin": 1.0519999999999925,
+  "stop_ang": 2.459000000000003,
+  "slide_max": 0.004172853078467634,
+  "load5_max": 0.042495147883924195,
+  "contact_ok": true,
+  "rtf": 0.5296470535803197,
+  "checks": {
+   "rotation_translation": true,
+   "rotation_centre": 1.0,
+   "turn_ratio_change": true,
+   "straight_ratio_change": true,
+   "straight_lateral": true,
+   "stop_linear": true,
+   "stop_angular": true,
+   "stop_slide": true,
+   "load_translation": true,
+   "contact": true
+  },
+  "accepted": true
+ }
+}

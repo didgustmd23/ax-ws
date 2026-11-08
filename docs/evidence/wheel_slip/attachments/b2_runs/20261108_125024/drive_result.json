@@ -1,0 +1,256 @@
+{
+  "status": "failed",
+  "error": "RuntimeError: 장애물이 해소되지 않음: 전방 장애물 5점(정지 거리 0.41 m)",
+  "development_test_path": "A4 미구현 상태에서 diff_drive_controller에 직접 명령하는 격리 개발 시험 경로",
+  "robot_id": "robot_2",
+  "route": {
+    "path": "<workspace>/src/ax_localization/config/routes/aws_warehouse.yaml",
+    "sha256": "873c5a3649e62f41194ec2261496f6c61317765f442af5cc1473125b9c049247",
+    "frame": "robot_2/odom",
+    "waypoints": [
+      [
+        -1.5,
+        0.0,
+        true
+      ],
+      [
+        -1.5,
+        -6.8,
+        false
+      ],
+      [
+        -1.5,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        7.5,
+        false
+      ],
+      [
+        -6.1,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        7.5,
+        false
+      ],
+      [
+        -1.5,
+        0.0,
+        false
+      ],
+      [
+        0.0,
+        0.0,
+        false
+      ]
+    ],
+    "partial": false
+  },
+  "scan_input": "scan_filtered",
+  "limits": {
+    "used": {
+      "linear": 0.3,
+      "angular": 0.3
+    },
+    "deceleration": {
+      "linear": 0.67,
+      "angular": 0.2
+    },
+    "controller": {
+      "linear.x.max_velocity": 0.67,
+      "angular.z.max_velocity": 0.5,
+      "linear.x.max_deceleration": 0.67,
+      "angular.z.max_deceleration": 0.2
+    },
+    "route": {
+      "linear_m_s": 0.3,
+      "angular_rad_s": 0.3
+    }
+  },
+  "waypoints_reached": 9,
+  "events": [
+    {
+      "sim_time_s": 10.100000000000001,
+      "kind": "START",
+      "detail": "경로 aws_warehouse.yaml, 입력 scan_filtered, 상한 {'linear': 0.3, 'angular': 0.3}"
+    },
+    {
+      "sim_time_s": 10.100000000000001,
+      "kind": "GOAL",
+      "detail": "경유점 1/10 (-1.5, 0.0, True) 거리 1.50 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 15.227,
+      "kind": "REACHED",
+      "detail": "경유점 1 도달, 남은 거리 0.145 m"
+    },
+    {
+      "sim_time_s": 15.227,
+      "kind": "GOAL",
+      "detail": "경유점 2/10 (-1.5, -6.8, False) 거리 6.80 m, 제한 98 s"
+    },
+    {
+      "sim_time_s": 43.697,
+      "kind": "REACHED",
+      "detail": "경유점 2 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 43.698,
+      "kind": "GOAL",
+      "detail": "경유점 3/10 (-1.5, -3.0, False) 거리 3.65 m, 제한 67 s"
+    },
+    {
+      "sim_time_s": 66.843,
+      "kind": "REACHED",
+      "detail": "경유점 3 도달, 남은 거리 0.147 m"
+    },
+    {
+      "sim_time_s": 66.84400000000001,
+      "kind": "GOAL",
+      "detail": "경유점 4/10 (-6.1, -3.0, False) 거리 4.60 m, 제한 76 s"
+    },
+    {
+      "sim_time_s": 87.831,
+      "kind": "REACHED",
+      "detail": "경유점 4 도달, 남은 거리 0.147 m"
+    },
+    {
+      "sim_time_s": 87.831,
+      "kind": "GOAL",
+      "detail": "경유점 5/10 (-6.1, 7.5, False) 거리 10.51 m, 제한 135 s"
+    },
+    {
+      "sim_time_s": 128.45000000000002,
+      "kind": "REACHED",
+      "detail": "경유점 5 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 128.45100000000002,
+      "kind": "GOAL",
+      "detail": "경유점 6/10 (-6.1, 1.7, False) 거리 5.65 m, 제한 87 s"
+    },
+    {
+      "sim_time_s": 158.26500000000001,
+      "kind": "REACHED",
+      "detail": "경유점 6 도달, 남은 거리 0.147 m"
+    },
+    {
+      "sim_time_s": 158.26500000000001,
+      "kind": "GOAL",
+      "detail": "경유점 7/10 (-1.5, 1.7, False) 거리 4.60 m, 제한 76 s"
+    },
+    {
+      "sim_time_s": 179.26100000000002,
+      "kind": "REACHED",
+      "detail": "경유점 7 도달, 남은 거리 0.145 m"
+    },
+    {
+      "sim_time_s": 179.262,
+      "kind": "GOAL",
+      "detail": "경유점 8/10 (-1.5, 7.5, False) 거리 5.80 m, 제한 88 s"
+    },
+    {
+      "sim_time_s": 204.36100000000002,
+      "kind": "REACHED",
+      "detail": "경유점 8 도달, 남은 거리 0.148 m"
+    },
+    {
+      "sim_time_s": 204.36100000000002,
+      "kind": "GOAL",
+      "detail": "경유점 9/10 (-1.5, 0.0, False) 거리 7.35 m, 제한 104 s"
+    },
+    {
+      "sim_time_s": 239.818,
+      "kind": "REACHED",
+      "detail": "경유점 9 도달, 남은 거리 0.150 m"
+    },
+    {
+      "sim_time_s": 239.81900000000002,
+      "kind": "GOAL",
+      "detail": "경유점 10/10 (0.0, 0.0, False) 거리 1.51 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 247.90800000000002,
+      "kind": "STOP",
+      "detail": "전방 장애물 5점(정지 거리 0.41 m): 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 258.947,
+      "kind": "STOP",
+      "detail": "종료: 실제 정지 확인"
+    }
+  ],
+  "stops": [
+    {
+      "reason": "전방 장애물 5점(정지 거리 0.41 m)",
+      "requested_sim_s": 247.90800000000002,
+      "confirmed": true,
+      "confirm_sim_s": 1.0229999999999961
+    },
+    {
+      "reason": "종료",
+      "requested_sim_s": 258.947,
+      "confirmed": true,
+      "confirm_sim_s": 0.5060000000000286
+    }
+  ],
+  "loop": {
+    "method": "간접: odom 출발점 복귀 거리와 map→odom 보정량. slam_toolbox 루프 폐쇄 사건을 직접 읽지 않는다",
+    "return_to_start_odom_m": 0.6843132572786136,
+    "returned_to_start": false,
+    "map_odom_correction_m": 0.07648195766011388,
+    "map_odom_correction_rad": 0.01745000000000152,
+    "max_map_odom_step_m": 0.08392284704660387
+  },
+  "saved": {},
+  "mounts": {
+    "front": [
+      0.61,
+      0.0,
+      0.0
+    ],
+    "rear": [
+      -0.57,
+      0.0,
+      3.141592653589793
+    ]
+  },
+  "recording": {
+    "file": "recording.npz",
+    "scans": 2504,
+    "truth_samples": 27027,
+    "note": "truth는 Gazebo 실제 자세(검증 전용)"
+  },
+  "tf_receive_gap_boottime_s": {
+    "count": 22199,
+    "p50": 0.020000008000010894,
+    "p95": 0.020254491599996528,
+    "p99": 0.020587066319984616,
+    "max": 2.5387933929999917,
+    "receipts": 22209,
+    "stamp_updates": 2323
+  },
+  "slam_health_max": {
+    "tf_receive_age_boottime_s": 2.2937108060000355,
+    "tf_stamp_lag_sim_s": 1.1210000000000093,
+    "front_scan_age_sim_s": 0.12700000000000244,
+    "rear_scan_age_sim_s": 0.12700000000000244,
+    "travel_since_slam_update_m": 0.3959989666302663,
+    "heading_since_slam_update_rad": 0.36599999990096066
+  }
+}

@@ -1,0 +1,29 @@
+# 원본 AWS 월드와 light_collision 사본의 충돌 형상 차이(시각 메시는 같음)
+원본 sha256 8d214d39eda62d35a4655dd7e5deb3a8537b1379c519d5ef24767ba435aeacd0
+사본 sha256 6436f183a82161d6465e30e3a2c14991d23e501ca21c217ca63ac93ea0f84c13 (log/b2_mapping/20261108_131510/session/world_light.world)
+
+aws_robomaker_warehouse_ShelfF_01_001: ['mesh'] → []
+aws_robomaker_warehouse_WallB_01_001: ['mesh'] → []
+aws_robomaker_warehouse_ShelfE_01_001: ['mesh'] → []
+aws_robomaker_warehouse_ShelfE_01_002: ['mesh'] → []
+aws_robomaker_warehouse_ShelfE_01_003: ['mesh'] → []
+aws_robomaker_warehouse_ShelfD_01_001: ['mesh'] → []
+aws_robomaker_warehouse_ShelfD_01_002: ['mesh'] → []
+aws_robomaker_warehouse_ShelfD_01_003: ['mesh'] → []
+aws_robomaker_warehouse_GroundB_01_001: ['mesh'] → ['plane']
+aws_robomaker_warehouse_Lamp_01_005: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringA_01_016: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringA_01_017: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringA_01_018: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_027: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_028: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_029: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_030: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_031: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringC_01_032: ['mesh'] → []
+aws_robomaker_warehouse_ClutteringD_01_005: ['mesh'] → []
+aws_robomaker_warehouse_TrashCanC_01_002: ['mesh'] → []
+aws_robomaker_warehouse_PalletJackB_01_001: ['mesh'] → []
+
+메시 충돌 22개: 21개 제거, 바닥 GroundB 1개는 평면(plane, 14×21 m)으로 교체
+visual 요소 수: 원본 25, 사본 25

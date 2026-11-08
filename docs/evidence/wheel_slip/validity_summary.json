@@ -1,0 +1,597 @@
+{
+ "robot_2|cause_rotation|base": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|cause_variant|fdir1 제거": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|cause_variant|mu1 1.0": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|cause_variant|COM 바퀴 중간": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|cause_variant|COM 뒤쪽": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|cause_contact|base": {
+  "total": 8,
+  "valid": 8,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_rotation|base": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_straight|base": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_stop|base": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_load|base": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_contact|base": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_rotation|S005": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_straight|S005": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_stop|S005": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_load|S005": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_contact|S005": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_rotation|S020": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_straight|S020": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_stop|S020": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_load|S020": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|candidate_contact|S020": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_214348": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_221246": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_230400": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_230603": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_230838": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_231056": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261106_231320": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261108_125024": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261108_125921": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261108_130812": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261108_131127": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|20261108_131510": {
+  "total": 1,
+  "valid": 1,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|b2_run|run1": {
+  "total": 1,
+  "valid": 0,
+  "failed": 1,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|S005_neutral_0kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|S005_neutral_0kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|S005_neutral_0kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|S005_reachside_0kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|S005_reachside_0kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|S005_reachside_0kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|S005_reachside_1kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|S005_reachside_1kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|S005_reachside_1kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|S005_reachside_2kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|S005_reachside_2kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|S005_reachside_2kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|base_neutral_0kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|base_neutral_0kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|base_neutral_0kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|base_reachside_0kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|base_reachside_0kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|base_reachside_0kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|base_reachside_1kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|base_reachside_1kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|base_reachside_1kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_rotation|base_reachside_2kg": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_straight|base_reachside_2kg": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_stop|base_reachside_2kg": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|r1_contact|contact_diag": {
+  "total": 2,
+  "valid": 2,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_rotation|baseline/robot_1": {
+  "total": 12,
+  "valid": 12,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_straight|baseline/robot_1": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_curve|baseline/robot_1": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_stop|baseline/robot_1": {
+  "total": 3,
+  "valid": 3,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_rotation|baseline/robot_2": {
+  "total": 18,
+  "valid": 18,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_straight|baseline/robot_2": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_curve|baseline/robot_2": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_stop|baseline/robot_2": {
+  "total": 3,
+  "valid": 0,
+  "failed": 3,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_rotation|baseline/robot_2.run1_stop_anomaly": {
+  "total": 18,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 18
+ },
+ "robot_2|drive_straight|baseline/robot_2.run1_stop_anomaly": {
+  "total": 6,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 6
+ },
+ "robot_2|drive_curve|baseline/robot_2.run1_stop_anomaly": {
+  "total": 4,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 4
+ },
+ "robot_2|drive_stop|baseline/robot_2.run1_stop_anomaly": {
+  "total": 3,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 3,
+  "superseded": 0
+ },
+ "robot_2|drive_stop|baseline/robot_2_stops": {
+  "total": 3,
+  "valid": 3,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_rotation|s005/robot_1": {
+  "total": 12,
+  "valid": 12,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_straight|s005/robot_1": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_curve|s005/robot_1": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_1|drive_stop|s005/robot_1": {
+  "total": 3,
+  "valid": 3,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_rotation|s005/robot_2": {
+  "total": 18,
+  "valid": 18,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_straight|s005/robot_2": {
+  "total": 6,
+  "valid": 6,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_curve|s005/robot_2": {
+  "total": 4,
+  "valid": 4,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_stop|s005/robot_2": {
+  "total": 3,
+  "valid": 0,
+  "failed": 3,
+  "invalid_measurement": 0,
+  "superseded": 0
+ },
+ "robot_2|drive_rotation|s005/robot_2.run1_stop_anomaly": {
+  "total": 18,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 18
+ },
+ "robot_2|drive_straight|s005/robot_2.run1_stop_anomaly": {
+  "total": 6,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 6
+ },
+ "robot_2|drive_curve|s005/robot_2.run1_stop_anomaly": {
+  "total": 4,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 4
+ },
+ "robot_2|drive_stop|s005/robot_2.run1_stop_anomaly": {
+  "total": 3,
+  "valid": 0,
+  "failed": 0,
+  "invalid_measurement": 3,
+  "superseded": 0
+ },
+ "robot_2|drive_stop|s005/robot_2_stops": {
+  "total": 3,
+  "valid": 3,
+  "failed": 0,
+  "invalid_measurement": 0,
+  "superseded": 0
+ }
+}

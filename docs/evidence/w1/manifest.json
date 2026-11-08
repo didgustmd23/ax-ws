@@ -1,0 +1,9 @@
+{
+  "date": "2026-11-09",
+  "environment": "WSL Ubuntu 24.04 / ROS Jazzy / Gazebo Harmonic",
+  "source_sha256": {
+    "tools/check_w1_sensors.py": "b9b12ccfb3957c0451053e8499fb67f95ca99b54b05c5151263150a4dbd03ded",
+    "tools/check_w1_cargo_contact.py": "8ef272ad1041cd93e4269d4bca837d5c4305605c75b7d176c4a010f219ba7cee",
+    "src/ax_description/urdf/ax_2.urdf.xacro": "d5d4c80227e46f869dc85a5865c81c45555bc1fcbbae34ce9941269e95b3f3a6"
+  }
+}

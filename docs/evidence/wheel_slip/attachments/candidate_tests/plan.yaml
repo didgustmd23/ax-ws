@@ -1,0 +1,26 @@
+# robot_2 회전 병진 개선 후보 비교 계획. 평가 전에 고정한다(2026-11-06). 운영 모델은 바꾸지 않고 임시 사본에서만 시험한다.
+world: ax_test.world (평면 바닥)
+robot: robot_2, 센서 끔, 접촉 센서만 사본에 추가(물리 영향 없음)
+render: d3d12-nvidia
+conditions:
+  base: 현재 설정 (mu 0.1 / mu2 1.0 / fdir1 축 방향)
+  S005: base + 바퀴 collision <ode><slip1>0.05</slip1> (축 방향 미끄럼 순응, m/s/N). 다른 값 유지
+  S020: base + slip1 0.20 (같은 손잡이의 다른 값)
+  W: base + gz-sim WheelSlip 시스템(slip_compliance_lateral, 동적). S가 기준을 못 맞출 때만
+excluded: [COM 이동(원인 분리 결과로만 보존), 바퀴 보정 계수 변경, 질량 변경, SLAM·LiDAR 변경]
+tests:
+  rotation: 좌·우 각 3회, 0.3 rad/s 10 s 명령 → 실제·odom 회전각, 병진, odom 병진 오차, 회전 중심
+  straight: 전진·후진 각 2회, 0.3 m/s 3 s → 실제·odom 거리, 횡방향 이탈, 미끄러짐(1 - 실제/odom)
+  stop: 직진 0.67 m/s 4 s, 회전 0.5 rad/s 6 s 뒤 명령 중단 → odom·실제 정지 시간(D-06 0.01 m/s·0.02 rad/s 0.5 s 유지), 보고 정지 뒤 실제 이동
+  load: 적재면 상자 0.3 m 정육면체 2·5 kg × 위치(앞 +0.2, 뒤 -0.2 m) → 왼쪽 회전 1회 병진·회전 중심, 상자 미끄러짐
+  contact: 첫 왼쪽 회전 중 바퀴별 접촉점 수·수직 하중·축 방향 마찰력
+acceptance:   # 후보가 모두 만족해야 A1 전달 후보로 채택
+  rotation_translation_max_m: 0.10          # 약 3 rad 회전당 (base 0.666)
+  rotation_centre_offset_max_m: 0.10        # base_link에서 회전 중심까지
+  turn_ratio_change_max: 0.02               # odom/실제 회전 비율의 base 대비 변화
+  straight_ratio_change_max: 0.02           # odom/실제 거리 비율의 base 대비 변화
+  straight_lateral_max_m: 0.02              # 0.9 m 주행당 횡방향 이탈
+  stop_time_increase_max_s: 0.3             # 실제 정지 시간의 base 대비 증가(직진·회전 각각)
+  stop_slide_max_m: 0.02                    # 보고 정지 뒤 실제 이동
+  load_translation_max_m: 0.15              # 5 kg 앞·뒤 적재 회전 병진
+  contact: 네 바퀴 모두 계속 접촉, 바퀴 하중 최소가 정지 평균의 50% 이상

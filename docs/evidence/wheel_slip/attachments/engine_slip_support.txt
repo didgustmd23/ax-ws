@@ -1,0 +1,62 @@
+# 설치 엔진의 slip1 지원 근거 (2026-11-08 수집, 새 실험 아님)
+
+## SDFormat 14 스키마: /opt/ros/jazzy/opt/sdformat_vendor/share/sdformat14/1.11/surface.sdf
+      <description>ODE friction parameters</description>
+      <element name="mu" type="double" default="1" min="0.0" required="0">
+        <description>
+          Coefficient of friction in first friction pyramid direction,
+          the unitless maximum ratio of force in first friction pyramid
+          direction to normal force.
+        </description>
+      </element>
+      <element name="mu2" type="double" default="1" min="0.0" required="0">
+        <description>
+          Coefficient of friction in second friction pyramid direction,
+          the unitless maximum ratio of force in second friction pyramid
+          direction to normal force.
+        </description>
+      </element>
+      <element name="fdir1" type="vector3" default="0 0 0" required="0">
+        <description>
+          Unit vector specifying first friction pyramid direction in
+          collision-fixed reference frame.
+          If the friction pyramid model is in use,
+          and this value is set to a unit vector for one of the
+          colliding surfaces,
+          the ODE Collide callback function will align the friction pyramid directions
+          with a reference frame fixed to that collision surface.
+          If both surfaces have this value set to a vector of zeros,
+          the friction pyramid directions will be aligned with the world frame.
+          If this value is set for both surfaces, the behavior is undefined.
+        </description>
+      </element>
+      <element name="slip1" type="double" default="0.0" required="0">
+        <description>
+          Force dependent slip in first friction pyramid direction,
+          equivalent to inverse of viscous damping coefficient
+          with units of m/s/N.
+          A slip value of 0 is infinitely viscous.
+        </description>
+      </element>
+      <element name="slip2" type="double" default="0.0" required="0">
+        <description>
+          Force dependent slip in second friction pyramid direction,
+          equivalent to inverse of viscous damping coefficient
+          with units of m/s/N.
+          A slip value of 0 is infinitely viscous.
+        </description>
+      </element>
+    </element> <!-- End ODE -->
+    <element name="bullet" required="0">
+      <element name="friction" type="double" default="1" min="0.0" required="0">
+
+## gz-physics 7.8.0 dartsim 플러그인 문자열: libgz-physics7-dartsim-plugin.so.7.8.0 (sha256 75617f959d603e052048c6258fbe912d16c66ceebeada7688e6d5be4650cf878)
+fdir1
+slip1
+slip2
+_ZTSN2gz7physics37SetShapeFrictionPyramidSlipCompliance14ImplementationINS0_13FeaturePolicyIdLm3EEEEE
+_ZTIN2gz7physics37SetShapeFrictionPyramidSlipCompliance14ImplementationINS0_13FeaturePolicyIdLm3EEEEE
+_ZN4dart8dynamics14DynamicsAspect30setFirstFrictionDirectionFrameEPKNS0_5FrameE
+_ZNSt17_Function_handlerIFPvvEZN2gz6plugin6detail8MakeInfoINS2_7physics7dartsim6PluginEJNS6_7Feature14ImplementationINS6_13FeaturePolicyIdLm3EEEEENS6_9AddedMass14ImplementationISC_EENS7_13RetrieveWorld14ImplementationISC_EENS6_13GetEngineInfo14ImplementationISC_EENS6_18GetWorldFromEngine14ImplementationISC_EENS6_17GetModelFromWorld14ImplementationISC_EENS6_23GetNestedModelFromModel14ImplementationISC_EENS6_16GetLinkFromModel14ImplementationISC_EENS6_17GetJointFromModel14ImplementationISC_EENS6_16GetShapeFromLink14ImplementationISC_EENS6_20RemoveModelFromWorld14ImplementationISC_EENS6_26RemoveNestedModelFromModel14ImplementationISC_EENS6_25CategoryFilterMaskFeature14ImplementationISC_EENS6_26ConstructEmptyWorldFeature14ImplementationISC_EENS6_26ConstructEmptyModelFeature14ImplementationISC_EENS6_32ConstructEmptyNestedModelFeature14ImplementationISC_EENS6_25ConstructEmptyLinkFeature14ImplementationISC_EENS6_26CollisionFilterMaskFeature14ImplementationISC_EENS6_17WorldModelFeature14ImplementationISC_EENS6_20FindFreeGroupFeature14ImplementationISC_EENS6_21SetFreeGroupWorldPose14ImplementationISC_EENS6_25SetFreeGroupWorldVelocity14ImplementationISC_EENS6_18GetBasicJointState14ImplementationISC_EENS6_18SetBasicJointState14ImplementationISC_EENS6_23GetBasicJointProperties14ImplementationISC_EENS6_34SetJointTransformFromParentFeature14ImplementationISC_EENS6_31SetJointTransformToChildFeature14ImplementationISC_EENS6_18DetachJointFeature14ImplementationISC_EENS6_36SetFreeJointRelativeTransformFeature14ImplementationISC_EENS6_13FreeJointCast14ImplementationISC_EENS6_23AttachFixedJointFeature14ImplementationISC_EENS6_14FixedJointCast14ImplementationISC_EENS6_26SetRevoluteJointProperties14ImplementationISC_EENS6_17RevoluteJointCast14ImplementationISC_EENS6_26GetRevoluteJointProperties14ImplementationISC_EENS6_26AttachRevoluteJointFeature14ImplementationISC_EENS6_27SetPrismaticJointProperties14ImplementationISC_EENS6_18PrismaticJointCast14ImplementationISC_EENS6_27GetPrismaticJointProperties14ImplementationISC_EENS6_27AttachPrismaticJointFeature14ImplementationISC_EENS6_30SetJointVelocityCommandFeature14ImplementationISC_EENS6_29SetJointPositionLimitsFeature14ImplementationISC_EENS6_29SetJointVelocityLimitsFeature14ImplementationISC_EENS6_27SetJointEffortLimitsFeature14ImplementationISC_EENS6_25GetJointTransmittedWrench14ImplementationISC_EENS6_14FrameSemantics14ImplementationISC_EENS6_16ModelStaticState14ImplementationISC_EENS6_21ModelCollisionEnabled14ImplementationISC_EENS6_14GravityEnabled14ImplementationISC_EES44_S44_SD_NS6_26AddLinkExternalForceTorque14ImplementationISC_EENS6_3sdf17ConstructSdfWorld14ImplementationISC_EENS4H_17ConstructSdfModel14ImplementationISC_EENS4H_23ConstructSdfNestedModel14ImplementationISC_EENS4H_16ConstructSdfLink14ImplementationISC_EENS4H_17ConstructSdfJoint14ImplementationISC_EENS4H_21ConstructSdfCollision14ImplementationISC_EENS4H_18ConstructSdfVisual14ImplementationISC_EENS6_27GetShapeKinematicProperties14ImplementationISC_EENS6_27SetShapeKinematicProperties14ImplementationISC_EENS6_37GetShapeFrictionPyramidSlipCompliance14ImplementationISC_EENS6_37SetShapeFrictionPyramidSlipCompliance14ImplementationISC_EENS6_19GetShapeBoundingBox14ImplementationISC_EENS6_21GetBoxShapeProperties14ImplementationISC_EENS6_12BoxShapeCast14ImplementationISC_EENS6_21AttachBoxShapeFeature14ImplementationISC_EENS6_25GetCapsuleShapeProperties14ImplementationISC_EENS6_16CapsuleShapeCast14ImplementationISC_EENS6_25AttachCapsuleShapeFeature14ImplementationISC_EENS6_22GetConeShapeProperties14ImplementationISC_EENS6_13ConeShapeCast14ImplementationISC_EENS6_22AttachConeShapeFeature14ImplementationISC_EENS6_26GetCylinderShapeProperties14ImplementationISC_EENS6_17CylinderShapeCast14ImplementationISC_EENS6_26AttachCylinderShapeFeature14ImplementationISC_EENS6_27GetEllipsoidShapeProperties14ImplementationISC_EENS6_18EllipsoidShapeCast14ImplementationISC_EENS6_27AttachEllipsoidShapeFeature14ImplementationISC_EENS6_24GetSphereShapeProperties14ImplementationISC_EENS6_15SphereShapeCast14ImplementationISC_EENS6_24AttachSphereShapeFeature14ImplementationISC_EENS6_9heightmap27GetHeightmapShapeProperties14ImplementationISC_EENS70_18HeightmapShapeCast14ImplementationISC_EENS70_27AttachHeightmapShapeFeature14ImplementationISC_EENS6_4mesh22GetMeshShapeProperties14ImplementationISC_EENS7A_13MeshShapeCast14ImplementationISC_EENS7A_22AttachMeshShapeFeature14ImplementationISC_EENS6_23GetPlaneShapeProperties14ImplementationISC_EENS6_14PlaneShapeCast14ImplementationISC_EENS6_23AttachPlaneShapeFeature14ImplementationISC_EENS6_11ForwardStep14ImplementationISC_EENS6_35SetContactPropertiesCallbackFeature14ImplementationISC_EENS6_30GetContactsFromLastStepFeature14ImplementationISC_EENS6_37GetRayIntersectionFromLastStepFeature14ImplementationISC_EENS6_17CollisionDetector14ImplementationISC_EENS6_24CollisionPairMaxContacts14ImplementationISC_EENS6_7Gravity14ImplementationISC_EENS6_6Solver14ImplementationISC_EEEEENS3_2v14InfoEvEUlvE_E10_M_managerERSt9_Any_dataRKS8L_St18_Manager_operation
+
+## URDF → SDF 전달 확인: attachments/sdf_wheel_surface.txt

@@ -1,0 +1,10 @@
+--- <workspace>/src/ax_description/urdf/ros2_control.xacro	2026-11-03 16:47:06.472198888 +0900
++++ <tmp>/r1/overlay_contact_diag/share/ax_description/urdf/ros2_control.xacro	2026-11-08 13:57:25.060162516 +0900
+@@ -13,6 +13,7 @@
+             <mu1>0.1</mu1>
+             <mu2>1.0</mu2>
+             <fdir1>0 0 1</fdir1>
++            <sensor name="${link}_contact" type="contact"><always_on>true</always_on><update_rate>100</update_rate><contact><collision>${link}_collision</collision></contact></sensor>
+         </gazebo>
+     </xacro:macro>
+ 

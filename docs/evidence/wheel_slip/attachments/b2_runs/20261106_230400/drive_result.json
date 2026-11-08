@@ -1,0 +1,187 @@
+{
+  "status": "completed",
+  "error": null,
+  "development_test_path": "A4 미구현 상태에서 diff_drive_controller에 직접 명령하는 격리 개발 시험 경로",
+  "robot_id": "robot_2",
+  "route": {
+    "path": "<workspace>/src/ax_localization/config/routes/aws_warehouse.yaml",
+    "sha256": "56fd2649493b34c3a0a0cd65149d1b05dc11d9ec471a96c8a9768906c0a764f6",
+    "frame": "robot_2/odom",
+    "waypoints": [
+      [
+        -1.5,
+        0.0
+      ],
+      [
+        -1.5,
+        -6.8
+      ]
+    ],
+    "partial": true
+  },
+  "scan_input": "scan_filtered",
+  "limits": {
+    "used": {
+      "linear": 0.3,
+      "angular": 0.3
+    },
+    "deceleration": {
+      "linear": 0.67,
+      "angular": 0.2
+    },
+    "controller": {
+      "linear.x.max_velocity": 0.67,
+      "angular.z.max_velocity": 0.5,
+      "linear.x.max_deceleration": 0.67,
+      "angular.z.max_deceleration": 0.2
+    },
+    "route": {
+      "linear_m_s": 0.3,
+      "angular_rad_s": 0.3
+    }
+  },
+  "waypoints_reached": 2,
+  "events": [
+    {
+      "sim_time_s": 8.845,
+      "kind": "START",
+      "detail": "경로 aws_warehouse.yaml, 입력 scan_filtered, 상한 {'linear': 0.3, 'angular': 0.3}"
+    },
+    {
+      "sim_time_s": 8.845,
+      "kind": "GOAL",
+      "detail": "경유점 1/2 [-1.5, 0.0] 거리 1.50 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 21.746000000000002,
+      "kind": "STOP",
+      "detail": "입력 문제: map→odom 수신 끊김 2.01 s(CLOCK_BOOTTIME): 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 22.774,
+      "kind": "RESUME",
+      "detail": "입력 회복"
+    },
+    {
+      "sim_time_s": 25.843,
+      "kind": "REACHED",
+      "detail": "경유점 1 도달, 남은 거리 0.150 m"
+    },
+    {
+      "sim_time_s": 25.843,
+      "kind": "GOAL",
+      "detail": "경유점 2/2 [-1.5, -6.8] 거리 6.80 m, 제한 98 s"
+    },
+    {
+      "sim_time_s": 38.039,
+      "kind": "STOP",
+      "detail": "입력 문제: map→odom 수신 끊김 2.00 s(CLOCK_BOOTTIME): 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 39.086000000000006,
+      "kind": "RESUME",
+      "detail": "입력 회복"
+    },
+    {
+      "sim_time_s": 54.556000000000004,
+      "kind": "STOP",
+      "detail": "입력 문제: map→odom 수신 끊김 2.01 s(CLOCK_BOOTTIME): 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 55.447,
+      "kind": "RESUME",
+      "detail": "입력 회복"
+    },
+    {
+      "sim_time_s": 56.074000000000005,
+      "kind": "REACHED",
+      "detail": "경유점 2 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 56.074000000000005,
+      "kind": "STOP",
+      "detail": "경로 완료: 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 56.881,
+      "kind": "STOP",
+      "detail": "종료: 실제 정지 확인"
+    }
+  ],
+  "stops": [
+    {
+      "reason": "입력 문제: map→odom 수신 끊김 2.01 s(CLOCK_BOOTTIME)",
+      "requested_sim_s": 21.746000000000002,
+      "confirmed": true,
+      "confirm_sim_s": 1.0279999999999987
+    },
+    {
+      "reason": "입력 문제: map→odom 수신 끊김 2.00 s(CLOCK_BOOTTIME)",
+      "requested_sim_s": 38.039,
+      "confirmed": true,
+      "confirm_sim_s": 1.0470000000000041
+    },
+    {
+      "reason": "입력 문제: map→odom 수신 끊김 2.01 s(CLOCK_BOOTTIME)",
+      "requested_sim_s": 54.556000000000004,
+      "confirmed": true,
+      "confirm_sim_s": 0.8909999999999982
+    },
+    {
+      "reason": "경로 완료",
+      "requested_sim_s": 56.074000000000005,
+      "confirmed": true,
+      "confirm_sim_s": 0.806999999999995
+    },
+    {
+      "reason": "종료",
+      "requested_sim_s": 56.881,
+      "confirmed": true,
+      "confirm_sim_s": 0.5
+    }
+  ],
+  "loop": {
+    "method": "간접: odom 출발점 복귀 거리와 map→odom 보정량. slam_toolbox 루프 폐쇄 사건을 직접 읽지 않는다",
+    "return_to_start_odom_m": 6.8338426087030975,
+    "returned_to_start": false,
+    "map_odom_correction_m": 0.27415669053506037,
+    "map_odom_correction_rad": 0.2792000000000012,
+    "max_map_odom_step_m": 0.2578977768586773
+  },
+  "saved": {},
+  "mounts": {
+    "front": [
+      0.61,
+      0.0,
+      0.0
+    ],
+    "rear": [
+      -0.57,
+      0.0,
+      3.141592653589793
+    ]
+  },
+  "recording": {
+    "file": "recording.npz",
+    "scans": 490,
+    "truth_samples": 5554,
+    "note": "truth는 Gazebo 실제 자세(검증 전용)"
+  },
+  "tf_receive_gap_boottime_s": {
+    "count": 4509,
+    "p50": 0.019998907002445776,
+    "p95": 0.020247435801138636,
+    "p99": 0.020453131442482116,
+    "max": 2.5391475450014696,
+    "receipts": 4513,
+    "stamp_updates": 454
+  },
+  "slam_health_max": {
+    "tf_receive_age_boottime_s": 2.2444854429995758,
+    "tf_stamp_lag_sim_s": 0.9819999999999993,
+    "front_scan_age_sim_s": 0.10899999999999999,
+    "rear_scan_age_sim_s": 0.11100000000000065,
+    "travel_since_slam_update_m": 0.3435530288921798,
+    "heading_since_slam_update_rad": 0.029999999990261372
+  }
+}

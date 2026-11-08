@@ -1,0 +1,37 @@
+# robot_1 회전 병진 기준 시험·S005 비교 계획. 실행 전에 고정한다(2026-11-08). 운영 모델은 바꾸지 않는다.
+environment:
+  world: ax_test.world (평면 바닥)
+  robot: robot_1 단독, 공구 epick(현재 기본), sensors:=false, gui:=false
+  isolation: ROS_DOMAIN_ID 87, 조건마다 새 GZ_PARTITION·새 시뮬레이션(첫 회차 초기 위치·방향·관절 자세 동일)
+  render: GALLIUM_DRIVER=d3d12, MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+  truth: Gazebo dynamic_pose는 관측·기록에만 쓴다(제어·초기화에 쓰지 않음)
+conditions:
+  base_neutral_0kg:   {pose: neutral, payload_kg: 0}
+  base_reachside_0kg: {pose: reach_side, payload_kg: 0}
+  base_reachside_1kg: {pose: reach_side, payload_kg: 1.0}
+  base_reachside_2kg: {pose: reach_side, payload_kg: 2.0}
+  S005_*: 문제가 재현되면 위 네 조건을 같은 순서로, 바퀴 collision에 slip1 0.05만 추가한 임시 사본에서 반복
+  contact_diag: 문제가 재현되면 base_neutral_0kg에 조사용 바퀴 접촉 센서 사본으로 좌·우 각 1회
+poses:   # check_payload_tracking.py POSES와 같음(충돌 선별·관절 여유 0.1 rad 이상 검증 자세)
+  neutral:    [0.0, 0.0, 0.0, 0.0, 0.0]
+  reach_side: [0.0, -0.90, 1.25, -0.40, 0.0]
+payload: launch payload_mass(=test_payload_mass) 고정 시험 치구. epick_tcp +0.04 m에 충돌 없는 질량을 고정 관절로 붙인다. 파지·운반 동작이 아니다
+excluded:
+  - 물체를 집은 채 주행(운영 금지 범위)
+  - 다른 공구(robotiq 등): 실제 사용 예정이 확인되지 않음
+  - reach_max·좌우 뻗은 자세: 1차 범위 밖(필요 시 추가)
+trial:
+  rotation: 좌·우 번갈아 각 3회(총 6회). 명령 ±0.3 rad/s
+  target_odom_turn_rad: 3.0          # odom 누적 회전 2.775 rad(=3.0 - 0.3²/(2·0.2))에서 0 명령
+  time_limit_sim_s: 25               # 0 명령 전까지. 넘으면 그 시점에 0 명령하고 '목표 미달'로 기록
+  stop_window_sim_s: 6               # 0 명령 뒤 관측 구간
+  stop_rule: odom·실제 각각 |v| < 0.01 m/s, |w| < 0.02 rad/s를 0.5 s 유지(D-06 값, A4 판정 아님)
+  settle_before_sim_s: 2             # 시작 전 정지 확인 구간
+  phases: accel(명령 시작~odom |w| ≥ 0.285), steady(그 뒤~0 명령), decel(0 명령 뒤)
+  straight: ±0.3 m/s 3 s 각 2회, stop: 직진 0.67 m/s 4 s·회전 0.5 rad/s 6 s 뒤 중단
+abort:   # 해당 회차 중단·정지 요청, 실패로 기록
+  input_stale_s: 0.5                 # odom·joint_states·Gazebo 자세 sim time 기준
+  tilt_rad: 0.15                     # |roll| 또는 |pitch|
+  wheel_lift_m: 0.02                 # 바퀴 중심 z > 반지름 + 0.02
+  arm_deviation_rad: 0.05            # 팔 관절이 목표 자세에서 벗어남(예상 밖 접촉)
+judgment: 정량 기준이 없는 지표는 not_judged. 병진 감소만으로 후보 채택 안 함

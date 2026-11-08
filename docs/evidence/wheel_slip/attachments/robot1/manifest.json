@@ -1,0 +1,78 @@
+{
+ "purpose": "robot_1 회전 병진 기준 시험·S005 비교(모델·구동 진단, A4·G1 검증 아님)",
+ "git": {
+  "commit": "b01aa926aabcb354c90ba73addd019afde7da386",
+  "uncommitted": [
+   "M src/ax_control/scripts/check_wheel_calibration.py",
+   " M src/ax_perception/scripts/object_detection.py",
+   " M src/ax_perception/scripts/sensor_processing.py",
+   " M tools/tests/test_gazebo_observer.py",
+   "?? src/ax_localization/",
+   "?? tools/tests/test_map_tools.py"
+  ],
+  "model_changed_vs_commit": "없음"
+ },
+ "versions": {
+  "ros-jazzy-gz-sim-vendor": "0.0.13-1noble.20260905.073557",
+  "ros-jazzy-gz-physics-vendor": "0.0.9-1noble.20260905.065116",
+  "ros-jazzy-gz-dartsim-vendor": "0.0.3-1noble.20260225.232143",
+  "ros-jazzy-sdformat-vendor": "0.0.14-1noble.20260905.033543",
+  "ros-jazzy-gz-ros2-control": "1.2.20-1noble.20261006.040504",
+  "ros-jazzy-ros2-control": "4.48.1-1noble.20261006.040510",
+  "ros-jazzy-diff-drive-controller": "4.42.1-1noble.20260924.190414"
+ },
+ "versions_note": "gz-sim 8.15.0, gz-physics 7.8.0 dartsim, DART 6.13.2, SDFormat 14",
+ "robot": {
+  "id": "robot_1",
+  "tool": "epick(기본, 12컵 비교 모델)",
+  "wheel_separation": 0.622,
+  "wheel_radius": 0.19631,
+  "wheel_separation_multiplier": 1.2315,
+  "wheel_friction": "mu1 0.1 / mu2 1.0 / fdir1 축 (ros2_control.xacro ax_wheel_contact)"
+ },
+ "model_sha256": {
+  "src/ax_description/urdf/ax.urdf.xacro": "8915efc699830db2a8bf9ac5cd007ccfa87b8e63bc7cb276c33272f5f022a759",
+  "src/ax_description/urdf/ros2_control.xacro": "434a972a781d43784ee50f3b0142e74e422865c71d61d8c0f04f2440a2524e73",
+  "src/ax_description/urdf/physical_properties.xacro": "1f9ec3dabdbcca5414e961fb1583973d84a1f07f10b410fd02294d9b23fda86b",
+  "src/ax_description/config/physical_properties.json": "b1defd173f88f6157b1714b77569aa4978b2af40216b9d740f27b8b00568399d",
+  "src/ax_description/config/epick.yaml": "e85172cb3f65e20d2943fef36437bfc973857838615561b65616319abc5aa760",
+  "src/ax_control/config/ax1_controllers.yaml": "37f31e34beb0e4ff215f9e22acb301301ae458c42ba7e89198159442c5ba5f82",
+  "src/ax_control/config/common_controllers.yaml": "2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc",
+  "src/ax_description/worlds/ax_test.world": "aab38e554d3e0252b4422ff795fe232b8543e8406fe0b46349de1fe66e001220"
+ },
+ "tools_sha256": {
+  "plan.yaml": "09499e4ec53f4063a7adc30fdf619ee32aff84e8ba2c500d86f40f7cf29f6041",
+  "r1_rotation.py": "d883ae02a4a75a31da4ba6b06dd905e2c9e7caea9e83691cc32d11779a54910e",
+  "run_conditions.sh": "96a8242aaa3f16be5ad32c5371a717f89d94f9f60595c39661536739b0a3dd00",
+  "summarize.py": "05d138691c650c7697351a2f516dfad89c782fcc480120802f2890c028474e29",
+  "check_wheel_calibration.py": "34a3dc0daf6e2427b5fdb99a34c4f673065cfbc7d08d4f92ec6ea30f3984fc94"
+ },
+ "model_diffs": {
+  "S005_neutral_0kg.diff": "f57b46bf6a4ee4b838c60a64563ad8968d122ab22d1a9749c505744b6b7bec0e",
+  "S005_reachside_0kg.diff": "301eecfe6bc732fc6e1ec0ade53d530d156359a2734b16b9a28161229138507a",
+  "S005_reachside_1kg.diff": "fd344de5a31d3e2c1014b297ef5853b7de09dcaeb0c1150ebf20e3835cc51f7e",
+  "S005_reachside_2kg.diff": "844e1305d3fb2e9574819548d8ac71000881ae4bd05a39d5e4029ebd69cc6acd",
+  "contact_diag.diff": "94699399e0cabf76f618c6fddb822a58d0b7fe70f3b68b38cc96e039c30f9383"
+ },
+ "trials_sha256": {
+  "S005_neutral_0kg.json": "64655b46fa63d37ed95722a8855d3a072b22300327d8352d11b026012a67cfcd",
+  "S005_reachside_0kg.json": "52fc7dd3e5ffb81d76aa8f26f4a28b5e6c7cdbdff071c1cf76639605bbc3ae02",
+  "S005_reachside_1kg.json": "8b6f6224f339c69075c74fcdd5f07a0cdb4f2406b1f376e39e2748f821450ff6",
+  "S005_reachside_2kg.json": "1699f02cada8e16795b96cf3a8aa38846402097319dfb0a01aab6a492d0fc60d",
+  "base_neutral_0kg.json": "632b0e090eb5b418efa97c49040001c2555fb1ee5033fe6cc35e25b780b91ae5",
+  "base_reachside_0kg.json": "9f5d93b9db7dc99b6a356eade69fe7686eebca7beadfa4ef8d000f0a4424fb70",
+  "base_reachside_1kg.json": "8c5b46d2ca857aedf5e3ffd2e7136e06e38cda55d927c3a9f9ce00c75abec112",
+  "base_reachside_2kg.json": "0edec256589797d5a9a5bded644b04c969c5e2bee7119a8f7d8f48d32bc2323a",
+  "contact_diag.json": "7aa6105265410e3396c8f760bedc16627d7e3d886f89b598793b5de32605f4f1",
+  "smoke.json": "b201de1da89338f72bfa656cfde946be2410085584e9bcda2901a05755650c36"
+ },
+ "environment": {
+  "ROS_DOMAIN_ID": "87",
+  "GZ_PARTITION": "ax-r1-<조건>-<pid>",
+  "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST",
+  "GALLIUM_DRIVER": "d3d12",
+  "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+  "launch": "ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false sensors:=false tool:=epick world:=ax_test.world payload_mass:=<kg>"
+ },
+ "command": "bash run_conditions.sh <이름>:<자세>:<하중>:<slip1|->:<contact>[:<회차>] ... ; python3 summarize.py"
+}

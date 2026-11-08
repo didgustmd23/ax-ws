@@ -1,0 +1,86 @@
+{
+ "purpose": "주행 허용 자세 후보 기준 기본·S005 구동 비교(개발 진단, A4·G1 검증 아님)",
+ "git": {
+  "commit": "b01aa926aabcb354c90ba73addd019afde7da386",
+  "uncommitted": [
+   "M src/ax_control/scripts/check_wheel_calibration.py",
+   " M src/ax_perception/scripts/object_detection.py",
+   " M src/ax_perception/scripts/sensor_processing.py",
+   " M tools/tests/test_gazebo_observer.py",
+   "?? src/ax_localization/",
+   "?? tools/tests/test_map_tools.py"
+  ],
+  "model_changed_vs_commit": "없음"
+ },
+ "versions_note": "gz-sim 8.15.0, gz-physics 7.8.0 dartsim, DART 6.13.2, SDFormat 14, gz_ros2_control 1.2.20, ros2_control 4.48.1",
+ "model_sha256": {
+  "src/ax_description/urdf/ax.urdf.xacro": "8915efc699830db2a8bf9ac5cd007ccfa87b8e63bc7cb276c33272f5f022a759",
+  "src/ax_description/urdf/ax_2.urdf.xacro": "d5d4c80227e46f869dc85a5865c81c45555bc1fcbbae34ce9941269e95b3f3a6",
+  "src/ax_description/urdf/ros2_control.xacro": "434a972a781d43784ee50f3b0142e74e422865c71d61d8c0f04f2440a2524e73",
+  "src/ax_description/urdf/physical_properties.xacro": "1f9ec3dabdbcca5414e961fb1583973d84a1f07f10b410fd02294d9b23fda86b",
+  "src/ax_description/urdf/ax_2_physical_properties.xacro": "e33b880eea25ebcbbeb3dad95ab8a14635b01675f1505cfbaae511272415efaf",
+  "src/ax_control/config/common_controllers.yaml": "2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc",
+  "src/ax_control/config/ax1_controllers.yaml": "37f31e34beb0e4ff215f9e22acb301301ae458c42ba7e89198159442c5ba5f82",
+  "src/ax_control/config/ax2_controllers.yaml": "9806b8d99a34614e54ed3eaa841f7e17db8fe70b4ad082f3c9b5fd3ef3b8bac7",
+  "src/ax_description/worlds/ax_test.world": "aab38e554d3e0252b4422ff795fe232b8543e8406fe0b46349de1fe66e001220"
+ },
+ "tools": {
+  "drive_eval.v1.py": {
+   "sha256": "a78a1c4bc38604e96cccd67260d18d46551a5884fe346065501d174ea03d333d",
+   "used_for": [
+    "baseline/robot_1",
+    "s005/robot_1",
+    "*/robot_2.run1_stop_anomaly"
+   ],
+   "note": "v2에서 예상 밖 접촉 감지 변경분을 역적용해 복원한 사본(원본 바이트 대조 불가)"
+  },
+  "drive_eval.v3.py": {
+   "sha256": "7030cc868c1814aaf1e39442a0984ff6485851254b6f494df899c4096db7d70d",
+   "used_for": [
+    "baseline/robot_2_stops",
+    "s005/robot_2_stops"
+   ],
+   "change": "v2 + --stops-only(출발 위치에서 정지 시험만). 측정 방식 변경 없음"
+  },
+  "drive_eval.v2.py": {
+   "sha256": "b34ba95ee47efaf741ee52828c04f2234ca5177f4f7c67d57bbc6d646cef6075",
+   "used_for": [
+    "baseline/robot_2",
+    "s005/robot_2"
+   ],
+   "change": "odom 선속도 ≥ 0.2 m/s인데 실제 속도 < 절반이 0.5 s 이어지면 unexpected_motion 중단, 정지 시험 시작·끝 위치·이동 거리 기록"
+  },
+  "run_conditions.sh": "2a3ef87581287045ad3d3cc4f54f48a76b6034d3d6fe15355a325df7404845e0",
+  "plan.yaml": "6c5bede84161b2443c778f8250e293778d95fa8a1d7270d8586f51ebceb9f993",
+  "summarize.py": "8dab64bec4611649568ed55891743f5c7333eef1fd19062471009ce3bb083958"
+ },
+ "reused": {
+  "robot_1 0.30 rad/s 회전": {
+   "base_neutral_0kg.json": "632b0e090eb5b418efa97c49040001c2555fb1ee5033fe6cc35e25b780b91ae5",
+   "S005_neutral_0kg.json": "64655b46fa63d37ed95722a8855d3a072b22300327d8352d11b026012a67cfcd"
+  },
+  "source": "../a2_robot1_rotation/20261108_134133/trials (r1_rotation.py, 같은 모델 해시·조건·기록 항목)"
+ },
+ "results_sha256": {
+  "baseline/robot_1.json": "775afe0a97debb74120192a3c65a18c5fc634a2d248b03370f14cb2e25db9665",
+  "baseline/robot_2.json": "20d101adc2e13c80338be2e421fb822faeae98fe50a0a7559f1ae001e00cb8df",
+  "baseline/robot_2.run1_stop_anomaly.json": "15dc119e81f9f79ef0b3e3eb3a7373e88c2fda0ee9071d1c7a459a5faac95a4f",
+  "baseline/robot_2_stops.json": "b0c29e1967ad8f486134d831bbd9b2141f591084a0e8c4013d3d8c8a2a7d8981",
+  "s005/robot_1.json": "379b07ae344070141a1ac2448aff2bd8abbd159c4d3c36b928fea2d30a3b532a",
+  "s005/robot_2.json": "20288fccc3d6a5d84f993924a5acc2e868a9d93d2f081d433160332030e9c706",
+  "s005/robot_2.run1_stop_anomaly.json": "18e4d6eb10b74c1a4140605a908f634306ec83b6ef6364fe4b4c866a490849bc",
+  "s005/robot_2_stops.json": "68668a25c106d383ba37c4d87e86a698203b5c81bfd59068517143bd5b8c9435"
+ },
+ "model_diffs": {
+  "s005_robot_1.diff": "d2b80f134e7a069d5c42249903cb9eba16872560f819dcec6bcac1676274ff0c",
+  "s005_robot_2.diff": "00c3048e294a9ab223763a243ed4ad39318c5d15a901bf03c04fd897dd41f6a8"
+ },
+ "environment": {
+  "ROS_DOMAIN_ID": "86",
+  "GZ_PARTITION": "ax-drive-<조건>-<pid>",
+  "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST",
+  "GALLIUM_DRIVER": "d3d12",
+  "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+  "launch": "ros2 launch ax_control simulation.launch.py robot_ids:=<robot> gui:=false sensors:=false tool:=epick world:=ax_test.world payload_mass:=0.0"
+ }
+}

@@ -1,0 +1,158 @@
+{
+  "status": "running",
+  "error": null,
+  "development_test_path": "A4 미구현 상태에서 diff_drive_controller에 직접 명령하는 격리 개발 시험 경로",
+  "robot_id": "robot_2",
+  "route": {
+    "path": "<workspace>/src/ax_localization/config/routes/aws_warehouse.yaml",
+    "sha256": "873c5a3649e62f41194ec2261496f6c61317765f442af5cc1473125b9c049247",
+    "frame": "robot_2/odom",
+    "waypoints": [
+      [
+        -1.5,
+        0.0,
+        true
+      ],
+      [
+        -1.5,
+        -6.8,
+        false
+      ],
+      [
+        -1.5,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        7.5,
+        false
+      ],
+      [
+        -6.1,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        7.5,
+        false
+      ],
+      [
+        -1.5,
+        0.0,
+        false
+      ],
+      [
+        0.0,
+        0.0,
+        false
+      ]
+    ],
+    "partial": false
+  },
+  "scan_input": "scan_filtered",
+  "limits": {
+    "used": {
+      "linear": 0.3,
+      "angular": 0.3
+    },
+    "deceleration": {
+      "linear": 0.67,
+      "angular": 0.2
+    },
+    "controller": {
+      "linear.x.max_velocity": 0.67,
+      "angular.z.max_velocity": 0.5,
+      "linear.x.max_deceleration": 0.67,
+      "angular.z.max_deceleration": 0.2
+    },
+    "route": {
+      "linear_m_s": 0.3,
+      "angular_rad_s": 0.3
+    }
+  },
+  "waypoints_reached": 5,
+  "events": [
+    {
+      "sim_time_s": 7.567,
+      "kind": "START",
+      "detail": "경로 aws_warehouse.yaml, 입력 scan_filtered, 상한 {'linear': 0.3, 'angular': 0.3}"
+    },
+    {
+      "sim_time_s": 7.567,
+      "kind": "GOAL",
+      "detail": "경유점 1/10 (-1.5, 0.0, True) 거리 1.50 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 12.680000000000001,
+      "kind": "REACHED",
+      "detail": "경유점 1 도달, 남은 거리 0.148 m"
+    },
+    {
+      "sim_time_s": 12.680000000000001,
+      "kind": "GOAL",
+      "detail": "경유점 2/10 (-1.5, -6.8, False) 거리 6.80 m, 제한 98 s"
+    },
+    {
+      "sim_time_s": 41.153000000000006,
+      "kind": "REACHED",
+      "detail": "경유점 2 도달, 남은 거리 0.147 m"
+    },
+    {
+      "sim_time_s": 41.154,
+      "kind": "GOAL",
+      "detail": "경유점 3/10 (-1.5, -3.0, False) 거리 3.65 m, 제한 67 s"
+    },
+    {
+      "sim_time_s": 64.3,
+      "kind": "REACHED",
+      "detail": "경유점 3 도달, 남은 거리 0.146 m"
+    },
+    {
+      "sim_time_s": 64.3,
+      "kind": "GOAL",
+      "detail": "경유점 4/10 (-6.1, -3.0, False) 거리 4.60 m, 제한 76 s"
+    },
+    {
+      "sim_time_s": 85.29700000000001,
+      "kind": "REACHED",
+      "detail": "경유점 4 도달, 남은 거리 0.147 m"
+    },
+    {
+      "sim_time_s": 85.29700000000001,
+      "kind": "GOAL",
+      "detail": "경유점 5/10 (-6.1, 7.5, False) 거리 10.51 m, 제한 135 s"
+    },
+    {
+      "sim_time_s": 125.912,
+      "kind": "REACHED",
+      "detail": "경유점 5 도달, 남은 거리 0.148 m"
+    }
+  ],
+  "stops": [],
+  "loop": {},
+  "saved": {},
+  "mounts": {
+    "front": [
+      0.61,
+      0.0,
+      0.0
+    ],
+    "rear": [
+      -0.57,
+      0.0,
+      3.141592653589793
+    ]
+  }
+}

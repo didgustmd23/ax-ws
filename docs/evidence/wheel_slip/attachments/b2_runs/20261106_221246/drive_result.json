@@ -1,0 +1,132 @@
+{
+  "status": "completed",
+  "error": null,
+  "development_test_path": "A4 미구현 상태에서 diff_drive_controller에 직접 명령하는 격리 개발 시험 경로",
+  "robot_id": "robot_2",
+  "route": {
+    "path": "<workspace>/src/ax_localization/config/routes/aws_warehouse.yaml",
+    "sha256": "58d9f3ec06ca30f8dc8b0b3547647225169e5e5ff88090627f64af91deb51c91",
+    "frame": "robot_2/odom",
+    "waypoints": [
+      [
+        -1.5,
+        0.0
+      ]
+    ],
+    "partial": true
+  },
+  "scan_input": "scan_filtered",
+  "limits": {
+    "used": {
+      "linear": 0.3,
+      "angular": 0.3
+    },
+    "deceleration": {
+      "linear": 0.67,
+      "angular": 0.2
+    },
+    "controller": {
+      "linear.x.max_velocity": 0.67,
+      "angular.z.max_velocity": 0.5,
+      "linear.x.max_deceleration": 0.67,
+      "angular.z.max_deceleration": 0.2
+    },
+    "route": {
+      "linear_m_s": 0.3,
+      "angular_rad_s": 0.3
+    }
+  },
+  "waypoints_reached": 1,
+  "events": [
+    {
+      "sim_time_s": 10.700000000000001,
+      "kind": "START",
+      "detail": "경로 aws_warehouse.yaml, 입력 scan_filtered, 상한 {'linear': 0.3, 'angular': 0.3}"
+    },
+    {
+      "sim_time_s": 10.702,
+      "kind": "GOAL",
+      "detail": "경유점 1/1 [-1.5, 0.0] 거리 1.50 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 13.866000000000001,
+      "kind": "STOP",
+      "detail": "입력 문제: map→odom 수신 끊김 0.52 s: 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 15.853000000000002,
+      "kind": "RESUME",
+      "detail": "입력 회복"
+    },
+    {
+      "sim_time_s": 28.655,
+      "kind": "REACHED",
+      "detail": "경유점 1 도달, 남은 거리 0.148 m"
+    },
+    {
+      "sim_time_s": 28.655,
+      "kind": "STOP",
+      "detail": "경로 완료: 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 29.463,
+      "kind": "STOP",
+      "detail": "종료: 실제 정지 확인"
+    }
+  ],
+  "stops": [
+    {
+      "reason": "입력 문제: map→odom 수신 끊김 0.52 s",
+      "requested_sim_s": 13.866000000000001,
+      "confirmed": true,
+      "confirm_sim_s": 1.987
+    },
+    {
+      "reason": "경로 완료",
+      "requested_sim_s": 28.655,
+      "confirmed": true,
+      "confirm_sim_s": 0.8079999999999998
+    },
+    {
+      "reason": "종료",
+      "requested_sim_s": 29.463,
+      "confirmed": true,
+      "confirm_sim_s": 0.5030000000000001
+    }
+  ],
+  "loop": {
+    "method": "간접: odom 출발점 복귀 거리와 map→odom 보정량. slam_toolbox 루프 폐쇄 사건을 직접 읽지 않는다",
+    "return_to_start_odom_m": 1.3674796587078235,
+    "returned_to_start": false,
+    "map_odom_correction_m": 0.15225556157189235,
+    "map_odom_correction_rad": 0.3071199999999994,
+    "max_map_odom_step_m": 0.14360862274937478
+  },
+  "saved": {},
+  "mounts": {
+    "front": [
+      0.61,
+      0.0,
+      0.0
+    ],
+    "rear": [
+      -0.57,
+      0.0,
+      3.141592653589793
+    ]
+  },
+  "recording": {
+    "file": "recording.npz",
+    "scans": 198,
+    "truth_samples": 2414,
+    "note": "truth는 Gazebo 실제 자세(검증 전용)"
+  },
+  "slam_health_max": {
+    "tf_receive_age_s": 0.929000000000002,
+    "tf_stamp_lag_s": 0.8000000000000043,
+    "front_scan_age_s": 0.10100000000000087,
+    "rear_scan_age_s": 0.10100000000000087,
+    "travel_since_slam_update_m": 0.03657423784337143,
+    "heading_since_slam_update_rad": 0.2024399999345139
+  }
+}

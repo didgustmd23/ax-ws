@@ -1,0 +1,20 @@
+{
+ "git_head": "b01aa926aabcb354c90ba73addd019afde7da386",
+ "versions": {
+  "gz-sim": "8.15.0 (ros-jazzy-gz-sim-vendor 0.0.13-1noble.20260905.073557)",
+  "gz-physics": "7.8.0 dartsim plugin (ros-jazzy-gz-physics-vendor 0.0.9-1noble.20260905.065116)",
+  "dart": "6.13.2 (gz_dartsim_vendor)",
+  "sdformat": "14 (ros-jazzy-sdformat-vendor 0.0.14-1noble.20260905.033543)"
+ },
+ "hashes": {
+  "src/ax_description/urdf/ros2_control.xacro": "434a972a781d43784ee50f3b0142e74e422865c71d61d8c0f04f2440a2524e73",
+  "src/ax_description/urdf/ax_2_physical_properties.xacro": "e33b880eea25ebcbbeb3dad95ab8a14635b01675f1505cfbaae511272415efaf",
+  "src/ax_description/worlds/ax_test.world": "aab38e554d3e0252b4422ff795fe232b8543e8406fe0b46349de1fe66e001220",
+  "plan.yaml": "06524c4b0a9885521bd66869376a78187316666c7a43b6e73fa088278ec7c507",
+  "base.ros2_control.xacro": "90956299018548f005dbb217feac12374aa8ab1c38e43ee3b16dc891868fab92",
+  "S005.ros2_control.xacro": "fd4639e9e8ad1c11cbaf885c2fff8740d9fde9121506e97940ccd595f2e274b3",
+  "S020.ros2_control.xacro": "54bb9bd33f53173328ff71cd14a02f6bdca0e91ccdccf98bc8330b2a49baaf15"
+ },
+ "conditions_note": "base.ros2_control.xacro는 운영 파일에 조사용 접촉 센서만 추가한 사본. S005·S020은 base에 slip1 collision 블록 한 줄만 추가",
+ "clock": "rotation·stop·load 시간은 sim time. RTF는 각 결과 json의 clock"
+}

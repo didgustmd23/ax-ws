@@ -1,4 +1,5 @@
-"""Show A3 mock Action results as an isolated, static Gazebo indicator.
+"""
+Show A3 mock Action results as an isolated, static Gazebo indicator.
 
 This is not a load observer or a physical loading demonstration.
 Only entities named a3_mock_indicator_* are created or removed.

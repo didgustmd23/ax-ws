@@ -174,6 +174,42 @@ class ObserverMath(unittest.TestCase):
         self.assertIsNone(observer.summarize([None]))
 
 
+# 실행 환경 불일치 안내: 발견한 로봇·월드에 따라 원인 추정이 달라야 한다.
+class EnvironmentHint(unittest.TestCase):
+    environment = {'ROS_DOMAIN_ID': '77', 'GZ_PARTITION': 'ax-a2'}
+
+    def test_ids_and_worlds_from_topics(self):
+        topics = ['/ax/robot_2/odom', '/ax/robot_1/joint_states', '/ax', '/clock', '/ax/robot_2/tf']
+        self.assertEqual(observer.robot_ids_from_topics(topics), ['robot_1', 'robot_2'])
+        self.assertEqual(observer.worlds_from_topics(['/world/ax_test/clock', '/stats', '/world/']), ['ax_test'])
+
+    def test_publisher_needed_for_world(self):
+        published = 'Publishers [Address, Message Type]:\n  tcp://172.21.0.1:41939, gz.msgs.Clock\nNo subscribers on topic [/world/ax_test/clock]\n'
+        subscribed = 'No publishers on topic [/world/ax_test/clock]\nSubscribers [Address, Message Type]:\n  tcp://172.21.0.1:5000, gz.msgs.Clock\n'
+        self.assertTrue(observer.info_has_publisher(published))
+        self.assertFalse(observer.info_has_publisher(subscribed))
+        self.assertFalse(observer.info_has_publisher(''))
+
+    def test_settings_are_shown(self):
+        hint = observer.environment_hint('robot_1', self.environment, ['robot_1'], ['ax_test'])
+        self.assertIn('ROS_DOMAIN_ID=77', hint)
+        self.assertIn('GZ_PARTITION=ax-a2', hint)
+        self.assertIn('ROS_AUTOMATIC_DISCOVERY_RANGE=(미설정)', hint)
+
+    def test_cause_follows_what_is_visible(self):
+        cases = [
+            ([], [], 'ROS_DOMAIN_ID·GZ_PARTITION'),
+            ([], ['ax_test'], 'ROS 노드가 보이지 않음'),
+            (['robot_2'], ['ax_test'], '--robot-id를 robot_2'),
+            (['robot_1'], [], 'GZ_PARTITION을 시뮬레이션 터미널과 맞출 것'),
+            (['robot_1'], None, '대상은 보임'),
+            (['robot_1'], ['ax_test'], '대상은 보임'),
+        ]
+
+        for robots, worlds, expected in cases:
+            self.assertIn(expected, observer.environment_hint('robot_1', self.environment, robots, worlds))
+
+
 # 바퀴 보정 도구의 순수 계산(누적 회전·부호 있는 이동·권장 multiplier)
 calibration_spec = importlib.util.spec_from_file_location(
     'check_wheel_calibration', ROOT / 'src/ax_control/scripts/check_wheel_calibration.py')
@@ -200,6 +236,27 @@ class WheelCalibrationMath(unittest.TestCase):
     def test_signed_distance_follows_heading(self):
         self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (1, 1), math.pi / 4), math.sqrt(2))
         self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (-1, 0), 0.0), -1.0)
+
+    def test_rotation_about_front_axle_shows_translation(self):
+        # 차체 앞 0.334 m 점을 중심으로 π 회전: 실제 병진 0.668 m, odom은 제자리(0)로 본다.
+        centre = 0.334
+        truth = [(index * 0.1, centre - centre * math.cos(a), -centre * math.sin(a), a)
+                 for index, a in enumerate([math.pi * k / 30 for k in range(31)])]
+        odom = [(item[0], 0.0, 0.0, item[3]) for item in truth]
+        result = self.calibration.rotation_translation(truth, odom)
+
+        self.assertAlmostEqual(result['truth_translation_m'], 2 * centre, places=6)
+        self.assertAlmostEqual(result['odom_translation_m'], 0.0)
+        self.assertAlmostEqual(result['translation_error_m'], 2 * centre, places=6)
+        np.testing.assert_allclose(result['rotation_centre_body_m'], [centre, 0.0], atol=1e-6)
+
+    def test_centred_rotation_has_no_translation(self):
+        truth = [(index * 0.1, 1.0, 2.0, 0.1 * index) for index in range(30)]
+        result = self.calibration.rotation_translation(truth, truth)
+
+        self.assertAlmostEqual(result['translation_error_m'], 0.0)
+        np.testing.assert_allclose(result['rotation_centre_body_m'], [0.0, 0.0], atol=1e-9)   # 차체 중심 회전
+        self.assertEqual(result['rotation_radius_m'], 0.0)
 
     def test_recommended_multiplier(self):
         # odom이 실제보다 10 % 크게 돌면 multiplier를 10 % 키운다.

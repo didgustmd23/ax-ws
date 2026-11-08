@@ -33,12 +33,12 @@ from zoneinfo import ZoneInfo
 import rclpy
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
-from rclpy.executors import SingleThreadedExecutor
+from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
 
-from gazebo_observer import ModelPoseTracker, quaternion_yaw, summarize, unwrap_angles, yaw_of
+from gazebo_observer import ModelPoseTracker, describe_environment, quaternion_yaw, summarize, unwrap_angles, yaw_of
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 
@@ -75,6 +75,63 @@ def signed_distance(start, end, heading):
     forward = dx * math.cos(heading) + dy * math.sin(heading)
 
     return math.copysign(math.hypot(dx, dy), forward)
+
+
+# 시작 자세 차체 좌표계로 본 이동량(전방, 좌측). start·end는 (x, y), heading은 시작 yaw다.
+def body_displacement(start, end, heading):
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    c, s = math.cos(heading), math.sin(heading)
+
+    return (c * dx + s * dy, -s * dx + c * dy)
+
+
+# 위치 궤적(x, y 목록)에 원을 최소제곱으로 맞춰 (중심 x, 중심 y, 반지름)을 돌려준다. 점이 3개 미만이면 None.
+def fit_circle(points):
+    import numpy as np
+
+    points = np.asarray(points, float).reshape(-1, 2)
+
+    if len(points) < 3:
+        return None
+
+    # 점이 거의 한 곳이면(차체 중심 회전) 그 점을 중심, 반지름 0으로 본다.
+    mean = points.mean(axis=0)
+
+    if np.abs(points - mean).max() < 1e-4:
+        return float(mean[0]), float(mean[1]), 0.0
+
+    x, y = points[:, 0], points[:, 1]
+    a = np.c_[2.0 * x, 2.0 * y, np.ones_like(x)]
+    cx, cy, c = np.linalg.lstsq(a, x * x + y * y, rcond=None)[0]
+
+    return float(cx), float(cy), float(math.sqrt(max(c + cx * cx + cy * cy, 0.0)))
+
+
+# 제자리 회전의 실제 차체 병진과 odom 병진 오차를 계산한다.
+# truth·odom은 [(시각, x, y, yaw)] 목록이며 같은 시험 구간의 표본이다. 실제 회전이 min_turn 이상이면 회전 중심도 구한다.
+def rotation_translation(truth, odom, min_turn=1.0):
+    true_move = body_displacement(truth[0][1:3], truth[-1][1:3], truth[0][3])
+    odom_move = body_displacement(odom[0][1:3], odom[-1][1:3], odom[0][3])
+    result = {
+        "truth_translation_m": math.hypot(*true_move),
+        "odom_translation_m": math.hypot(*odom_move),
+        "translation_error_m": math.hypot(true_move[0] - odom_move[0], true_move[1] - odom_move[1]),
+        "truth_displacement_body_m": list(true_move),
+        "odom_displacement_body_m": list(odom_move),
+        "rotation_centre_body_m": None,
+        "rotation_radius_m": None,
+    }
+
+    turn = accumulated_rotation([(item[0], item[3]) for item in truth])
+
+    if turn is not None and abs(turn) >= min_turn:
+        circle = fit_circle([item[1:3] for item in truth])
+
+        if circle is not None:
+            result["rotation_centre_body_m"] = list(body_displacement(truth[0][1:3], circle[:2], truth[0][3]))
+            result["rotation_radius_m"] = circle[2]
+
+    return result
 
 
 # 현재 multiplier와 (odom 값 / 실제 값) 비율 평균으로 권장 multiplier를 계산한다
@@ -123,7 +180,9 @@ class WheelCalibrator(Node):
     # 실행 중인 diff_drive_controller 파라미터를 읽는다
     def read_parameters(self):
         if not self.parameters.wait_for_services(timeout_sec=15.0):
-            raise RuntimeError("diff_drive_controller 파라미터 서비스 없음")
+            raise RuntimeError(
+                "diff_drive_controller 파라미터 서비스 없음\n" + describe_environment(self, self.robot_id),
+            )
 
         future = self.parameters.get_parameters(PARAMETERS)
         deadline = time.monotonic() + 10.0
@@ -175,7 +234,9 @@ class WheelCalibrator(Node):
     # 두 관측이 stamp까지 도착할 때까지 기다린다
     def wait_records(self, stamp, wall_limit_seconds=30.0):
         if not self.truth.wait_until(self.robot_id, stamp, wall_limit_seconds):
-            raise RuntimeError("Gazebo 관측이 구간 끝까지 도착하지 않음")
+            raise RuntimeError(
+                "Gazebo 관측이 구간 끝까지 도착하지 않음\n" + describe_environment(self, self.robot_id),
+            )
 
         deadline = time.monotonic() + wall_limit_seconds
 
@@ -208,8 +269,13 @@ class WheelCalibrator(Node):
         truth_heading = yaw_of(truth[0][1])
         odom_heading = odom[0][3]
 
+        # 모델 원점이 base_link와 같으므로(Gazebo dynamic_pose 확인) 모델 자세를 차체 실제 자세로 쓴다.
+        truth_samples = [(item[0], item[1][0, 3], item[1][1, 3], yaw_of(item[1])) for item in truth]
+        odom_samples = [(item[0], item[1], item[2], item[3]) for item in odom]
+
         return {
             "command": {"linear_m_s": linear, "angular_rad_s": angular, "seconds": seconds},
+            "translation": rotation_translation(truth_samples, odom_samples) if linear == 0.0 else None,
             "odom_rotation_rad": accumulated_rotation([(item[0], item[3]) for item in odom]),
             "truth_rotation_rad": accumulated_rotation([(item[0], yaw_of(item[1])) for item in truth]),
             "odom_distance_m": signed_distance(odom[0][1:3], odom[-1][1:3], odom_heading),
@@ -262,6 +328,20 @@ def run(node, arguments, checks):
             drives.append(result)
 
     turn_ratios = [item["ratio_odom_over_truth"] for item in turns]
+
+    # 제자리 회전 중 차체 병진: 판정 없이 기록만 한다. 원인 확인 전 보정 계수로 가리지 않는다.
+    translation = {}
+
+    for side, sign in (("left", 1.0), ("right", -1.0)):
+        items = [item["translation"] for item in turns if item["command"]["angular_rad_s"] * sign > 0]
+        centres = [item["rotation_centre_body_m"] for item in items if item["rotation_centre_body_m"] is not None]
+        translation[side] = {
+            "truth_translation_m": summarize([item["truth_translation_m"] for item in items]),
+            "odom_translation_m": summarize([item["odom_translation_m"] for item in items]),
+            "translation_error_m": summarize([item["translation_error_m"] for item in items]),
+            "rotation_centre_forward_m": summarize([centre[0] for centre in centres]),
+            "rotation_centre_left_m": summarize([centre[1] for centre in centres]),
+        }
     left = summarize([item["ratio_odom_over_truth"] for item in turns if item["command"]["angular_rad_s"] > 0])
     right = summarize([item["ratio_odom_over_truth"] for item in turns if item["command"]["angular_rad_s"] < 0])
     drive_stats = summarize([item["ratio_odom_over_truth"] for item in drives])
@@ -277,6 +357,7 @@ def run(node, arguments, checks):
         "turns": turns,
         "drives": drives,
         "turn_ratio": {"all": summarize(turn_ratios), "left": left, "right": right},
+        "turn_translation": translation,
         "drive_ratio": drive_stats,
         "recommended": {
             "wheel_separation_multiplier": separation,
@@ -310,6 +391,18 @@ def print_summary(result):
             f"→ 권장 {recommended['wheel_separation_multiplier']:.4f} (잠정 물리 설정 기준, 설정 파일은 바꾸지 않음)",
             flush=True,
         )
+
+    for side, stats in result.get("turn_translation", {}).items():
+        error, centre = stats["translation_error_m"], stats["rotation_centre_forward_m"]
+
+        if error is not None:
+            centre_text = f", 회전 중심 차체 앞 {centre['mean']:.3f} m" if centre is not None else ""
+            print(
+                f"[INFO] {('왼쪽' if side == 'left' else '오른쪽')} 회전 중 실제 병진 평균 "
+                f"{stats['truth_translation_m']['mean']:.3f} m, odom 병진 {stats['odom_translation_m']['mean']:.3f} m, "
+                f"odom 병진 오차 {error['mean']:.3f} m{centre_text}",
+                flush=True,
+            )
 
     if result["drive_ratio"] is not None:
         print(
@@ -354,33 +447,59 @@ def main():
     # 콜백은 별도 스레드 하나에서 처리한다(/clock 1 kHz 부하로 다중 스레드 executor가 밀리는 것을 피함).
     executor = SingleThreadedExecutor()
     executor.add_node(node)
-    threading.Thread(target=executor.spin, daemon=True).start()
+
+    # Ctrl+C로 rclpy가 닫히면 executor 스레드는 조용히 끝낸다. 중단 기록은 main 스레드가 남긴다.
+    def spin():
+        try:
+            executor.spin()
+        except ExternalShutdownException:
+            pass
+
+    threading.Thread(target=spin, daemon=True).start()
 
     checks = []
     result = {}
+    status = "running"
 
     try:
         node.truth.start()
         result = run(node, arguments, checks)
         print_summary(result)
+        status = "completed"
 
     except RuntimeError as error:
         check(checks, "측정 진행", False, str(error))
+        status = "failed"
+
+    # Ctrl+C는 rclpy 종료 처리에 따라 두 예외 중 하나로 올라온다.
+    except (KeyboardInterrupt, ExternalShutdownException):
+        check(checks, "측정 진행", False, "사용자 중단(Ctrl+C)")
+        status = "interrupted"
 
     finally:
-        # 어떤 경우에도 정지 명령을 남기고, Gazebo 구독을 먼저 해제한다.
-        node.publish(0.0, 0.0)
+        # 정지 명령을 남기고 Gazebo 구독을 먼저 해제한다.
+        # Ctrl+C로 rclpy 컨텍스트가 이미 닫혔으면 발행이 실패하므로 제어기의 cmd_vel 시간 초과 정지에 맡긴다.
+        try:
+            node.publish(0.0, 0.0)
+        except Exception as error:
+            print(f"[INFO] 정지 명령 발행 생략(rclpy 종료): {error}", flush=True)
+
         node.truth.stop()
         executor.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
+    result["status"] = status
     result["checks"] = checks
     (output / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False, default=float) + "\n")
 
     failures = sum(1 for item in checks if not item["passed"])
     print(f"결과: {output / 'result.json'}", flush=True)
-    print(f"구조 판정 실패 {failures}건", flush=True)
+    print(f"구조 판정 실패 {failures}건 (status={status})", flush=True)
+
+    if status == "interrupted":
+        sys.exit(130)
+
     sys.exit(1 if failures else 0)
 
 

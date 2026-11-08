@@ -1,12 +1,12 @@
-import rclpy
-from rclpy.action import ActionServer, GoalResponse
-from rclpy.node import Node
-from rclpy.executors import ExternalShutdownException
-from rclpy.qos import QoSProfile, DurabilityPolicy
-from std_msgs.msg import String
-
 from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.msg import LoadState, ResultStatus
+import rclpy
+from rclpy.action import ActionServer, GoalResponse
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
+
+from std_msgs.msg import String
 
 
 class MockExecutor(Node):
@@ -71,7 +71,8 @@ class MockExecutor(Node):
             goal_handle.abort()
 
         self.get_logger().info(result.status.detail)
-        self.result_display.publish(String(data=value if value in ('STOWED', 'EMPTY') else 'UNKNOWN'))
+        self.result_display.publish(
+            String(data=value if value in ('STOWED', 'EMPTY') else 'UNKNOWN'))
         return result
 
 

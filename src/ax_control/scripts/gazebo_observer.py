@@ -15,6 +15,8 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
 from collections import deque
 import math
+import os
+import subprocess
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -548,6 +550,114 @@ def in_tcp_frame(tcp_world, object_world):
     return np.linalg.inv(tcp_world) @ object_world
 
 
+# 실행 환경 안내에 보여 줄 환경 변수
+ENVIRONMENT_KEYS = ("ROS_DOMAIN_ID", "GZ_PARTITION", "ROS_AUTOMATIC_DISCOVERY_RANGE")
+
+
+# ROS 토픽 이름에서 `/ax/<robot_id>/...` 접두사의 로봇 ID를 모은다.
+def robot_ids_from_topics(topic_names):
+    robots = set()
+
+    for name in topic_names:
+        parts = name.split("/")
+
+        if len(parts) > 3 and parts[1] == "ax" and parts[2]:
+            robots.add(parts[2])
+
+    return sorted(robots)
+
+
+# Gazebo 토픽 이름에서 `/world/<name>/...`의 월드 이름을 모은다.
+def worlds_from_topics(topic_names):
+    worlds = set()
+
+    for name in topic_names:
+        parts = name.split("/")
+
+        if len(parts) > 2 and parts[1] == "world" and parts[2]:
+            worlds.add(parts[2])
+
+    return sorted(worlds)
+
+
+# `gz topic -i` 출력에 발행자 주소가 있는지 본다. 구독만 있는 토픽은 월드가 있다는 근거가 아니다.
+def info_has_publisher(info_text):
+    publishers = info_text.split("Subscribers")[0]
+
+    return any("://" in line for line in publishers.splitlines())
+
+
+# 현재 환경 변수와 발견한 로봇·월드로 대상이 보이지 않는 이유를 안내한다.
+# gazebo_worlds가 None이면 Gazebo 토픽을 확인하지 못한 경우다.
+def environment_hint(robot_id, environment, ros_robots, gazebo_worlds):
+    settings = ", ".join(f"{key}={environment.get(key) or '(미설정)'}" for key in ENVIRONMENT_KEYS)
+    ros_text = ", ".join(ros_robots) if ros_robots else "없음"
+
+    if gazebo_worlds is None:
+        gazebo_text = "확인 못 함(gz 명령 실패)"
+    else:
+        gazebo_text = ", ".join(gazebo_worlds) if gazebo_worlds else "없음"
+
+    # 원인 추정: ROS·Gazebo 각각의 발견 여부로 어느 설정이 어긋났는지 고른다.
+    if not ros_robots and not gazebo_worlds:
+        cause = "시뮬레이션이 실행 중이 아니거나, 이 터미널의 ROS_DOMAIN_ID·GZ_PARTITION이 시뮬레이션 터미널과 다름"
+    elif not ros_robots:
+        cause = "Gazebo는 보이지만 ROS 노드가 보이지 않음: ROS_DOMAIN_ID·ROS_AUTOMATIC_DISCOVERY_RANGE를 시뮬레이션 터미널과 맞출 것"
+    elif robot_id not in ros_robots:
+        cause = f"시뮬레이션에 {robot_id}가 없음: --robot-id를 {', '.join(ros_robots)} 중 하나로 지정하거나 robot_ids를 맞춰 다시 띄울 것"
+    elif gazebo_worlds is not None and not gazebo_worlds:
+        cause = "ROS 노드는 보이지만 Gazebo 토픽이 보이지 않음: GZ_PARTITION을 시뮬레이션 터미널과 맞출 것"
+    else:
+        cause = "대상은 보임: 시뮬레이션이 아직 준비 중이거나 해당 노드·제어기가 시작되지 않았을 수 있음"
+
+    return "\n".join([
+        f"  실행 환경: {settings}",
+        f"  ROS에서 찾은 로봇: {ros_text} (요청: {robot_id})",
+        f"  Gazebo 월드: {gazebo_text}",
+        f"  원인 추정: {cause}",
+    ])
+
+
+# 노드의 ROS 그래프와 `gz topic -l`로 발견 대상을 모아 안내 문구를 돌려준다.
+# 시험 도구 자신이 만든 구독·발행 토픽은 로봇이 있다는 근거가 아니므로 다른 노드가 발행하는 토픽만 센다.
+def describe_environment(node, robot_id):
+    own = (node.get_name(), node.get_namespace())
+    published = []
+
+    for name, _ in node.get_topic_names_and_types():
+        if not name.startswith("/ax/"):
+            continue
+
+        publishers = node.get_publishers_info_by_topic(name)
+
+        if any((info.node_name, info.node_namespace) != own for info in publishers):
+            published.append(name)
+
+    ros_robots = robot_ids_from_topics(published)
+
+    # `gz topic -l`은 이 도구가 구독만 한 토픽도 보여 주므로 월드 clock의 발행자로 다시 확인한다.
+    try:
+        listed = subprocess.run(["gz", "topic", "-l"], capture_output=True, text=True, timeout=10.0, check=False)
+        gazebo_worlds = []
+
+        for world in worlds_from_topics(listed.stdout.split()):
+            info = subprocess.run(
+                ["gz", "topic", "-i", "-t", f"/world/{world}/clock"],
+                capture_output=True,
+                text=True,
+                timeout=10.0,
+                check=False,
+            )
+
+            if info_has_publisher(info.stdout):
+                gazebo_worlds.append(world)
+
+    except (OSError, subprocess.TimeoutExpired):
+        gazebo_worlds = None
+
+    return environment_hint(robot_id, os.environ, ros_robots, gazebo_worlds)
+
+
 # robot_state_publisher의 robot_description(transient local)을 받아 URDF 문자열을 돌려준다.
 # 노드를 별도 executor 스레드가 돌리지 않으면 spin에 rclpy.spin_once 같은 함수를 넘긴다.
 def fetch_robot_description(node, robot_id, timeout_seconds=15.0, spin=None):
@@ -576,6 +686,6 @@ def fetch_robot_description(node, robot_id, timeout_seconds=15.0, spin=None):
     node.destroy_subscription(subscription)
 
     if "urdf" not in received:
-        raise RuntimeError(f"/ax/{robot_id}/robot_description 수신 실패")
+        raise RuntimeError(f"/ax/{robot_id}/robot_description 수신 실패\n{describe_environment(node, robot_id)}")
 
     return received["urdf"]

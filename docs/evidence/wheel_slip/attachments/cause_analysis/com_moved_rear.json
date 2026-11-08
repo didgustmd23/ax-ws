@@ -1,0 +1,82 @@
+{
+ "world": "ax_test",
+ "dynamic_base_link_in_model": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "trials": [
+  {
+   "direction": "left",
+   "true_turn_rad": 3.001,
+   "odom_turn_rad": 3.0,
+   "true_translation_m": 0.675,
+   "odom_translation_m": 0.0,
+   "centre_in_start_body_m": [
+    -0.338,
+    -0.002
+   ],
+   "centre_radius_m": 0.338,
+   "wheel_speed_rad_s": {
+    "front_left_wheel": -0.948,
+    "front_right_wheel": 0.948,
+    "rear_left_wheel": -0.948,
+    "rear_right_wheel": 0.948
+   },
+   "wheel_centre_z_world_m": {
+    "front_left_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "front_right_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "rear_left_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "rear_right_wheel": [
+     0.1499,
+     0.1499
+    ]
+   }
+  },
+  {
+   "direction": "right",
+   "true_turn_rad": -3.007,
+   "odom_turn_rad": -3.006,
+   "true_translation_m": 0.675,
+   "odom_translation_m": 0.0,
+   "centre_in_start_body_m": [
+    -0.338,
+    -0.002
+   ],
+   "centre_radius_m": 0.338,
+   "wheel_speed_rad_s": {
+    "front_left_wheel": 0.948,
+    "front_right_wheel": -0.948,
+    "rear_left_wheel": 0.948,
+    "rear_right_wheel": -0.948
+   },
+   "wheel_centre_z_world_m": {
+    "front_left_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "front_right_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "rear_left_wheel": [
+     0.1499,
+     0.1499
+    ],
+    "rear_right_wheel": [
+     0.1499,
+     0.1499
+    ]
+   }
+  }
+ ]
+}

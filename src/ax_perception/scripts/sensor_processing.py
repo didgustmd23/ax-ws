@@ -25,6 +25,11 @@ from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from sensor_msgs.msg import CameraInfo, Image, LaserScan, Range, PointCloud2, PointField
 
 
+def boottime():
+    """수신 만료·TF 대기는 절전 시간을 포함하는 감독 시계로 잰다."""
+    return time.clock_gettime(time.CLOCK_BOOTTIME)
+
+
 def stamp(message):
     return message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
 
@@ -269,7 +274,7 @@ class SensorProcessing(Node):
             try:
                 now = self.get_clock().now().nanoseconds * 1e-9
                 self.observe_clock(now)
-                state['received'] = time.monotonic()
+                state['received'] = boottime()
                 measured = stamp(message)
                 if now <= 0 or measured <= 0 or now - measured > self.cfg['max_age_s']:
                     raise ValueError('Missing clock or stale measurement')
@@ -291,7 +296,7 @@ class SensorProcessing(Node):
         if len(self.tof_pending) >= 10:
             self.tof_pending.popleft()
             self.health['tool_tof/raw'].update(ok=False, reason='ToF TF queue overflow; oldest input dropped')
-        self.tof_pending.append((message, time.monotonic()))
+        self.tof_pending.append((message, boottime()))
         return False
 
     def drain_tof(self):
@@ -307,7 +312,7 @@ class SensorProcessing(Node):
             # 센서와 TF의 전송 순서는 보장되지 않는다. 최신 TF로 대체하지 않고
             # 한정된 시간만 기다린다. 단일 실행기 콜백을 막는 sleep/wait는 쓰지 않는다.
             if (self.cfg['tof_body_filter'] and self.body_mesh is not None and
-                    time.monotonic()-received < self.cfg['tof_tf_wait_s'] and
+                    boottime()-received < self.cfg['tof_tf_wait_s'] and
                     not self.tf_buffer.can_transform(self.robot + '/base_link',
                         message.header.frame_id, Time.from_msg(message.header.stamp))):
                 break
@@ -399,7 +404,7 @@ class SensorProcessing(Node):
         reason = f'Valid depth fraction {valid_ratio:.4f}'
         if valid_ratio == 0:
             reason = 'No valid depth measurements; ' + reason
-        received = time.monotonic()
+        received = boottime()
         self.health[name + '/synchronized'].update(received=received, ok=True,
             reason=f'RGB-D synchronized; skew {max(times)-min(times):.6f} s')
         self.health[name + '/depth_valid'] = dict(received=received, ok=valid_ratio > 0,
@@ -411,7 +416,7 @@ class SensorProcessing(Node):
         message = DiagnosticArray()
         message.header.stamp = self.get_clock().now().to_msg()
         for name, state in self.health.items():
-            age = time.monotonic() - state['received'] if state['received'] is not None else math.inf
+            age = boottime() - state['received'] if state['received'] is not None else math.inf
             row = DiagnosticStatus(name=self.robot + '/' + name, hardware_id=self.robot)
             row.level = DiagnosticStatus.STALE if age > self.cfg['missing_timeout_s'] else DiagnosticStatus.OK if state['ok'] else DiagnosticStatus.ERROR
             row.message = 'No recent input' if row.level == DiagnosticStatus.STALE else state['reason']

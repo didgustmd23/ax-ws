@@ -1,0 +1,227 @@
+{
+  "passed": false,
+  "robots": [
+    "robot_1",
+    "robot_2"
+  ],
+  "tool": "epick",
+  "topics": {
+    "/ax/robot_1/sensors/front_lidar/scan": {
+      "type": "sensor_msgs/msg/LaserScan",
+      "count": 213,
+      "first_stamp_ns": 400000000,
+      "last_stamp_ns": 21600000000,
+      "frame_id": "robot_1/front_lidar_link",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/rear_lidar/scan": {
+      "type": "sensor_msgs/msg/LaserScan",
+      "count": 213,
+      "first_stamp_ns": 400000000,
+      "last_stamp_ns": 21600000000,
+      "frame_id": "robot_1/rear_lidar_link",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgb/image_raw": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 321,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgb/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgb/image_raw": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 322,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgb/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgbd/image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 291,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgbd/depth_image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 320,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgbd/points": {
+      "type": "sensor_msgs/msg/PointCloud2",
+      "count": 202,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/front_rgbd/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgbd/image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 286,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgbd/depth_image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 320,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgbd/points": {
+      "type": "sensor_msgs/msg/PointCloud2",
+      "count": 310,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/arm_rgbd/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_1/arm_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/imu": {
+      "type": "sensor_msgs/msg/Imu",
+      "count": 2135,
+      "first_stamp_ns": 360000000,
+      "last_stamp_ns": 21700000000,
+      "frame_id": "robot_1/imu_link",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/epick_tof/scan": {
+      "type": "sensor_msgs/msg/LaserScan",
+      "count": 648,
+      "first_stamp_ns": 330000000,
+      "last_stamp_ns": 21682000000,
+      "frame_id": "robot_1/epick_tof_link",
+      "error": ""
+    },
+    "/ax/robot_1/sensors/tool_tof/raw": {
+      "type": "sensor_msgs/msg/Range",
+      "count": 648,
+      "first_stamp_ns": 330000000,
+      "last_stamp_ns": 21682000000,
+      "frame_id": "robot_1/tool_tof_link",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_lidar/scan": {
+      "type": "sensor_msgs/msg/LaserScan",
+      "count": 213,
+      "first_stamp_ns": 400000000,
+      "last_stamp_ns": 21600000000,
+      "frame_id": "robot_2/front_lidar_link",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/rear_lidar/scan": {
+      "type": "sensor_msgs/msg/LaserScan",
+      "count": 213,
+      "first_stamp_ns": 400000000,
+      "last_stamp_ns": 21600000000,
+      "frame_id": "robot_2/rear_lidar_link",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgb/image_raw": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 321,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgb/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgb_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgbd/image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 319,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgbd/depth_image": {
+      "type": "sensor_msgs/msg/Image",
+      "count": 313,
+      "first_stamp_ns": 462000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgbd/points": {
+      "type": "sensor_msgs/msg/PointCloud2",
+      "count": 304,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/front_rgbd/camera_info": {
+      "type": "sensor_msgs/msg/CameraInfo",
+      "count": 323,
+      "first_stamp_ns": 396000000,
+      "last_stamp_ns": 21648000000,
+      "frame_id": "robot_2/front_rgbd_optical_frame",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/imu": {
+      "type": "sensor_msgs/msg/Imu",
+      "count": 2134,
+      "first_stamp_ns": 360000000,
+      "last_stamp_ns": 21690000000,
+      "frame_id": "robot_2/imu_link",
+      "error": ""
+    },
+    "/ax/robot_2/sensors/cargo_contact": {
+      "type": "ros_gz_interfaces/msg/Contacts",
+      "count": 0,
+      "first_stamp_ns": null,
+      "last_stamp_ns": null,
+      "frame_id": "",
+      "error": ""
+    }
+  },
+  "scope": "sensor publication/frame/stamp smoke check; not rate, calibration, safety or G1"
+}

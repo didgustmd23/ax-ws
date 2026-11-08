@@ -13,6 +13,10 @@
             <mu1>0.1</mu1>
             <mu2>1.0</mu2>
             <fdir1>0 0 1</fdir1>
+            <!-- S005: 평면 개발 시험에서 회전 병진을 줄인 옆방향 slip 순응.
+                 단위 m/s/N이며 타이어 미끄럼률이나 실물 보정값이 아니다.
+                 근거와 제한: docs/evidence/wheel_slip/README.md -->
+            <collision><surface><friction><ode><slip1>0.05</slip1></ode></friction></surface></collision>
         </gazebo>
     </xacro:macro>
 

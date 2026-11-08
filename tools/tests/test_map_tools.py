@@ -515,7 +515,7 @@ class MapMetadata(unittest.TestCase):
         self.assertEqual(model['lidars']['front_lidar']['range_max_m'], 10.0)
         self.assertIsNone(model['lidars']['front_lidar']['noise_stddev_m'])
 
-    # 실제 운영 Xacro 출력에서 바퀴 마찰이 현재 소스 값(mu1 0.1, mu2 1.0, slip1 없음)과 같은지 확인한다.
+    # 실제 운영 Xacro 출력에서 바퀴 마찰이 S005 반영 소스 값(mu1 0.1, mu2 1.0, slip1 0.05)과 같은지 확인한다.
     def test_describe_model_matches_operating_xacro(self):
         import shutil
         import subprocess
@@ -533,7 +533,7 @@ class MapMetadata(unittest.TestCase):
 
         self.assertTrue(model['wheel_contacts'])
         self.assertEqual({(c['mu1'], c['mu2'], c['fdir1'], c['slip1']) for c in model['wheel_contacts'].values()},
-                         {(0.1, 1.0, '0 0 1', None)})
+                         {(0.1, 1.0, '0 0 1', 0.05)})
         self.assertTrue(any(lidar['samples'] == 360 for lidar in model['lidars'].values()))
 
     # 지도 요약의 원점·해상도·셀 수·관측 범위가 입력 격자와 같다.

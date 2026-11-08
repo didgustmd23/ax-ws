@@ -258,6 +258,37 @@ def check_saved_files(run):
     return problems
 
 
+# 주행 기록의 저장 직전·종료 odom 기준 정지 확인과 저장 지도 사용 가능 표시를 검사해 문제 목록을 돌려준다.
+# 정지 확인 기록이 없는 이전 형식 결과도 채택하지 않는다.
+def stop_gate_problems(drive):
+    gate = drive.get("stop_gate")
+    problems = []
+
+    if not isinstance(gate, dict):
+        return ["정지 확인 기록(stop_gate) 없음"]
+
+    for key, label in (("save", "저장 전"), ("completion", "종료")):
+        if not (gate.get(key) or {}).get("confirmed"):
+            problems.append(f"{label} odom 기준 정지 미확인")
+
+    if drive.get("saved_map_usable") is not True:
+        problems.append("저장 지도 사용 불가 표시")
+
+    return problems
+
+
+# 저장 지도(slam_map)와 채택용 지도(map.yaml)를 각각 다시 읽어 격자·원점·해상도·크기가 같은지 확인한다.
+# 지도 파일 수준의 재로딩 확인이며 slam_toolbox pose graph 재로딩은 포함하지 않는다.
+def reload_check(saved_yaml, adopted_yaml):
+    saved_grid, saved_geometry, saved_yaw = mt.read_map(saved_yaml)
+    adopted_grid, adopted_geometry, adopted_yaw = mt.read_map(adopted_yaml)
+    same_grid = saved_grid.shape == adopted_grid.shape and bool((saved_grid == adopted_grid).all())
+    same_geometry = saved_geometry.as_dict() == adopted_geometry.as_dict() and saved_yaw == adopted_yaw
+
+    return {"match": same_grid and same_geometry, "grid": same_grid, "origin_resolution_size": same_geometry,
+            "scope": "map.yaml·map.pgm 파일 재로딩. pose graph 재로딩은 포함하지 않음"}
+
+
 # run 폴더의 지도를 target에 채택한다. 검사 실패 시 기존 지도를 건드리지 않는다.
 # 새 파일을 같은 폴더의 임시 폴더에 모두 만든 뒤 하나씩 바꿔 넣는다.
 def adopt_map(run, target, info):
@@ -284,6 +315,11 @@ def adopt_map(run, target, info):
 
         info["files"] = {name: mt.file_sha256(staging / name)
                          for name in ("map.yaml", "map.pgm", "pose_graph.posegraph", "pose_graph.data")}
+        info["reload_check"] = reload_check(run / "slam_map.yaml", staging / "map.yaml")
+
+        if not info["reload_check"]["match"]:
+            raise RuntimeError("채택 불가: 채택용 지도를 다시 읽은 결과가 저장 지도와 다름 " + str(info["reload_check"]))
+
         (staging / "map_info.yaml").write_text(
             "# B2 지도 메타데이터. 지도가 바뀌면 map_revision이 오르며 등록 지점·재고 좌표는 revision을 대조해 재검증한다.\n"
             + yaml.safe_dump(info, sort_keys=False, allow_unicode=True), encoding="utf-8")
@@ -295,35 +331,69 @@ def adopt_map(run, target, info):
     return info
 
 
-# 채택 메타데이터를 만든다.
+# 실행 조건 기록(run_mapping_session.sh의 session.json)을 읽는다. 없으면 None.
+def read_session(run):
+    path = run.parent / "session" / "session.json"
+
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+# 채택 메타데이터를 만든다. 확보하지 못한 항목은 값을 채우지 않고 missing에 사유를 남긴다.
 def map_metadata(run, drive, accuracy, slam_yaml):
     route_path = Path(drive["route"]["path"])
-    world_file = WORKSPACE / "world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
     source_file = WORKSPACE / "world_assets/aws_small_warehouse/SOURCE.json"
     slam_config = WORKSPACE / "src/ax_localization/config/slam_mapping.yaml"
     source = json.loads(source_file.read_text(encoding="utf-8")) if source_file.is_file() else {}
+    session = read_session(run)
+    model = drive.get("model") or {}
+    missing = []
+
+    # 기준 월드: 실제 실행에 쓴 월드 파일(session.json)
+    world = {"launch_name": "aws_warehouse.world",
+             "reference_assets": {"repository": source.get("repository"), "commit": source.get("commit"),
+                                  "archive_sha256": source.get("archive_sha256")}}
+
+    if session and session.get("world_sha256"):
+        world.update({key: session.get(key) for key in ("world_condition", "world_file", "world_sha256")})
+    else:
+        world.update({"world_condition": (session or {}).get("world_condition"), "world_file": None, "world_sha256": None})
+        missing.append("world: session.json에 실행 월드 파일 해시 없음")
+
+    # 바퀴 조건(운영/임시 사본)은 실행 조건 기록에서, 실제 마찰 값은 spawn robot_description에서 읽는다.
+    friction = {"condition": (session or {}).get("wheel_condition"), "wheel_contacts": None,
+                "override_file": (session or {}).get("wheel_override_file") or None,
+                "override_sha256": (session or {}).get("wheel_override_sha256") or None}
+
+    # 모델·바퀴 마찰·센서: mapping_drive가 받은 spawn robot_description
+    if model.get("sha256") and "missing_reason" not in model:
+        robot_model = {key: model.get(key) for key in ("source", "file", "sha256", "robot_name")}
+        friction["wheel_contacts"] = model.get("wheel_contacts")
+        lidars = model.get("lidars")
+    else:
+        robot_model, lidars = None, None
+        missing.append("model: " + (model.get("missing_reason") or "drive_result.json에 robot_description 기록 없음"))
+
+    if session is None:
+        missing.append("session: session.json 없음(실행 조건·코드 버전 미확인)")
 
     return {
         "created": datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
-        "frame": "map",
-        "resolution_m": slam_yaml["resolution"],
-        "world": {
-            "launch_name": "aws_warehouse.world",
-            "file": str(world_file.relative_to(WORKSPACE)) if world_file.is_file() else None,
-            "sha256": mt.file_sha256(world_file) if world_file.is_file() else None,
-            "reference_assets": {"repository": source.get("repository"), "commit": source.get("commit"),
-                                 "archive_sha256": source.get("archive_sha256")},
-        },
-        "robot": {"id": drive["robot_id"], "tool": "none (운송 로봇, 공구 없음)",
+        "map": mt.map_summary(run / "slam_map.yaml"),
+        "world": world,
+        "robot": {"id": drive["robot_id"], "model": robot_model,
                   "sensor": {"input": drive["scan_input"], "frame": accuracy["scan_frame"],
-                             "mount_base_link": accuracy["front_mount"]}},
+                             "mount_base_link": accuracy["front_mount"], "lidars": lidars}},
+        "wheel_friction": friction,
+        "code": {key: (session or {}).get(key) for key in ("git_commit", "git_dirty")},
         "slam": {"package": "slam_toolbox (async, mapping)", "config": str(slam_config.relative_to(WORKSPACE)),
-                 "config_sha256": mt.file_sha256(slam_config)},
+                 "config_sha256": mt.file_sha256(slam_config), "resolution_m": slam_yaml["resolution"]},
         "route": {"file": str(route_path), "sha256": drive["route"]["sha256"]},
         "pose_graph": {"files": ["pose_graph.posegraph", "pose_graph.data"],
                        "resume": "slam_toolbox deserialize_map 또는 map_file_name 파라미터로 이어 작성·위치 추정"},
+        "stop_gate": drive.get("stop_gate"),
         "verification": {
             "judgment": accuracy["judgment"],
+            "judgment_reason": accuracy.get("reason"),
             "metrics": accuracy["metrics_optimal"],
             "result": str((run / "accuracy.json").relative_to(WORKSPACE)) if run.is_relative_to(WORKSPACE) else str(run / "accuracy.json"),
             "drive_result": str((run / "drive_result.json").relative_to(WORKSPACE)) if run.is_relative_to(WORKSPACE) else str(run / "drive_result.json"),
@@ -334,7 +404,23 @@ def map_metadata(run, drive, accuracy, slam_yaml):
             "optimal": accuracy["transforms"]["optimal_T_world_map"],
             "method": accuracy["transforms"]["initial_method"] + " → 참조 지도와 ICP 정렬",
         },
+        "missing": missing,
     }
+
+
+# 채택 조건 중 메타데이터 문제(누락·개발용 임시 사본 조건)를 돌려준다.
+def metadata_problems(metadata):
+    problems = list(metadata["missing"])
+    world_condition = metadata["world"].get("world_condition")
+    wheel_condition = metadata["wheel_friction"]["condition"]
+
+    if world_condition != "original":
+        problems.append(f"월드 조건 {world_condition}은 개발용 임시 사본")
+
+    if wheel_condition != "original":
+        problems.append(f"바퀴 조건 {wheel_condition}은 개발용 임시 사본")
+
+    return problems
 
 
 # 명령행 인자를 읽어 비교하고 결과를 저장한다.
@@ -365,7 +451,8 @@ def main():
         drive = json.loads((run / "drive_result.json").read_text(encoding="utf-8"))
         result["drive_status"] = {"status": drive.get("status"), "error": drive.get("error"),
                                   "waypoints_reached": drive.get("waypoints_reached"),
-                                  "partial_route": drive.get("route", {}).get("partial", False)}
+                                  "partial_route": drive.get("route", {}).get("partial", False),
+                                  "stop_gate": drive.get("stop_gate"), "saved_map_usable": drive.get("saved_map_usable")}
     except (OSError, ValueError) as error:
         drive = None
         result["drive_status"] = {"status": "missing", "error": f"{type(error).__name__}: {error}"}
@@ -413,6 +500,16 @@ def main():
     result["status"] = ("completed" if all(result[key]["status"] == "completed"
                                            for key in ("drive_status", "trajectory_comparison", "map_comparison"))
                         else "incomplete")
+
+    # 채택을 요청했는데 채택하지 못하면 정상 완료가 아니다.
+    adoption = result["map_comparison"].get("adoption")
+
+    if adoption is not None:
+        result["adoption"] = adoption
+
+        if adoption["status"] != "adopted":
+            result["status"] = "adoption_refused"
+
     write_json_atomic(run / "accuracy.json", result)
 
     print(f"결과: {run / 'accuracy.json'}", flush=True)
@@ -438,6 +535,10 @@ def main():
         wall = metrics.get("wall_error_reference_to_compared") or {}
         print(f"[INFO] 장애물 검출 {metrics.get('obstacle_detection_ratio')}, 역방향 일치 {metrics.get('reverse_match_ratio')}, "
               f"벽 오차 평균 {wall.get('mean_m')} m·p95 {wall.get('p95_m')} m·최대 {wall.get('max_m')} m", flush=True)
+
+    if "adoption" in result:
+        print(f"[INFO] adoption={result['adoption']['status']} {result['adoption'].get('problems') or result['adoption'].get('map_revision')}",
+              flush=True)
 
     sys.exit(0 if result["status"] == "completed" else 1)
 
@@ -484,14 +585,39 @@ def compare_map(run, drive, result, reference, geometry, truth, initial, argumen
     mt.write_map(run / "reference_map.yaml", reference, geometry)
     comparison["files"] = ["overlay.png", "reference_map.yaml", "reference_map.pgm"]
 
-    # 채택은 주행 완료·궤적 비교 완료일 때만 한다.
-    if arguments.adopt:
-        if result["drive_status"]["status"] != "completed" or result["trajectory_comparison"]["status"] != "completed":
-            raise RuntimeError("주행·궤적 비교가 완료되지 않아 채택하지 않음")
+    # 채택 여부와 무관하게 메타정보 초안과 누락·개발 조건을 결과에 남긴다.
+    try:
+        draft = map_metadata(run, drive, dict(result, metrics_optimal=comparison["metrics_optimal"]), slam_yaml)
+        comparison["map"] = draft["map"]
+        comparison["metadata_problems"] = metadata_problems(draft)
+    except (KeyError, OSError, ValueError, TypeError) as error:
+        comparison["metadata_problems"] = [f"메타정보 생성 실패: {type(error).__name__}: {error}"]
 
-        metadata = map_metadata(run, drive, dict(result, metrics_optimal=comparison["metrics_optimal"]), slam_yaml)
-        info = adopt_map(run, arguments.map_dir.resolve(), metadata)
-        comparison["adopted"] = {"dir": str(arguments.map_dir), "map_revision": info["map_revision"]}
+    # 채택은 주행·궤적 비교 완료, 저장 전·종료 odom 기준 정지 확인, 메타정보 완비·운영 조건일 때만 한다.
+    # 거부는 지도 비교 결과와 따로 adoption에 기록하며 기존 채택 지도는 건드리지 않는다.
+    if arguments.adopt:
+        problems = []
+
+        if result["drive_status"]["status"] != "completed" or result["trajectory_comparison"]["status"] != "completed":
+            problems.append("주행·궤적 비교 미완료")
+
+        if result["drive_status"].get("partial_route"):
+            problems.append("부분 경로(--waypoints) 지도")
+
+        problems += stop_gate_problems(drive)
+        problems += comparison.get("metadata_problems", [])
+
+        if problems:
+            comparison["adoption"] = {"status": "refused", "dir": str(arguments.map_dir), "problems": problems}
+        else:
+            try:
+                metadata = map_metadata(run, drive, dict(result, metrics_optimal=comparison["metrics_optimal"]), slam_yaml)
+                info = adopt_map(run, arguments.map_dir.resolve(), metadata)
+                comparison["adoption"] = {"status": "adopted", "dir": str(arguments.map_dir),
+                                          "map_revision": info["map_revision"], "reload_check": info["reload_check"]}
+            except (RuntimeError, OSError, ValueError, KeyError) as error:
+                comparison["adoption"] = {"status": "refused", "dir": str(arguments.map_dir),
+                                          "problems": [f"{type(error).__name__}: {error}"]}
 
     comparison["status"] = "completed"
 

@@ -295,6 +295,86 @@ def write_map(yaml_path, grid, geometry, image_name=None):
     yaml_path.write_text(yaml.safe_dump(info, sort_keys=False), encoding="utf-8")
 
 
+# 실제 사용한 robot_description(URDF 문자열)에서 바퀴 접촉 마찰과 LiDAR 설정을 뽑는다.
+# 값이 없는 항목은 None으로 두며 임의 기본값을 채우지 않는다.
+def describe_model(urdf_text):
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(urdf_text)
+    text = lambda element, path: (element.findtext(path) or "").strip() or None
+    number = lambda value: float(value) if value is not None else None
+
+    wheels, lidars = {}, {}
+
+    for gazebo in root.iter("gazebo"):
+        reference = gazebo.get("reference")
+
+        # 바퀴 접촉: <gazebo reference>의 mu1·mu2·fdir1과 collision 마찰 블록의 slip1·slip2
+        if gazebo.find("mu1") is not None or gazebo.find("mu2") is not None:
+            ode = "collision/surface/friction/ode/"
+            wheels[reference] = {
+                "mu1": number(text(gazebo, "mu1")),
+                "mu2": number(text(gazebo, "mu2")),
+                "fdir1": text(gazebo, "fdir1"),
+                "slip1": number(text(gazebo, ode + "slip1")),
+                "slip2": number(text(gazebo, ode + "slip2")),
+            }
+
+        for sensor in gazebo.iter("sensor"):
+            if sensor.get("type") not in ("gpu_lidar", "lidar"):
+                continue
+
+            scan = "lidar/scan/horizontal/"
+            lidars[sensor.get("name")] = {
+                "link": reference,
+                "frame": text(sensor, "gz_frame_id"),
+                "update_rate_hz": number(text(sensor, "update_rate")),
+                "samples": number(text(sensor, scan + "samples")),
+                "min_angle_rad": number(text(sensor, scan + "min_angle")),
+                "max_angle_rad": number(text(sensor, scan + "max_angle")),
+                "range_min_m": number(text(sensor, "lidar/range/min")),
+                "range_max_m": number(text(sensor, "lidar/range/max")),
+                "noise_stddev_m": number(text(sensor, "lidar/noise/stddev")),
+            }
+
+    return {"robot_name": root.get("name"), "wheel_contacts": wheels, "lidars": lidars}
+
+
+# 저장 지도의 좌표계·원점·해상도·크기와 관측(빈 공간·점유)·미관측 셀 수·면적을 정리한다.
+def map_summary(yaml_path):
+    yaml_path = Path(yaml_path)
+    info = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    grid, geometry, yaw = read_map(yaml_path)
+    cell_area = geometry.resolution ** 2
+
+    counts = {"free": int((grid == FREE).sum()), "occupied": int((grid == OCCUPIED).sum()),
+              "unknown": int((grid == UNKNOWN).sum())}
+    observed = grid != UNKNOWN
+    summary = {
+        "frame": "map",
+        "origin": [float(value) for value in info["origin"]],
+        "origin_note": "map.yaml origin = 이미지 왼쪽 아래 셀 모서리의 map 좌표(x, y, yaw)",
+        "resolution_m": geometry.resolution,
+        "size_cells": [geometry.width, geometry.height],
+        "size_m": [geometry.width * geometry.resolution, geometry.height * geometry.resolution],
+        "thresholds": {"occupied": info["occupied_thresh"], "free": info["free_thresh"], "mode": info.get("mode")},
+        "cells": counts,
+        "area_m2": {name: value * cell_area for name, value in counts.items()},
+        "observed_ratio": float(observed.mean()) if grid.size else None,
+        "observed_bounds_map_m": None,
+    }
+
+    # 관측 셀을 감싸는 map 좌표 범위 [x_min, y_min, x_max, y_max]. 행 0이 이미지 아래(y 최소)라고 본다.
+    if observed.any():
+        rows, columns = np.nonzero(observed)
+        summary["observed_bounds_map_m"] = [
+            geometry.origin_x + columns.min() * geometry.resolution, geometry.origin_y + rows.min() * geometry.resolution,
+            geometry.origin_x + (columns.max() + 1) * geometry.resolution, geometry.origin_y + (rows.max() + 1) * geometry.resolution,
+        ]
+
+    return summary
+
+
 # 점유 셀 중심 좌표(N×2)
 def occupied_points(grid, geometry):
     rows, columns = np.nonzero(grid == OCCUPIED)

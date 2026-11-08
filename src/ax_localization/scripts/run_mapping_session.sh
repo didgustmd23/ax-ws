@@ -168,11 +168,39 @@ EOF
   WORLD_CONDITION=light_collision
 fi
 
+# 실제 실행에 쓰는 월드·바퀴 사본 파일과 해시, 코드 버전을 기록한다(map_info.yaml 근거).
+if [ "$WORLD_CONDITION" = original ]; then
+  WORLD_FILE="$WS/install/ax_description/share/ax_description/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
+  WORLD_RECORD="install/ax_description/share/ax_description/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
+else
+  WORLD_FILE="$SESSION/world_light.world"
+  WORLD_RECORD="session/world_light.world"
+fi
+
+WORLD_SHA=""
+[ -f "$WORLD_FILE" ] && WORLD_SHA="$(sha256sum "$WORLD_FILE" | cut -d' ' -f1)"
+WHEEL_FILE=""; WHEEL_SHA=""
+
+if [ -n "$SLIP1" ]; then
+  WHEEL_FILE="session/ros2_control_slip.xacro"
+  WHEEL_SHA="$(sha256sum "$SESSION/ros2_control_slip.xacro" | cut -d' ' -f1)"
+fi
+
+GIT_COMMIT="$(git -C "$WS" rev-parse HEAD 2>/dev/null)"
+GIT_DIRTY=false
+[ -n "$(git -C "$WS" status --porcelain --untracked-files=no 2>/dev/null)" ] && GIT_DIRTY=true
+
 cat > "$SESSION/session.json" <<EOF
 {
   "world": "aws_warehouse.world",
   "world_condition": "$WORLD_CONDITION",
+  "world_file": "$WORLD_RECORD",
+  "world_sha256": "$WORLD_SHA",
   "wheel_condition": "$WHEEL_CONDITION",
+  "wheel_override_file": "$WHEEL_FILE",
+  "wheel_override_sha256": "$WHEEL_SHA",
+  "git_commit": "$GIT_COMMIT",
+  "git_dirty": $GIT_DIRTY,
   "robot_id": "$ROBOT",
   "scan": "$SCAN",
   "render": "$RENDER",
@@ -202,7 +230,7 @@ start slam ros2 launch ax_localization mapping.launch.py robot_id:="$ROBOT" scan
 wait_topic "/ax/$ROBOT/map" "SLAM 지도" 180
 
 # ── 5. 주행 → 비교 ───────────────────────────────────────────────────
-say "지도 작성 주행 시작. 중단하려면 Ctrl+C (정지 확인 뒤 종료)"
+say "지도 작성 주행 시작. 중단하려면 Ctrl+C (odom 기준 정지 확인 뒤 종료)"
 DRIVE_ARGS=(--output "$RUN" --scan "$SCAN")
 if [ -n "$WAYPOINTS" ]; then
   DRIVE_ARGS+=(--max-waypoints "$WAYPOINTS")

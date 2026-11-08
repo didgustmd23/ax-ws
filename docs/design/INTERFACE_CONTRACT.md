@@ -124,10 +124,16 @@
 | `/ax/robot_<n>/safety/state` | Topic · `SafetyState` | B4 → A4·D | STATE · 10 Hz · 0.5 s | B4 |
 | `/ax/robot_<n>/safety/actuation_state` | Topic · `ActuationState` | A4 → A2(`arm_allowed`)·B4·D·**상대 로봇 A4** | STATE · 20 Hz · 0.3 s | A4 |
 | `/tf`·`/tf_static` | Topic · `tf2_msgs/TFMessage` | B2(`map→odom`)·A2(`odom→base_link`, 관절·고정 frame) → 전체(인계 상대 로봇 C4 포함) | ROS 2 TF 기본 QoS | B2, A2 |
+| `/map` | Topic · `nav_msgs/OccupancyGrid`, frame `map` | B2 공통 지도 서버(`/map_server`, 1개) → B2 로봇별 AMCL(`/ax/robot_<n>/amcl`). 다른 기능의 소비(D1 Nav2 등)는 연결 시 이 행에 추가 | reliable · transient_local(map_server 발행 QoS 실측. history 깊이는 확인하지 않음) · 활성화 시 발행, 주기 재발행 없음 | B2 |
 | `/ax/robot_<n>/safety/clear_fault` | Service · `ClearFault` | 시험 하네스·사후 조치 경로 → A4. D는 본설계 14절 리셋 범위 확정 전 자동 호출하지 않음 | 실제 정지·SAFE_STOP 아님·원인 해소·진행 중 작업 없음일 때만 수락. 다른 차단 사유는 유지 | A4 |
 | `/ax/robot_<n>/localization/health` | Topic · `LocalizationHealth` | B2 → B3·B4·D(D1·D4 snapshot)·인계 상대 로봇 C4 | STATE · 5 Hz · 1.0 s | B2 |
 | `/ax/robot_<n>/localization/reinitialize` | Service · `std_srvs/Trigger` | D → B2 | 접수만 응답, 완료는 `localization/health`로 확인. request_id가 없으므로 진행 중 재요청은 같은 재초기화로 처리(멱등) | B2 |
 | `/ax/robot_<n>/perception/corridor_observation` | Topic · `CorridorObservationList` | B3 → D3·A4 | STATE · 5 Hz · 1.0 s | B3 |
+
+- **`/map`과 `/ax/robot_<n>/map`의 구분:**
+  - `/map`은 위치 추정용 공통 지도다. 모든 로봇의 AMCL이 같은 지도를 쓴다. 지도 서버와 `/map` 발행자는 하나뿐이고, B2가 소유한다.
+  - `/ax/robot_<n>/map`은 지도 작성 중에만 slam_toolbox가 내는 작성 중 지도다. B2 지도 저장 도구만 쓰며 공유 인터페이스가 아니다.
+  - 같은 로봇에 SLAM과 AMCL을 함께 실행하지 않는다. `map→robot_<n>/odom` 발행자는 하나여야 한다.
 
 ### 4.3 로컬 실행·조작·적재 (A·C)
 

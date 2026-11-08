@@ -3,7 +3,7 @@
 <package format="3">
   <name>ax_localization</name>
   <version>0.1.0</version>
-  <description>AX B2 위치 추정·TF: slam_toolbox 지도 작성 설정·launch, 개발용 지도 작성 주행, 참조 지도 비교</description>
+  <description>AX B2 위치 추정·TF: slam_toolbox 지도 작성 설정·launch, 개발용 지도 작성 주행, 참조 지도 비교, 공통 map_server·로봇별 AMCL 위치 추정 설정·launch</description>
   <maintainer email="didgustmd23@gmail.com">AX Team</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -14,6 +14,7 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>tf2_ros_py</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>

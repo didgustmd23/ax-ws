@@ -15,14 +15,14 @@ source /opt/ros/jazzy/setup.bash
 colcon --log-base /home/freem/ax_main_logs build \
   --base-paths src --build-base /home/freem/ax_main_build \
   --install-base /home/freem/ax_main_install \
-  --packages-up-to ax_description ax_interfaces ax_control
+  --packages-up-to ax_description ax_interfaces ax_control ax_task_executor
 ```
 
 ## 실행 (Ubuntu 터미널 3개)
 
 기존 A3 모의 서버와 Gazebo를 먼저 종료한다. 각 터미널에서 프로젝트 루트로
 이동하고 아래 환경을 설정한다. Gazebo와 표시 노드의 GZ_PARTITION은 같아야 한다.
-Python 파일을 직접 실행하므로 A3 자체는 별도 빌드가 필요 없다.
+위 빌드에는 A3 패키지도 포함된다. 빌드한 설치 환경을 source하면 아래 `ros2 run` 명령을 사용할 수 있다.
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -40,13 +40,13 @@ ros2 launch ax_control simulation.launch.py \
 터미널 2: 모의 결과 표시 노드 실행.
 
 ```bash
-python3 src/ax_task_executor/ax_task_executor/gazebo_mock_display.py
+ros2 run ax_task_executor gazebo_mock_display
 ```
 
 터미널 3: A3 모의 서버 실행.
 
 ```bash
-python3 src/ax_task_executor/ax_task_executor/mock_executor.py \
+ros2 run ax_task_executor mock_executor \
   --ros-args -p mock_load:=EMPTY
 ```
 

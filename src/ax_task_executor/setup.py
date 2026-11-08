@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='freem',
     maintainer_email='freem@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='A3 mock local task Action server and Gazebo result display.',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',
@@ -24,6 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'mock_executor = ax_task_executor.mock_executor:main',
+            'gazebo_mock_display = ax_task_executor.gazebo_mock_display:main',
         ],
     },
 )

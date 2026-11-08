@@ -14,6 +14,23 @@ Start는 Ubuntu/Gazebo, Remote는 리모컨, Stop은 해당 AX 세션과 전용 
 전체 WSL 재시작은 확인창이 있는 `remote_controller/recover.ps1`에만 있다.
 일반 PowerShell·브라우저·다른 workspace의 프로세스를 일괄 종료하지 않는다.
 
+## A3 모의 실행기 코드·실행 경로 (김성민 W0)
+
+- `src/ax_task_executor/setup.py`: 두 노드의 `console_scripts` 등록.
+- `src/ax_task_executor/ax_task_executor/mock_executor.py`: `CONFIRM_LOAD` 요청 검사 → 진행 피드백 → 시험 결과 반환 → `/a3_mock/result_display` 발행.
+- `src/ax_task_executor/ax_task_executor/gazebo_mock_display.py`: 결과 Topic 구독 → Gazebo 서비스 호출 → 정적 표시등 생성.
+
+Ubuntu에서 `ax_task_executor`까지 빌드하고 설치 환경을 source한 뒤, 기존 시뮬레이션과 별도로 각 터미널에서 실행한다.
+
+```bash
+ros2 run ax_task_executor gazebo_mock_display
+ros2 run ax_task_executor mock_executor --ros-args -p mock_load:=EMPTY
+```
+
+요청 경로는 `/a3_mock/robot_2/execute_local_task`다. Gazebo와 표시 노드는 같은 `GZ_PARTITION`을 사용해야 한다.
+환경 설정·빌드·Goal 전송은 [A3 패키지 안내](../../src/ax_task_executor/README.md),
+계약 검토 범위와 미구현 항목은 [A3 K0 검토 기록](A3_K0_REVIEW.md)을 따른다.
+
 ## 모델 수정 경로
 
 | 수정 대상 | 먼저 읽을 파일 | 생성/소비 경로 |

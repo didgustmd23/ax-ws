@@ -3,9 +3,9 @@
 <package format="3">
   <name>ax_task_executor</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>A3 mock local task Action server and Gazebo result display.</description>
   <maintainer email="freem@todo.todo">freem</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>ax_interfaces</depend>

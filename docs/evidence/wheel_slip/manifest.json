@@ -73,7 +73,8 @@
   "light_collision 차이": "attachments/world_light_collision_diff.txt"
  },
  "tools_sha256": {
-  "B2 최종 실행(20261108_131510) 당시 = 현재": {
+  "note": "각 묶음은 해당 시험 실행 당시 도구 해시다. 과거 시험에 사용한 도구와 현재 저장소의 도구는 다를 수 있다",
+  "B2 최종 실행(20261108_131510) 당시 도구 해시": {
    "src/ax_localization/scripts/mapping_drive.py": "23720be9c39e43ff6b080f11fdde797a6f1af9d50dda3222625e22f64555ff1e",
    "src/ax_localization/scripts/check_map_accuracy.py": "690d1dd0e11caebff3edf57e276cd890021c88564d88e03650e3704b113184d9",
    "src/ax_localization/scripts/map_tools.py": "5015aa966b65ae602750360b04580c675f39b032f52fa0bed5e206b8246c66c9",
@@ -89,7 +90,7 @@
    "attachments/candidate_tests/run_conditions.sh": "103d25cb011308ec0b906a2c53d0d877ad50fcc78ab41c661ae44ac0ec38cab8",
    "attachments/candidate_tests/plan.yaml": "06524c4b0a9885521bd66869376a78187316666c7a43b6e73fa088278ec7c507"
   },
-  "check_wheel_calibration.py(현재, 미커밋)": "34a3dc0daf6e2427b5fdb99a34c4f673065cfbc7d08d4f92ec6ea30f3984fc94"
+  "check_wheel_calibration.py(해당 시험 실행 당시, 미커밋 상태)": "34a3dc0daf6e2427b5fdb99a34c4f673065cfbc7d08d4f92ec6ea30f3984fc94"
  },
  "runs": {
   "physics_candidates": {
@@ -345,7 +346,7 @@
  },
  "sanitized": "첨부 텍스트 파일의 개인 경로를 <workspace>, <tmp>, ~로 치환(사본만, 원본 로그 그대로)",
  "top_files_sha256": {
-  "README.md": "f54aca56aa99d96e447f1cc12dfc2284886f1dd5d31d12d028d9f58b31ab3473",
+  "README.md": "30438a191f22209b9bb20d85b39cd25c9cd8f73d811daf5c1160302c9055c075",
   "s005.patch": "1a078468d4e991300043ecb09951cb514348ac27b2ea45fc44ca8a5abafdfdfb",
   "build_measurements.py": "f96f96ce2717847b2e5316fccfe7ce3ad3b45157762f95d431a51bdae42d6c44",
   "validity_summary.json": "09f51fb1c0aa8c737eca28a736fa509d992418794aac1fdf53e5a27fc94265c7",

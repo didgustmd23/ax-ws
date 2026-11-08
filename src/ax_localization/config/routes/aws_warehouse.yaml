@@ -1,0 +1,73 @@
+# B2 지도 작성 경로(AWS 창고, robot_2). 개발용 시험 경로이며 운영 주행 경로가 아니다.
+# 경유점은 frame 기준 좌표(m)다. map과 Gazebo world가 같다고 가정하지 않는다.
+# robot_2/odom 원점은 제어기가 시작한 순간의 차체 위치다(launch 출발 위치 world (2.5, -1.5), yaw 0).
+# world 좌표는 경로를 설계할 때 쓴 참고값이며 주행·SLAM 입력으로 쓰지 않는다.
+world: aws_warehouse.world
+robot_id: robot_2
+frame: robot_2/odom
+
+# 주행 상한. 실행 중인 diff_drive_controller 제한과 비교해 작은 값을 쓴다.
+limits:
+  linear_m_s: 0.3
+  angular_rad_s: 0.3
+
+# 경유점 도달·방향 판단
+goal_tolerance_m: 0.15
+heading_tolerance_rad: 0.12        # 이보다 크게 틀어지면 제자리 회전 먼저
+
+# 차체 외곽(base_link 기준 사각형, m). ax_2 차체 collision 상자(약 1.0×1.0 m)와 앞뒤 범퍼를 감싼다.
+footprint:
+  front_m: 0.53
+  rear_m: 0.52
+  half_width_m: 0.50
+
+# 장애물 정지 거리 = 속도²/(2·감속) + 속도·처리 지연 + 여유
+safety:
+  processing_latency_s: 0.3
+  margin_m: 0.25
+  rotation_margin_m: 0.15          # 제자리 회전 시 외곽 원 바깥 여유
+
+# 입력 만료(시뮬레이션 s): 넘으면 정지하고, input_timeout_s 동안 회복하지 않으면 중단한다.
+# SLAM은 세 항목을 구분한다.
+# - 이 로봇 map→odom의 수신 경과: CLOCK_BOOTTIME 기준 tf_receive_max_age_boottime_s(개발 출발값 2.0 s).
+#   이전 0.5 s 기준은 sim time이었고, 짧은 조건 A(2026-11-06 22:12)에서 sim time 최대 0.93 s 공백이 있었다.
+# - 스캔 최신성: sim time 기준 scan_max_age_s
+# - 처리 진척: 마지막 변환 시각 갱신 뒤 odom 이동이 slam_progress_* 초과면 정지. slam_mapping.yaml의
+#   minimum_travel_distance·heading(0.5 m·0.5 rad)의 두 배로 둔다.
+inputs:
+  scan_max_age_s: 0.5
+  odom_max_age_s: 0.3
+  # 2.0 s 출발값으로 시험한 결과(2026-11-06 23:04·23:06, AWS 사본, RTF 약 0.4) 수신 간격은 p99 0.02 s였지만
+  # 실행마다 1~3회 2.44~2.58 s 공백이 있어 2.0 s로는 부족했다. 관측 최대의 약 1.5배인 4.0 s로 둔다.
+  tf_receive_max_age_boottime_s: 4.0
+  slam_progress_distance_m: 1.0
+  slam_progress_heading_rad: 1.0
+  input_timeout_s: 10.0
+
+# 경유점별 진척 감시: 제한시간 = 거리/상한 × time_factor + time_margin_s
+progress:
+  time_factor: 3.0
+  time_margin_s: 30.0
+  stall_window_s: 15.0             # 이 시간 동안 거리·방향 오차가 줄지 않으면 중단
+  stall_min_improvement: 0.05      # 거리(m) 또는 방향(rad) 최소 개선량
+
+# 루프 기준점 복귀 판정(odom 기준)
+# 루프 폐쇄 기준: loop_waypoint(1부터)번 경유점에 다시 돌아왔는지(odom). 출발 위치는 기둥과 겹쳐 돌아갈 수 없다.
+loop_waypoint: 1
+return_tolerance_m: 0.3
+
+# 경로: 출발 → 동쪽 통로(x_world 1.0) 남쪽 → 서쪽 통로(x_world -3.6) 왕복 → 동쪽 통로 북쪽 왕복 → 경유점 1로 복귀.
+# 출발점으로는 돌아가지 않는다(2026-11-08 실행에서 기둥으로 전방 정지).
+# 같은 통로를 다시 지나 루프 폐쇄 기회를 만든다.
+# 출발 위치 x_world 2.78에 LiDAR에 보이는 가는 기둥들이 있어(가장 가까운 것 0.31 m, 0.74 m) 제자리 회전 반경 안에 든다.
+# 그래서 첫 구간은 회전하지 않고 1.5 m 후진해 통로로 나온다.
+waypoints:
+  - {xy: [-1.5, 0.0], reverse: true}     # world (1.0, -1.5), 후진
+  - [-1.5, -6.8]    # world (1.0, -8.3)
+  - [-1.5, -3.0]    # world (1.0, -4.5)
+  - [-6.1, -3.0]    # world (-3.6, -4.5)
+  - [-6.1, 7.5]     # world (-3.6, 6.0)
+  - [-6.1, 1.7]     # world (-3.6, 0.2)
+  - [-1.5, 1.7]     # world (1.0, 0.2)
+  - [-1.5, 7.5]     # world (1.0, 6.0)
+  - [-1.5, 0.0]     # world (1.0, -1.5)

@@ -1,0 +1,360 @@
+{
+ "purpose": "S005 바퀴 미끄럼 설정 검증·공유 자료(A1·A2·A4·B2·D1 참고). 후보 채택·운영 모델 수정·시험 통과 선언을 포함하지 않음",
+ "created": "2026-11-08",
+ "git": {
+  "base_commit": "b01aa926aabcb354c90ba73addd019afde7da386",
+  "branch": "feature/robot-model-control",
+  "uncommitted": [
+   "M src/ax_control/scripts/check_wheel_calibration.py",
+   " M src/ax_perception/scripts/object_detection.py",
+   " M src/ax_perception/scripts/sensor_processing.py",
+   " M tools/tests/test_gazebo_observer.py",
+   "?? src/ax_localization/",
+   "?? tools/tests/test_map_tools.py"
+  ],
+  "model_sources_changed_vs_commit": "없음"
+ },
+ "versions": {
+  "gz-sim": "8.15.0 (ros-jazzy-gz-sim-vendor 0.0.13-1noble.20260905.073557)",
+  "gz-physics": "7.8.0, dartsim 플러그인 (ros-jazzy-gz-physics-vendor 0.0.9-1noble.20260905.065116)",
+  "dart": "6.13.2 (ros-jazzy-gz-dartsim-vendor 0.0.3-1noble.20260225.232143)",
+  "sdformat": "14 (ros-jazzy-sdformat-vendor 0.0.14-1noble.20260905.033543)",
+  "gz_ros2_control": "1.2.20-1noble.20261006.040504",
+  "ros2_control": "4.48.1-1noble.20261006.040510",
+  "controller_manager": "4.48.1-1noble.20261006.035021",
+  "diff_drive_controller": "4.42.1-1noble.20260924.190414",
+  "slam_toolbox": "2.8.5-1noble.20260915.204151",
+  "nav2_map_server": "1.3.13-1noble.20260921.024942"
+ },
+ "model_sources_sha256": {
+  "src/ax_description/urdf/ros2_control.xacro": "434a972a781d43784ee50f3b0142e74e422865c71d61d8c0f04f2440a2524e73",
+  "src/ax_description/urdf/ax_2.urdf.xacro": "d5d4c80227e46f869dc85a5865c81c45555bc1fcbbae34ce9941269e95b3f3a6",
+  "src/ax_description/urdf/ax_2_physical_properties.xacro": "e33b880eea25ebcbbeb3dad95ab8a14635b01675f1505cfbaae511272415efaf",
+  "src/ax_description/config/ax_2_physical_properties.json": "114f6edc09780b0114f1b8f1029e20fc84b1b73262eb175d4882f239d7980c84",
+  "src/ax_description/urdf/sensors.xacro": "fe3aef890b16021d1219cbffa239cf3869eff76be35fc9d1f052a0580b193d4c",
+  "tools/generate_physical_properties.py": "0e77567270876abc39ca31fbfd2510ca088f08d897b6515bf8fcff788fa5d56d",
+  "src/ax_control/config/ax2_controllers.yaml": "9806b8d99a34614e54ed3eaa841f7e17db8fe70b4ad082f3c9b5fd3ef3b8bac7",
+  "src/ax_control/config/common_controllers.yaml": "2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc",
+  "src/ax_description/urdf/ax.urdf.xacro": "8915efc699830db2a8bf9ac5cd007ccfa87b8e63bc7cb276c33272f5f022a759",
+  "src/ax_description/urdf/physical_properties.xacro": "1f9ec3dabdbcca5414e961fb1583973d84a1f07f10b410fd02294d9b23fda86b",
+  "src/ax_control/config/ax1_controllers.yaml": "37f31e34beb0e4ff215f9e22acb301301ae458c42ba7e89198159442c5ba5f82"
+ },
+ "candidate": {
+  "name": "S005",
+  "patch": "s005.patch",
+  "patch_sha256": "1a078468d4e991300043ecb09951cb514348ac27b2ea45fc44ca8a5abafdfdfb",
+  "applies_to": "src/ax_description/urdf/ros2_control.xacro 매크로 ax_wheel_contact (robot_1 ax.urdf.xacro, robot_2 ax_2.urdf.xacro 공통)",
+  "parameter": "<collision><surface><friction><ode><slip1>0.05</slip1>",
+  "unit": "m/s/N (DART 마찰 피라미드 1차 방향 미끄럼 순응)",
+  "direction": "fdir1 = 바퀴 링크 z(축) 방향 = 차체 옆방향",
+  "unchanged": [
+   "mu1 0.1",
+   "mu2 1.0",
+   "fdir1 0 0 1",
+   "질량·COM·관성",
+   "제어기 설정",
+   "센서 설정"
+  ],
+  "sdf_sha256": {
+   "base": "4e30506a042464d7f5db680a1014227961a20523a2c6ebbe8d7d2c488b5ea3dd",
+   "s005": "388e848d7dedaa125747bbc263d6e8fbefd5fbd8b7ad7a63090c98505d82678c"
+  },
+  "sdf_check": "attachments/sdf_wheel_surface.txt (gz sdf -p 결과 차이는 네 바퀴 slip1 줄뿐)",
+  "note": "<gazebo reference>에 <slip1>을 바로 쓰면 SDF 변환에서 링크 아래로 빠져 무시된다. collision 블록 형태여야 전달된다",
+  "value_basis": "robot_2 평면 바닥 시험(0.05·0.20 비교)뿐. robot_1 검증값 아님. 개발용 마찰 근사이며 실물 타이어 검증값 아님",
+  "status": "무부하 개발용 설정 후보. 운영 모델 미반영, 성능 미판정(not_judged)",
+  "meaning_source": "attachments/engine_slip_support.txt (SDFormat 14 surface.sdf: slip1 = 첫 마찰 피라미드 방향 힘 의존 미끄럼, 점성 감쇠 계수의 역수, m/s/N)",
+  "not": "미끄러짐 비율이 아니며 실물 타이어 검증값이 아님"
+ },
+ "worlds": {
+  "ax_test.world (물리 후보 비교)": "aab38e554d3e0252b4422ff795fe232b8543e8406fe0b46349de1fe66e001220",
+  "aws_warehouse_harmonic.world (원본)": "8d214d39eda62d35a4655dd7e5deb3a8537b1379c519d5ef24767ba435aeacd0",
+  "aws light_collision 사본 (B2 실행)": "6436f183a82161d6465e30e3a2c14991d23e501ca21c217ca63ac93ea0f84c13",
+  "light_collision 차이": "attachments/world_light_collision_diff.txt"
+ },
+ "tools_sha256": {
+  "B2 최종 실행(20261108_131510) 당시 = 현재": {
+   "src/ax_localization/scripts/mapping_drive.py": "23720be9c39e43ff6b080f11fdde797a6f1af9d50dda3222625e22f64555ff1e",
+   "src/ax_localization/scripts/check_map_accuracy.py": "690d1dd0e11caebff3edf57e276cd890021c88564d88e03650e3704b113184d9",
+   "src/ax_localization/scripts/map_tools.py": "5015aa966b65ae602750360b04580c675f39b032f52fa0bed5e206b8246c66c9",
+   "src/ax_localization/scripts/run_mapping_session.sh": "c527f08e340dc2adff9bc4580b4aca136d26c677dfd4970fffb26020e303f6cf",
+   "src/ax_localization/launch/mapping.launch.py": "28563ad512af1518b27f845026f8394d64c8e04b6ec22130956704f6e6565c77",
+   "src/ax_localization/config/slam_mapping.yaml": "51be9d91eac9ae6ab7377e112c44c14929fa444ef4fcab26aab7741ca294e7e3",
+   "src/ax_localization/config/routes/aws_warehouse.yaml": "8f3199d70dc72cdf0fa25eb6f4ed3b66d2c1f12de72025ca344163c0e342f818"
+  },
+  "물리 후보 비교(11-06) 시험 스크립트": {
+   "attachments/candidate_tests/slip_eval.py": "331ab1e3d1e49cf3cd344bea18b4185ce8cc88e4328279dc4614f65644bd92ce",
+   "attachments/candidate_tests/probe_rotation.py": "93bd9eed1b0354db79aae2e591c71b7b8b5a4346dba463847f7ead00559e13a1",
+   "attachments/candidate_tests/probe_contact.py": "d9247401fdc3a249a3a6c4e0aa333028110f15e1fc75645836a6ae2069567bcb",
+   "attachments/candidate_tests/run_conditions.sh": "103d25cb011308ec0b906a2c53d0d877ad50fcc78ab41c661ae44ac0ec38cab8",
+   "attachments/candidate_tests/plan.yaml": "06524c4b0a9885521bd66869376a78187316666c7a43b6e73fa088278ec7c507"
+  },
+  "check_wheel_calibration.py(현재, 미커밋)": "34a3dc0daf6e2427b5fdb99a34c4f673065cfbc7d08d4f92ec6ea30f3984fc94"
+ },
+ "runs": {
+  "physics_candidates": {
+   "dir": "../../a2_rotation_slip/20261106_224038",
+   "command": "bash run_conditions.sh base S005=0.05 S020=0.20",
+   "env": {
+    "ROS_DOMAIN_ID": "88",
+    "GZ_PARTITION": "axverify-slip_<조건>-<난수>",
+    "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST",
+    "GALLIUM_DRIVER": "d3d12",
+    "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA"
+   },
+   "model_copy": "설치본 ax_description 임시 사본(AMENT_PREFIX_PATH 앞에 둠) + 바퀴 접촉 센서(조사용) + 조건별 slip1",
+   "rtf": {
+    "base": 0.514,
+    "S005": 0.519,
+    "S020": 0.53
+   }
+  },
+  "b2_final": {
+   "dir": "../20261108_131510",
+   "command": "bash src/ax_localization/scripts/run_mapping_session.sh --light --wheel-slip1 0.05",
+   "env": {
+    "ROS_DOMAIN_ID": "66",
+    "GZ_PARTITION": "ax-b2-20261108_131510-17220",
+    "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST",
+    "render": "d3d12-nvidia"
+   },
+   "conditions": {
+    "world": "aws_warehouse.world",
+    "world_condition": "light_collision",
+    "wheel_condition": "slip1=0.05",
+    "robot_id": "robot_2",
+    "scan": "filtered"
+   },
+   "rtf_approx": 0.53
+  },
+  "all_b2_runs": "measurements.csv group=b2_run (실패·중단 포함 13건)",
+  "robot_1_rotation": {
+   "dir": "../../a2_robot1_rotation/20261108_134133",
+   "manifest": "attachments/robot1/manifest.json",
+   "command": "bash run_conditions.sh <이름>:<자세>:<하중>:<slip1|->:<contact>[:<회차>] ...",
+   "env": {
+    "ROS_DOMAIN_ID": "87",
+    "GZ_PARTITION": "ax-r1-<조건>-<pid>"
+   },
+   "rtf": {
+    "base_neutral_0kg": 0.9827741577874827,
+    "base_reachside_0kg": 0.9929242889949996,
+    "base_reachside_1kg": 1.0179447930335956,
+    "base_reachside_2kg": 1.017863972719096,
+    "S005_neutral_0kg": 0.989833067112386,
+    "S005_reachside_0kg": 1.0179479414561559,
+    "S005_reachside_1kg": 1.0176738292792278,
+    "S005_reachside_2kg": 1.017820736243223,
+    "contact_diag": 1.0749237833310679
+   }
+  },
+  "drive_candidate": {
+   "dir": "../../a2_drive_candidate/20261108_142156",
+   "manifest": "attachments/drive_candidate/manifest.json",
+   "command": "bash run_conditions.sh <baseline|s005>:<로봇>:<slip1|->:<속도 목록> ... ; robot_2 정지: SUFFIX=_stops EXTRA=--stops-only",
+   "env": {
+    "ROS_DOMAIN_ID": "86",
+    "GZ_PARTITION": "ax-drive-<조건>-<pid>"
+   },
+   "rtf": {
+    "baseline/robot_1": 1.0061031073204032,
+    "baseline/robot_2": 0.5601869951247851,
+    "s005/robot_1": 0.9917253225190795,
+    "s005/robot_2": 0.5559715153463569
+   },
+   "superseded": [
+    "baseline/robot_2.run1_stop_anomaly.json",
+    "s005/robot_2.run1_stop_anomaly.json"
+   ],
+   "reused": "robot_1 0.30 rad/s 회전: robot_1_rotation trials/{base,S005}_neutral_0kg.json"
+  }
+ },
+ "attachments_sha256": {
+  "attachments/b2_final_run/accuracy.json": "93db217267a0446a08e15a93ba08813c331a11ae664a2bebd6fed5b71a1afe98",
+  "attachments/b2_final_run/drive_result.json": "ace1d52c53faf6770f1ff5c49053e7d7d43c757359aa7196c9f04e1cc842b31a",
+  "attachments/b2_final_run/map_saver.log": "db3079cfd62e24be6194747e96ebded9365b618cde0546bd8526a2e49e213c94",
+  "attachments/b2_final_run/overlay.png": "b537e71340fcae454bfbeaca674f9d29232b8bb85b96e556d60b9ba0cfdeb0f6",
+  "attachments/b2_final_run/ros2_control_slip.xacro": "459618ffe348ef9ec6374253014a7d84c26f097297b75d1459d3fadcc7bd2ea8",
+  "attachments/b2_final_run/session.json": "86b2731cc262d173743225b58b209a43569f8e1677cf14fc6a35309efdf637c4",
+  "attachments/b2_final_run/slam_map.pgm": "0d046059ffd141efb60d46278250faddbb21e8bb4215a35ac5063b5db1b86b1f",
+  "attachments/b2_final_run/slam_map.yaml": "6ab83ae7d685788103b433c25452676102022faf8c4a9f27217e0f9e64caace3",
+  "attachments/b2_runs/20261106_214348/drive_result.json": "48684ad9444530adce58719d56c49e47d87125d05d8eaa9c8197ec3f3b58a767",
+  "attachments/b2_runs/20261106_214348/session.json": "5996a0a18b4346f2db692837c8fbf12fa4077ec4601c5b890cbbcd97c4017b90",
+  "attachments/b2_runs/20261106_214348/trajectory_recomputed.json": "aa0eca8244e190d285ad5169de7730de978dbdf8cdd36bb75828d87a875c76b4",
+  "attachments/b2_runs/20261106_221246/accuracy_original.json": "a7eac0303a0ce10ebbe4c576f441c5f6e98ed916466bdc571e487b2919a1429a",
+  "attachments/b2_runs/20261106_221246/drive_result.json": "722d762a06be8f45695b981c941e980427ad40fed244c1621961d422fd748322",
+  "attachments/b2_runs/20261106_221246/session.json": "61427d1a5c1151e3eb0d10da05db41e88a62ad48c39638548f07ef25b53efc3f",
+  "attachments/b2_runs/20261106_221246/trajectory_recomputed.json": "63d40035f21a68699e0dc451f993709b5fa2064d0ccd8255b05552f01cd82021",
+  "attachments/b2_runs/20261106_230400/accuracy_original.json": "c25f6e01120b68488b2bbf4357729de5f12e097bddd06ddff1f3836aabdd8612",
+  "attachments/b2_runs/20261106_230400/drive_result.json": "7aacc45799f92ea4a4b88cdd42b825d3563d8c6676308564db09c195599b1867",
+  "attachments/b2_runs/20261106_230400/session.json": "4eae3b2b59f0986c04e2e07c73cf7f090c1139c2c0af16a359ba85b58b595d2a",
+  "attachments/b2_runs/20261106_230400/trajectory_recomputed.json": "0100d67da90a9edef17f6b9ccec6cc804c7e9b83bc3ba16ef5cb001ce13e10c2",
+  "attachments/b2_runs/20261106_230603/accuracy_original.json": "71ddaf56ee2d4317c3f329f9d56dde6dcc9dbcdef55a30ef995e62d421fc42cc",
+  "attachments/b2_runs/20261106_230603/drive_result.json": "3114f78e44904b3ab5b768ab351dba9c6f911ee6e531bf2a52294b7cdede7beb",
+  "attachments/b2_runs/20261106_230603/session.json": "7d032bb603100744628625d69d57f949fe1829522ce67f8c6082a2aca024e86f",
+  "attachments/b2_runs/20261106_230603/trajectory_recomputed.json": "eedb5fd162226828eb7b5a6320beb64c23160996d8d7946c70c07c43ab84aa78",
+  "attachments/b2_runs/20261106_230838/accuracy_original.json": "157489830f302aaaa643569012c8f2bd349f23295971c92e2d73fd0069fe85cf",
+  "attachments/b2_runs/20261106_230838/drive_result.json": "bee26f5092bd80ffa94fd1c765e985e62f35c5484e3aa07c78c7ae83879e8009",
+  "attachments/b2_runs/20261106_230838/session.json": "ff065d1ea5570c061d8035b2b6c94e4bebdb6ba58b14578b0f37f3bb60796479",
+  "attachments/b2_runs/20261106_230838/trajectory_recomputed.json": "2f8c0350cad91552735fbc4c1a0f1bf2572ce70989278d4db5744629d5574173",
+  "attachments/b2_runs/20261106_231056/accuracy_original.json": "e59052eb8059528a38bdae0c01c0b7155df5f77826937ed90f88405353ec0c7f",
+  "attachments/b2_runs/20261106_231056/drive_result.json": "c834a0ef8bda45b60153be4e29ae5e6aaa71f7c5af3c9f31dd4ebc83b96f2658",
+  "attachments/b2_runs/20261106_231056/session.json": "e13905b7649fc74ad13725d58b0658118907fc270cc442223c99d02bbf06b7d0",
+  "attachments/b2_runs/20261106_231056/trajectory_recomputed.json": "a428a3cd459955f610a69a50823b8ac6fc208f640659aee4b189bff5aceecdad",
+  "attachments/b2_runs/20261106_231320/drive_result.json": "ffc34e76dab2383ca6bc10e98ac66dc494bce3e5396930dcee4cb018155c6f72",
+  "attachments/b2_runs/20261106_231320/session.json": "643f76669a1ae886649a161f2de2356cb5af1df368923828cc385b9ebd48ef8a",
+  "attachments/b2_runs/20261108_125024/accuracy_original.json": "7de24f78921ce10e74df410dfa94459dbbe7f0dcd0d240fb5aedf24d838d62cc",
+  "attachments/b2_runs/20261108_125024/drive_result.json": "548db84b75dfce957be8a05c2cf111fc4041239593ba0bd751d80857ff3351d8",
+  "attachments/b2_runs/20261108_125024/session.json": "f0dc383473c6b1b305b5386a07135cce1d9121251176feae0898b3fe78cd6f76",
+  "attachments/b2_runs/20261108_125024/trajectory_recomputed.json": "8262ef266e6a52f5bf7ec03d127897ee828bd852e43811784ddfa29d7609db70",
+  "attachments/b2_runs/20261108_125921/accuracy_original.json": "3b676282df787fa8b711362d6a5c4276f61a9c044d2fe13126e913c7af936106",
+  "attachments/b2_runs/20261108_125921/drive_result.json": "f665250c6616277695584ed3f2dc123ec4a1395035145f6d7842bd8eb8fc5428",
+  "attachments/b2_runs/20261108_125921/session.json": "a50b78159b56335089eaa56ee82a2bd6e8dce03e3abac7155b449eb791326fc8",
+  "attachments/b2_runs/20261108_125921/trajectory_recomputed.json": "189994afd40f653455ffa378f294b1d55be9bb3a302baf7ffb223b634b0a3c1d",
+  "attachments/b2_runs/20261108_130812/accuracy_original.json": "0197f1ddef5645672a9713a2f8e7f33f0f25f5b2d3858a9c8935ad385f260051",
+  "attachments/b2_runs/20261108_130812/drive_result.json": "6da84092daae6847f1d4a4ce8e52f4572895bb1a9cb96771533c7273965ce01d",
+  "attachments/b2_runs/20261108_130812/session.json": "791d812e505e323bc014aef72c69600d96eb6ad6411d72aa7993fab6debfb588",
+  "attachments/b2_runs/20261108_130812/trajectory_recomputed.json": "3897557e0e749ddc39dbf0115405d71aa4c3bd96ae90ce38ff8595ff7cee0f0d",
+  "attachments/b2_runs/20261108_131127/accuracy_original.json": "3511c7cada493b08e693250b2d96a4254c6d9aa11c871ccb507e8e33cc1594de",
+  "attachments/b2_runs/20261108_131127/drive_result.json": "5034a5d3fe014fbf07e670ec15f9749b3ab8485d314cd1a8bbed1773173a3f7b",
+  "attachments/b2_runs/20261108_131127/session.json": "cbba5bffe02be19e07b819b98b52302bf8effa9e1ef2255d2b440b7f91a068f9",
+  "attachments/b2_runs/20261108_131127/trajectory_recomputed.json": "23a6b6f04fdb439843cae9c19266a65dbfa49f9f1581ea48c5a268cc78a8b54a",
+  "attachments/b2_runs/20261108_131510/accuracy_original.json": "93db217267a0446a08e15a93ba08813c331a11ae664a2bebd6fed5b71a1afe98",
+  "attachments/b2_runs/20261108_131510/drive_result.json": "ace1d52c53faf6770f1ff5c49053e7d7d43c757359aa7196c9f04e1cc842b31a",
+  "attachments/b2_runs/20261108_131510/session.json": "86b2731cc262d173743225b58b209a43569f8e1677cf14fc6a35309efdf637c4",
+  "attachments/b2_runs/20261108_131510/trajectory_recomputed.json": "1d6c657b908e5ed1e7a110faec8e00ed5d62ccd6d1291ff40c2932565c142e2e",
+  "attachments/b2_runs/run1/drive_result.json": "ce7e89087887b024425e036e969689ba5adc03040c5b3088e5bb64cd290ba136",
+  "attachments/candidate_tests/S005.diff": "bd7d59017d6d3f9e24e092f4d5ab0fd136cdf86b1d80f3220b1222496f960f12",
+  "attachments/candidate_tests/S005.json": "dc7d079212444eda5c1743baa7bbbbb946c8a537d57ffbf1ecfdc2c2cf02eb7e",
+  "attachments/candidate_tests/S020.diff": "9a6dec6a99810b8aabe2c294f06bea4be9d260599de2d803318f9c1f8087b774",
+  "attachments/candidate_tests/S020.json": "2c66fa7570dc4474fcafa4079a7250dc928962823bc014a47e67ba7efdfca98c",
+  "attachments/candidate_tests/base.json": "6880a0beef5fe5c5af91c3699d0f80abd9d5e9bae8bd567a1f7c675794dc3b51",
+  "attachments/candidate_tests/environment.json": "435d4cb5c629382d7bd61f397cb9ba76575e8ae0b236b9db7d41039ea9359ea4",
+  "attachments/candidate_tests/plan.yaml": "06524c4b0a9885521bd66869376a78187316666c7a43b6e73fa088278ec7c507",
+  "attachments/candidate_tests/probe_contact.py": "d9247401fdc3a249a3a6c4e0aa333028110f15e1fc75645836a6ae2069567bcb",
+  "attachments/candidate_tests/probe_rotation.py": "c68d3f6278c8abbd89080541e62d13cca00a5ab4ab39c25d83eec97acc7c5787",
+  "attachments/candidate_tests/run_conditions.sh": "1f30535b34ea05f5fdd2d57ee3b9af00b0ddf022939b17a8478a75cd682ce05e",
+  "attachments/candidate_tests/slip_eval.py": "b6a07eab1105a9cfc0037628fc9ce0b46841ea55c6ee1561fc9e0164e62558f3",
+  "attachments/candidate_tests/summary.json": "b76f95680928e8752e1819ee34c8cf1b0a541d5fa03ebf9ea323fe8831ebaafe",
+  "attachments/cause_analysis/com_moved_rear.json": "5ce4f01752511ddb64433047e1891f52212b932d7001ae3fe084c166f22c04d3",
+  "attachments/cause_analysis/com_moved_to_axle_mid.json": "1e919cd47825fe25f245d5ddf2276595b8953e4824a62bdec1c341cd0f31bf64",
+  "attachments/cause_analysis/contact_base.json": "d7a7c41e3d3f031c425f1578d2c90689618524503b05c3ca9a3cbc53e96c880c",
+  "attachments/cause_analysis/friction_mu1_1.0.json": "288d32e1af5d287d684136d25753bee5dd1998a26681660ac3a22ff6cd1c1297",
+  "attachments/cause_analysis/friction_no_fdir1.json": "666cd51a28fa06f91f5a45748925e31fd74d5a7e7d95e1a0c0914d30f19c9445",
+  "attachments/cause_analysis/rotation_base_6x.json": "080acd1fdf67ea1458967b2b1e7f23dfa33aa1612396157548bead17374dffa2",
+  "attachments/drive_candidate/drive_eval.v1.py": "a78a1c4bc38604e96cccd67260d18d46551a5884fe346065501d174ea03d333d",
+  "attachments/drive_candidate/drive_eval.v2.py": "b34ba95ee47efaf741ee52828c04f2234ca5177f4f7c67d57bbc6d646cef6075",
+  "attachments/drive_candidate/drive_eval.v3.py": "7030cc868c1814aaf1e39442a0984ff6485851254b6f494df899c4096db7d70d",
+  "attachments/drive_candidate/manifest.json": "1740faa83721fa6c9efea637c470f1d3f586ec96815ab1c3428d6a361ea0a62e",
+  "attachments/drive_candidate/plan.yaml": "6c5bede84161b2443c778f8250e293778d95fa8a1d7270d8586f51ebceb9f993",
+  "attachments/drive_candidate/results/baseline/robot_1.json": "775afe0a97debb74120192a3c65a18c5fc634a2d248b03370f14cb2e25db9665",
+  "attachments/drive_candidate/results/baseline/robot_2.json": "20d101adc2e13c80338be2e421fb822faeae98fe50a0a7559f1ae001e00cb8df",
+  "attachments/drive_candidate/results/baseline/robot_2.run1_stop_anomaly.json": "15dc119e81f9f79ef0b3e3eb3a7373e88c2fda0ee9071d1c7a459a5faac95a4f",
+  "attachments/drive_candidate/results/baseline/robot_2_stops.json": "b0c29e1967ad8f486134d831bbd9b2141f591084a0e8c4013d3d8c8a2a7d8981",
+  "attachments/drive_candidate/results/s005/robot_1.json": "379b07ae344070141a1ac2448aff2bd8abbd159c4d3c36b928fea2d30a3b532a",
+  "attachments/drive_candidate/results/s005/robot_2.json": "20288fccc3d6a5d84f993924a5acc2e868a9d93d2f081d433160332030e9c706",
+  "attachments/drive_candidate/results/s005/robot_2.run1_stop_anomaly.json": "18e4d6eb10b74c1a4140605a908f634306ec83b6ef6364fe4b4c866a490849bc",
+  "attachments/drive_candidate/results/s005/robot_2_stops.json": "68668a25c106d383ba37c4d87e86a698203b5c81bfd59068517143bd5b8c9435",
+  "attachments/drive_candidate/run_conditions.sh": "5e7d2fb8ae6829a2a75b8c3747be131cab203424f67f688377fe88ffe0a3e060",
+  "attachments/drive_candidate/summarize.py": "8dab64bec4611649568ed55891743f5c7333eef1fd19062471009ce3bb083958",
+  "attachments/drive_candidate/summary.json": "7acb68db5d588fff5e5fd4c0383e1bf1cfb672811394e012ef98dae8f2fe2518",
+  "attachments/drive_candidate/trajectory.png": "e558cdbdcc1440eb664f560c1a730d50a3ce0d4a766c344b349e969d954a467e",
+  "attachments/engine_slip_support.txt": "3a45b9adb53e49791fee7d1b099e96079ecc3aca57e91523703c9a8260eaed77",
+  "attachments/robot1/manifest.json": "24fa0d58bb1ebec227eacc01c61f501638b999114fbf7ffb773197a3e7bc9154",
+  "attachments/robot1/model_diffs/S005_neutral_0kg.diff": "d141945fece8997b1ef29f72e116b23106c42be1af1987c6a0eaa55818b34655",
+  "attachments/robot1/model_diffs/S005_reachside_0kg.diff": "af946ff1d199d1e09bf6c3d64419de658b3e6bf617a21e6a063e248b282f45bd",
+  "attachments/robot1/model_diffs/S005_reachside_1kg.diff": "cbe265f23039276773ba5717385e9f3074d0e3d9d71f387214362e4143e55f8c",
+  "attachments/robot1/model_diffs/S005_reachside_2kg.diff": "d7e82471150c39a6a7272261b79babff10b54e5869e1f6de6834ec78cd580404",
+  "attachments/robot1/model_diffs/contact_diag.diff": "b9129c2ae5e5144c5223a5b09a6909c91aea83db7d46e9eec937e75d412b2e90",
+  "attachments/robot1/plan.yaml": "09499e4ec53f4063a7adc30fdf619ee32aff84e8ba2c500d86f40f7cf29f6041",
+  "attachments/robot1/r1_rotation.py": "d883ae02a4a75a31da4ba6b06dd905e2c9e7caea9e83691cc32d11779a54910e",
+  "attachments/robot1/run_conditions.sh": "571f318a49ec8ecbee05dc082dd171ebe3b1af5323072f7d90d34ecb3dd0c60a",
+  "attachments/robot1/summarize.py": "05d138691c650c7697351a2f516dfad89c782fcc480120802f2890c028474e29",
+  "attachments/robot1/summary.json": "8229f2b6c7aeae81e9504a55ad8f9835d1c223b56bfb25aec0254ec5183674bf",
+  "attachments/robot1/trajectory.png": "e840a534d50784c849f3d31c405fd46a1b52572085653affcd3325d0b27b56dd",
+  "attachments/robot1/trials/S005_neutral_0kg.json": "64655b46fa63d37ed95722a8855d3a072b22300327d8352d11b026012a67cfcd",
+  "attachments/robot1/trials/S005_reachside_0kg.json": "52fc7dd3e5ffb81d76aa8f26f4a28b5e6c7cdbdff071c1cf76639605bbc3ae02",
+  "attachments/robot1/trials/S005_reachside_1kg.json": "8b6f6224f339c69075c74fcdd5f07a0cdb4f2406b1f376e39e2748f821450ff6",
+  "attachments/robot1/trials/S005_reachside_2kg.json": "1699f02cada8e16795b96cf3a8aa38846402097319dfb0a01aab6a492d0fc60d",
+  "attachments/robot1/trials/base_neutral_0kg.json": "632b0e090eb5b418efa97c49040001c2555fb1ee5033fe6cc35e25b780b91ae5",
+  "attachments/robot1/trials/base_reachside_0kg.json": "9f5d93b9db7dc99b6a356eade69fe7686eebca7beadfa4ef8d000f0a4424fb70",
+  "attachments/robot1/trials/base_reachside_1kg.json": "8c5b46d2ca857aedf5e3ffd2e7136e06e38cda55d927c3a9f9ce00c75abec112",
+  "attachments/robot1/trials/base_reachside_2kg.json": "0edec256589797d5a9a5bded644b04c969c5e2bee7119a8f7d8f48d32bc2323a",
+  "attachments/robot1/trials/contact_diag.json": "7aa6105265410e3396c8f760bedc16627d7e3d886f89b598793b5de32605f4f1",
+  "attachments/sdf_wheel_surface.txt": "475b04cc5c8b49025290591dcbe73d7871f5b2e6c99512a1a3893c10e184430b",
+  "attachments/world_light_collision_diff.txt": "978c1c4f5a17c6a24e1239dfbc687c66eea2e52ad97df99905c77729427ae970"
+ },
+ "measurements": {
+  "file": "measurements.csv",
+  "sha256": "d4ca393e61920ed869f343c76b2e6d48d1c10dbba7bb40668204040f7d1c8a14",
+  "rows": 373,
+  "builder": "build_measurements.py",
+  "builder_sha256": "f96f96ce2717847b2e5316fccfe7ce3ad3b45157762f95d431a51bdae42d6c44",
+  "rounding": "없음(원본 JSON 값 그대로)",
+  "inputs": "고정 목록의 attachments/ 파일 62개(build_measurements.py INPUTS)",
+  "replaced_by": "대상 행의 정확한 trial_id(68건)",
+  "reproduced_in_isolated_copy": "2026-11-08: 폴더만 /tmp에 복사해 실행, 373행·분류·값·trial_id 일치, 반복 실행 바이트 동일",
+  "input_count": 62,
+  "source_column": "원본 출처 기록(작업 당시 log/ 기준 상대경로). 공유 위치의 파일 링크가 아님. 실제 근거는 attachment 열"
+ },
+ "updated": "2026-11-08 Git 공유본(docs/evidence/wheel_slip)으로 복사",
+ "patch_check": {
+  "base_commit": "b01aa926aabcb354c90ba73addd019afde7da386",
+  "target": "src/ax_description/urdf/ros2_control.xacro",
+  "command": "git apply --check -v s005.patch",
+  "result": "ok",
+  "output": "Checking patch src/ax_description/urdf/ros2_control.xacro...",
+  "checked": "2026-11-08"
+ },
+ "tool_versions": {
+  "r1_rotation.py": {
+   "file": "attachments/robot1/r1_rotation.py",
+   "sha256": "d883ae02a4a75a31da4ba6b06dd905e2c9e7caea9e83691cc32d11779a54910e"
+  },
+  "drive_eval v1": {
+   "file": "attachments/drive_candidate/drive_eval.v1.py",
+   "sha256": "a78a1c4bc38604e96cccd67260d18d46551a5884fe346065501d174ea03d333d",
+   "note": "v2에서 변경분 역적용 복원본(원본 바이트 대조 불가)"
+  },
+  "drive_eval v2": {
+   "file": "attachments/drive_candidate/drive_eval.v2.py",
+   "sha256": "b34ba95ee47efaf741ee52828c04f2234ca5177f4f7c67d57bbc6d646cef6075",
+   "change": "예상 밖 접촉 감지·정지 시험 위치 기록. 계산식 변경 없음"
+  },
+  "drive_eval v3": {
+   "file": "attachments/drive_candidate/drive_eval.v3.py",
+   "sha256": "7030cc868c1814aaf1e39442a0984ff6485851254b6f494df899c4096db7d70d",
+   "change": "--stops-only. 계산식 변경 없음"
+  },
+  "slip_eval.py": {
+   "file": "attachments/candidate_tests/slip_eval.py",
+   "sha256": "b6a07eab1105a9cfc0037628fc9ce0b46841ea55c6ee1561fc9e0164e62558f3"
+  },
+  "comparability": "README §6.4"
+ },
+ "validity": {
+  "file": "validity_summary.json",
+  "sha256": "09f51fb1c0aa8c737eca28a736fa509d992418794aac1fdf53e5a27fc94265c7",
+  "counts": {
+   "valid": 298,
+   "failed": 13,
+   "invalid_measurement": 6,
+   "superseded": 56,
+   "total": 373
+  }
+ },
+ "sanitized": "첨부 텍스트 파일의 개인 경로를 <workspace>, <tmp>, ~로 치환(사본만, 원본 로그 그대로)",
+ "top_files_sha256": {
+  "README.md": "f54aca56aa99d96e447f1cc12dfc2284886f1dd5d31d12d028d9f58b31ab3473",
+  "s005.patch": "1a078468d4e991300043ecb09951cb514348ac27b2ea45fc44ca8a5abafdfdfb",
+  "build_measurements.py": "f96f96ce2717847b2e5316fccfe7ce3ad3b45157762f95d431a51bdae42d6c44",
+  "validity_summary.json": "09f51fb1c0aa8c737eca28a736fa509d992418794aac1fdf53e5a27fc94265c7",
+  "measurements.csv": "d4ca393e61920ed869f343c76b2e6d48d1c10dbba7bb40668204040f7d1c8a14"
+ },
+ "location": {
+  "shared": "docs/evidence/wheel_slip/",
+  "working_copy": "log/b2_mapping/a1_handoff/ (Git 제외, 2026-11-08 복사 원본)",
+  "copy_note": "README.md·manifest.json만 공유용으로 수정. 그 밖의 파일은 작업용 원본과 바이트 동일"
+ },
+ "runs_note": "runs 항목의 dir·manifest 경로는 작업 당시 log/ 기준 출처 기록이다"
+}

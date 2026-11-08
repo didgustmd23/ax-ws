@@ -1,0 +1,10 @@
+--- <workspace>/src/ax_description/urdf/ros2_control.xacro	2026-11-03 16:47:06.472198888 +0900
++++ <tmp>/r1/overlay_S005_reachside_2kg/share/ax_description/urdf/ros2_control.xacro	2026-11-08 14:07:56.953665318 +0900
+@@ -13,6 +13,7 @@
+             <mu1>0.1</mu1>
+             <mu2>1.0</mu2>
+             <fdir1>0 0 1</fdir1>
++            <collision><surface><friction><ode><slip1>0.05</slip1></ode></friction></surface></collision>
+         </gazebo>
+     </xacro:macro>
+ 

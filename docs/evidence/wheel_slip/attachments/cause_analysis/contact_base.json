@@ -1,0 +1,118 @@
+{
+ "still": {
+  "front_left_wheel": {
+   "messages": 2002,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 52.92,
+   "lateral_force_abs_mean_N": 0.0,
+   "force_rolling_mean_N": -0.0,
+   "force_axle_mean_N": 0.0,
+   "contact_points_body_mean_m": [
+    0.334,
+    0.416
+   ],
+   "depth_mean_m": 0.0
+  },
+  "front_right_wheel": {
+   "messages": 2002,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 52.51,
+   "lateral_force_abs_mean_N": 0.0,
+   "force_rolling_mean_N": -0.0,
+   "force_axle_mean_N": 0.0,
+   "contact_points_body_mean_m": [
+    0.334,
+    -0.42
+   ],
+   "depth_mean_m": 0.0
+  },
+  "rear_left_wheel": {
+   "messages": 2002,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 44.79,
+   "lateral_force_abs_mean_N": 0.0,
+   "force_rolling_mean_N": -0.0,
+   "force_axle_mean_N": 0.0,
+   "contact_points_body_mean_m": [
+    -0.338,
+    0.416
+   ],
+   "depth_mean_m": 0.0
+  },
+  "rear_right_wheel": {
+   "messages": 2002,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 44.44,
+   "lateral_force_abs_mean_N": 0.0,
+   "force_rolling_mean_N": -0.0,
+   "force_axle_mean_N": 0.0,
+   "contact_points_body_mean_m": [
+    -0.338,
+    -0.42
+   ],
+   "depth_mean_m": 0.0
+  }
+ },
+ "turning": {
+  "front_left_wheel": {
+   "messages": 4011,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 52.71,
+   "lateral_force_abs_mean_N": 28.673,
+   "force_rolling_mean_N": -5.667,
+   "force_axle_mean_N": -2.222,
+   "contact_points_body_mean_m": [
+    0.334,
+    0.416
+   ],
+   "depth_mean_m": 0.0
+  },
+  "front_right_wheel": {
+   "messages": 4011,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 52.3,
+   "lateral_force_abs_mean_N": 28.261,
+   "force_rolling_mean_N": 5.791,
+   "force_axle_mean_N": -2.24,
+   "contact_points_body_mean_m": [
+    0.333,
+    -0.42
+   ],
+   "depth_mean_m": 0.0
+  },
+  "rear_left_wheel": {
+   "messages": 4011,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 45.0,
+   "lateral_force_abs_mean_N": 25.91,
+   "force_rolling_mean_N": -3.427,
+   "force_axle_mean_N": 2.245,
+   "contact_points_body_mean_m": [
+    -0.338,
+    0.418
+   ],
+   "depth_mean_m": 0.0
+  },
+  "rear_right_wheel": {
+   "messages": 4011,
+   "contacts_per_message": 2.0,
+   "contact_z_world_mean": -0.0,
+   "normal_force_sum_per_step_N": 44.65,
+   "lateral_force_abs_mean_N": 25.474,
+   "force_rolling_mean_N": 3.579,
+   "force_axle_mean_N": 2.216,
+   "contact_points_body_mean_m": [
+    -0.339,
+    -0.419
+   ],
+   "depth_mean_m": 0.0
+  }
+ }
+}

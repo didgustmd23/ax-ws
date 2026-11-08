@@ -1,4 +1,5 @@
-"""Show A3 mock Action results as an isolated, static Gazebo indicator.
+"""
+Show A3 mock Action results as an isolated, static Gazebo indicator.
 
 This is not a load observer or a physical loading demonstration.
 Only entities named a3_mock_indicator_* are created or removed.
@@ -21,12 +22,14 @@ COLORS = {
 }
 
 
-def indicator_sdf(state):
+def indicator_sdf(state, robot_id='robot_2'):
     """Make an indicator with no collision or effect on robot physics."""
     color = COLORS[state]
+    prefix = 'a3_mock_indicator_' if robot_id == 'robot_2' else 'a3_mock_indicator_robot_1_'
+    x = 0 if robot_id == 'robot_2' else -1
     return (
-        '<sdf version="1.6"><model name="a3_mock_indicator_' + state + '">'
-        '<static>true</static><pose>0 -3 2 0 0 0</pose><link name="display">'
+        '<sdf version="1.6"><model name="' + prefix + state + '">'
+        f'<static>true</static><pose>{x} -3 2 0 0 0</pose><link name="display">'
         '<visual name="mock_result"><geometry><box><size>0.6 0.6 0.6</size>'
         '</box></geometry><material><ambient>' + color + '</ambient>'
         '<diffuse>' + color + '</diffuse><emissive>' + color + '</emissive>'
@@ -41,13 +44,21 @@ def protobuf_string(value):
 class MockDisplay(Node):
     def __init__(self):
         super().__init__('a3_gazebo_mock_display')
+        self.declare_parameter('robot_id', 'robot_2')
+        self.robot_id = self.get_parameter('robot_id').value
+        if self.robot_id not in ('robot_1', 'robot_2'):
+            raise ValueError('robot_id must be robot_1 or robot_2')
+        self.indicator_prefix = (
+            'a3_mock_indicator_' if self.robot_id == 'robot_2'
+            else 'a3_mock_indicator_robot_1_')
         self.declare_parameter('world', 'ax_test')
         self.world = self.get_parameter('world').value
         self.pending = None
         self.shown = None
         self.retry_at = 0.0
         self.create_subscription(
-            String, '/a3_mock/result_display', self.receive,
+            String, ('/a3_mock/result_display' if self.robot_id == 'robot_2'
+                     else '/a3_mock/robot_1/result_display'), self.receive,
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.create_timer(1.0, self.update)
         self.get_logger().info(
@@ -77,16 +88,16 @@ class MockDisplay(Node):
             # Remove only our own indicators, never a robot or task object.
             for state in COLORS:
                 self.service('remove', 'gz.msgs.Entity',
-                             f'name: "a3_mock_indicator_{state}" type: MODEL')
+                             f'name: "{self.indicator_prefix}{state}" type: MODEL')
             state = self.pending
             success = self.service(
                 'create', 'gz.msgs.EntityFactory',
-                'sdf: ' + protobuf_string(indicator_sdf(state)))
+                'sdf: ' + protobuf_string(indicator_sdf(state, self.robot_id)))
             if success:
                 self.shown = state
                 self.get_logger().info(
                     f'MOCK result displayed: {state}; '
-                    f'Entity Tree: a3_mock_indicator_{state}')
+                    f'Entity Tree: {self.indicator_prefix}{state}')
             else:
                 raise RuntimeError('Gazebo create service did not confirm success')
         except (OSError, subprocess.TimeoutExpired, RuntimeError) as error:

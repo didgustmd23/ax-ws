@@ -1,0 +1,10 @@
+{
+  "world": "aws_warehouse.world",
+  "world_condition": "light_collision",
+  "robot_id": "robot_2",
+  "scan": "filtered",
+  "render": "d3d12-nvidia",
+  "ROS_DOMAIN_ID": "66",
+  "GZ_PARTITION": "ax-b2-20261106_214348-247445",
+  "note": "light_collision은 물리 충돌만 단순화한 검증용 조건이며 지도 채택(--adopt) 대상이 아니다"
+}

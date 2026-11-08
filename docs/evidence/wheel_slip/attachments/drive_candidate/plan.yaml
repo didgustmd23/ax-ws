@@ -1,0 +1,52 @@
+# 주행 허용 자세 후보 기준 기본·S005 비교 계획. 실행 전에 고정한다(2026-11-08). 운영 모델은 바꾸지 않는다.
+# 모델 해시(시험 시점):
+    src/ax_description/urdf/ax.urdf.xacro: 8915efc699830db2a8bf9ac5cd007ccfa87b8e63bc7cb276c33272f5f022a759
+    src/ax_description/urdf/ros2_control.xacro: 434a972a781d43784ee50f3b0142e74e422865c71d61d8c0f04f2440a2524e73
+    src/ax_description/urdf/physical_properties.xacro: 1f9ec3dabdbcca5414e961fb1583973d84a1f07f10b410fd02294d9b23fda86b
+    src/ax_description/urdf/ax_2.urdf.xacro: d5d4c80227e46f869dc85a5865c81c45555bc1fcbbae34ce9941269e95b3f3a6
+    src/ax_description/urdf/ax_2_physical_properties.xacro: e33b880eea25ebcbbeb3dad95ab8a14635b01675f1505cfbaae511272415efaf
+    src/ax_control/config/common_controllers.yaml: 2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc
+controller_limits:   # common_controllers.yaml, 실행 중 diff_drive_controller에서 다시 읽어 기록
+  linear_max_m_s: 0.67
+  linear_accel_m_s2: 0.67
+  angular_max_rad_s: 0.50
+  angular_accel_rad_s2: 0.20
+environment: {world: ax_test.world(평면 바닥), sensors: false, gui: false, ROS_DOMAIN_ID: 86, partition: 조건마다 새로, render: d3d12-nvidia}
+robots:
+  robot_1:
+    driving_pose_candidate:   # 시험용 주행 자세 후보. A4 구현 완료 주행 허용 조건이 아니다
+      name: neutral
+      arm_target_rad: [0.0, 0.0, 0.0, 0.0, 0.0]   # column_yaw, shoulder, elbow, wrist, gripper_rotation
+      tolerance_rad: 0.02                          # 출발 전 도달 확인, 주행 중 이탈 0.05 rad면 중단
+      tool: epick (12컵 비교 모델, 기본)
+      protrusion_m: {front: 0.0, rear: 0.0, left: 0.225, right: 0.0}   # 충돌 형상 AABB, 차체·바퀴 외곽 기준
+      arm_min_height_above_ground_m: 0.785
+      payload: none
+      note: neutral이 의도한 접힌 주행 자세라는 A1 정의는 없다. 왼쪽 0.225 m 돌출은 통로 판정에 포함해야 한다
+  robot_2:
+    pose: 팔 없음
+    payload: none (적재 하중 시험 미실행 — 검증된 적재함 지지·고정 방식이 없음)
+tests:
+  rotation:   # 좌·우 번갈아 각 3회. odom 누적 회전 3.0 rad 목표, 0 명령 시점 = 3.0 - ω²/(2·0.2)
+    speeds_rad_s: [0.15, 0.30, 0.50]
+    time_limit_s: 3.0/ω + 15
+  straight: {speed_m_s: [0.3, -0.3, 0.3, -0.3, 0.67, -0.67], duration_s: [3, 3, 3, 3, 2.5, 2.5]}
+  curve: {linear_m_s: 0.3, angular_rad_s: [0.3, -0.3, 0.3, -0.3], duration_s: 6}
+  stop: [{linear: 0.67, angular: 0, seconds: 4}, {linear: 0, angular: 0.5, seconds: 6}, {linear: 0.3, angular: 0.3, seconds: 4}]
+  stop_window_s: 6
+  stop_rule: odom·실제 각각 |v| < 0.01 m/s, |w| < 0.02 rad/s 0.5 s 유지(D-06 값, A4 판정 아님)
+reuse:
+  robot_1 0.30 rad/s 회전(기본·S005): ../../a2_robot1_rotation/20261108_134133/trials/{base,S005}_neutral_0kg.json — 같은 모델 해시·도구·조건·기록 항목
+  robot_2: 이전 결과(접촉 센서 사본, 기록 항목 다름)는 재사용하지 않고 새로 실행
+structural_criteria:   # 기존 구조·안정성 기준(PASS/FAIL)
+  completed_without_abort: true
+  stop_confirmed_odom_and_truth: true
+  tilt_max_rad: 0.15
+  wheel_lift_max_m: 0.02
+  arm_deviation_max_rad: 0.05
+performance_candidates:   # 합의되지 않은 성능 기준 후보. 기록만 하고 judgment는 not_judged
+  rotation_translation_per_3rad_m: 0.10
+  rotation_odom_yaw_error_rad: 0.02
+  straight_odom_position_error_end_m: 0.02
+  curve_odom_position_error_end_m: 0.05
+  stop_time_increase_vs_baseline_s: 0.3

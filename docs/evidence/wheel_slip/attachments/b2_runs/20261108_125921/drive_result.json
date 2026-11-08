@@ -1,0 +1,262 @@
+{
+  "status": "failed",
+  "error": "RuntimeError: save_map 실패: 결과 코드 255, 없는 파일 ['slam_map.yaml', 'slam_map.pgm']",
+  "development_test_path": "A4 미구현 상태에서 diff_drive_controller에 직접 명령하는 격리 개발 시험 경로",
+  "robot_id": "robot_2",
+  "route": {
+    "path": "<workspace>/src/ax_localization/config/routes/aws_warehouse.yaml",
+    "sha256": "8f3199d70dc72cdf0fa25eb6f4ed3b66d2c1f12de72025ca344163c0e342f818",
+    "frame": "robot_2/odom",
+    "waypoints": [
+      [
+        -1.5,
+        0.0,
+        true
+      ],
+      [
+        -1.5,
+        -6.8,
+        false
+      ],
+      [
+        -1.5,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        -3.0,
+        false
+      ],
+      [
+        -6.1,
+        7.5,
+        false
+      ],
+      [
+        -6.1,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        1.7,
+        false
+      ],
+      [
+        -1.5,
+        7.5,
+        false
+      ],
+      [
+        -1.5,
+        0.0,
+        false
+      ]
+    ],
+    "partial": false
+  },
+  "scan_input": "scan_filtered",
+  "limits": {
+    "used": {
+      "linear": 0.3,
+      "angular": 0.3
+    },
+    "deceleration": {
+      "linear": 0.67,
+      "angular": 0.2
+    },
+    "controller": {
+      "linear.x.max_velocity": 0.67,
+      "angular.z.max_velocity": 0.5,
+      "linear.x.max_deceleration": 0.67,
+      "angular.z.max_deceleration": 0.2
+    },
+    "route": {
+      "linear_m_s": 0.3,
+      "angular_rad_s": 0.3
+    }
+  },
+  "waypoints_reached": 9,
+  "events": [
+    {
+      "sim_time_s": 10.512,
+      "kind": "START",
+      "detail": "경로 aws_warehouse.yaml, 입력 scan_filtered, 상한 {'linear': 0.3, 'angular': 0.3}"
+    },
+    {
+      "sim_time_s": 10.513,
+      "kind": "GOAL",
+      "detail": "경유점 1/9 (-1.5, 0.0, True) 거리 1.50 m, 제한 45 s"
+    },
+    {
+      "sim_time_s": 15.617,
+      "kind": "REACHED",
+      "detail": "경유점 1 도달, 남은 거리 0.150 m"
+    },
+    {
+      "sim_time_s": 15.617,
+      "kind": "GOAL",
+      "detail": "경유점 2/9 (-1.5, -6.8, False) 거리 6.80 m, 제한 98 s"
+    },
+    {
+      "sim_time_s": 44.061,
+      "kind": "REACHED",
+      "detail": "경유점 2 도달, 남은 거리 0.150 m"
+    },
+    {
+      "sim_time_s": 44.062000000000005,
+      "kind": "GOAL",
+      "detail": "경유점 3/9 (-1.5, -3.0, False) 거리 3.65 m, 제한 67 s"
+    },
+    {
+      "sim_time_s": 67.21900000000001,
+      "kind": "REACHED",
+      "detail": "경유점 3 도달, 남은 거리 0.148 m"
+    },
+    {
+      "sim_time_s": 67.21900000000001,
+      "kind": "GOAL",
+      "detail": "경유점 4/9 (-6.1, -3.0, False) 거리 4.60 m, 제한 76 s"
+    },
+    {
+      "sim_time_s": 88.19000000000001,
+      "kind": "REACHED",
+      "detail": "경유점 4 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 88.191,
+      "kind": "GOAL",
+      "detail": "경유점 5/9 (-6.1, 7.5, False) 거리 10.51 m, 제한 135 s"
+    },
+    {
+      "sim_time_s": 128.824,
+      "kind": "REACHED",
+      "detail": "경유점 5 도달, 남은 거리 0.145 m"
+    },
+    {
+      "sim_time_s": 128.824,
+      "kind": "GOAL",
+      "detail": "경유점 6/9 (-6.1, 1.7, False) 거리 5.65 m, 제한 87 s"
+    },
+    {
+      "sim_time_s": 158.649,
+      "kind": "REACHED",
+      "detail": "경유점 6 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 158.65,
+      "kind": "GOAL",
+      "detail": "경유점 7/9 (-1.5, 1.7, False) 거리 4.60 m, 제한 76 s"
+    },
+    {
+      "sim_time_s": 179.622,
+      "kind": "REACHED",
+      "detail": "경유점 7 도달, 남은 거리 0.150 m"
+    },
+    {
+      "sim_time_s": 179.62300000000002,
+      "kind": "GOAL",
+      "detail": "경유점 8/9 (-1.5, 7.5, False) 거리 5.80 m, 제한 88 s"
+    },
+    {
+      "sim_time_s": 204.71200000000002,
+      "kind": "REACHED",
+      "detail": "경유점 8 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 204.71200000000002,
+      "kind": "GOAL",
+      "detail": "경유점 9/9 (-1.5, 0.0, False) 거리 7.35 m, 제한 104 s"
+    },
+    {
+      "sim_time_s": 240.15900000000002,
+      "kind": "REACHED",
+      "detail": "경유점 9 도달, 남은 거리 0.149 m"
+    },
+    {
+      "sim_time_s": 240.15900000000002,
+      "kind": "STOP",
+      "detail": "경로 완료: 실제 정지 확인"
+    },
+    {
+      "sim_time_s": 254.281,
+      "kind": "STOP",
+      "detail": "종료: 실제 정지 확인"
+    }
+  ],
+  "stops": [
+    {
+      "reason": "경로 완료",
+      "requested_sim_s": 240.15900000000002,
+      "confirmed": true,
+      "confirm_sim_s": 0.799999999999983
+    },
+    {
+      "reason": "종료",
+      "requested_sim_s": 254.281,
+      "confirmed": true,
+      "confirm_sim_s": 0.5090000000000146
+    }
+  ],
+  "loop": {
+    "method": "간접: 루프 기준 경유점 복귀 거리(odom)와 map→odom 보정량. slam_toolbox 루프 폐쇄 사건을 직접 읽지 않는다",
+    "loop_point_odom": [
+      -1.5,
+      0.0
+    ],
+    "return_to_loop_point_odom_m": 0.13159523995444722,
+    "returned_to_loop_point": true,
+    "map_odom_correction_m": 0.06854721348977905,
+    "map_odom_correction_rad": 0.013960000000000417,
+    "max_map_odom_step_m": 0.07512579316352834
+  },
+  "saved": {
+    "save_map": {
+      "result_code": 255,
+      "files": {
+        "slam_map.yaml": null,
+        "slam_map.pgm": null
+      },
+      "missing": [
+        "slam_map.yaml",
+        "slam_map.pgm"
+      ]
+    }
+  },
+  "mounts": {
+    "front": [
+      0.61,
+      0.0,
+      0.0
+    ],
+    "rear": [
+      -0.57,
+      0.0,
+      3.141592653589793
+    ]
+  },
+  "recording": {
+    "file": "recording.npz",
+    "scans": 2449,
+    "truth_samples": 26764,
+    "note": "truth는 Gazebo 실제 자세(검증 전용)"
+  },
+  "tf_receive_gap_boottime_s": {
+    "count": 21905,
+    "p50": 0.019999411000071632,
+    "p95": 0.02025987460010583,
+    "p99": 0.020560735800058863,
+    "max": 2.541261662000011,
+    "receipts": 21915,
+    "stamp_updates": 2257
+  },
+  "slam_health_max": {
+    "tf_receive_age_boottime_s": 2.3486239110000042,
+    "tf_stamp_lag_sim_s": 1.5720000000000312,
+    "front_scan_age_sim_s": 0.12700000000000955,
+    "rear_scan_age_sim_s": 0.12700000000000955,
+    "travel_since_slam_update_m": 0.4079999994482533,
+    "heading_since_slam_update_rad": 0.37799999989770017
+  }
+}

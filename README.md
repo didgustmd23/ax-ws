@@ -64,6 +64,13 @@ source install/setup.bash
 ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 ```
 
+## A3 모의 로컬 작업 실행기
+
+`src/ax_task_executor/`는 김성민 담당 A3의 W0 실행기 골격·모의 서버 패키지다.
+`CONFIRM_LOAD` Action의 시험 결과를 반환하고 Gazebo 표시등으로 보여준다.
+실제 적재 관측·로봇 구동·운영 lease 검증은 포함하지 않는다.
+[빌드·ros2 run 실행 안내](src/ax_task_executor/README.md) · [A3 K0 검토 기록(초안)](docs/guides/A3_K0_REVIEW.md).
+
 ## B1 센서 전처리 (개발 중)
 
 모델·제어 시뮬레이션을 실행한 뒤 별도 터미널에서 아래 명령으로 연결한다.

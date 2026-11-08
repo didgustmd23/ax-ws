@@ -1,0 +1,47 @@
+# B2 위치 신뢰성·마지막 신뢰 위치·재위치 판단 값(localization_supervisor.py).
+# 모두 개발용 출발값이다. 정확도 기준이 아니며 운영 모델·기준 월드에서 다시 정한다.
+# 상태·사유 코드는 공통 인터페이스 계약 4.2절·D-19 "위치"를 따른다. 시간은 sim time(s), clock_stall_wall_s만 벽시계.
+health:
+  publish_rate_hz: 5.0          # 계약 4.2절(5 Hz · 만료 1.0 s)
+  scan_stale_s: 0.5             # 넘으면 DEGRADED(SCAN_STALE), scan_lost_s 넘으면 LOST(INPUT_LOST)
+  scan_lost_s: 2.0
+  odom_stale_s: 0.3             # odom 50 Hz 기준
+  odom_lost_s: 2.0
+  tf_stale_s: 0.5               # map→odom 유효 시각(stamp − tf_future_s) 나이. 스캔 10 Hz 기준
+  tf_lost_s: 2.0
+  tf_future_s: 1.0              # AMCL transform_tolerance(config/amcl.yaml)와 같게 둔다
+  estimate_travel_m: 0.5        # AMCL 갱신 없이 odom이 이만큼 움직이면 ESTIMATE_STALE(update_min_d 0.25 m의 2배)
+  estimate_rotation_rad: 0.4    # update_min_a 0.2 rad의 2배. 정지 중에는 AMCL이 발행하지 않으므로 시간으로 보지 않는다
+  position_std_ok_m: 0.25       # 넘으면 COVARIANCE_HIGH, position_std_lost_m 넘으면 COVARIANCE_LOST
+  position_std_lost_m: 1.0
+  yaw_std_ok_rad: 0.15
+  yaw_std_lost_rad: 0.5
+  clock_stall_wall_s: 2.0       # sim time이 벽시계로 이만큼 멈추면 CLOCK_INVALID
+
+trust:                          # 마지막 신뢰 위치로 기록할 조건(OK이고 아래 이하)
+  position_std_m: 0.15
+  yaw_std_rad: 0.10
+
+odom_continuity:                # 연속 odom 표본 사이 도약 허용: 속도 × 시간 × speed_margin + max_jump
+  max_jump_m: 0.3
+  max_jump_rad: 0.5
+  speed_margin: 2.0
+
+reinit:
+  actuation_max_age_s: 0.3      # A4 ActuationState 만료(계약 4.2절 0.3 s)
+  trusted_max_age_s: 60.0       # 마지막 신뢰 위치 뒤 허용 단절 시간
+  max_travel_m: 1.0             # 마지막 신뢰 위치 뒤 허용 odom 누적 이동 거리(왕복도 모두 셈)
+  max_rotation_rad: 0.8         # 누적 회전량
+  base_std_m: 0.10              # 후보 표준편차 = max(기록, base) + per × 누적 이동량
+  base_yaw_std_rad: 0.10
+  std_per_m: 0.20
+  yaw_std_per_rad: 0.20
+  timeout_s: 15.0               # 접수 뒤 회복 확인 제한시간(sim time)
+  timeout_wall_s: 60.0          # 같은 제한의 단조 벽시계 상한. sim time이 멈춰도 재위치가 끝나게 한다
+  nomotion_period_s: 0.5        # AMCL request_nomotion_update 호출 간격
+  min_updates: 3                # 초기 위치 전달 뒤 필요한 새 AMCL 추정 수
+  recover_position_std_m: 0.25  # 회복 조건: 새 추정의 표준편차가 이하이고 후보 표준편차 × recover_std_ratio 이하
+  recover_yaw_std_rad: 0.15
+  recover_std_ratio: 0.9
+  consistency_m: 0.5            # 새 추정과 후보의 차이 허용. 2배를 넘으면 발산으로 실패
+  consistency_rad: 0.3

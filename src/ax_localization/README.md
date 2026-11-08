@@ -11,7 +11,9 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 
 - **현재 상태:** 채택한 운영 지도가 없어 개발용 지도로만 실행·검증했다. A1이 운영 모델·기준 월드를 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.
 - **정확도 판정:** 기준이 미확정이므로 수치만 기록하고 판정은 `not_judged`다.
-- **범위 밖(후속 작업):** 위치 추정 상태(`LocalizationHealth`), 재위치 서비스(`localization/reinitialize`), Nav2 연결, 운영 지도 채택.
+- **구현 범위:** 공통 지도 서버·로봇별 AMCL, 위치 신뢰성 발행(`LocalizationHealth`), 고정 출발 위치 최초 초기화, 같은 세션의 마지막 신뢰 위치 기반 제한 재위치(`localization/reinitialize`).
+- **범위 밖:** 전역 재위치, 표식 인식, 복구 이동, 예비 로봇 배정, 안전 해제, Nav2 연결, 운영 지도 채택, 위치 이상 탐지(Isolation Forest, `anomaly_model_available=false`).
+- **A4·D:** 실제 A4(`ActuationState`)와 D(재위치 요청·작업 보류)는 아직 없다. 시험은 스텁으로만 했으며 실제 통합은 확인하지 않았다.
 
 ### Topic·frame
 
@@ -23,6 +25,9 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 | 추정 결과 | `/ax/<robot_id>/amcl_pose` · `PoseWithCovarianceStamped`, frame `map` | reliable · transient_local | `/ax/<robot_id>/amcl` |
 | TF | `map → <robot_id>/odom` | TF 기본 | `/ax/<robot_id>/amcl`(계약상 B2 소유) |
 | TF | `<robot_id>/odom → <robot_id>/base_link` | TF 기본 | A2 `diff_drive_controller` |
+| 위치 신뢰성 | `/ax/<robot_id>/localization/health` · `ax_interfaces/LocalizationHealth` | STATE(reliable · transient_local · 1) · 5 Hz 재발행 | `/ax/<robot_id>/localization_supervisor` |
+| 재위치 요청 | `/ax/<robot_id>/localization/reinitialize` · `std_srvs/Trigger` | Service | D → 감독 노드 |
+| 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` | STATE | A4(현재는 시험 스텁) |
 
 - AMCL TF의 stamp는 처리한 스캔 시각에 `transform_tolerance`(1.0 s)를 더한 값이다(Nav2 동작).
 - `/map`은 [공통 인터페이스 계약 4.2절](../../docs/design/INTERFACE_CONTRACT.md#42-로봇-안전위치-ab)에 등록돼 있다(초안). 지도 작성 중 slam_toolbox가 내는 `/ax/<robot_id>/map`은 저장 도구용이며 위치 추정에 쓰지 않는다.
@@ -40,15 +45,16 @@ export ROS_DOMAIN_ID=<번호> GZ_PARTITION=<이름> ROS_AUTOMATIC_DISCOVERY_RANG
 ros2 launch ax_control simulation.launch.py world:=aws_warehouse.world robot_ids:=robot_1,robot_2 gui:=false
 ros2 launch ax_perception sensors.launch.py robot_ids:=robot_1,robot_2
 
-# 2. 위치 추정: 공통 지도 서버 + 로봇별 AMCL
+# 2. 위치 추정: 공통 지도 서버 + 로봇별 AMCL·위치 신뢰성 감독, 고정 출발 위치로 최초 초기화
 ros2 launch ax_localization localization.launch.py \
-    map:=log/b2_mapping/<KST 시각>/run/slam_map.yaml robot_ids:=robot_1,robot_2 \
-    initial_poses:="robot_2=0,0,0;robot_1=-2.5,1.5,0"
+    map:=log/b2_mapping/20261108_131510/run/slam_map.yaml robot_ids:=robot_1,robot_2 \
+    start_poses:=src/ax_localization/config/start_poses/aws_warehouse_dev.yaml
 
 # 3. 확인
 ros2 lifecycle get /map_server
 ros2 lifecycle get /ax/robot_2/amcl
 ros2 run tf2_ros tf2_echo map robot_2/base_link
+ros2 topic echo /ax/robot_2/localization/health --qos-durability transient_local --qos-reliability reliable
 ```
 
 - launch는 시뮬레이션 로봇(`/ax/<robot_id>/robot_state_publisher`)이 보이지 않으면 시작하지 않는다.
@@ -79,7 +85,7 @@ ros2 run tf2_ros tf2_echo map robot_2/base_link
   1. 실패 노드·단계(`configure`·`activate`·`timeout`)·사유를 로그(`시작 실패: ...`)에 남긴다. `startup_report:=<경로.json>`을 주면 노드별 상태·전이 기록도 JSON으로 남긴다.
   2. 이번 launch가 실행한 노드만 정리한다. 이미 실행 중인 시뮬레이션·B1·다른 노드는 종료하지 않는다.
   3. 종료 코드 1로 끝난다.
-- 활성화 완료 후 종료를 다른 기능에 알리는 것은 이 launch가 하지 않는다. 위치 신뢰성 상태(`LocalizationHealth`, 후속)로 다룬다.
+- 활성화 완료 후 AMCL이 끝나면 그 로봇의 `localization/health`가 `LOST`(`TF_MISSING`)가 된다. 다른 기능은 이것으로 안다. launch 자체는 알리지 않는다.
 
 ```bash
 ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:=robot_2 \
@@ -110,6 +116,73 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
 
   `-w`는 기다릴 구독자 수다. 다른 구독자(기록 도구 등)가 있으면 그 수만큼 늘려야 AMCL이 받는다. 시험에서 `-w 1`은 기록 도구에만 전달되고 끝났다.
 - **정지 상태의 한계:** 로봇이 멈춰 있으면 AMCL은 틀린 초기 위치를 고치지 않는다(`update_min_d` 0.25 m·`update_min_a` 0.2 rad). 시험에서 0.5 m 틀린 입력이 그대로 유지됐다.
+
+### 위치 신뢰성 (`LocalizationHealth`)
+
+`localization_supervisor.py`가 로봇마다 다음 입력을 보고 5 Hz로 상태를 낸다.
+- 입력: AMCL 추정(`amcl_pose`)과 공분산, `map → odom` TF와 `map → base_link` 연결, 스캔, odom, sim time 진행
+- 판정 로직: `scripts/localization_health.py`(ROS 없이 시험)
+- 판단 값: [`config/localization_health.yaml`](config/localization_health.yaml). 모두 **개발용 출발값**이다.
+
+| 상태 | `valid` | 뜻 | 사유 코드(`meta.validity_reason`, 계약 D-19) |
+|---|---|---|---|
+| `UNKNOWN` | false | 판정 불가 | `NOT_INITIALIZED`(초기 위치 없음), `CLOCK_INVALID`(sim time 역행·벽시계 2 s 정지) |
+| `OK` | true | 입력·연결이 최신이고 표준편차가 기준(위치 0.25 m·방향 0.15 rad) 이하 | 없음 |
+| `DEGRADED` | true | 신뢰도 저하 | `TF_STALE`·`SCAN_STALE`·`ODOM_STALE`·`ESTIMATE_STALE`·`COVARIANCE_HIGH` |
+| `LOST` | true | 위치 상실 | `TF_MISSING`·`ESTIMATE_INVALID`(NaN·음수 분산·현재 자세 계산 불가)·`ODOM_INVALID`(odom 비유한 값)·`ODOM_DISCONTINUOUS`(odom 끊김 뒤 AMCL 새 추정 3개 전)·`INPUT_LOST`·`COVARIANCE_LOST`, 재위치 진행·실패 코드 |
+
+- **정지 중 AMCL 특성 반영:** AMCL은 정지 중 추정을 새로 내지 않는다. 그래서 갱신 정체(`ESTIMATE_STALE`)는 시간이 아니라 마지막 추정 뒤 odom 이동량(0.5 m·0.4 rad)으로 판단한다. 기준 odom은 추정을 받을 때의 odom이다. 추정이 odom보다 먼저 왔으면 그 뒤 처음 받은 유효한(끊김 없는) odom을 기준으로 삼고, 다음 추정 전까지 바꾸지 않는다. 기준·현재 자세 중 하나라도 비유한 값이면 이동량을 알 수 없으므로 `ESTIMATE_STALE`로 본다.
+- **`OK`의 한계:** `OK`는 정확도 검증이 아니다. 공분산은 상한 검사에만 쓰고 정확도를 확정하지 않는다. 정확도는 평가 도구로 따로 보며 판정은 `not_judged`다.
+- **odom 이상:** odom 비유한 값과 연속성 상실(시각 역행·속도로 설명되지 않는 도약)은 판정에 바로 `LOST`로 들어간다. 끊김 뒤에는 AMCL 새 추정이 3개 쌓이기 전까지 `OK`가 되지 않고, 마지막 신뢰 위치도 지운다. **이번 범위에서 자동 복구 경로 없음.** 정지 상태에서는 `LOST`가 유지되고 재위치는 거절된다(`REJECTED_ODOM_DISCONTINUOUS`).
+- **sim time 역행:** 한 번 역행하면 감독 노드를 다시 시작하기 전까지 `UNKNOWN`(`CLOCK_INVALID`)이 유지된다. 시뮬레이션을 다시 시작하거나 시간을 되돌렸다면 위치 추정 launch도 다시 시작한다. 벽시계 2 s 정지로 생긴 `CLOCK_INVALID`는 sim time이 다시 흐르면 풀린다.
+- **판정 불가 유지:** 시계가 무효면 재위치 중이거나 실패 뒤여도 `UNKNOWN`·`valid=false`를 유지하고, 재위치 코드를 뒤에 덧붙인다(예: `CLOCK_INVALID,REINIT_IN_PROGRESS`).
+- **이상 탐지 없음:** Isolation Forest가 없으므로 `anomaly_model_available=false`, `anomaly_score=0`이다.
+- **메타 정보:** `meta.source_session_id`는 감독 노드가 시작할 때마다 새로 만들고, 상태·사유가 바뀔 때마다 `revision`을 올린다.
+
+### 고정 출발 위치 (`start_poses`)
+
+- 로봇별 `map` 기준 출발 pose·표준편차와 대상 지도 revision·이미지 sha256을 yaml로 준다. 예: [`config/start_poses/aws_warehouse_dev.yaml`](config/start_poses/aws_warehouse_dev.yaml), 개발 지도 전용.
+- launch가 지도와 대조하고, 다음이면 시작을 거절한다(노드를 띄우지 않음).
+  - 설정 누락: 로봇·키
+  - 비정상 값: 비유한, 표준편차 범위 밖
+  - 지도 불일치: revision 또는 이미지 해시
+  - `initial_poses`와 같은 로봇에 겹침
+- 지도 revision은 채택 지도면 `map_info.yaml`의 `map_revision`, 개발 지도면 0이다.
+- **사용 범위:** 그 지점에서 시작함이 보장되는 개발 시뮬레이션의 **최초 초기화에만** 쓴다.
+  - 감독 노드가 AMCL이 active가 된 뒤 이 세션에서 한 번만 `initialpose`로 보낸다.
+  - 실행 중 위치를 잃어도 다시 보내지 않는다.
+- **값의 출처:** 출발 위치는 launch 출발 좌표와 지도 원점으로 정한 값이다. Gazebo 실제 자세는 읽지 않으며 평가에만 쓴다.
+- **`initial_poses`:** AMCL 매개변수로 넣는 수동 시험용이다. 감독 노드의 출발 위치 처리와 별개다.
+
+### 재위치 (같은 세션의 마지막 신뢰 위치 기반)
+
+- **마지막 신뢰 위치:**
+  - 기록 조건: `OK`이고 표준편차가 위치 0.15 m·방향 0.10 rad 이하.
+  - 기록 내용: 그때의 `map → odom`·표준편차·시각·지도 식별값과 odom 자세. 기록 뒤에는 odom 표본마다 **누적** 이동 거리·회전량을 더한다(왕복·반복 회전도 모두 셈). 로봇마다 따로 메모리에만 두며, 프로세스를 다시 시작하면 사라진다.
+  - 갱신하지 않을 때: 재위치 중이거나 입력이 무효일 때.
+  - 무효로 할 때: 지도 변경, sim time 역행, odom 끊김(시각 역행·속도로 설명되지 않는 도약·비유한 값). 무효가 된 기록은 복구 근거로 쓰지 않는다.
+- **요청 처리** (`ros2 service call /ax/<robot_id>/localization/reinitialize std_srvs/srv/Trigger`):
+  1. 접수 조건을 확인한다.
+     - A4 `ActuationState`가 최신(0.3 s)·유효·`STOPPED`
+     - 마지막 신뢰 위치가 있고, 그 뒤 60 s 이내·odom **누적** 이동 1.0 m·0.8 rad 이하(순변위가 아님)
+     - 이미 `OK`가 아님
+  2. 후보 = 마지막 신뢰 `map → odom` · 현재 odom. 표준편차는 누적 이동량에 따라 키운다.
+  3. 접수하면 `LOST`·`REINIT_IN_PROGRESS`를 먼저 발행하고, `success=true`·`REINIT_ACCEPTED`로 응답한 뒤 후보를 `initialpose`로 보낸다.
+  4. 0.5 s마다 AMCL `request_nomotion_update`를 불러 정지 상태에서도 새 추정을 받는다.
+  5. **완료**(`OK`) 조건은 모두 만족해야 한다. 입력 pose가 그대로 돌아온 것만으로는 완료가 아니다.
+     - 전달 뒤 새 AMCL 추정 3개 이상
+     - 마지막 추정의 표준편차가 0.25 m·0.15 rad 이하이고 후보 표준편차의 0.9배 이하
+     - 후보와 0.5 m·0.3 rad 이내
+     - 전달 뒤의 `map → odom` TF가 최신, 스캔이 최신
+  6. **실패**(`LOST`·`REINIT_FAILED_*`)는 다음 요청이나 AMCL 회복 근거가 생길 때까지 유지한다.
+     - `NOT_STOPPED`: 진행 중 정지 상태 상실
+     - `CLOCK_INVALID`: 진행 중 sim time 역행·정지(상태는 `UNKNOWN`·`valid=false`)
+     - `AMCL_UNAVAILABLE`: 15 s(sim time) 또는 60 s(벽시계) 동안 새 추정 없음
+     - `TIMEOUT`: 추정은 왔으나 조건 미충족
+     - `NOT_RECOVERED`: 후보에서 1.0 m·0.6 rad 넘게 벗어남
+- **응답 코드:** 진행 중 재요청은 `success=true`·`REINIT_IN_PROGRESS`이며 새 재위치를 만들지 않는다. 거절은 `success=false`와 `REINIT_REJECTED_*`이다(`NOT_STOPPED`·`ACTUATION_STALE`·`NO_TRUSTED_POSE`·`TRUSTED_POSE_EXPIRED`·`MOTION_TOO_LARGE`·`ODOM_DISCONTINUOUS`·`MAP_CHANGED`·`CLOCK_INVALID`·`NOT_NEEDED`).
+- **책임 범위:** 감독 노드는 로봇을 움직이지 않는다. 재위치 중 작업·이동 보류는 D, 실제 정지·구동은 A의 책임이다.
+- **절차 완료와 정확도:** 절차 완료(`OK`)와 정확도 판정은 다르다. 정확도는 평가 도구로 기록하며 `not_judged`다.
 
 ### 평가 도구
 
@@ -164,13 +237,29 @@ AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odo
 | TF 발행 소유 | 실행 전 `map→robot_2/odom` 0건. `/tf` 발행 노드는 AMCL·`diff_drive_controller`·`robot_state_publisher`뿐. AMCL 비활성화 뒤 0건. 중복 AMCL·SLAM launch 거절 |
 | robot_2 이동(직진 1.5 m → 90° 회전 → 직진 6.8 m → 정지) | 위치 오차 평균 0.198·p95 0.407·최대 0.487 m, 방향 오차 최대 0.092 rad, 정지 후 0.199 m. 국면별 최대: 직진 0.456 m, 회전 0.487 m. 같은 주행의 odom 단독 오차는 최대 0.484·마지막 0.468 m |
 | robot_1·robot_2 동시(정지) | 스캔 frame·`initialpose`·`amcl_pose`·TF가 로봇별로 분리됨. robot_1 초기 위치를 0.5 m 바꾸자 robot_1 `map→odom`만 0.507 m 바뀌고 robot_2는 변화 0·새 추정 0건. robot_2 AMCL을 비활성화해도 robot_1 발행 유지 |
+| 고정 출발 위치·재위치 robot_2 | `start_poses`로 최초 1회 초기화 → `OK`, 위치 오차 0.031 m. AMCL 전체 재시작 → `LOST`(`TF_MISSING`). 후진 0.36 m 중 요청 거절(`REJECTED_NOT_STOPPED`). 정지 뒤 접수, 중복 요청은 `REINIT_IN_PROGRESS`, 0.8 s 뒤 `OK`. 재위치 뒤 위치 오차 0.094 m. 출발 위치 재전송 없음 |
+| 재위치 robot_1·robot_2(검토 수정 전 실행) | robot_1 AMCL 재시작·후진 0.28 m·재위치(접수 뒤 1.8 s에 `OK`, 오차 0.096 m) 동안 robot_2는 `OK` 유지(오차 0.031 m 그대로) |
+| 진행 중 정지 상실 | 정지 상태에서 접수한 뒤 로봇이 움직이자 `REINIT_FAILED_NOT_STOPPED` |
+
+재위치 시험은 다음 조건에서 했다.
+- A4: odom 속도로 `STOPPED`를 정하는 시험 스텁(`tools/tests/stub_actuation_state.py`)
+- D: 시험자가 서비스를 직접 호출
+- 위치 상실: AMCL lifecycle을 deactivate → cleanup → configure → activate로 다시 시작해 만들었다. 재시작 뒤 AMCL이 큰 공분산(약 0.46 m)으로 스스로 다시 시작하면 `LOST` 대신 `DEGRADED`(`COVARIANCE_HIGH`)가 됐다(두 로봇 시험).
 
 **알려진 제한**
-- **미완료:** 운영 조건(원본 월드·운영 모델) 검증, 위치 신뢰성(`LocalizationHealth`), 재위치 서비스(`localization/reinitialize`). 정지 상태에서는 틀린 초기 위치가 보정되지 않는다.
+- **미완료:**
+  - 운영 조건(원본 월드·운영 모델) 검증
+  - 실제 A4·D와의 통합
+  - 위치 이상 탐지
+  - 판단 값·회복 조건 확정(모두 개발용 출발값)
+  - 프로세스 재시작 뒤 신뢰 위치 재사용(이번 범위 제외)
+  - 정지 상태에서 틀린 위치를 스스로 고치는 일. AMCL은 고치지 않으며, 재위치는 마지막 신뢰 위치에 기대므로 그 기록이 틀리면 틀린 채로 복구한다.
+- **초기 위치 stamp:** 감독 노드가 보내는 `initialpose`에 대해 AMCL이 "extrapolation into the future" 경고를 내고 이동 보정 없이 적용한다. AMCL의 TF 버퍼가 자기 시계보다 수십 ms 늦기 때문이다. 정지 상태에서만 보내므로 자세 차이는 없지만 경고는 남는다.
 - **Ctrl+C 시점의 보고 상태:** 모든 노드가 active가 되기 전에 사용자가 Ctrl+C로 끝내면 노드는 정리되지만, `startup_report`의 `status`는 마지막 값인 `starting`으로 남는다. 이 경우는 따로 시험하지 않았다.
 - **`run_mapping_session.sh --light` 기존 결함:** 임시 사본에 `lib/ax_description`이 없어 robot_1을 띄울 수 없다. robot_2 지도 작성에는 영향이 없다. 위 위치 추정 시험은 이 문제를 보완한 별도 하네스(저장소 밖)로 실행했다.
 
 **확인하지 못한 것**
+- 검토 수정(odom 이상 판정 연결, 누적 이동량, 재위치 중 시계 처리, 갱신 정체 기준 odom, 비유한 자세 처리) 뒤의 두 로봇 Gazebo 시험. 수정 뒤에는 단일 로봇 Gazebo와 스텁 시험만 다시 했다
 - 두 로봇이 동시에 이동하는 경우
 - 전체 지도 경로
 - 원본 월드와 운영 모델

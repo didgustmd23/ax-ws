@@ -20,7 +20,11 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
   - 활성화 완료 후: 노드 프로세스 종료는 기록만 한다(exit_code·오류 로그, status active 유지, 재시작 없음).
     launch와 다른 노드는 계속 실행되고 그 로봇의 map→odom만 멈춘다.
 - 같은 로봇의 map→odom을 발행하는 SLAM·AMCL이나 다른 map_server가 이미 있으면 시작하지 않는다(TF 발행자는 하나여야 한다).
-- 위치 추정 상태(LocalizationHealth)·재위치 서비스·Nav2 연결은 이 launch 범위가 아니다.
+- 위치 신뢰성(health:=true 기본): 로봇마다 /ax/<robot_id>/localization_supervisor가 localization/health를 내고
+  localization/reinitialize(같은 세션의 마지막 신뢰 위치 기반 제한 재위치)를 받는다(scripts/localization_supervisor.py).
+- 고정 출발 위치(start_poses:=<yaml>): 지도 revision·이미지 해시가 맞을 때만 감독 노드가 최초 1회 initialpose로 보낸다.
+  initial_poses(수동 시험용 AMCL 매개변수)와 같은 로봇에 함께 쓰지 않는다.
+- 전역 재위치·Nav2 연결은 이 launch 범위가 아니다.
 """
 
 import json
@@ -35,14 +39,14 @@ from launch.event_handler import EventHandler
 from launch.event_handlers import OnProcessExit
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import LifecycleNode
+from launch_ros.actions import LifecycleNode, Node
 from launch_ros.events.lifecycle import ChangeState, StateTransition
 from lifecycle_msgs.msg import Transition
 
 ROBOT_IDS = ("robot_1", "robot_2", "robot_3", "robot_4")
 
 # 같은 로봇에 map→odom을 낼 수 있는 노드 이름
-LOCALIZATION_NODES = ("slam_toolbox", "amcl")
+LOCALIZATION_NODES = ("slam_toolbox", "amcl", "localization_supervisor")
 
 
 # "robot_2=0,0,0;robot_1=-2.5,1.5,0.1" 형식을 {robot_id: (x, y, yaw)}로 바꾼다. 형식이 틀리면 ValueError.
@@ -338,7 +342,40 @@ def startup_actions(nodes, timeout_s, report=None):
     return actions, monitor
 
 
-# 인자를 검사하고 공통 map_server와 로봇별 AMCL(lifecycle 활성화 포함)을 만든다.
+# 판단 모듈(localization_health.py)이 있는 폴더. 설치 경로(lib/ax_localization)가 없으면 소스 트리를 쓴다.
+def scripts_dir():
+    installed = Path(get_package_share_directory("ax_localization")).parents[1] / "lib" / "ax_localization"
+
+    if (installed / "localization_health.py").is_file():
+        return installed
+
+    return Path(__file__).resolve().parents[1] / "scripts"
+
+
+# 고정 출발 위치 설정을 읽어 지도와 대조한다. 형식·값·지도 revision이 맞지 않으면 ValueError로 시작을 거절한다.
+def start_poses_for(path, map_path, robot_ids):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("localization_health", scripts_dir() / "localization_health.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module.load_start_poses(path, map_path, robot_ids)
+
+
+# 로봇 하나의 위치 신뢰성 감독 노드(LocalizationHealth 발행·재위치 서비스·고정 출발 위치 최초 초기화)
+def supervisor_node(robot_id, health_config, start_pose):
+    parameters = {"use_sim_time": True, "robot_id": robot_id, "config_file": str(health_config),
+                  "start_pose_enabled": start_pose is not None}
+
+    if start_pose is not None:
+        parameters.update({f"start_pose_{key}": value for key, value in start_pose.items()})
+
+    return Node(package="ax_localization", executable="localization_supervisor.py", name="localization_supervisor",
+                namespace=f"/ax/{robot_id}", output="screen", parameters=[parameters])
+
+
+# 인자를 검사하고 공통 map_server와 로봇별 AMCL(lifecycle 활성화 포함)·위치 신뢰성 감독을 만든다.
 def setup(context):
     map_path = Path(LaunchConfiguration("map").perform(context)).expanduser().resolve()
     robot_ids = parse_robot_ids(LaunchConfiguration("robot_ids").perform(context))
@@ -346,6 +383,11 @@ def setup(context):
     poses = parse_initial_poses(LaunchConfiguration("initial_poses").perform(context), robot_ids)
     timeout_s = float(LaunchConfiguration("startup_timeout").perform(context))
     report = LaunchConfiguration("startup_report").perform(context) or None
+    start_file = LaunchConfiguration("start_poses").perform(context)
+    health_enabled = LaunchConfiguration("health").perform(context).lower() == "true"
+    share = Path(get_package_share_directory("ax_localization"))
+    health_config = Path(LaunchConfiguration("health_config").perform(context)
+                         or share / "config" / "localization_health.yaml")
 
     if not math.isfinite(timeout_s) or timeout_s <= 0:
         raise ValueError("startup_timeout은 양수(s)")
@@ -355,6 +397,23 @@ def setup(context):
 
     if scan not in ("filtered", "raw"):
         raise ValueError("scan은 filtered 또는 raw")
+
+    # 고정 출발 위치: 지도 revision·이미지 해시와 로봇별 값을 검사한다(최초 초기화에만 쓰며 감독 노드가 한 번 보낸다).
+    start_poses = {}
+
+    if start_file:
+        if not health_enabled:
+            raise ValueError("start_poses는 health:=true(위치 신뢰성 감독)와 함께 쓴다")
+
+        overlap = sorted(set(poses) & set(robot_ids))
+
+        if overlap:
+            raise ValueError(f"initial_poses와 start_poses를 같은 로봇에 함께 쓸 수 없음: {', '.join(overlap)}")
+
+        start_poses = start_poses_for(start_file, map_path, robot_ids)["robots"]
+
+    if health_enabled and not health_config.is_file():
+        raise FileNotFoundError(f"health_config 파일이 없음: {health_config}")
 
     conflicts = running_conflicts(robot_ids)
 
@@ -393,9 +452,15 @@ def setup(context):
             parameters=[config, amcl_overrides(robot_id, scan, pose)],
         )
 
-        actions.append(LogInfo(msg=f"[ax_localization] {namespace}/amcl 초기 위치 "
-                                   + (f"map ({pose[0]}, {pose[1]}, yaw {pose[2]})" if pose else "없음(initialpose 대기)")))
+        start = start_poses.get(robot_id)
+        text = (f"map ({pose[0]}, {pose[1]}, yaw {pose[2]}) [initial_poses]" if pose else
+                f"map ({start['x']}, {start['y']}, yaw {start['yaw']}) [start_poses, 최초 1회]" if start else
+                "없음(initialpose 대기)")
+        actions.append(LogInfo(msg=f"[ax_localization] {namespace}/amcl 초기 위치 {text}"))
         nodes.append((amcl, f"{namespace}/amcl"))
+
+        if health_enabled:
+            actions.append(supervisor_node(robot_id, health_config, start))
 
     # 시작 감시(전체 제한시간·전이 실패·프로세스 종료)
     monitored, _ = startup_actions(nodes, timeout_s, report)
@@ -415,5 +480,11 @@ def generate_launch_description():
                               description="map_server·모든 AMCL이 active가 되는 전체 제한시간(벽시계 s)"),
         DeclareLaunchArgument("startup_report", default_value="",
                               description="시작 결과 JSON 경로(비우면 쓰지 않음)"),
+        DeclareLaunchArgument("start_poses", default_value="",
+                              description="고정 출발 위치 yaml(지도 revision·이미지 해시 대조, 최초 초기화에만 사용)"),
+        DeclareLaunchArgument("health", default_value="true",
+                              description="로봇별 위치 신뢰성 감독(localization/health·reinitialize) 실행"),
+        DeclareLaunchArgument("health_config", default_value="",
+                              description="위치 신뢰성 판단 값 yaml(비우면 config/localization_health.yaml)"),
         OpaqueFunction(function=setup),
     ])

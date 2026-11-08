@@ -122,7 +122,8 @@ class LaunchArguments(unittest.TestCase):
 class LaunchNodes(unittest.TestCase):
 
     # 실행 그래프 조회 없이 setup을 불러 만들어지는 노드 목록을 돌려준다.
-    def nodes(self, robot_ids, poses='', conflicts=()):
+    # start_poses: 고정 출발 위치 yaml 내용 함수(지도 이미지 sha256 → 문자열). 지도 이미지는 임시 pgm이다.
+    def nodes(self, robot_ids, poses='', conflicts=(), start_poses=None, health='true'):
         from launch import LaunchContext
         from launch_ros.actions import Node
 
@@ -135,10 +136,21 @@ class LaunchNodes(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 map_path = Path(folder) / 'map.yaml'
                 map_path.write_text('image: map.pgm\n')
+                (Path(folder) / 'map.pgm').write_bytes(b'P5\n1 1\n255\n\x00')
+                start_file = ''
+
+                if start_poses is not None:
+                    import hashlib
+
+                    sha = hashlib.sha256((Path(folder) / 'map.pgm').read_bytes()).hexdigest()
+                    start_file = str(Path(folder) / 'start.yaml')
+                    Path(start_file).write_text(start_poses(sha))
+
                 context = LaunchContext()
                 context.launch_configurations.update({
                     'map': str(map_path), 'robot_ids': robot_ids, 'scan': 'filtered',
-                    'initial_poses': poses, 'startup_timeout': '60.0', 'startup_report': ''})
+                    'initial_poses': poses, 'startup_timeout': '60.0', 'startup_report': '',
+                    'start_poses': start_file, 'health': health, 'health_config': ''})
 
                 actions = LAUNCH.setup(context)
         finally:
@@ -182,9 +194,46 @@ class LaunchNodes(unittest.TestCase):
 
         self.assertEqual(len(map_servers), 1)
         self.assertEqual(set(amcls), {'/ax/robot_1', '/ax/robot_2'})
-        self.assertEqual(len(nodes), 3)
-        self.assertTrue(all(isinstance(node, LifecycleNode) for node in nodes))
+        lifecycle = [node for node in nodes if isinstance(node, LifecycleNode)]
+        supervisors = {item[1]: item for item in described if item[0] == 'ax_localization'}
+
+        self.assertEqual(len(lifecycle), 3)
+        self.assertEqual(set(supervisors), {'/ax/robot_1', '/ax/robot_2'})
+        self.assertEqual(len(nodes), 5)
         self.assertFalse([item for item in described if item[0] == 'nav2_lifecycle_manager'])
+
+        # health:=false면 감독 노드를 띄우지 않는다.
+        self.assertEqual(len(self.nodes('robot_2', health='false')), 2)
+
+    # 고정 출발 위치: 지도와 맞으면 감독 노드 매개변수로 넘기고 AMCL에는 initial pose를 넣지 않는다.
+    def test_start_poses(self):
+        text = lambda sha: (f'map: {{revision: 0, image_sha256: {sha}}}\n'
+                            'robots:\n  robot_1: {x: -2.5, y: 1.5, yaw: 0.0, position_std_m: 0.1, yaw_std_rad: 0.05}\n'
+                            '  robot_2: {x: 0.0, y: 0.0, yaw: 0.0, position_std_m: 0.1, yaw_std_rad: 0.05}\n')
+        described = [self.describe(node) for node in self.nodes('robot_1,robot_2', start_poses=text)]
+        supervisors = {item[1]: item[3] for item in described if item[0] == 'ax_localization'}
+        amcls = {item[1]: item[3] for item in described if item[0] == 'nav2_amcl'}
+
+        self.assertTrue(supervisors['/ax/robot_1']['start_pose_enabled'])
+        self.assertEqual(supervisors['/ax/robot_1']['start_pose_x'], -2.5)
+        self.assertFalse(amcls['/ax/robot_1']['set_initial_pose'])
+
+    # 고정 출발 위치 거절: 로봇 누락·지도 해시 불일치·initial_poses와 겹침·health 꺼짐
+    def test_start_poses_rejected(self):
+        good = lambda sha: (f'map: {{revision: 0, image_sha256: {sha}}}\n'
+                            'robots: {robot_2: {x: 0, y: 0, yaw: 0, position_std_m: 0.1, yaw_std_rad: 0.05}}\n')
+        cases = [
+            ('로봇 누락', dict(robot_ids='robot_1,robot_2', start_poses=good)),
+            ('해시 불일치', dict(robot_ids='robot_2', start_poses=lambda sha: good('f' * 64))),
+            ('revision 불일치', dict(robot_ids='robot_2', start_poses=lambda sha: good(sha).replace('revision: 0', 'revision: 4'))),
+            ('initial_poses와 겹침', dict(robot_ids='robot_2', poses='robot_2=0,0,0', start_poses=good)),
+            ('health 꺼짐', dict(robot_ids='robot_2', start_poses=good, health='false')),
+        ]
+
+        for name, arguments in cases:
+            with self.subTest(case=name):
+                with self.assertRaises(ValueError):
+                    self.nodes(**arguments)
 
     # 노드마다 configure 이벤트와 inactive→activate, active 안내 처리기를 하나씩 둔다.
     def test_lifecycle_events(self):
@@ -204,7 +253,8 @@ class LaunchNodes(unittest.TestCase):
                 context = LaunchContext()
                 context.launch_configurations.update({
                     'map': str(map_path), 'robot_ids': 'robot_1,robot_2', 'scan': 'filtered', 'initial_poses': '',
-                    'startup_timeout': '60.0', 'startup_report': ''})
+                    'startup_timeout': '60.0', 'startup_report': '', 'start_poses': '', 'health': 'true',
+                    'health_config': ''})
                 actions = LAUNCH.setup(context)
         finally:
             LAUNCH.running_conflicts = original
@@ -243,7 +293,8 @@ class LaunchNodes(unittest.TestCase):
         context = LaunchContext()
         context.launch_configurations.update({
             'map': '/nonexistent/map.yaml', 'robot_ids': 'robot_2', 'scan': 'filtered',
-            'initial_poses': '', 'startup_timeout': '60.0', 'startup_report': ''})
+            'initial_poses': '', 'startup_timeout': '60.0', 'startup_report': '', 'start_poses': '',
+            'health': 'true', 'health_config': ''})
 
         with self.assertRaises(FileNotFoundError):
             LAUNCH.setup(context)

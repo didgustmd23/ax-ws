@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 from collections import deque
+from copy import deepcopy
 from types import SimpleNamespace
 import unittest
 
@@ -9,6 +10,7 @@ import numpy as np
 from sensor_msgs.msg import CameraInfo, Image
 from sensor_msgs.msg import Range
 from unittest.mock import Mock
+from unittest.mock import patch
 import math
 import xacro
 from scipy.spatial.transform import Rotation
@@ -24,9 +26,9 @@ def images(values):
                   data=np.asarray(values, dtype='<f4').tobytes())
     depth.header.stamp.sec = 1
     depth.header.frame_id = 'robot_1/front_rgbd_optical_frame'
-    rgb = Image(header=depth.header, height=1, width=2, encoding='rgb8', step=6,
+    rgb = Image(header=deepcopy(depth.header), height=1, width=2, encoding='rgb8', step=6,
                 data=bytes([255, 0, 0, 0, 255, 0]))
-    info = CameraInfo(header=depth.header, height=1, width=2,
+    info = CameraInfo(header=deepcopy(depth.header), height=1, width=2,
                       k=[2., 0., 1., 0., 2., 0., 0., 0., 1.],
                       p=[2., 0., 1., 0., 0., 2., 0., 0., 0., 0., 1., 0.])
     return depth, rgb, info
@@ -41,6 +43,153 @@ class Publisher:
 
 
 class SensorProcessingTests(unittest.TestCase):
+    def pending_node(self):
+        node, _, _ = self.receiver()
+        node.cfg.update(tof_body_filter=True, tof_tf_wait_s=.15)
+        node.body_mesh = np.zeros((1, 3, 3))
+        node.tof_pending = deque()
+        node.health['tool_tof/raw'] = {'received': 100., 'ok': False, 'reason': 'No data'}
+        node.tf_buffer = SimpleNamespace(can_transform=Mock(return_value=False))
+        node.tof = Mock()
+        return node
+
+    def test_tof_waits_for_exact_tf_and_preserves_order(self):
+        node = self.pending_node()
+        first = Range();first.header.stamp.sec = 10
+        second = Range();second.header.stamp.sec = 10;second.header.stamp.nanosec = 1
+        for msg in (first, second):
+            with patch.object(sensor.time, 'monotonic', return_value=100.):
+                sensor.SensorProcessing.queue_tof(node, msg)
+        with patch.object(sensor.time, 'monotonic', return_value=100.05):
+            sensor.SensorProcessing.drain_tof(node)
+        node.tof.assert_not_called()
+        self.assertEqual(len(node.tof_pending), 2)
+        node.tf_buffer.can_transform.return_value = True
+        with patch.object(sensor.time, 'monotonic', return_value=100.08):
+            sensor.SensorProcessing.drain_tof(node)
+        self.assertEqual([call.args[0] for call in node.tof.call_args_list], [first, second])
+        self.assertFalse(node.tof_pending)
+        self.assertTrue(node.health['tool_tof/raw']['ok'])
+
+    def test_tof_wait_timeout_stale_and_clock_reset(self):
+        node = self.pending_node()
+        message = Range();message.header.stamp.sec = 10
+        with patch.object(sensor.time, 'monotonic', return_value=100.):
+            sensor.SensorProcessing.queue_tof(node, message)
+        node.tof.side_effect = ValueError('TF unavailable')
+        with patch.object(sensor.time, 'monotonic', return_value=100.16):
+            sensor.SensorProcessing.drain_tof(node)
+        self.assertFalse(node.health['tool_tof/raw']['ok'])
+        self.assertFalse(node.tof_pending)
+        node.tof.reset_mock()
+        with patch.object(sensor.time, 'monotonic', return_value=101.):
+            sensor.SensorProcessing.queue_tof(node, message)
+        node.now_ns = 11_000_000_000
+        sensor.SensorProcessing.drain_tof(node)
+        node.tof.assert_not_called()
+        self.assertIn('stale', node.health['tool_tof/raw']['reason'])
+        with patch.object(sensor.time, 'monotonic', return_value=102.):
+            sensor.SensorProcessing.queue_tof(node, message)
+        node.now_ns = 1_000_000_000
+        sensor.SensorProcessing.drain_tof(node)
+        self.assertFalse(node.tof_pending)
+
+    def receiver(self):
+        node = SimpleNamespace(cfg={'max_age_s': .5, 'future_tolerance_s': .05,
+                                   'missing_timeout_s': 2.}, robot='robot_1',
+            health={}, last_stamp={}, buffers={}, clock_previous=0., owned_subs=[],
+            now_ns=10_000_000_000, diagnostics=Publisher())
+        node.get_clock = lambda: SimpleNamespace(now=lambda: sensor.Time(nanoseconds=node.now_ns))
+        node.observe_clock = lambda now: sensor.SensorProcessing.observe_clock(node, now)
+        callbacks = {}
+        node.create_subscription = lambda cls, topic, callback, qos: callbacks.setdefault(topic, callback)
+        output = Publisher()
+        sensor.SensorProcessing.subscribe(node, Image, 'front_rgb/image_raw', 'front_rgb_optical_frame', output.publish)
+        return node, callbacks['sensors/front_rgb/image_raw'], output
+
+    def test_stale_future_reversed_and_wrong_frame_rejected(self):
+        node, receive, output = self.receiver()
+        _, message, _ = images([1., 1.])
+        message.header.frame_id = 'robot_1/front_rgb_optical_frame'
+        def send(seconds, frame=None):
+            message.header.stamp = sensor.Time(nanoseconds=int(seconds*1e9)).to_msg()
+            message.header.frame_id = frame or 'robot_1/front_rgb_optical_frame'
+            receive(message)
+        for value in (0., 9., 10.1):
+            send(value)
+            self.assertFalse(node.health['front_rgb/image_raw']['ok'])
+        send(9.9)
+        self.assertEqual(len(output.messages), 1)
+        for value in (9.9, 9.8):
+            send(value)
+            self.assertFalse(node.health['front_rgb/image_raw']['ok'])
+        send(9.95, 'robot_2/front_rgb_optical_frame')
+        self.assertEqual(len(output.messages), 1)
+        send(9.99)
+        self.assertTrue(node.health['front_rgb/image_raw']['ok'])
+        self.assertEqual(len(output.messages), 2)
+
+    def test_clock_reset_clears_buffers_and_other_sensor_health(self):
+        node, receive, _ = self.receiver()
+        node.clock_previous = 10.
+        node.last_stamp = {'old': 9.9}
+        node.buffers = {'rgbd': {'image': deque([object()])}}
+        node.health['rgbd/synchronized'] = {'received': 1., 'ok': True, 'reason': 'Valid'}
+        node.now_ns = 1_000_000_000
+        # 센서가 아직 오지 않아도 진단 타이머가 시간 역행을 감지한다.
+        sensor.SensorProcessing.report(node)
+        self.assertFalse(node.health['rgbd/synchronized']['ok'])
+        self.assertIsNone(node.health['rgbd/synchronized']['received'])
+        self.assertFalse(node.last_stamp)
+        self.assertFalse(node.buffers['rgbd']['image'])
+        _, message, _ = images([1., 1.])
+        message.header.frame_id = 'robot_1/front_rgb_optical_frame'
+        receive(message)
+        self.assertTrue(node.health['front_rgb/image_raw']['ok'])
+
+    def test_missing_sensor_diagnostic_and_recovery(self):
+        from diagnostic_msgs.msg import DiagnosticStatus
+        node, receive, _ = self.receiver()
+        _, message, _ = images([1., 1.])
+        message.header.frame_id = 'robot_1/front_rgb_optical_frame'
+        message.header.stamp.sec = 10
+        with patch.object(sensor.time, 'monotonic', return_value=100.):
+            receive(message)
+        with patch.object(sensor.time, 'monotonic', return_value=102.1):
+            sensor.SensorProcessing.report(node)
+            self.assertEqual(node.diagnostics.messages[-1].status[0].level, DiagnosticStatus.STALE)
+            message.header.stamp.nanosec = 1
+            receive(message)
+            sensor.SensorProcessing.report(node)
+            self.assertEqual(node.diagnostics.messages[-1].status[0].level, DiagnosticStatus.OK)
+
+    def test_rgbd_sync_rejects_skew_and_recovers_without_reusing_frames(self):
+        name = 'front_rgbd'
+        node = SimpleNamespace(
+            cfg={'sync_slop_s': .03, 'max_age_s': .5, 'depth_min_m': .05, 'depth_max_m': 5.},
+            buffers={name: {key: deque(maxlen=10) for key in ('image', 'depth_image', 'camera_info')}},
+            outputs={(name, key): Publisher() for key in ('image', 'depth_image', 'camera_info', 'points')},
+            health={name + '/synchronized': {}},
+            get_clock=lambda: SimpleNamespace(now=lambda: sensor.Time(nanoseconds=1_100_000_000)))
+        depth, rgb, info = images([1., 2.])
+        info.header = type(info.header)()
+        info.header.frame_id = rgb.header.frame_id
+        info.header.stamp.sec = 1
+        info.header.stamp.nanosec = 40_000_000
+        for part, msg in (('image', rgb), ('depth_image', depth), ('camera_info', info)):
+            sensor.SensorProcessing.rgbd(node, name, part, msg)
+        self.assertFalse(node.outputs[name, 'points'].messages)
+        for part, msg in (('image', rgb), ('depth_image', depth)):
+            msg = deepcopy(msg)
+            msg.header.stamp.nanosec = 50_000_000
+            sensor.SensorProcessing.rgbd(node, name, part, msg)
+        self.assertEqual(len(node.outputs[name, 'points'].messages), 1)
+        self.assertEqual(node.outputs[name, 'points'].messages[0].header.stamp.nanosec, 50_000_000)
+        info.header.stamp.nanosec = 60_000_000
+        sensor.SensorProcessing.rgbd(node, name, 'camera_info', info)
+        self.assertEqual(len(node.outputs[name, 'points'].messages), 1)
+
+
     def test_invalid_geometry_and_transform_are_rejected(self):
         for description in ('<robot/>', '<robot><link name="base_link"/></robot>'):
             with self.assertRaises(ValueError):
@@ -89,8 +238,9 @@ class SensorProcessingTests(unittest.TestCase):
             self.assertLess(len(pending), count)
         t = frames['epick_tof_link']
         expected = sensor.ray_body_distance(t[:3, 3], t[:3, 0], triangles)
-        self.assertAlmostEqual(expected, .36464, places=4)
-        self.assertTrue(sensor.body_blocks_measurement(.36502, expected, .4, .005))
+        self.assertAlmostEqual(expected, .3774024, places=4)
+        measured_body = expected + .0004
+        self.assertTrue(sensor.body_blocks_measurement(measured_body, expected, .4, .005))
         self.assertTrue(sensor.body_blocks_measurement(math.inf, expected, .4, .005))
         self.assertFalse(sensor.body_blocks_measurement(.1, expected, .4, .005))
         self.assertFalse(sensor.body_blocks_measurement(-math.inf, expected, .4, .005))
@@ -103,13 +253,13 @@ class SensorProcessingTests(unittest.TestCase):
         node = SimpleNamespace(cfg={'tof_body_filter': True, 'tof_body_tolerance_m': .005},
             robot='robot_1', body_mesh=triangles, body_error='', tof_pub=Publisher(),
             tf_buffer=SimpleNamespace(lookup_transform=Mock(return_value=SimpleNamespace(transform=transform))))
-        message = Range(min_range=.02, max_range=.4, range=.36502)
+        message = Range(min_range=.02, max_range=.4, range=measured_body)
         message.header.frame_id = 'robot_1/tool_tof_link'
         message.header.stamp.sec = 12
         with self.assertRaisesRegex(ValueError, 'blocked by robot body'):
             sensor.SensorProcessing.tof(node, message)
         self.assertTrue(math.isnan(node.tof_pub.messages[-1].range))
-        self.assertAlmostEqual(message.range, .36502, places=5)
+        self.assertAlmostEqual(message.range, measured_body, places=5)
         message.range = .1
         sensor.SensorProcessing.tof(node, message)
         self.assertAlmostEqual(node.tof_pub.messages[-1].range, .1, places=6)
@@ -150,13 +300,16 @@ class SensorProcessingTests(unittest.TestCase):
             outputs={(name, key): Publisher() for key in ('image', 'depth_image', 'camera_info', 'points')},
             health={name + '/synchronized': {}},
             get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=1_000_000_000)))
-        for values, expected in (([float('nan'), float('inf')], False), ([2., float('nan')], True)):
+        for values, expected, fraction in (([float('nan'), float('inf')], False, 0.),
+                                          ([2., float('nan')], True, .5), ([1., 2.], True, 1.)):
             depth, rgb, info = images(values)
             for key, message in (('image', rgb), ('depth_image', depth), ('camera_info', info)):
                 sensor.SensorProcessing.rgbd(node, name, key, message)
-            self.assertEqual(node.health[name + '/synchronized']['ok'], expected)
-            self.assertEqual(node.outputs[name, 'points'].messages[-1].is_dense, False)
-        self.assertEqual(len(node.outputs[name, 'points'].messages), 2)
+            self.assertTrue(node.health[name + '/synchronized']['ok'])
+            self.assertEqual(node.health[name + '/depth_valid']['ok'], expected)
+            self.assertEqual(node.health[name + '/depth_valid']['valid_depth_fraction'], fraction)
+            self.assertEqual(node.outputs[name, 'points'].messages[-1].is_dense, fraction == 1.)
+        self.assertEqual(len(node.outputs[name, 'points'].messages), 3)
 
 
 if __name__ == '__main__':

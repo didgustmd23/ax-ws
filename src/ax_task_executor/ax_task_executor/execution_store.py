@@ -12,10 +12,10 @@ class ExecutionStore:
         self.lock = threading.Lock()
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute('PRAGMA synchronous=FULL')
-        self.db.execute('''CREATE TABLE IF NOT EXISTS executions (
+        self.db.execute("""CREATE TABLE IF NOT EXISTS executions (
             robot TEXT NOT NULL, id TEXT NOT NULL, request TEXT NOT NULL,
             mock_load TEXT NOT NULL, result TEXT,
-            PRIMARY KEY (robot, id))''')
+            PRIMARY KEY (robot, id))""")
         self.db.commit()
 
     def reserve(self, execution_id, request, mock_load):

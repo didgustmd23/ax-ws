@@ -1,0 +1,66 @@
+# B2 로봇별 AMCL 위치 추정 설정(개발 출발값).
+# 기준: Jazzy nav2_bringup params/nav2_params.yaml의 amcl 값. 바꾼 값만 아래 주석에 적는다.
+# - 프레임: map → robot_<n>/odom(이 노드가 발행, 계약상 B2 소유) → robot_<n>/base_link(A2 제어기 odom)
+# - 입력: B1 /ax/robot_<n>/sensors/front_lidar/scan_filtered(앞 LiDAR 180°, 0.12~10 m, SENSOR QoS)
+# - 지도: 공통 map_server의 /map(transient_local)
+# localization.launch.py가 robot_id에 맞춰 프레임·토픽·초기 위치를 덮어쓴다.
+# 값은 시험 결과로 조정할 출발값이며 확정값이 아니다.
+/**/amcl:   # namespace(/ax/<robot_id>) 안의 노드에도 적용
+  ros__parameters:
+    use_sim_time: true
+
+    # 프레임·토픽(launch가 로봇별 값으로 덮어쓴다)
+    global_frame_id: map
+    odom_frame_id: robot_2/odom
+    base_frame_id: robot_2/base_link
+    scan_topic: /ax/robot_2/sensors/front_lidar/scan_filtered
+    map_topic: /map
+    first_map_only: true
+    tf_broadcast: true
+    transform_tolerance: 1.0
+
+    # 초기 위치(launch initial_poses 인자로 켠다). 없으면 initialpose 토픽을 기다린다.
+    set_initial_pose: false
+    always_reset_initial_pose: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+
+    # 운동 모델(차동 구동)
+    robot_model_type: nav2_amcl::DifferentialMotionModel
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+
+    # 레이저 모델. 거리 범위는 B1 scan_filtered 범위(0.12~10 m)에 맞춘다(기본 -1~100 m).
+    laser_model_type: likelihood_field
+    laser_min_range: 0.12
+    laser_max_range: 10.0
+    laser_likelihood_max_dist: 2.0
+    max_beams: 60
+    sigma_hit: 0.2
+    z_hit: 0.5
+    z_max: 0.05
+    z_rand: 0.5
+    z_short: 0.05
+    lambda_short: 0.1
+    do_beamskip: false
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+
+    # 입자 필터
+    min_particles: 500
+    max_particles: 2000
+    pf_err: 0.05
+    pf_z: 0.99
+    resample_interval: 1
+    recovery_alpha_fast: 0.0
+    recovery_alpha_slow: 0.0
+    update_min_d: 0.25
+    update_min_a: 0.2
+    save_pose_rate: 0.5

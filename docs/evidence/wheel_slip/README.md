@@ -59,7 +59,7 @@
 | 파일 | 내용 |
 |---|---|
 | [s005.patch](s005.patch) | 기준 commit `b01aa92` 대비 S005 후보 변경 1줄. 적용 대상 `src/ax_description/urdf/ros2_control.xacro`. `git apply --check` 통과(manifest에 기록) |
-| [manifest.json](manifest.json) | 기준 commit·미커밋 목록, 버전, 모델·월드·도구·첨부 해시, 실행 명령·환경 변수·RTF |
+| [manifest.json](manifest.json) | 기준 commit·미커밋 목록, 버전, 모델·월드·도구·첨부 해시, 실행 명령·환경 변수·RTF. 도구 해시는 해당 시험 실행 당시 값이며 현재 저장소의 도구와 다를 수 있다 |
 | [measurements.csv](measurements.csv) | 반복별 측정 373행. `trial_id`·`tool_version`·`validity`·`replaced_by`(대상 행의 정확한 `trial_id`)·`replacement_reason`·`attachment` 열 포함 |
 | [build_measurements.py](build_measurements.py) | 측정표·분류 요약 생성기. 입력은 고정 목록의 `attachments/` 파일 **62개**뿐(폴더 밖·새 실행 결과를 찾지 않음). 입력 누락·형식 오류·대체 대상 불일치 시 기존 결과를 덮어쓰지 않고 실패 |
 | [validity_summary.json](validity_summary.json) | 로봇·묶음·조건별 전체·유효·실패·무효 측정·대체 건수 |

@@ -122,12 +122,31 @@
 | 이름 | 형태 · 타입 | 생산자 → 소비자 | QoS · 주기 · 만료 초안 | 작업 |
 |---|---|---|---|---|
 | `/ax/robot_<n>/safety/state` | Topic · `SafetyState` | B4 → A4·D | STATE · 10 Hz · 0.5 s | B4 |
-| `/ax/robot_<n>/safety/actuation_state` | Topic · `ActuationState` | A4 → A2(`arm_allowed`)·B4·D·**상대 로봇 A4** | STATE · 20 Hz · 0.3 s | A4 |
+| `/ax/robot_<n>/safety/actuation_state` | Topic · `ActuationState` | A4 → A2(`arm_allowed`)·B4·D·**상대 로봇 A4**·B2(재위치 전 실제 정지 확인) | STATE · 20 Hz · 0.3 s | A4 |
 | `/tf`·`/tf_static` | Topic · `tf2_msgs/TFMessage` | B2(`map→odom`)·A2(`odom→base_link`, 관절·고정 frame) → 전체(인계 상대 로봇 C4 포함) | ROS 2 TF 기본 QoS | B2, A2 |
+| `/map` | Topic · `nav_msgs/OccupancyGrid`, frame `map` | B2 공통 지도 서버(`/map_server`, 1개) → B2 로봇별 AMCL(`/ax/robot_<n>/amcl`). 다른 기능의 소비(D1 Nav2 등)는 연결 시 이 행에 추가 | reliable · transient_local(map_server 발행 QoS 실측. history 깊이는 확인하지 않음) · 활성화 시 발행, 주기 재발행 없음 | B2 |
 | `/ax/robot_<n>/safety/clear_fault` | Service · `ClearFault` | 시험 하네스·사후 조치 경로 → A4. D는 본설계 14절 리셋 범위 확정 전 자동 호출하지 않음 | 실제 정지·SAFE_STOP 아님·원인 해소·진행 중 작업 없음일 때만 수락. 다른 차단 사유는 유지 | A4 |
 | `/ax/robot_<n>/localization/health` | Topic · `LocalizationHealth` | B2 → B3·B4·D(D1·D4 snapshot)·인계 상대 로봇 C4 | STATE · 5 Hz · 1.0 s | B2 |
-| `/ax/robot_<n>/localization/reinitialize` | Service · `std_srvs/Trigger` | D → B2 | 접수만 응답, 완료는 `localization/health`로 확인. request_id가 없으므로 진행 중 재요청은 같은 재초기화로 처리(멱등) | B2 |
+| `/ax/robot_<n>/localization/reinitialize` | Service · `std_srvs/Trigger` | D → B2 | 접수만 응답(`success`=접수 여부, `message`=접수·거절 코드), 진행·완료·실패는 `localization/health`로 확인(아래 재위치 규칙). request_id가 없으므로 진행 중 재요청은 같은 재초기화로 처리(멱등) | B2 |
 | `/ax/robot_<n>/perception/corridor_observation` | Topic · `CorridorObservationList` | B3 → D3·A4 | STATE · 5 Hz · 1.0 s | B3 |
+
+- **`/map`과 `/ax/robot_<n>/map`의 구분:**
+  - `/map`은 위치 추정용 공통 지도다. 모든 로봇의 AMCL이 같은 지도를 쓴다. 지도 서버와 `/map` 발행자는 하나뿐이고, B2가 소유한다.
+  - `/ax/robot_<n>/map`은 지도 작성 중에만 slam_toolbox가 내는 작성 중 지도다. B2 지도 저장 도구만 쓰며 공유 인터페이스가 아니다.
+  - 같은 로봇에 SLAM과 AMCL을 함께 실행하지 않는다. `map→robot_<n>/odom` 발행자는 하나여야 한다.
+- **`LocalizationHealth`의 `valid`·`validity_reason`:**
+  - B2가 판정한 `OK`·`DEGRADED`·`LOST`는 `valid=true`다. `DEGRADED`·`LOST`의 사유 코드는 `validity_reason`에 적는다(이 타입에 한한 예외).
+  - 판정할 수 없을 때만 `valid=false`·`state=UNKNOWN`이고, `validity_reason`에 그 이유를 적는다.
+  - 사유가 여럿이면 심각한 순으로 `,`로 잇는다. 코드는 D-19 "위치"를 따른다.
+  - `OK`는 위치 추정 입력·연결과 추정 불확실성이 개발 기준 안이라는 뜻이다. 정확도가 검증됐다는 뜻은 아니다. 공분산만으로 정확도를 확정하지 않는다.
+- **재위치(`localization/reinitialize`) 규칙:**
+  - **접수:** B2는 `success=true`로 응답하기 전에 `LOST`·`REINIT_IN_PROGRESS` 상태를 revision을 올려 발행한다. `message`는 `REINIT_ACCEPTED`다. 진행 중 재요청은 `success=true`·`REINIT_IN_PROGRESS`로 응답하고 새 재위치를 만들지 않는다.
+  - **거절:** `success=false`, `message`는 거절 코드(D-19 "재위치 거절")다. 상태는 바꾸지 않는다.
+  - **진행:** `state=LOST`, `validity_reason`에 `REINIT_IN_PROGRESS`.
+  - **완료:** 진행 상태를 발행한 뒤 처음 나오는 `state=OK`. 새 AMCL 추정·TF·센서가 회복 조건을 만족해야 하며, 입력한 pose가 그대로 돌아온 것만으로는 완료가 아니다.
+  - **실패:** `state=LOST`, `validity_reason`에 `REINIT_FAILED_<원인>`. 다음 요청이나 AMCL 회복 근거(새 추정)가 생기기 전까지 유지한다. 시계가 무효면 `state=UNKNOWN`·`valid=false`를 유지하고 진행·실패 코드를 덧붙인다(진행 중 시계 무효는 `REINIT_FAILED_CLOCK_INVALID`).
+  - **범위:** B2는 같은 실행 세션의 마지막 신뢰 위치와 그 뒤 odom으로만 후보 위치를 만든다. 전역 재위치·복구 이동은 하지 않는다.
+- **재위치 중 책임:** B2는 로봇을 움직이지 않는다. 작업·이동 보류와 재개는 D가 하고, 실제 정지·구동 관리는 A가 한다. B2는 접수 전과 진행 중에 A4 `ActuationState`가 최신·유효·`STOPPED`인지 확인하고, 아니면 거절하거나 실패로 끝낸다.
 
 ### 4.3 로컬 실행·조작·적재 (A·C)
 
@@ -339,7 +358,7 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 | D-16 | 계약에서 새로 정한 이름 | `source_session_id`·`a_session_id`·`d_session_id`·`sequence`·`lease_generation`, 목록 메시지 7종, `missing_sources`, `RECORDED_ONLY`, `ToolCommand`, `PlanCondition`, `RobotStopPose`, 인계 상태 `TRANSFER_*`, `TimeValidity`(`REVERSED`·`RTF_OUT_OF_RANGE` 등), `LocalizationHealth`(`OK`·`DEGRADED`·`LOST`), `RegisteredLocation` 상태, `FailureEvent.classification`, `ActuationState` `RUNNING`·`FAULT`, `object_hold_state`, `observation_reason`·`observation_target`, `failures/report`, 보조 Service `ReleaseCorridor`·`QueryBudget`·`ClearFault`·`RequestSafeStop`, `FailureEventList`, lease 요청 `kind`(`FIRST`·`RENEW`)·`c_session_id`, 작업 `priority`·`deferred`·`schedule_revision`, 계획 단계 `task_id`, 로컬 작업 `pick_pose`·`place_pose`, lease `goal_id`, 적재함 frame `robot_<n>/cargo_link`, 보호 팔 궤적 `ProtectedArmTrajectory`(`arm/execute_trajectory`), 명령 확인 `CheckCommandLease`(`executor/lease/check_command`)와 권한 종류 `AUTH_C_MANIPULATION`·`AUTH_A3_LOCAL_TASK`, 명령의 부모 `goal_id`, lease 철회 `goal_id`, snapshot `open_failures`, 계획 `task_ids`. 설계 숫자 `SafetyState.CLEAR=0` 등은 유지 | 전원 | |
 | D-17 | 전체 계획 제출 경로 | 제안 종류가 아니라 별도 `AgentPlan` Topic(`/ax/fleet/agent/agent_central/plan`). 본설계 5.2·7.6절에 반영됨 | D4·E1·E3 | |
 | D-18 | 운영 중 모드 상향 | D는 자동 상향하지 않는다. 운영자 상향 요청은 `SYSTEM_NORMAL`이고 진행 중 그룹 작업이 없으며(작업 경계) ASSISTED는 인증 검증 완료일 때만 수락. 그 밖에는 거절 | D4·E3 | |
-| D-19 | 사유 코드 목록 | **안전(`SafetyState.reason_code`)**: `NONE`·`OBSTACLE_SLOWDOWN`·`OBSTACLE_STOP`·`SENSOR_STALE`·`SENSOR_INVALID`·`REAR_SENSOR_INVALID`·`LOCALIZATION_INVALID`. **Agent 결정(`AgentDecision.reason_code`)**: `OK`·`MODE_RECORD_ONLY`·`RECEIVER_NOT_ACTIVE`·`AUTH_FAILED`·`SCHEMA_INVALID`·`STALE_SNAPSHOT`·`STALE_GENERATION`·`TARGET_OUT_OF_SCOPE`·`PERMISSION_DENIED`·`EVIDENCE_MISMATCH`·`PRECONDITION_FAILED`·`BUDGET_EXHAUSTED`(접수 예산 소진)·`RATE_LIMITED`(빈도 초과). 그 밖의 `reason_code`는 D-12 구동 차단 사유 또는 D-13 오류 코드를 쓴다 | B4·D4·E3 | |
+| D-19 | 사유 코드 목록 | **안전(`SafetyState.reason_code`)**: `NONE`·`OBSTACLE_SLOWDOWN`·`OBSTACLE_STOP`·`SENSOR_STALE`·`SENSOR_INVALID`·`REAR_SENSOR_INVALID`·`LOCALIZATION_INVALID`. **Agent 결정(`AgentDecision.reason_code`)**: `OK`·`MODE_RECORD_ONLY`·`RECEIVER_NOT_ACTIVE`·`AUTH_FAILED`·`SCHEMA_INVALID`·`STALE_SNAPSHOT`·`STALE_GENERATION`·`TARGET_OUT_OF_SCOPE`·`PERMISSION_DENIED`·`EVIDENCE_MISMATCH`·`PRECONDITION_FAILED`·`BUDGET_EXHAUSTED`(접수 예산 소진)·`RATE_LIMITED`(빈도 초과). 그 밖의 `reason_code`는 D-12 구동 차단 사유 또는 D-13 오류 코드를 쓴다. **위치(`LocalizationHealth.meta.validity_reason`, 4.2절)**: 판정 불가(`UNKNOWN`) `NOT_INITIALIZED`·`CLOCK_INVALID`, 저하(`DEGRADED`) `SCAN_STALE`·`ODOM_STALE`·`TF_STALE`·`ESTIMATE_STALE`·`COVARIANCE_HIGH`, 상실(`LOST`) `TF_MISSING`·`ESTIMATE_INVALID`·`ODOM_INVALID`·`ODOM_DISCONTINUOUS`·`COVARIANCE_LOST`·`INPUT_LOST`·`REINIT_IN_PROGRESS`·`REINIT_FAILED_TIMEOUT`·`REINIT_FAILED_NOT_STOPPED`·`REINIT_FAILED_NOT_RECOVERED`·`REINIT_FAILED_AMCL_UNAVAILABLE`·`REINIT_FAILED_CLOCK_INVALID`. 판정 불가(`UNKNOWN`·`valid=false`)일 때 재위치 진행·실패 코드는 판정 불가 사유 뒤에 덧붙이며 `valid=true`로 바꾸지 않는다. **재위치 응답(`Trigger.message`)**: `REINIT_ACCEPTED`·`REINIT_IN_PROGRESS`, 거절 `REINIT_REJECTED_NOT_STOPPED`·`REINIT_REJECTED_ACTUATION_STALE`·`REINIT_REJECTED_NO_TRUSTED_POSE`·`REINIT_REJECTED_TRUSTED_POSE_EXPIRED`·`REINIT_REJECTED_MOTION_TOO_LARGE`·`REINIT_REJECTED_ODOM_DISCONTINUOUS`·`REINIT_REJECTED_MAP_CHANGED`·`REINIT_REJECTED_CLOCK_INVALID`·`REINIT_REJECTED_NOT_NEEDED`(이미 `OK`) | B2·B4·D4·E3 | |
 
 ### 7.2 지켜야 할 규칙 (확인만)
 

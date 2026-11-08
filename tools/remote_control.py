@@ -6,6 +6,7 @@ import argparse
 import fcntl
 import json
 import math
+import re
 from pathlib import Path
 import queue
 import secrets
@@ -17,6 +18,17 @@ import time
 
 from keyboard_teleop import KeyboardTeleop, JOINT_LABELS, DRIVE_PROFILE, rclpy, SignalHandlerOptions
 from desktop_session import discover, stop_processes, spawn, alive
+
+
+def controllers_active(output, expected):
+    """ros2 CLI 색상 유무와 무관하게 이름과 마지막 상태 토큰을 비교한다."""
+    plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+    states = {}
+    for line in plain.splitlines():
+        fields = line.split()
+        if len(fields) == 3:
+            states[fields[0]] = fields[2]
+    return all(states.get(name) == 'active' for name in expected)
 
 
 # 허용 명령·값·클라이언트 식별자·순서를 검사한다. bool은 Python에서 int의 하위형이므로 정수와 구분한다.
@@ -108,9 +120,7 @@ class Remote:
                                 expected = ['joint_state_broadcaster', 'diff_drive_controller']
                                 if int(robot.split('_')[1]) % 2:
                                     expected.append('arm_controller')
-                                ready = ready and result.returncode == 0 and all(any(
-                                    line.startswith(name + ' ') and 'active' in line and 'inactive' not in line
-                                    for line in result.stdout.splitlines()) for name in expected)
+                                ready = ready and result.returncode == 0 and controllers_active(result.stdout, expected)
                         if ready:
                             if tool is not None:
                                 self.tool = tool

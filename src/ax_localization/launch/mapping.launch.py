@@ -25,25 +25,46 @@ LOCALIZATION_NODES = ("slam_toolbox", "amcl")
 
 
 # 실행 중인 그래프에서 같은 namespace의 SLAM·AMCL 노드를 찾는다.
-def running_localization(namespace, wait_seconds=2.0):
+# 노드 이름 발견만으로는 늦게 보여 놓칠 수 있어 /tf에 실제로 오는 map → <robot>/odom도 함께 본다.
+# 이 로봇의 robot_state_publisher가 보일 때까지(그래프가 보인다는 표시) 최대 wait_seconds 기다린 뒤
+# settle_seconds 더 모아 판단한다. 로봇이 보이지 않으면 시작하지 않는다.
+def running_localization(namespace, wait_seconds=10.0, settle_seconds=3.0):
     import rclpy
+    from tf2_msgs.msg import TFMessage
 
     # launch 인자(robot_id:=...)를 ROS 인자로 해석하지 않도록 빈 인자로 초기화한다.
     rclpy.init(args=[])
     node = rclpy.create_node("ax_mapping_preflight")
+    odom_frame = namespace.removeprefix("/ax/") + "/odom"
+    found = set()
+
+    # /tf에 이미 들어오는 이 로봇의 map → odom을 기록한다.
+    def on_tf(message):
+        for transform in message.transforms:
+            if transform.header.frame_id == "map" and transform.child_frame_id == odom_frame:
+                found.add(f"/tf map→{odom_frame} 발행 중")
+
+    node.create_subscription(TFMessage, "/tf", on_tf, 100)
 
     try:
-        # 발견이 끝나도록 잠시 기다린다.
         deadline = time.monotonic() + wait_seconds
+        settle_until = None
 
-        while time.monotonic() < deadline:
+        while time.monotonic() < (settle_until or deadline):
             rclpy.spin_once(node, timeout_sec=0.1)
+            graph = [(name, space.rstrip("/")) for name, space in node.get_node_names_and_namespaces()]
 
-        return [
-            f"{space.rstrip('/')}/{name}"
-            for name, space in node.get_node_names_and_namespaces()
-            if space.rstrip("/") == namespace and any(key in name for key in LOCALIZATION_NODES)
-        ]
+            if settle_until is None and ("robot_state_publisher", namespace) in graph:
+                settle_until = time.monotonic() + settle_seconds
+
+            found.update(f"{space}/{name}" for name, space in graph
+                         if space == namespace and any(key in name for key in LOCALIZATION_NODES))
+
+        if settle_until is None:
+            raise RuntimeError(f"실행 중인 시뮬레이션 로봇을 찾지 못함({namespace}/robot_state_publisher). "
+                               "시뮬레이션을 먼저 실행한다")
+
+        return sorted(found)
     finally:
         node.destroy_node()
         rclpy.shutdown()

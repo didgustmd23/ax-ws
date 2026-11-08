@@ -200,11 +200,12 @@ class SensorProcessing(Node):
                     'max_age_s': 0.5, 'future_tolerance_s': 0.05,
                     'sync_slop_s': 0.03, 'missing_timeout_s': 2.0,
                     'depth_min_m': 0.05, 'depth_max_m': 5.0,
-                    'tof_body_filter': True, 'tof_body_tolerance_m': 0.005}
+                    'tof_body_filter': True, 'tof_body_tolerance_m': 0.005,
+                    'tof_tf_wait_s': 0.15}
         for name, value in defaults.items():
             self.declare_parameter(name, value)
         self.cfg = {name: self.get_parameter(name).value for name in defaults}
-        for name in ('max_age_s', 'future_tolerance_s', 'sync_slop_s', 'missing_timeout_s'):
+        for name in ('max_age_s', 'future_tolerance_s', 'sync_slop_s', 'missing_timeout_s', 'tof_tf_wait_s'):
             if not math.isfinite(self.cfg[name]) or self.cfg[name] <= 0:
                 raise ValueError(name + ' must be positive')
         checked_distance(1.0, self.cfg['depth_min_m'], self.cfg['depth_max_m'])
@@ -229,7 +230,9 @@ class SensorProcessing(Node):
                            lambda msg, pub=pub: self.scan(msg, pub))
         if self.cfg['tool_tof']:
             self.tof_pub = self.create_publisher(Range, 'sensors/tool_tof', SENSOR)
-            self.subscribe(Range, 'tool_tof/raw', 'tool_tof_link', self.tof)
+            self.tof_pending = deque()
+            self.subscribe(Range, 'tool_tof/raw', 'tool_tof_link', self.queue_tof)
+            self.create_timer(.01, self.drain_tof, clock=Clock(clock_type=ClockType.STEADY_TIME))
         for name in (('front_rgb', 'arm_rgb') if self.cfg['manipulator'] else ('front_rgb',)):
             pub = self.create_publisher(Image, f'sensors/{name}/processed/image_raw', SENSOR)
             self.subscribe(Image, name + '/image_raw', name + '_optical_frame',
@@ -237,6 +240,7 @@ class SensorProcessing(Node):
         for name in (('front_rgbd', 'arm_rgbd') if self.cfg['manipulator'] else ('front_rgbd',)):
             self.buffers[name] = {part: deque(maxlen=10) for part in ('image', 'depth_image', 'camera_info')}
             self.health[name + '/synchronized'] = {'received': None, 'ok': False, 'reason': 'Waiting for synchronized RGB-D'}
+            self.health[name + '/depth_valid'] = {'received': None, 'ok': False, 'reason': 'Waiting for usable depth'}
             self.outputs[name, 'points'] = self.create_publisher(PointCloud2, f'sensors/{name}/processed/points', SENSOR)
             for part, cls in (('image', Image), ('depth_image', Image), ('camera_info', CameraInfo)):
                 self.outputs[name, part] = self.create_publisher(cls, f'sensors/{name}/processed/{part}', SENSOR)
@@ -245,19 +249,27 @@ class SensorProcessing(Node):
         # 시뮬레이션 일시정지/센서 단절 중에도 진단은 벽시계로 계속 발행한다.
         self.create_timer(0.5, self.report, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
+    def observe_clock(self, now):
+        if now < self.clock_previous:
+            self.last_stamp.clear()
+            if hasattr(self, 'tof_pending'):
+                self.tof_pending.clear()
+            for queues in self.buffers.values():
+                for queue in queues.values():
+                    queue.clear()
+            # 이전 실행에서 정상이라는 진단을 새 실행으로 넘기지 않는다.
+            for state in self.health.values():
+                state.update(received=None, ok=False, reason='Clock reset; awaiting new data')
+        self.clock_previous = now
+
     def subscribe(self, cls, suffix, frame, handler):
         self.health[suffix] = {'received': None, 'ok': False, 'reason': 'No data'}
         def receive(message):
             state = self.health[suffix]
-            state['received'] = time.monotonic()
             try:
                 now = self.get_clock().now().nanoseconds * 1e-9
-                if now < self.clock_previous:
-                    self.last_stamp.clear()
-                    for queues in self.buffers.values():
-                        for queue in queues.values():
-                            queue.clear()
-                self.clock_previous = now
+                self.observe_clock(now)
+                state['received'] = time.monotonic()
                 measured = stamp(message)
                 if now <= 0 or measured <= 0 or now - measured > self.cfg['max_age_s']:
                     raise ValueError('Missing clock or stale measurement')
@@ -267,12 +279,44 @@ class SensorProcessing(Node):
                     raise ValueError('Duplicate or reversed timestamp')
                 if message.header.frame_id != self.robot + '/' + frame:
                     raise ValueError('Unexpected frame_id')
-                handler(message)
+                completed = handler(message)
                 self.last_stamp[suffix] = measured
-                state.update(ok=True, reason='Valid input')
+                if completed is not False:
+                    state.update(ok=True, reason='Valid input')
             except (ValueError, TypeError, OverflowError) as error:
                 state.update(ok=False, reason=str(error))
         self.owned_subs.append(self.create_subscription(cls, 'sensors/' + suffix, receive, SENSOR))
+
+    def queue_tof(self, message):
+        if len(self.tof_pending) >= 10:
+            self.tof_pending.popleft()
+            self.health['tool_tof/raw'].update(ok=False, reason='ToF TF queue overflow; oldest input dropped')
+        self.tof_pending.append((message, time.monotonic()))
+        return False
+
+    def drain_tof(self):
+        now = self.get_clock().now().nanoseconds * 1e-9
+        self.observe_clock(now)
+        while self.tof_pending:
+            message, received = self.tof_pending[0]
+            state = self.health['tool_tof/raw']
+            if now-stamp(message) > self.cfg['max_age_s']:
+                self.tof_pending.popleft()
+                state.update(ok=False, reason='ToF measurement became stale while waiting for TF')
+                continue
+            # 센서와 TF의 전송 순서는 보장되지 않는다. 최신 TF로 대체하지 않고
+            # 한정된 시간만 기다린다. 단일 실행기 콜백을 막는 sleep/wait는 쓰지 않는다.
+            if (self.cfg['tof_body_filter'] and self.body_mesh is not None and
+                    time.monotonic()-received < self.cfg['tof_tf_wait_s'] and
+                    not self.tf_buffer.can_transform(self.robot + '/base_link',
+                        message.header.frame_id, Time.from_msg(message.header.stamp))):
+                break
+            self.tof_pending.popleft()
+            try:
+                self.tof(message)
+                state.update(ok=True, reason='Valid input')
+            except (ValueError, TypeError, OverflowError) as error:
+                state.update(ok=False, reason=str(error))
 
     def description(self, message):
         try:
@@ -352,14 +396,18 @@ class SensorProcessing(Node):
                 queues[key].popleft()
         # 동기화 성공과 거리 정보의 유효성은 별개다. 전부 무효인 점군도
         # 그대로 발행해 이전 관측으로 대체하지 않되, 소비자에게 오류를 알린다.
-        reason = f'RGB-D skew {max(times)-min(times):.6f} s; valid depth fraction {valid_ratio:.4f}'
+        reason = f'Valid depth fraction {valid_ratio:.4f}'
         if valid_ratio == 0:
             reason = 'No valid depth measurements; ' + reason
-        self.health[name + '/synchronized'].update(received=time.monotonic(),
-                                                  ok=valid_ratio > 0, reason=reason)
+        received = time.monotonic()
+        self.health[name + '/synchronized'].update(received=received, ok=True,
+            reason=f'RGB-D synchronized; skew {max(times)-min(times):.6f} s')
+        self.health[name + '/depth_valid'] = dict(received=received, ok=valid_ratio > 0,
+            reason=reason, valid_depth_fraction=valid_ratio)
         self.outputs[name, 'points'].publish(cloud)
 
     def report(self):
+        self.observe_clock(self.get_clock().now().nanoseconds * 1e-9)
         message = DiagnosticArray()
         message.header.stamp = self.get_clock().now().to_msg()
         for name, state in self.health.items():
@@ -368,6 +416,8 @@ class SensorProcessing(Node):
             row.level = DiagnosticStatus.STALE if age > self.cfg['missing_timeout_s'] else DiagnosticStatus.OK if state['ok'] else DiagnosticStatus.ERROR
             row.message = 'No recent input' if row.level == DiagnosticStatus.STALE else state['reason']
             row.values = [KeyValue(key='wall_receive_age_s', value=str(age))]
+            if 'valid_depth_fraction' in state:
+                row.values.append(KeyValue(key='valid_depth_fraction', value=str(state['valid_depth_fraction'])))
             message.status.append(row)
         self.diagnostics.publish(message)
 

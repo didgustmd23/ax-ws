@@ -1,0 +1,13 @@
+# 개발용 고정 출발 위치(AWS 창고 개발 지도). 운영 지도가 아니며 지정한 지도에서만 쓴다.
+# - 대상 지도: log/b2_mapping/20261108_131510/run/slam_map.yaml(단순화 월드·바퀴 S005 임시 사본에서 작성, 미채택, Git 제외)
+#   map.revision은 채택 지도의 map_info.yaml map_revision, 개발 지도는 0. image_sha256은 지도 이미지 해시다.
+#   둘 중 하나라도 실제 지도와 다르면 localization.launch.py가 시작을 거절한다.
+# - 출발 위치는 launch 출발 위치(robot_test.launch.py: robot_1 world (0, 0), robot_2 world (2.5, -1.5), yaw 0)와
+#   이 지도의 map 원점(지도 작성 때 robot_2 출발 위치)으로 정한 값이다. Gazebo 실제 자세를 읽어 쓰지 않는다.
+# - 해당 지점에서 시작함이 보장되는 개발 시뮬레이션의 최초 초기화에만 쓴다. 실행 중 위치를 잃어도 다시 넣지 않는다.
+map:
+  revision: 0
+  image_sha256: 0d046059ffd141efb60d46278250faddbb21e8bb4215a35ac5063b5db1b86b1f
+robots:
+  robot_1: {x: -2.5, y: 1.5, yaw: 0.0, position_std_m: 0.10, yaw_std_rad: 0.05}
+  robot_2: {x: 0.0, y: 0.0, yaw: 0.0, position_std_m: 0.10, yaw_std_rad: 0.05}

@@ -11,7 +11,8 @@
   4. python3 src/ax_localization/scripts/mapping_drive.py [--route ...] [--scan filtered|raw]
 
 정지 조건: 스캔·odom·TF 만료, 차체 외곽 기준 장애물, 경유점 제한시간·진척 없음, 다른 cmd_vel 발행자, Ctrl+C.
-정지는 명령(0 속도)과 실제 정지 확인(odom 기준 D-06 값 0.5 s 유지)을 구분해 기록한다. 확인하지 못하면 정상 종료가 아니다.
+정지는 명령(0 속도)과 odom 기준 정지 확인(odom 속도가 D-06 값 안에 0.5 s 유지)을 구분해 기록한다. 확인하지 못하면 정상 종료가 아니다.
+odom 기준 정지 확인은 Gazebo 실제 자세로 확인한 정지가 아니다. 실제 자세는 recording.npz에서 따로 비교한다.
 
 Gazebo 실제 자세는 검증 기록(recording.npz)에만 저장하고 주행 제어·SLAM에는 쓰지 않는다.
 결과: log/b2_mapping/<KST 시각>/drive_result.json, recording.npz, slam_map.yaml/pgm, pose_graph.posegraph/.data
@@ -43,22 +44,25 @@ from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 import tf2_ros
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from map_tools import se2, se2_params, transform_points, wrap_angle, yaw_from_quaternion  # noqa: E402
+from map_tools import describe_model, se2, se2_params, transform_points, wrap_angle, yaw_from_quaternion  # noqa: E402
 
-# D-06 실제 정지 판정 값(odom 기준). 판정 소유는 A4이며 여기서는 시험 기록용으로 같은 값을 쓴다.
+# D-06 정지 판정 값을 odom 속도에 적용한다(odom 기준 정지 확인). 판정 소유는 A4이며 여기서는 시험 기록용으로 같은 값을 쓴다.
 STOP_LINEAR_M_S = 0.01
 STOP_ANGULAR_RAD_S = 0.02
 STOP_HOLD_S = 0.5
 STOP_CONFIRM_TIMEOUT_S = 8.0
+# odom이 한 번도 오지 않을 때 odom 기준 정지 확인을 포기하기까지의 벽시계 대기(s)
+ODOM_FIRST_WAIT_S = 5.0
 
 # 장애물로 멈춘 뒤 길이 열리기를 기다리는 시간(시뮬레이션 s)
 OBSTACLE_WAIT_S = 10.0
@@ -350,6 +354,16 @@ class MappingDriver(Node):
         self.drive_parameters = AsyncParameterClient(self, f"{self.namespace}/diff_drive_controller")
         self.mounts = {}
 
+        # Gazebo spawn에 쓰인 robot_description(latched). 모델·마찰·센서 설정 기록용이다.
+        self.robot_description = None
+        self.create_subscription(String, f"{self.namespace}/robot_description", self.on_robot_description,
+                                 QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+
+    # robot_description 문자열을 보관한다.
+    def on_robot_description(self, message):
+        with self.lock:
+            self.robot_description = message.data
+
     # 현재 시뮬레이션 시각(s)
     def now_seconds(self):
         return self.get_clock().now().nanoseconds * 1e-9
@@ -520,6 +534,9 @@ class Run:
             "stops": [],
             "loop": {},
             "saved": {},
+            # 저장 직전·종료 시 odom 기준 정지 확인 결과. 둘 다 확인돼야 지도 저장·채택·정상 완료가 가능하다.
+            "stop_gate": {"save": None, "completion": None},
+            "saved_map_usable": None,
         }
 
     # 사건 하나를 기록하고 출력한다.
@@ -618,7 +635,8 @@ class RouteFollower:
 
         return None
 
-    # 정지 명령 뒤 odom이 D-06 값 안에 STOP_HOLD_S 동안 머무는지 확인한다.
+    # odom 기준 정지 확인: 정지 명령 뒤 odom 속도가 D-06 값 안에 STOP_HOLD_S 동안 머무는지 확인한다.
+    # Gazebo 실제 자세는 보지 않는다.
     def stop_and_confirm(self, reason):
         start = self.node.now_seconds()
         wall_deadline = time.monotonic() + 60.0
@@ -634,7 +652,7 @@ class RouteFollower:
                 odom = self.node.odom
 
             # odom이 한 번도 오지 않으면 정지를 확인할 수단이 없으므로 오래 기다리지 않는다.
-            if odom is None and time.monotonic() - wall_start > 5.0:
+            if odom is None and time.monotonic() - wall_start > ODOM_FIRST_WAIT_S:
                 break
 
             now = self.node.now_seconds()
@@ -651,9 +669,10 @@ class RouteFollower:
             time.sleep(CONTROL_PERIOD_S)
 
         entry = {"reason": reason, "requested_sim_s": start, "confirmed": confirmed,
-                 "confirm_sim_s": self.node.now_seconds() - start if confirmed else None}
+                 "confirm_sim_s": self.node.now_seconds() - start if confirmed else None,
+                 "odom_received": odom is not None}
         self.run.record["stops"].append(entry)
-        self.run.event(start, "STOP", f"{reason}: 실제 정지 {'확인' if confirmed else '미확인'}")
+        self.run.event(start, "STOP", f"{reason}: odom 기준 정지 {'확인' if confirmed else '미확인'}")
 
         return confirmed
 
@@ -768,7 +787,66 @@ class RouteFollower:
             self.drive_to(index, goal)
 
         if not self.stop_and_confirm("경로 완료"):
-            raise RuntimeError("경로 완료 뒤 실제 정지를 확인하지 못함")
+            raise RuntimeError("경로 완료 뒤 odom 기준 정지를 확인하지 못함")
+
+
+# 실제 spawn에 쓰인 robot_description을 run 폴더에 저장하고 해시·바퀴 마찰·LiDAR 설정을 기록한다.
+# 받지 못하거나 해석하지 못하면 값을 채우지 않고 누락 사유만 남긴다.
+def record_model(node, run, timeout_s=10.0):
+    deadline = time.monotonic() + timeout_s
+    topic = f"{node.namespace}/robot_description"
+
+    while time.monotonic() < deadline:
+        with node.lock:
+            text = node.robot_description
+
+        if text:
+            break
+
+        time.sleep(0.1)
+    else:
+        run.record["model"] = {"source": topic, "missing_reason": f"{timeout_s:.0f} s 안에 {topic} 미수신"}
+        return
+
+    path = run.output / "robot_description.urdf"
+    path.write_text(text, encoding="utf-8")
+    model = {"source": topic, "file": path.name, "sha256": sha256_of(path)}
+
+    try:
+        model.update(describe_model(text))
+    except Exception as error:
+        model["missing_reason"] = f"URDF 해석 실패: {type(error).__name__}: {error}"
+
+    run.record["model"] = model
+
+
+# 저장 직전에 odom 기준 정지를 다시 확인하고, 확인됐을 때만 save_fn(지도 저장)을 부른다.
+# 확인하지 못하면 저장하지 않고 RuntimeError를 낸다. 저장은 run 폴더에만 하며 채택 지도는 건드리지 않는다.
+def save_after_stop(follower, run, save_fn):
+    confirmed = follower.stop_and_confirm("저장 전")
+    run.record["stop_gate"]["save"] = {"confirmed": confirmed, "stop": run.record["stops"][-1] if run.record["stops"] else None}
+
+    if not confirmed:
+        run.record["saved_map_usable"] = False
+        raise RuntimeError("저장 전 odom 기준 정지를 확인하지 못해 지도를 저장하지 않음")
+
+    save_fn()
+
+
+# 종료 시 odom 기준 정지 확인 결과를 기록에 반영하고 종료 코드를 돌려준다.
+# 정지를 확인하지 못하면 완료로 남기지 않으며, 이미 저장한 지도도 사용 불가로 표시한다.
+def close_run(record, confirmed, exit_code):
+    record["stop_gate"]["completion"] = {"confirmed": confirmed}
+
+    if record["saved"]:
+        record["saved_map_usable"] = bool(confirmed and record["status"] == "completed")
+
+    if not confirmed and record["status"] == "completed":
+        record["status"] = "failed"
+        record["error"] = "종료 시 odom 기준 정지를 확인하지 못함"
+        exit_code = 1
+
+    return exit_code
 
 
 # slam_toolbox 저장 Service를 불러 지도와 pose graph를 run 폴더에 저장한다.
@@ -974,6 +1052,7 @@ def main():
 
     try:
         truth.start()
+        record_model(node, run)
         node.mounts = {name: node.lookup_mount(name) for name in ("front", "rear")}
         run.record["mounts"] = node.mounts
         follower.configure_limits(node.read_drive_limits())
@@ -994,7 +1073,7 @@ def main():
         follower.follow()
 
         if not arguments.no_save:
-            save_map(node, run)
+            save_after_stop(follower, run, lambda: save_map(node, run))
 
         run.record["status"] = "completed"
         exit_code = 0
@@ -1010,17 +1089,14 @@ def main():
         run.record["error"] = f"{type(error).__name__}: {error}"
 
     finally:
-        # 어떤 경우에도 정지를 요청하고 실제 정지를 확인한다. 확인 실패는 정상 종료가 아니다.
+        # 어떤 경우에도 정지를 요청하고 odom 기준 정지를 확인한다. 확인 실패는 정상 종료가 아니다.
         try:
             confirmed = follower.stop_and_confirm("종료")
         except Exception as error:
             confirmed = False
             run.event(None, "STOP", f"종료 정지 절차 실패: {error}")
 
-        if not confirmed and run.record["status"] == "completed":
-            run.record["status"] = "failed"
-            run.record["error"] = "종료 시 실제 정지를 확인하지 못함"
-            exit_code = 1
+        exit_code = close_run(run.record, confirmed, exit_code)
 
         run.record["loop"] = loop_evidence(node, route)
         truth.stop()

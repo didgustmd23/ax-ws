@@ -370,5 +370,281 @@ class DriveSafety(unittest.TestCase):
         self.assertAlmostEqual(error, -math.pi / 2)
 
 
+# 정지 확인용 가짜 노드. odom 속도(선·각)를 정해 두고 시뮬레이션 시각은 벽시계의 10배로 흐른다.
+class FakeStopNode:
+    def __init__(self, odom):
+        import threading
+        import time
+
+        self.lock = threading.Lock()
+        self.odom = odom
+        self.stop_count = 0
+        self.start = time.monotonic()
+        self.clock = time.monotonic
+
+    # 시뮬레이션 시각(s)
+    def now_seconds(self):
+        return (self.clock() - self.start) * 10.0
+
+    # 0 속도 명령 횟수만 센다.
+    def publish_stop(self):
+        self.stop_count += 1
+
+
+class StopGate(unittest.TestCase):
+    # mapping_drive를 읽고 시험 시간을 줄이도록 대기 상수를 줄인다.
+    def setUp(self):
+        self.tool = load_script('mapping_drive')
+
+        if self.tool is None:
+            self.skipTest('ROS 환경 필요')
+
+        self.saved_constants = {name: getattr(self.tool, name) for name in ('ODOM_FIRST_WAIT_S', 'CONTROL_PERIOD_S')}
+        self.tool.ODOM_FIRST_WAIT_S = 0.2
+        self.tool.CONTROL_PERIOD_S = 0.005
+        self.accuracy = load_script('check_map_accuracy')
+
+    # 줄인 상수를 되돌린다.
+    def tearDown(self):
+        for name, value in self.saved_constants.items():
+            setattr(self.tool, name, value)
+
+    # 가짜 노드로 실행 기록과 경로 추종기를 만든다.
+    def make(self, odom):
+        route_file = tempfile.NamedTemporaryFile(suffix='.yaml', delete=False)
+        route_file.close()
+        self.addCleanup(lambda: Path(route_file.name).unlink())
+        route = {'robot_id': 'robot_2', 'frame': 'odom', 'waypoints': [[0.0, 0.0]]}
+        run = self.tool.Run(Path(tempfile.mkdtemp()), Path(route_file.name), route, 'scan_filtered')
+        node = FakeStopNode(odom)
+
+        return run, node, self.tool.RouteFollower(node, route, run, None)
+
+    # 정지 성공·움직임 지속·odom 미수신에서 저장 호출 여부와 종료 상태를 확인한다.
+    def run_case(self, odom):
+        run, node, follower = self.make(odom)
+        calls = []
+
+        # 저장 함수는 호출 기록과 저장 결과만 남긴다.
+        def fake_save():
+            calls.append('save')
+            run.record['saved'] = {'map_saver_cli': {'result_code': 0, 'missing': []}}
+
+        run.record['status'] = 'running'
+
+        try:
+            self.tool.save_after_stop(follower, run, fake_save)
+            run.record['status'] = 'completed'
+            exit_code = 0
+        except RuntimeError as error:
+            run.record['status'] = 'failed'
+            run.record['error'] = str(error)
+            exit_code = 1
+
+        confirmed = follower.stop_and_confirm('종료')
+        exit_code = self.tool.close_run(run.record, confirmed, exit_code)
+
+        return run.record, calls, exit_code, node
+
+    def test_stopped_robot_saves_and_completes(self):
+        record, calls, exit_code, node = self.run_case((0.0, 0, 0, 0, 0.0, 0.0))
+
+        self.assertEqual(calls, ['save'])
+        self.assertEqual((record['status'], exit_code, record['saved_map_usable']), ('completed', 0, True))
+        self.assertTrue(record['stop_gate']['save']['confirmed'])
+        self.assertTrue(record['stop_gate']['completion']['confirmed'])
+        self.assertGreater(node.stop_count, 0)
+
+    def test_moving_robot_blocks_save(self):
+        record, calls, exit_code, _ = self.run_case((0.0, 0, 0, 0, 0.2, 0.0))
+
+        self.assertEqual(calls, [])
+        self.assertEqual((record['status'], exit_code, record['saved_map_usable']), ('failed', 1, False))
+        self.assertIn('저장 전 odom 기준 정지', record['error'])
+        self.assertEqual([stop['confirmed'] for stop in record['stops']], [False, False])
+
+    def test_missing_odom_blocks_save(self):
+        record, calls, exit_code, _ = self.run_case(None)
+
+        self.assertEqual(calls, [])
+        self.assertEqual((record['status'], exit_code), ('failed', 1))
+        self.assertEqual([stop['odom_received'] for stop in record['stops']], [False, False])
+
+    def test_completion_stop_failure_marks_saved_map_unusable(self):
+        record = {'status': 'completed', 'error': None, 'saved': {'map_saver_cli': {}},
+                  'stop_gate': {'save': {'confirmed': True}, 'completion': None}, 'saved_map_usable': None}
+
+        self.assertEqual(self.tool.close_run(record, False, 0), 1)
+        self.assertEqual((record['status'], record['saved_map_usable']), ('failed', False))
+
+    def test_adoption_requires_stop_records(self):
+        if self.accuracy is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        good = {'stop_gate': {'save': {'confirmed': True}, 'completion': {'confirmed': True}}, 'saved_map_usable': True}
+
+        self.assertEqual(self.accuracy.stop_gate_problems(good), [])
+        self.assertEqual(self.accuracy.stop_gate_problems({}), ['정지 확인 기록(stop_gate) 없음'])
+        self.assertEqual(self.accuracy.stop_gate_problems(dict(good, stop_gate={'save': {'confirmed': True}, 'completion': {'confirmed': False}},
+                                                                saved_map_usable=False)),
+                         ['종료 odom 기준 정지 미확인', '저장 지도 사용 불가 표시'])
+
+
+class MapMetadata(unittest.TestCase):
+    # 비교 도구를 읽는다(ROS 의존이 없으면 건너뜀).
+    def setUp(self):
+        self.tool = load_script('check_map_accuracy')
+
+    # 마찰·LiDAR가 든 작은 URDF에서 값을 그대로 읽고, 없는 값은 None으로 둔다.
+    def test_describe_model_reads_friction_and_lidar(self):
+        urdf = """<robot name="ax_2">
+          <gazebo reference="wheel_fl"><mu1>0.1</mu1><mu2>1.0</mu2><fdir1>0 0 1</fdir1>
+            <collision><surface><friction><ode><slip1>0.05</slip1></ode></friction></surface></collision></gazebo>
+          <gazebo reference="wheel_fr"><mu1>0.1</mu1><mu2>1.0</mu2></gazebo>
+          <gazebo reference="front_lidar_link"><sensor name="front_lidar" type="gpu_lidar">
+            <gz_frame_id>robot_2/front_lidar_link</gz_frame_id><update_rate>10</update_rate>
+            <lidar><scan><horizontal><samples>360</samples><min_angle>-1.5</min_angle><max_angle>1.5</max_angle></horizontal></scan>
+            <range><min>0.12</min><max>10</max></range></lidar></sensor></gazebo>
+        </robot>"""
+        model = mt.describe_model(urdf)
+
+        self.assertEqual(model['robot_name'], 'ax_2')
+        self.assertEqual(model['wheel_contacts']['wheel_fl'], {'mu1': 0.1, 'mu2': 1.0, 'fdir1': '0 0 1', 'slip1': 0.05, 'slip2': None})
+        self.assertEqual(model['wheel_contacts']['wheel_fr']['slip1'], None)
+        self.assertEqual(model['lidars']['front_lidar']['samples'], 360)
+        self.assertEqual(model['lidars']['front_lidar']['range_max_m'], 10.0)
+        self.assertIsNone(model['lidars']['front_lidar']['noise_stddev_m'])
+
+    # 실제 운영 Xacro 출력에서 바퀴 마찰이 현재 소스 값(mu1 0.1, mu2 1.0, slip1 없음)과 같은지 확인한다.
+    def test_describe_model_matches_operating_xacro(self):
+        import shutil
+        import subprocess
+
+        if shutil.which('xacro') is None:
+            self.skipTest('xacro 필요')
+
+        urdf = subprocess.run(['xacro', str(ROOT / 'src/ax_description/urdf/ax.urdf.xacro'), 'robot_id:=robot_2'],
+                              capture_output=True, text=True)
+
+        if urdf.returncode != 0:
+            self.skipTest('xacro 실행 실패(설치 패키지 경로 필요): ' + urdf.stderr[-200:])
+
+        model = mt.describe_model(urdf.stdout)
+
+        self.assertTrue(model['wheel_contacts'])
+        self.assertEqual({(c['mu1'], c['mu2'], c['fdir1'], c['slip1']) for c in model['wheel_contacts'].values()},
+                         {(0.1, 1.0, '0 0 1', None)})
+        self.assertTrue(any(lidar['samples'] == 360 for lidar in model['lidars'].values()))
+
+    # 지도 요약의 원점·해상도·셀 수·관측 범위가 입력 격자와 같다.
+    def test_map_summary_matches_grid(self):
+        with tempfile.TemporaryDirectory() as folder:
+            grid = room_grid()
+            geometry = mt.GridGeometry(-1.5, 2.0, 0.05, grid.shape[1], grid.shape[0])
+            mt.write_map(Path(folder) / 'm.yaml', grid, geometry)
+            summary = mt.map_summary(Path(folder) / 'm.yaml')
+
+        self.assertEqual(summary['origin'][:2], [-1.5, 2.0])
+        self.assertEqual((summary['resolution_m'], summary['size_cells']), (0.05, [60, 40]))
+        self.assertEqual(summary['cells'], {'free': int((grid == mt.FREE).sum()), 'occupied': int((grid == mt.OCCUPIED).sum()),
+                                            'unknown': int((grid == mt.UNKNOWN).sum())})
+        np.testing.assert_allclose(summary['observed_bounds_map_m'], [-1.5 + 5 * 0.05, 2.0 + 5 * 0.05, -1.5 + 56 * 0.05, 2.0 + 36 * 0.05])
+
+    # 시험용 run 폴더(지도·주행 기록·선택적 session.json)를 만든다.
+    def make_run(self, folder, session, model):
+        run = Path(folder) / 'run'
+        run.mkdir()
+        grid = room_grid()
+        mt.write_map(run / 'slam_map.yaml', grid, mt.GridGeometry(0, 0, 0.05, grid.shape[1], grid.shape[0]))
+        route = Path(folder) / 'route.yaml'
+        route.write_text('x: 1\n', encoding='utf-8')
+
+        if session is not None:
+            (Path(folder) / 'session').mkdir()
+            (Path(folder) / 'session' / 'session.json').write_text(json.dumps(session), encoding='utf-8')
+
+        drive = {'robot_id': 'robot_2', 'scan_input': 'scan_filtered', 'route': {'path': str(route), 'sha256': 'r'},
+                 'stop_gate': {'save': {'confirmed': True}, 'completion': {'confirmed': True}}}
+
+        if model is not None:
+            drive['model'] = model
+
+        accuracy = {'judgment': 'not_judged', 'reason': '기준 미확정', 'metrics_optimal': {'m': 1},
+                    'scan_frame': 'robot_2/front_lidar_link', 'front_mount': [0.6, 0, 0],
+                    'transforms': {'initial_T_world_map': {}, 'optimal_T_world_map': {}, 'initial_method': 'spawn'}}
+        slam_yaml = yaml.safe_load((run / 'slam_map.yaml').read_text(encoding='utf-8'))
+
+        return run, drive, accuracy, slam_yaml
+
+    def test_metadata_records_inputs(self):
+        if self.tool is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        session = {'world_condition': 'original', 'world_file': 'w.world', 'world_sha256': 'ab' * 32,
+                   'wheel_condition': 'original', 'wheel_override_file': '', 'wheel_override_sha256': '',
+                   'git_commit': 'c' * 40, 'git_dirty': False}
+        model = {'source': '/ax/robot_2/robot_description', 'file': 'robot_description.urdf', 'sha256': 'd' * 64,
+                 'robot_name': 'ax_2', 'wheel_contacts': {'w': {'mu1': 0.1}}, 'lidars': {'front_lidar': {'samples': 360}}}
+
+        with tempfile.TemporaryDirectory() as folder:
+            metadata = self.tool.map_metadata(*self.make_run(folder, session, model))
+
+        self.assertEqual(metadata['missing'], [])
+        self.assertEqual(self.tool.metadata_problems(metadata), [])
+        self.assertEqual((metadata['world']['world_file'], metadata['world']['world_sha256']), ('w.world', 'ab' * 32))
+        self.assertEqual(metadata['robot']['model']['sha256'], 'd' * 64)
+        self.assertEqual(metadata['wheel_friction']['wheel_contacts'], {'w': {'mu1': 0.1}})
+        self.assertEqual(metadata['robot']['sensor']['lidars'], {'front_lidar': {'samples': 360}})
+        self.assertEqual(metadata['code'], {'git_commit': 'c' * 40, 'git_dirty': False})
+        self.assertEqual((metadata['map']['frame'], metadata['map']['resolution_m']), ('map', 0.05))
+        self.assertEqual((metadata['verification']['judgment'], metadata['verification']['judgment_reason']), ('not_judged', '기준 미확정'))
+
+    def test_metadata_marks_missing_without_filling(self):
+        if self.tool is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        with tempfile.TemporaryDirectory() as folder:
+            metadata = self.tool.map_metadata(*self.make_run(folder, None, {'source': 't', 'missing_reason': '10 s 안에 t 미수신'}))
+
+        self.assertIsNone(metadata['world']['world_sha256'])
+        self.assertIsNone(metadata['robot']['model'])
+        self.assertEqual(metadata['wheel_friction'], {'condition': None, 'wheel_contacts': None, 'override_file': None, 'override_sha256': None})
+        self.assertEqual(metadata['code'], {'git_commit': None, 'git_dirty': None})
+        self.assertEqual(len(metadata['missing']), 3)
+        self.assertIn('model: 10 s 안에 t 미수신', metadata['missing'])
+
+    def test_development_conditions_are_not_adoptable(self):
+        if self.tool is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        session = {'world_condition': 'light_collision', 'world_file': 'session/world_light.world', 'world_sha256': 'ab' * 32,
+                   'wheel_condition': 'slip1=0.05', 'git_commit': 'c', 'git_dirty': True}
+        model = {'source': 't', 'file': 'f', 'sha256': 'd', 'wheel_contacts': {}, 'lidars': {}}
+
+        with tempfile.TemporaryDirectory() as folder:
+            problems = self.tool.metadata_problems(self.tool.map_metadata(*self.make_run(folder, session, model)))
+
+        self.assertEqual(problems, ['월드 조건 light_collision은 개발용 임시 사본', '바퀴 조건 slip1=0.05은 개발용 임시 사본'])
+
+    def test_adopt_records_reload_check(self):
+        if self.tool is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        with tempfile.TemporaryDirectory() as folder:
+            run, target = Path(folder) / 'run', Path(folder) / 'maps'
+            run.mkdir()
+            grid = room_grid()
+            mt.write_map(run / 'slam_map.yaml', grid, mt.GridGeometry(-2.0, 1.0, 0.05, grid.shape[1], grid.shape[0]))
+            (run / 'pose_graph.posegraph').write_bytes(b'graph')
+            (run / 'pose_graph.data').write_bytes(b'data')
+
+            info = self.tool.adopt_map(run, target, {})
+            reloaded, geometry, _ = mt.read_map(target / 'map.yaml')
+
+            self.assertTrue(info['reload_check']['match'])
+            self.assertTrue((reloaded == grid).all())
+            self.assertEqual(geometry.as_dict()['origin'], [-2.0, 1.0])
+
+
 if __name__ == '__main__':
     unittest.main()

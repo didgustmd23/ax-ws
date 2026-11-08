@@ -77,6 +77,63 @@ def signed_distance(start, end, heading):
     return math.copysign(math.hypot(dx, dy), forward)
 
 
+# 시작 자세 차체 좌표계로 본 이동량(전방, 좌측). start·end는 (x, y), heading은 시작 yaw다.
+def body_displacement(start, end, heading):
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    c, s = math.cos(heading), math.sin(heading)
+
+    return (c * dx + s * dy, -s * dx + c * dy)
+
+
+# 위치 궤적(x, y 목록)에 원을 최소제곱으로 맞춰 (중심 x, 중심 y, 반지름)을 돌려준다. 점이 3개 미만이면 None.
+def fit_circle(points):
+    import numpy as np
+
+    points = np.asarray(points, float).reshape(-1, 2)
+
+    if len(points) < 3:
+        return None
+
+    # 점이 거의 한 곳이면(차체 중심 회전) 그 점을 중심, 반지름 0으로 본다.
+    mean = points.mean(axis=0)
+
+    if np.abs(points - mean).max() < 1e-4:
+        return float(mean[0]), float(mean[1]), 0.0
+
+    x, y = points[:, 0], points[:, 1]
+    a = np.c_[2.0 * x, 2.0 * y, np.ones_like(x)]
+    cx, cy, c = np.linalg.lstsq(a, x * x + y * y, rcond=None)[0]
+
+    return float(cx), float(cy), float(math.sqrt(max(c + cx * cx + cy * cy, 0.0)))
+
+
+# 제자리 회전의 실제 차체 병진과 odom 병진 오차를 계산한다.
+# truth·odom은 [(시각, x, y, yaw)] 목록이며 같은 시험 구간의 표본이다. 실제 회전이 min_turn 이상이면 회전 중심도 구한다.
+def rotation_translation(truth, odom, min_turn=1.0):
+    true_move = body_displacement(truth[0][1:3], truth[-1][1:3], truth[0][3])
+    odom_move = body_displacement(odom[0][1:3], odom[-1][1:3], odom[0][3])
+    result = {
+        "truth_translation_m": math.hypot(*true_move),
+        "odom_translation_m": math.hypot(*odom_move),
+        "translation_error_m": math.hypot(true_move[0] - odom_move[0], true_move[1] - odom_move[1]),
+        "truth_displacement_body_m": list(true_move),
+        "odom_displacement_body_m": list(odom_move),
+        "rotation_centre_body_m": None,
+        "rotation_radius_m": None,
+    }
+
+    turn = accumulated_rotation([(item[0], item[3]) for item in truth])
+
+    if turn is not None and abs(turn) >= min_turn:
+        circle = fit_circle([item[1:3] for item in truth])
+
+        if circle is not None:
+            result["rotation_centre_body_m"] = list(body_displacement(truth[0][1:3], circle[:2], truth[0][3]))
+            result["rotation_radius_m"] = circle[2]
+
+    return result
+
+
 # 현재 multiplier와 (odom 값 / 실제 값) 비율 평균으로 권장 multiplier를 계산한다
 def recommended_separation_multiplier(current, ratios):
     stats = summarize(ratios)
@@ -212,8 +269,13 @@ class WheelCalibrator(Node):
         truth_heading = yaw_of(truth[0][1])
         odom_heading = odom[0][3]
 
+        # 모델 원점이 base_link와 같으므로(Gazebo dynamic_pose 확인) 모델 자세를 차체 실제 자세로 쓴다.
+        truth_samples = [(item[0], item[1][0, 3], item[1][1, 3], yaw_of(item[1])) for item in truth]
+        odom_samples = [(item[0], item[1], item[2], item[3]) for item in odom]
+
         return {
             "command": {"linear_m_s": linear, "angular_rad_s": angular, "seconds": seconds},
+            "translation": rotation_translation(truth_samples, odom_samples) if linear == 0.0 else None,
             "odom_rotation_rad": accumulated_rotation([(item[0], item[3]) for item in odom]),
             "truth_rotation_rad": accumulated_rotation([(item[0], yaw_of(item[1])) for item in truth]),
             "odom_distance_m": signed_distance(odom[0][1:3], odom[-1][1:3], odom_heading),
@@ -266,6 +328,20 @@ def run(node, arguments, checks):
             drives.append(result)
 
     turn_ratios = [item["ratio_odom_over_truth"] for item in turns]
+
+    # 제자리 회전 중 차체 병진: 판정 없이 기록만 한다. 원인 확인 전 보정 계수로 가리지 않는다.
+    translation = {}
+
+    for side, sign in (("left", 1.0), ("right", -1.0)):
+        items = [item["translation"] for item in turns if item["command"]["angular_rad_s"] * sign > 0]
+        centres = [item["rotation_centre_body_m"] for item in items if item["rotation_centre_body_m"] is not None]
+        translation[side] = {
+            "truth_translation_m": summarize([item["truth_translation_m"] for item in items]),
+            "odom_translation_m": summarize([item["odom_translation_m"] for item in items]),
+            "translation_error_m": summarize([item["translation_error_m"] for item in items]),
+            "rotation_centre_forward_m": summarize([centre[0] for centre in centres]),
+            "rotation_centre_left_m": summarize([centre[1] for centre in centres]),
+        }
     left = summarize([item["ratio_odom_over_truth"] for item in turns if item["command"]["angular_rad_s"] > 0])
     right = summarize([item["ratio_odom_over_truth"] for item in turns if item["command"]["angular_rad_s"] < 0])
     drive_stats = summarize([item["ratio_odom_over_truth"] for item in drives])
@@ -281,6 +357,7 @@ def run(node, arguments, checks):
         "turns": turns,
         "drives": drives,
         "turn_ratio": {"all": summarize(turn_ratios), "left": left, "right": right},
+        "turn_translation": translation,
         "drive_ratio": drive_stats,
         "recommended": {
             "wheel_separation_multiplier": separation,
@@ -314,6 +391,18 @@ def print_summary(result):
             f"→ 권장 {recommended['wheel_separation_multiplier']:.4f} (잠정 물리 설정 기준, 설정 파일은 바꾸지 않음)",
             flush=True,
         )
+
+    for side, stats in result.get("turn_translation", {}).items():
+        error, centre = stats["translation_error_m"], stats["rotation_centre_forward_m"]
+
+        if error is not None:
+            centre_text = f", 회전 중심 차체 앞 {centre['mean']:.3f} m" if centre is not None else ""
+            print(
+                f"[INFO] {('왼쪽' if side == 'left' else '오른쪽')} 회전 중 실제 병진 평균 "
+                f"{stats['truth_translation_m']['mean']:.3f} m, odom 병진 {stats['odom_translation_m']['mean']:.3f} m, "
+                f"odom 병진 오차 {error['mean']:.3f} m{centre_text}",
+                flush=True,
+            )
 
     if result["drive_ratio"] is not None:
         print(

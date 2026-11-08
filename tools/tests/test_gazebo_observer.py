@@ -237,6 +237,27 @@ class WheelCalibrationMath(unittest.TestCase):
         self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (1, 1), math.pi / 4), math.sqrt(2))
         self.assertAlmostEqual(self.calibration.signed_distance((0, 0), (-1, 0), 0.0), -1.0)
 
+    def test_rotation_about_front_axle_shows_translation(self):
+        # 차체 앞 0.334 m 점을 중심으로 π 회전: 실제 병진 0.668 m, odom은 제자리(0)로 본다.
+        centre = 0.334
+        truth = [(index * 0.1, centre - centre * math.cos(a), -centre * math.sin(a), a)
+                 for index, a in enumerate([math.pi * k / 30 for k in range(31)])]
+        odom = [(item[0], 0.0, 0.0, item[3]) for item in truth]
+        result = self.calibration.rotation_translation(truth, odom)
+
+        self.assertAlmostEqual(result['truth_translation_m'], 2 * centre, places=6)
+        self.assertAlmostEqual(result['odom_translation_m'], 0.0)
+        self.assertAlmostEqual(result['translation_error_m'], 2 * centre, places=6)
+        np.testing.assert_allclose(result['rotation_centre_body_m'], [centre, 0.0], atol=1e-6)
+
+    def test_centred_rotation_has_no_translation(self):
+        truth = [(index * 0.1, 1.0, 2.0, 0.1 * index) for index in range(30)]
+        result = self.calibration.rotation_translation(truth, truth)
+
+        self.assertAlmostEqual(result['translation_error_m'], 0.0)
+        np.testing.assert_allclose(result['rotation_centre_body_m'], [0.0, 0.0], atol=1e-9)   # 차체 중심 회전
+        self.assertEqual(result['rotation_radius_m'], 0.0)
+
     def test_recommended_multiplier(self):
         # odom이 실제보다 10 % 크게 돌면 multiplier를 10 % 키운다.
         self.assertAlmostEqual(self.calibration.recommended_separation_multiplier(1.2, [1.1, 1.1, None]), 1.32)

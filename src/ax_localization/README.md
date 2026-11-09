@@ -216,6 +216,65 @@ python3 src/ax_localization/scripts/check_localization.py --robot-ids robot_1,ro
 
 AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odom`이 없어 `incomplete`가 나오는 것이 정상이다. TF가 없다는 것을 확인할 때 이 결과를 쓴다.
 
+#### 원시 기록·감독 진단·분석 (선택, 시험 기록 전용)
+
+```bash
+# 위치 추정 launch보다 먼저 띄워 최초 초기화부터 받는다. stop 파일이 생기면 정상 종료한다.
+python3 src/ax_localization/scripts/check_localization.py --robot-ids robot_2 --map-accuracy <accuracy.json> \
+    --duration 3000 --raw-dir log/b2_health/<KST 시각>_<label> --stop-file log/b2_health/<KST 시각>_<label>/stop \
+    --map <지도.yaml> --start-poses <start_poses.yaml> [--world-file <월드>] [--hash-file NAME=PATH ...]
+ros2 launch ax_localization localization.launch.py ... health_diagnostics:=log/b2_health/<KST 시각>_<label>/supervisor
+# 끝난 뒤 ROS 없이 분석
+python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_health/<KST 시각>_<label> --map-accuracy <accuracy.json>
+```
+
+- **보관 위치:** `log/b2_health/`(Git 제외). 일회성 임시 폴더에 두지 않는다.
+- **`conditions.json`:** 수집을 시작할 때 쓴다. 담는 값은 다음과 같다.
+  - git commit·미커밋 파일
+  - 도구·판단 값·AMCL 설정·launch·start_poses·지도·월드 sha256
+  - `ROS_DOMAIN_ID`·`GZ_PARTITION`, 수집 옵션
+  - 같은 순간의 UTC·단조 시각
+  - 실행 중 알게 된 URDF 해시·바퀴 접촉·감독 세션은 `runtime`에 갱신한다.
+- **`raw/<robot_id>/*.jsonl`:** 받는 즉시 줄 단위로 쓰고 flush한다. 중단돼도 받은 만큼 남는다.
+  - 대상 자료: `tf_map_odom`, `amcl_pose`, `initialpose`, `odom`, `scan`, `health`, `actuation`, `amcl_lifecycle`, `tf_chain`, `publishers`
+    - `tf_map_odom`: 원래 stamp와 유효 시각을 함께 남긴다.
+    - `amcl_pose`·`initialpose`: 공분산 36개를 모두 남긴다.
+    - `tf_chain`: TF 연결 조회 결과(1 Hz)
+    - `publishers`: `amcl_pose` 발행자·GID
+  - 줄마다 원래 stamp와 수신 `recv_sim`·`recv_mono`를 구분해 둔다.
+  - `truth.jsonl`은 평가 전용이다.
+  - 자료 파일이 아예 없으면 결과의 `raw.missing`에 남고 `status`가 `incomplete`가 된다.
+- **`status`와 기록 품질은 다르다:**
+  - `completed`는 기존 의미 그대로다. 요청 시간과 필수 입력·연결을 충족했다는 뜻이며, 모든 메시지를 받았다는 뜻이 아니다.
+  - 수집량은 `record_quality`(결과 파일과 `--analyze`)에 따로 남는다.
+    - 수집 구간 `collection_window_mono`: 시작은 기록 시작 단조 시각, 끝은 기록 종료 또는 마지막 수신 시각
+    - 자료별 값: 출처, 받은 줄 수·고유 stamp·중복, 수신 최대 공백, `subscriber_ready`
+      - `subscriber_ready`는 구독 준비를 증명할 자료가 없어 `unknown`이다.
+  - 대조 기준과 범위:
+    - health: 감독 진단 tick과 stamp 집합으로 대조한다. 중복이 누락을 상쇄하지 않는다.
+      - `all_ticks`: 진단 전체(기간 제한 없음)
+      - `collection_window`: 수집 구간 안
+      - `observed_interval`: 원시 기록이 처음·마지막으로 받은 사이
+      - 구간 밖 기준 사건은 `reference_out_of_window`로 따로 센다.
+    - initialpose: 감독이 보낸 개수와만 비교한다(`coverage: count_only`, `unmatched_count`).
+      - 개수가 같으면 `count_equal_unproven`이다. 완전 수신을 뜻하지 않는다.
+  - 손실 판정의 뜻:
+    - `loss: confirmed`: 기준 사건 중 원시 기록에 없는 것이 있다는 뜻이다. 전송·DDS 원인을 확정한 것은 아니다.
+      - 구독 준비 전에 보낸 메시지였을 수도 있다. 그런 미수신과 전송 손실은 구별하지 못한다.
+    - `none_in_reference`: 비교한 범위의 기준 사건이 모두 있다는 뜻이다.
+    - `unverified`: 기준이 없다. 받은 줄 수만으로 전량 수집을 주장하지 않는다.
+- **감독 진단:** `supervisor/<robot_id>_supervisor.jsonl`에 남는다.
+  - 판정 tick마다: 상태·표준편차, 신뢰 기록 판단(`trust_stored`·`trust_rejection`), 기록 나이·누적 이동
+  - 재위치 요청 응답, 감독 노드가 보낸 initialpose(`START_POSE`·`REINIT`)
+  - 판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다.
+- **`--analyze`:** 회차 폴더에 `analysis.json`을 쓴다. 정확도는 `not_judged`다.
+  - map→odom 갱신량: 재발행(값 같음)과 실제 갱신을 나눈다.
+    - stamp 정리: 같은 stamp에 같은 값은 중복, 다른 값은 `conflicting_stamp`로 따로 센다. 역행 stamp도 센다.
+    - 같은 odom에서 본 추정 변화: 쓴 odom의 나이를 남기고, 상한(기본 0.1 s)을 넘으면 대응 불가로 센다.
+  - TF·`amcl_pose` 대응: 대응 수·무대응 수만 기록한다. 무대응 원인은 미확정으로 둔다.
+  - health 상태·사유별 시간, 신뢰 기록 판단 빈도
+  - 실제 오차와 그 시각 공분산
+
 ### 개발용 지도 제한
 
 - **현재 시험 지도:** `log/b2_mapping/20261109_085358/run/slam_map.yaml`(Git 제외, 미채택).
@@ -242,6 +301,43 @@ AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odo
 - 이동 중 AMCL 표준편차가 0.16~0.23 m·방향 0.15 rad 이상으로 커져 정상 주행 대부분이 `DEGRADED`(`COVARIANCE_HIGH`)였다. 같은 구간의 실제 오차는 0.1 m 수준이었다.
 - 그래서 이동 중에는 마지막 신뢰 위치(표준편차 0.15 m·0.10 rad 이하)가 갱신되지 않았다. 주행 뒤(마지막 신뢰 기록 60 s 초과) 재위치 요청은 `REINIT_REJECTED_TRUSTED_POSE_EXPIRED`로 거절됐다.
 - AMCL을 다시 시작하면 마지막 위치가 아니라 지도 원점 근처로 다시 초기화되며, 공분산(약 0.5 m)이 `LOST` 기준(1.0 m)보다 작아 틀린 위치가 `LOST`가 아닌 `DEGRADED`로 나온다. 2026-11-08 단순화 월드 시험에서 재시작 뒤 회복된 것처럼 보인 것은 로봇이 지도 원점 근처에 있었기 때문이다.
+
+#### 위치 신뢰성 기준선 기록 (2026-11-09, 단일 회차, `not_judged`)
+
+**회차**
+- 기록: `log/b2_health/20261109_195316_robot2_normal_reset/`(Git 제외)
+  - `conditions.json`·`raw/`·`supervisor/`·`analysis.json`·`segments.json`
+  - 하네스 사본은 `session/harness.sh`
+- 조건: 위 원본 월드·S005·현재 시험 지도, robot_2 1대
+- 방법: A4 스텁·수동 하네스로 다음 순서를 기록했다.
+  1. 정지
+  2. 기존 경로 앞 2구간(동 2 m → 회전 → 남 5.8 m)
+  3. 정지
+  4. AMCL lifecycle 재설정(deactivate → cleanup → configure → activate)
+- 판단 값은 바꾸지 않았다. 모든 수치는 개발용 출발값 제안의 근거일 뿐이다.
+
+**구간별 결과** (health는 감독 진단 tick 기준)
+
+| 구간 | 결과 |
+|---|---|
+| 정상 주행 34.6 s | health `DEGRADED`(`COVARIANCE_HIGH`) 27.2 s(79 %). `amcl_pose` 35건 중 yaw 표준편차 > 0.15 rad 29건, 위치 > 0.25 m 8건(8건 모두 yaw도 초과). 실제 오차 위치 평균 0.076·최대 0.124 m, yaw 최대 0.035 rad. 같은 시각으로 묶은 표본 62개에서 오차/표준편차 중앙값은 위치 0.38·yaw 0.07 |
+| 정상 갱신당 추정 변화(같은 odom 기준, 35건) | 위치 p95 0.026·최대 0.027 m, yaw p95 0.026·최대 0.032 rad. 쓴 odom 나이 최대 0.010 s(상한 0.1 s), 대응 불가 0건 |
+| 주행 뒤 정지 | 정지 중에는 AMCL이 갱신하지 않아 `DEGRADED`가 유지됐다. 신뢰 기록은 주행 시작 약 3 s 뒤부터 갱신되지 않았다 |
+| lifecycle 재설정 | map→odom 공백: 수신 sim 64.47 → 69.95 s(5.48 s), 원래 stamp 65.4 → 69.7 s(4.3 s, 유효 시각 64.4 → 68.7 s). 공백 전 값은 stamp 50.1 s 뒤 바뀌지 않음. `TF_STALE` → `LOST`(`TF_MISSING`) 2.2 s 뒤 새 추정(원점 근처, 표준편차 0.52 m·0.27 rad) → `DEGRADED`. 추정 도약 5.94 m·1.59 rad, 실제 오차 6.00 m가 계속 `DEGRADED`로 남음. 재위치 요청은 `REINIT_REJECTED_TRUSTED_POSE_EXPIRED`(기록 나이 68.8 s, 누적 7.29 m) |
+| TF·`amcl_pose` 대응 | `amcl_pose` 38건 모두 TF 유효 시각과 0 s 차이로 대응. 짝 없는 TF 778건은 모두 직전 값과 같았다(원인 미확정). 같은 stamp 중복 TF 57건(값 같음, 원인 미확정) |
+
+**기록 한계** (`review_quality.json` 보완. 원본 raw·result는 고치지 않았다)
+- **`status`:** 결과 `status`는 `completed`이고 `raw.missing`은 없다. 그래도 전량 수집은 아니다.
+- **health:** `raw/<robot>/health.jsonl`은 611건이다. 감독 진단 tick과 대조하면 빠진 수가 범위마다 다르다(`loss: confirmed`).
+  - 진단 전체(고유 1029개): 418건
+  - 수집 구간 안(1008개, 구간 밖 tick 21건 제외): 397건
+  - 원인: 구독 깊이 1. 같은 시험을 스텁으로 다시 해 보면 깊이 1에서는 버스트 60건 중 59건을 잃었다.
+  - 기록 도구 구독 깊이를 100으로 고쳤다. 스텁으로 버스트 60건과 odom 부하 아래 지속 5 Hz 15건을 모두 받는 것을 확인했다.
+  - Gazebo로 다시 확인하지는 않았다.
+- **initialpose:** 감독이 보낸 1건은 수집 시작 6 s 뒤라 수집 구간 안이다. 기록 도구가 받은 것은 0건이다.
+  - 개수 대조로 `unmatched_count 1`이다.
+  - 구독 준비 여부가 `unknown`이라, 미수신인지 전송 손실인지는 구별하지 못한다.
+- **같은 stamp TF:** 57건은 모두 같은 값이었다. 충돌은 0건이다.
 
 ### 개발 시험 결과 — 단순화 월드·이전 지도 (2026-11-08, `not_judged`)
 

@@ -384,17 +384,34 @@ class TrustedPoseTracker:
 
         self.last_odom = pose
 
-    # 판정 결과가 신뢰 조건을 만족하면 기록을 갱신한다. 재위치 중·입력 무효·연결성 상실 동안은 갱신하지 않는다.
-    def consider(self, health, inputs, now, map_id, reinit_active):
+    # 신뢰 기록을 갱신하지 않는 첫 사유(진단 기록용). 갱신 조건을 모두 만족하면 None.
+    # consider()가 이 함수로 판단하므로 두 결과는 항상 같다.
+    def rejection(self, health, inputs, map_id, reinit_active):
         t = self.config["trust"]
 
-        if reinit_active or health.state != OK or map_id is None:
-            return False
+        if reinit_active:
+            return "REINIT_ACTIVE"
 
-        if not (health.position_std_m <= t["position_std_m"] and health.yaw_std_rad <= t["yaw_std_rad"]):
-            return False
+        if health.state != OK:
+            return "HEALTH_NOT_OK"
+
+        if map_id is None:
+            return "MAP_UNKNOWN"
+
+        if not health.position_std_m <= t["position_std_m"]:
+            return "POSITION_STD_HIGH"
+
+        if not health.yaw_std_rad <= t["yaw_std_rad"]:
+            return "YAW_STD_HIGH"
 
         if not (finite_pose(inputs.map_odom) and finite_pose(inputs.odom_pose)):
+            return "POSE_INVALID"
+
+        return None
+
+    # 판정 결과가 신뢰 조건을 만족하면 기록을 갱신한다. 재위치 중·입력 무효·연결성 상실 동안은 갱신하지 않는다.
+    def consider(self, health, inputs, now, map_id, reinit_active):
+        if self.rejection(health, inputs, map_id, reinit_active) is not None:
             return False
 
         self.record = TrustedPose(now, inputs.map_odom, inputs.odom_pose, health.position_std_m,

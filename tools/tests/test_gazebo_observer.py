@@ -11,6 +11,7 @@ spec = importlib.util.spec_from_file_location('gazebo_observer', ROOT / 'src/ax_
 observer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(observer)
 
+STOP_ANGULAR_LIMIT = 0.02   # D-06 각속도(rad/s)
 ARM_JOINTS = ['column_yaw_joint', 'shoulder_joint', 'elbow_joint', 'wrist_joint', 'gripper_rotation_joint']
 
 # 고정 관절로 합쳐지는 링크(mount)와 기울어진 관절 원점을 가진 작은 시험 모델
@@ -263,6 +264,117 @@ class WheelCalibrationMath(unittest.TestCase):
         self.assertAlmostEqual(self.calibration.recommended_separation_multiplier(1.2, [1.1, 1.1, None]), 1.32)
         self.assertIsNone(self.calibration.recommended_separation_multiplier(1.2, [None]))
 
+    # 시각 t(s)에 x·yaw를 돌려주는 함수로 step 간격 Gazebo 자세 표본을 만든다
+    @staticmethod
+    def hold_samples(motion, duration=1.0, step=0.01):
+        samples = []
+
+        for index in range(int(round(duration / step)) + 1):
+            t = index * step
+            x, yaw = motion(t)
+            m = np.eye(4)
+            m[0, 0], m[0, 1], m[1, 0], m[1, 1] = math.cos(yaw), -math.sin(yaw), math.sin(yaw), math.cos(yaw)
+            m[0, 3] = x
+            samples.append((t, m))
+
+        return samples
+
+    # 정지 표본은 속도 0, 유지 구간 0.5 s 이상, 판정 통과
+    def test_end_speed_still(self):
+        speed = self.calibration.end_speed(self.hold_samples(lambda t: (1.0, 0.3)))
+
+        self.assertIsNone(speed['problem'])
+        self.assertAlmostEqual(speed['linear_m_s'], 0.0)
+        self.assertAlmostEqual(speed['angular_rad_s'], 0.0)
+        self.assertGreaterEqual(speed['window_s'], 0.5)
+        self.assertTrue(self.calibration.hold_stopped(speed))
+
+    # 계속 이동·회전하면 그 속도가 남아 거절된다
+    def test_end_speed_steady_motion(self):
+        moving = self.calibration.end_speed(self.hold_samples(lambda t: (0.05 * t, 0.0)))
+        turning = self.calibration.end_speed(self.hold_samples(lambda t: (1.0, 0.2 * t)))
+
+        self.assertAlmostEqual(moving['linear_m_s'], 0.05, places=6)
+        self.assertAlmostEqual(turning['angular_rad_s'], 0.2, places=6)
+        self.assertFalse(self.calibration.hold_stopped(moving))
+        self.assertFalse(self.calibration.hold_stopped(turning))
+
+    # 검토 재현 사례: x=0.02 sin(2πt/0.5), 0.05 s 간격. 양끝 순변위는 0이지만 실제 왕복은 거절해야 한다
+    def test_end_speed_oscillation_rejected(self):
+        samples = self.hold_samples(lambda t: (0.02 * math.sin(2 * math.pi * t / 0.5), 0.0), duration=0.5, step=0.05)
+        speed = self.calibration.end_speed(samples)
+        diff = max(
+            abs(later[1][0, 3] - earlier[1][0, 3]) / (later[0] - earlier[0])
+            for earlier, later in zip(samples, samples[1:])
+        )
+
+        self.assertGreater(diff, 0.2)                     # 최대 표본 차분 속도 약 0.235 m/s
+        self.assertGreater(speed['linear_m_s'], 0.1)
+        self.assertFalse(self.calibration.hold_stopped(speed))
+
+    # 왕복 회전도 순변위로 상쇄하지 않는다
+    def test_end_speed_rotation_oscillation_rejected(self):
+        speed = self.calibration.end_speed(
+            self.hold_samples(lambda t: (1.0, 0.05 * math.sin(2 * math.pi * t / 0.5))))
+
+        self.assertGreater(speed['angular_rad_s'], STOP_ANGULAR_LIMIT)
+        self.assertFalse(self.calibration.hold_stopped(speed))
+
+    # 유지 구간 중간 0.1 s만 0.05 m 밀렸다가 돌아와도 거절된다
+    def test_end_speed_middle_excursion_rejected(self):
+        def bump(t):
+            return (0.05 if 0.7 <= t < 0.8 else 0.0), 0.0
+
+        speed = self.calibration.end_speed(self.hold_samples(bump))
+
+        self.assertFalse(self.calibration.hold_stopped(speed))
+
+    # 유지 구간 이전 움직임은 판정에 들어가지 않는다(경계 표본 1개만 앞에서 가져온다)
+    def test_end_speed_motion_before_hold_ignored(self):
+        speed = self.calibration.end_speed(self.hold_samples(lambda t: (min(t, 0.4) * 0.5, 0.0)))
+
+        self.assertTrue(self.calibration.hold_stopped(speed))
+
+    # 표본 부족·짧은 구간·큰 공백·중복/역행 시각·비유한 값은 판정 불가이며 정지로 보지 않는다
+    def test_end_speed_unverifiable(self):
+        still = self.hold_samples(lambda t: (1.0, 0.0))
+        gap = [item for item in still if not 0.6 < item[0] < 0.8]
+        duplicate = still[:60] + [still[59]] + still[60:]
+        reverse = still[:60] + [(still[59][0] - 0.005, still[59][1])] + still[60:]
+        nan_pose = [item for item in still]
+        bad = nan_pose[80][1].copy()
+        bad[0, 3] = float('nan')
+        nan_pose[80] = (nan_pose[80][0], bad)
+        nan_time = still[:70] + [(float('nan'), still[70][1])] + still[71:]
+
+        cases = {
+            '표본 부족': still[:1],
+            '유지 구간 길이 부족': still[:30],
+            '표본 간격 초과': gap,
+            '시각 중복·역행': duplicate,
+            '비유한 자세': nan_pose,
+            '비유한 시각': nan_time,
+        }
+
+        for problem, samples in cases.items():
+            with self.subTest(problem=problem):
+                speed = self.calibration.end_speed(samples)
+                self.assertEqual(speed['problem'], problem)
+                self.assertIsNone(speed['linear_m_s'])
+                self.assertFalse(self.calibration.hold_stopped(speed))
+
+        self.assertEqual(self.calibration.end_speed(reverse)['problem'], '시각 중복·역행')
+
+    # D-06 값과 결과 기록 항목은 바뀌지 않는다
+    def test_stop_hold_constants(self):
+        conditions = self.calibration.stop_hold_conditions()
+
+        self.assertEqual(
+            (self.calibration.STOP_LINEAR_M_S, self.calibration.STOP_ANGULAR_RAD_S, self.calibration.STOP_HOLD_SECONDS),
+            (0.01, 0.02, 0.5),
+        )
+        self.assertEqual(conditions['method'], 'max_short_window_path')
+        self.assertLessEqual(conditions['max_sample_gap_s'], conditions['speed_window_s'])
 
 if __name__ == '__main__':
     unittest.main()

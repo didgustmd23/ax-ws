@@ -57,6 +57,18 @@ def bridges(robot_id, manipulator, tool='epick'):
     return configuration
 
 
+# robot_1~robot_4 출발 위치(world x, y, m). yaw는 0(+X)이다.
+DEFAULT_SPAWN_POSITIONS = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
+# 월드별 예외. AWS 창고에서 기본 robot_2 (2.5, -1.5)는 선반 포함 외곽(x -0.62~0.66, y ±1.03 m)이
+# 동쪽 선반 충돌과 겹쳐 차체가 움직이지 않았다(2026-11-09 원본 월드 시험: odom 0.575 m, 실제 0.002 m).
+# robot_2는 중앙 빈 공간, robot_4는 B2 지도 작성 경로를 비키는 북서쪽 빈 공간으로 옮긴다(참조 지도 회전 원 여유
+# +2.19 m, +0.75 m). robot_1·robot_3은 기본값과 같다. B2 경로(ax_localization/config/routes/aws_warehouse.yaml)와
+# 함께 바꾼다.
+WORLD_SPAWN_POSITIONS = {
+    'aws_warehouse.world': [(0.0, 0.0), (-1.0, -2.3), (-3.0, 0.0), (-4.6, 5.7)],
+}
+
+
 # 실행 인자를 평가해 월드·모델·센서 브리지를 구성한다. 제어기 spawner는 만들지 않는다(ax_control 담당).
 def setup(context):
     package_share = Path(get_package_share_directory('ax_description'))
@@ -96,7 +108,7 @@ def setup(context):
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
-    spawn_positions = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
+    spawn_positions = WORLD_SPAWN_POSITIONS.get(selected_world, DEFAULT_SPAWN_POSITIONS)
     robot_id_selection = LaunchConfiguration('robot_ids').perform(context)
     selected_indices = [int(value.removeprefix('robot_')) - 1 for value in robot_id_selection.split(',')] if robot_id_selection else list(range(robot_count))
     if len(selected_indices) != len(set(selected_indices)) or any(robot_index not in range(4) for robot_index in selected_indices):

@@ -47,5 +47,13 @@ class ExecutionStore:
                             (json.dumps(result), self.robot_id, execution_id))
             return result
 
+    def cached_result(self, execution_id):
+        """결과를 새로 계산하지 않고 완료된 기록을 확인한다."""
+        with self.lock:
+            row = self.db.execute(
+                'SELECT result FROM executions WHERE robot=? AND id=?',
+                (self.robot_id, execution_id)).fetchone()
+            return json.loads(row[0]) if row and row[0] is not None else None
+
     def close(self):
         self.db.close()

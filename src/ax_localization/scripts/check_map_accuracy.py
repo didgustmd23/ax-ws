@@ -291,6 +291,23 @@ def reload_check(saved_yaml, adopted_yaml):
 
 # run 폴더의 지도를 target에 채택한다. 검사 실패 시 기존 지도를 건드리지 않는다.
 # 새 파일을 같은 폴더의 임시 폴더에 모두 만든 뒤 하나씩 바꿔 넣는다.
+# numpy 값(정수·실수·배열)을 YAML로 쓸 수 있는 기본 타입으로 바꾼다. 다른 값은 그대로 둔다.
+def plain_types(value):
+    if isinstance(value, dict):
+        return {key: plain_types(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple)):
+        return [plain_types(item) for item in value]
+
+    if isinstance(value, np.ndarray):
+        return [plain_types(item) for item in value.tolist()]
+
+    if isinstance(value, np.generic):
+        return value.item()
+
+    return value
+
+
 def adopt_map(run, target, info):
     problems = check_saved_files(run)
 
@@ -322,7 +339,7 @@ def adopt_map(run, target, info):
 
         (staging / "map_info.yaml").write_text(
             "# B2 지도 메타데이터. 지도가 바뀌면 map_revision이 오르며 등록 지점·재고 좌표는 revision을 대조해 재검증한다.\n"
-            + yaml.safe_dump(info, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            + yaml.safe_dump(plain_types(info), sort_keys=False, allow_unicode=True), encoding="utf-8")
 
         # map_info.yaml은 마지막에 바꿔 revision과 파일이 어긋나는 시간을 줄인다.
         for name in ("map.yaml", "map.pgm", "pose_graph.posegraph", "pose_graph.data", "map_info.yaml"):

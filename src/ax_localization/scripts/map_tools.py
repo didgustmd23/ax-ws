@@ -367,10 +367,11 @@ def map_summary(yaml_path):
     # 관측 셀을 감싸는 map 좌표 범위 [x_min, y_min, x_max, y_max]. 행 0이 이미지 아래(y 최소)라고 본다.
     if observed.any():
         rows, columns = np.nonzero(observed)
-        summary["observed_bounds_map_m"] = [
+        # numpy 정수 인덱스 계산 결과(numpy.float64)는 yaml.safe_dump가 쓰지 못하므로 float로 바꾼다.
+        summary["observed_bounds_map_m"] = [float(value) for value in (
             geometry.origin_x + columns.min() * geometry.resolution, geometry.origin_y + rows.min() * geometry.resolution,
             geometry.origin_x + (columns.max() + 1) * geometry.resolution, geometry.origin_y + (rows.max() + 1) * geometry.resolution,
-        ]
+        )]
 
     return summary
 

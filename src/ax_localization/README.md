@@ -47,7 +47,7 @@ ros2 launch ax_perception sensors.launch.py robot_ids:=robot_1,robot_2
 
 # 2. 위치 추정: 공통 지도 서버 + 로봇별 AMCL·위치 신뢰성 감독, 고정 출발 위치로 최초 초기화
 ros2 launch ax_localization localization.launch.py \
-    map:=log/b2_mapping/20261108_131510/run/slam_map.yaml robot_ids:=robot_1,robot_2 \
+    map:=log/b2_mapping/20261109_085358/run/slam_map.yaml robot_ids:=robot_1,robot_2 \
     start_poses:=src/ax_localization/config/start_poses/aws_warehouse_dev.yaml
 
 # 3. 확인
@@ -103,15 +103,15 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
 ### 초기 위치 지정
 
 - **launch 인자:** `initial_poses:="robot_id=x,y,yaw;..."`(`map` 기준 m·rad). 지정하지 않은 로봇은 `initialpose` 입력을 기다리며 TF를 내지 않는다.
-- **개발용 지도의 시험값:** 지도 작성 회차의 `map` 원점은 robot_2의 출발 위치다.
-  - robot_2 출발 위치는 `(0, 0, 0)`이다.
-  - robot_1은 launch 출발 위치가 world (0, 0)이므로 `map`에서 약 `(-2.5, 1.5, 0)`이다(`robot_test.launch.py` 출발 위치 기준).
+- **개발용 지도의 시험값:** `config/start_poses/aws_warehouse_dev.yaml`이 지도 `20261109_085358`(이미지 sha256 `4a8f0475…`)에 묶여 있다.
+  - 값 = 그 지도의 검증 변환 `T_world_map`(`optimal`)의 역변환 · AWS 월드 launch 출발 위치(`robot_test.launch.py` `WORLD_SPAWN_POSITIONS`: robot_1 world (0, 0), robot_2 world (-1.0, -2.3)). robot_1 `map` (1.0045, 2.2850), robot_2 (0.0050, -0.0152).
+  - robot_2 기본 출발 world (2.5, -1.5)는 원본 월드에서 선반 충돌과 겹쳐 2026-11-09에 바꿨다. 그 전 지도(`20261108_131510`) 기준 값은 쓰지 않으며, 그 지도와 이 설정을 함께 주면 이미지 해시가 달라 launch가 거절한다.
   - 다른 지도에서는 이 값이 맞지 않는다.
-- **실행 중 변경:** 해당 로봇의 Topic에만 보낸다.
+- **실행 중 변경:** 해당 로봇의 Topic에만 보낸다. 아래 값은 위 개발용 지도·AWS 출발 조건의 robot_1 시험값(`aws_warehouse_dev.yaml` x 1.0045, y 2.2850, yaw 0.0002 rad → quaternion z = sin(yaw/2), w = cos(yaw/2))이다. 다른 지도나 로봇이 다른 위치에 있을 때는 쓰지 않는다.
 
   ```bash
   ros2 topic pub --once -w 2 /ax/robot_1/initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
-    "{header: {frame_id: map}, pose: {pose: {position: {x: -2.5, y: 1.5}, orientation: {w: 1.0}}, covariance: [0.25,0,0,0,0,0, 0,0.25,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0.0685]}}"
+    "{header: {frame_id: map}, pose: {pose: {position: {x: 1.0045, y: 2.2850}, orientation: {z: 0.0001, w: 1.0}}, covariance: [0.25,0,0,0,0,0, 0,0.25,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0.0685]}}"
   ```
 
   `-w`는 기다릴 구독자 수다. 다른 구독자(기록 도구 등)가 있으면 그 수만큼 늘려야 AMCL이 받는다. 시험에서 `-w 1`은 기록 도구에만 전달되고 끝났다.
@@ -218,13 +218,32 @@ AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odo
 
 ### 개발용 지도 제한
 
-- **시험 지도:** `log/b2_mapping/20261108_131510/run/slam_map.yaml`(Git 제외).
-  - 단순화 월드(`light_collision`)와 바퀴 `slip1=0.05` 임시 사본에서 만든 개발용 지도이며 채택하지 않았다([S005 자료](../../docs/evidence/wheel_slip/)).
+- **현재 시험 지도:** `log/b2_mapping/20261109_085358/run/slam_map.yaml`(Git 제외, 미채택).
+  - 원본 월드·S005 반영 개발 모델(바퀴 `slip1 0.05`)·robot_2 선반 포함 외곽 경로로 만들었다. 정확도는 `not_judged`이며 운영 지도로 채택하지 않았다([지도 안내](maps/aws_warehouse/README.md)).
   - launch는 `map_info.yaml` 채택 기록이 없는 지도를 "개발용 지도"로 표시한다.
-- **월드 조건:** 위치 추정 시험도 같은 단순화 월드에서 실행했다(바퀴는 원본 설정). 원본 월드와 운영 모델에서는 확인하지 않았다.
+- **이전 시험 지도:** `log/b2_mapping/20261108_131510`은 단순화 월드(`light_collision`)·바퀴 임시 사본에서 만든 개발용 결과다([S005 자료](../../docs/evidence/wheel_slip/)). 아래 2026-11-08 결과는 그 지도·단순화 월드·이전 출발 위치 조건이다.
 - **보장 범위:** 지도는 앞 LiDAR 높이의 관측만 담는다. 미관측 영역과 다른 높이의 장애물은 위치 추정 근거가 되지 않는다.
 
-### 개발 시험 결과 (2026-11-08, `not_judged`)
+### 개발 시험 결과 — 원본 월드·S005 모델 (2026-11-09, `not_judged`)
+
+시험 조건은 다음과 같다.
+- 격리 headless Gazebo, 원본 AWS 월드, S005 반영 개발 모델, B1 `scan_filtered`
+- 현재 시험 지도(이미지 sha256 `4a8f0475…`), `T_world_map`은 그 지도의 `optimal_T_world_map`, `start_poses`로 최초 초기화
+- A4는 odom 기반 시험 스텁, D 요청은 시험자 직접 호출(실제 통합 아님)
+
+| 시험 | 결과 |
+|---|---|
+| robot_2 출발·정지 | 최초 1회 초기화 → `OK`, 위치 오차 0.019 m |
+| robot_2 위치 상실·재위치 | AMCL 전체 재시작 → `DEGRADED`(`COVARIANCE_HIGH`). 후진 0.26 m 중 요청 거절(`REJECTED_NOT_STOPPED`), 정지 뒤 접수, 중복 요청 `REINIT_IN_PROGRESS`, 약 1 s 뒤 `OK`, 오차 0.044 m |
+| robot_2 이동(동 2 m → 남 5.8 m) | 위치 오차 평균 0.097·최대 0.143 m, 방향 오차 최대 0.040 rad |
+| 두 로봇 동시 | robot_2가 같은 경로를 주행하는 동안 robot_1 AMCL 재시작(지도 원점으로 재초기화되어 최대 2.46 m 틀림, `DEGRADED`) → 후진 0.20 m 중 거절 → 정지 뒤 재위치 → `OK`, 오차 0.042 m. robot_2는 재위치 코드 없이 주행 완료(오차 평균 0.095·최대 0.126 m). 두 감독 노드 세션·revision·스캔·`map→odom`이 로봇별로 분리 |
+
+이 시험에서 확인한 판단 값의 한계(개발용 출발값, 결과에 맞춰 바꾸지 않았다):
+- 이동 중 AMCL 표준편차가 0.16~0.23 m·방향 0.15 rad 이상으로 커져 정상 주행 대부분이 `DEGRADED`(`COVARIANCE_HIGH`)였다. 같은 구간의 실제 오차는 0.1 m 수준이었다.
+- 그래서 이동 중에는 마지막 신뢰 위치(표준편차 0.15 m·0.10 rad 이하)가 갱신되지 않았다. 주행 뒤(마지막 신뢰 기록 60 s 초과) 재위치 요청은 `REINIT_REJECTED_TRUSTED_POSE_EXPIRED`로 거절됐다.
+- AMCL을 다시 시작하면 마지막 위치가 아니라 지도 원점 근처로 다시 초기화되며, 공분산(약 0.5 m)이 `LOST` 기준(1.0 m)보다 작아 틀린 위치가 `LOST`가 아닌 `DEGRADED`로 나온다. 2026-11-08 단순화 월드 시험에서 재시작 뒤 회복된 것처럼 보인 것은 로봇이 지도 원점 근처에 있었기 때문이다.
+
+### 개발 시험 결과 — 단순화 월드·이전 지도 (2026-11-08, `not_judged`)
 
 시험 조건은 다음과 같다.
 - 격리 headless Gazebo, 단순화 월드, 원본 바퀴, B1 `scan_filtered`
@@ -244,11 +263,12 @@ AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odo
 재위치 시험은 다음 조건에서 했다.
 - A4: odom 속도로 `STOPPED`를 정하는 시험 스텁(`tools/tests/stub_actuation_state.py`)
 - D: 시험자가 서비스를 직접 호출
-- 위치 상실: AMCL lifecycle을 deactivate → cleanup → configure → activate로 다시 시작해 만들었다. 재시작 뒤 AMCL이 큰 공분산(약 0.46 m)으로 스스로 다시 시작하면 `LOST` 대신 `DEGRADED`(`COVARIANCE_HIGH`)가 됐다(두 로봇 시험).
+- 위치 상실: AMCL lifecycle을 deactivate → cleanup → configure → activate로 다시 시작해 만들었다. 재시작 뒤 AMCL은 지도 원점 근처에서 큰 공분산(약 0.46 m)으로 다시 시작해 `LOST` 대신 `DEGRADED`(`COVARIANCE_HIGH`)가 됐다(두 로봇 시험). 당시 로봇이 원점 근처라 위치가 크게 틀리지 않았다(2026-11-09 시험 참조).
 
 **알려진 제한**
 - **미완료:**
-  - 운영 조건(원본 월드·운영 모델) 검증
+  - 운영 모델·기준 월드 확정 뒤 재검증(현재 원본 월드·S005 개발 모델까지 확인), 운영 지도 채택
+  - 판단 값 재검토: 이동 중 대부분 `DEGRADED`, 이동 뒤 신뢰 기록 만료로 재위치 거절, AMCL 재시작의 틀린 위치가 `DEGRADED`로 나옴(위 2026-11-09 결과)
   - 실제 A4·D와의 통합
   - 위치 이상 탐지
   - 판단 값·회복 조건 확정(모두 개발용 출발값)
@@ -259,10 +279,9 @@ AMCL을 실행하기 전이나 비활성화한 뒤에 기록하면, `map → odo
 - **`run_mapping_session.sh --light` 기존 결함:** 임시 사본에 `lib/ax_description`이 없어 robot_1을 띄울 수 없다. robot_2 지도 작성에는 영향이 없다. 위 위치 추정 시험은 이 문제를 보완한 별도 하네스(저장소 밖)로 실행했다.
 
 **확인하지 못한 것**
-- 검토 수정(odom 이상 판정 연결, 누적 이동량, 재위치 중 시계 처리, 갱신 정체 기준 odom, 비유한 자세 처리) 뒤의 두 로봇 Gazebo 시험. 수정 뒤에는 단일 로봇 Gazebo와 스텁 시험만 다시 했다
-- 두 로봇이 동시에 이동하는 경우
-- 전체 지도 경로
-- 원본 월드와 운영 모델
+- 두 로봇이 함께 긴 경로를 이동하는 경우(2026-11-09 시험은 robot_2 경로 주행 + robot_1 짧은 후진)
+- 전체 지도 경로를 따라 AMCL로 이동(지도 작성은 전체 경로, 위치 추정 이동은 앞 2구간)
+- 운영 모델·기준 월드 확정 뒤 조건
 - 긴 시간 실행
 - 전역 위치 추정(초기 위치 없이 시작)
 - 시뮬레이션이 매우 느릴 때 AMCL TF 시각 처리

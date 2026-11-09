@@ -71,7 +71,26 @@ Gazebo 버전에 따라 우클릭 메뉴의 Move To 기능을 사용할 수 있�
 관측했다는 의미가 아니다. Gazebo에서 상자를 옮겨도 이 모의 결과는 바뀌지 않는다.
 
 다른 결과는 서버의 `mock_load`를 `STOWED` 또는 `UNKNOWN`으로 변경해 재시작한 뒤
-새 execution_id로 요청한다. 실제 관측·취소·운영 lease 검증은 이 예제 범위 밖이다.
+새 execution_id로 요청한다. 실제 관측·물리 작업 취소·운영 lease 검증은 이 모의 구현 범위 밖이다.
+
+## W1: 기다리기·취소·동시 요청
+
+실제 Action 실행은 `execute_action`에서 처리하며 기본 `mock_delay_s=0.5`초 동안
+단조 시계로 기다린다. 대기 중에도 ROS 콜백을 처리하므로 상태 재발행과 취소가 동작한다.
+`-p mock_delay_s:=5.0`으로 관찰 시간을 늘릴 수 있다(허용 0~30초).
+
+- 한 로봇에서 다른 실행 ID의 작업이 진행 중이면 새 작업은 거절한다.
+- 같은 실행 ID·동일 요청은 기존 처리를 기다린 뒤 저장된 결과만 재사용한다.
+- 취소 시 `MOCK_CANCELING` → `MOCK_CANCELED`로 종료하고 CANCELED 결과를 SQLite에 저장한다.
+- 취소된 실행 ID의 재요청은 취소 결과를 반환한다. 다시 시험하려면 새 ID가 필요하다.
+- 취소 요청 중인 Action Goal은 CANCELED로 끝난다. 이미 완료된 취소 결과를 재조회하는
+  새 Goal은 Action ABORTED와 ResultStatus.CANCELED를 반환한다.
+- 완료 결과가 이미 저장됐으면 이를 뒤늦은 취소로 바꾸지 않는다.
+
+현재는 외부 로봇 구동이 없는 모의 작업이라 취소 확인이 가능하다. C4·A4의 물리 정지나
+안전한 해제까지 구현한 것은 아니다. 공통 Action 타입은 변경하지 않았다.
+설치된 ros2 CLI에는 `--cancel-after`가 없으므로 실제 취소 검증은 테스트의
+ActionClient.cancel_goal_async 경로로 수행한다.
 
 ## 중복 요청과 재시작
 
@@ -87,6 +106,46 @@ Gazebo 버전에 따라 우클릭 메뉴의 Move To 기능을 사용할 수 있�
 재시작할 때 같은 경로를 유지해야 하며, 원장을 삭제하거나 다른 경로를 쓰면 이전 기록을
 복구할 수 없다. 원장을 쓰지 못하면 요청을 거절하고, 결과 저장 실패 시 성공을 반환하지 않는다.
 운영용 배정 검증·lease·물리 작업 복구는 별도 구현 대상이다.
+
+## 로봇별 RobotTaskStatus 발행
+
+각 모의 서버는 선택한 `robot_id`의 계약 Topic에 `RobotTaskStatus`를 발행한다.
+
+| 서버 | 상태 Topic |
+|---|---|
+| `robot_id:=robot_1` | `/ax/robot_1/executor/status` |
+| `robot_id:=robot_2` (기본) | `/ax/robot_2/executor/status` |
+
+상태 변경 시 즉시 발행하고, 단조 시계 타이머로 1초마다 재발행한다.
+QoS는 reliable·transient_local·keep_last 1이다. 늦게 구독해도 마지막 상태를 받을 수 있다.
+각 로봇 서버와 ROS 환경을 실행한 후 아래처럼 확인한다.
+
+```bash
+ros2 topic echo /ax/robot_1/executor/status ax_interfaces/msg/RobotTaskStatus \
+  --qos-reliability reliable --qos-durability transient_local
+# 다른 터미널: 로봇 2
+ros2 topic echo /ax/robot_2/executor/status ax_interfaces/msg/RobotTaskStatus \
+  --qos-reliability reliable --qos-durability transient_local
+```
+
+`local_phase`는 시작 시 `MOCK_IDLE`, 실행 검사 시 `MOCK_VALIDATING`, 확인 중 `MOCK_CONFIRM_LOAD`,
+결과에 따라 `MOCK_SUCCEEDED`·`MOCK_FAILED`·`MOCK_UNCERTAIN`이며,
+취소는 `MOCK_CANCELING` → `MOCK_CANCELED`다.
+`execution`에는 처리 중이거나 마지막으로 처리한 Goal의 식별 정보가 들어간다.
+`last_result`는 마지막 처리 결과이며, 다음 작업 처리 중에는 이전 결과를 유지한다.
+첫 결과 전에는 기본값(UNSPECIFIED)이다. `paused=false`는 이 모의 서버에 일시 정지
+기능이 없다는 뜻이며 실제 로봇의 정지 여부가 아니다. 취소와 일시 정지는 서로 다르다.
+
+`meta.schema_version=1`, `source_id=a3_mock_executor_<robot_id>`이며
+`source_session_id`는 프로세스 시작마다 새로 생성한다. `revision`은 상태 변경 때만
+증가하고 주기 재발행에서는 유지한다. 기본 `use_sim_time=true`로 ROS 시각을 기록하며,
+`/clock`이 없으면 stamp는 0일 수 있다. Gazebo를 일시 정지해도 주기 발행은 계속된다.
+
+**운영 상태로 사용하지 않는다.** 모든 메시지는 `meta.valid=false`,
+`meta.validity_reason=MOCK_ONLY`로 표시한다. `last_result`가 SUCCEEDED여도
+시험 결과일 뿐이다. 운영 A3 발행기와 같은 로봇·Topic에 동시에 띄우지 않는다.
+재시작 시 상태는 새로운 세션의 `MOCK_IDLE`부터 시작하며, SQLite의 이전 결과는
+해당 실행 ID로 재요청할 때 조회·반영한다. 거절된 요청은 현재 실행 상태를 바꾸지 않는다.
 
 표시가 없으면 Gazebo가 재생 중인지, world 이름(기본 ax_test)과 GZ_PARTITION이 같은지
 확인한다. 서비스 연결 실패 시 표시 노드는 경고를 출력하고 재시도한다.
@@ -132,3 +191,12 @@ scene/info의 `a3_mock_indicator_EMPTY` 생성 확인. 실제 GUI의 색상·시
 Action 경로·결과 Topic과 STOWED·EMPTY·UNKNOWN 결과를 확인했다. Gazebo 서비스는
 모의 호출로 대체하여 표시등 이름·위치·삭제 범위의 분리를 검사했다.
 두 로봇의 Gazebo GUI 동시 표시는 별도 수동 확인 대상이다.
+
+RobotTaskStatus 추가 검증은 같은 테스트 파일의
+`test_status_late_subscriber_heartbeat_and_transitions`에 작성했다.
+로봇별 늦은 구독·시계 정지 중 재발행·단계·결과·revision·세션 변경·저장 오류를 검사한다.
+2026-11-09 WSL 자원 설정 조정 후 ROS 환경에서 상태 발행 검증을 포함한
+4개 테스트가 모두 통과했다. 이후 현재 실행기 단계 머신을 연결하고 잘못된 전환·입력
+차단 검증을 추가하여 6개, 이후 실제 Action 취소·진행 중 중복·다른 작업 차단 검증까지
+추가하여 총 7개 테스트가 통과했다. 시뮬레이션 시계가 진행되지 않는 조건에서도
+주기 발행과 늦은 구독을 확인했다. Gazebo GUI 동시 표시는 별도 확인 대상이다.

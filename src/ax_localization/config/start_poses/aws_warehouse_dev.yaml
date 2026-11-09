@@ -1,13 +1,17 @@
 # 개발용 고정 출발 위치(AWS 창고 개발 지도). 운영 지도가 아니며 지정한 지도에서만 쓴다.
-# - 대상 지도: log/b2_mapping/20261108_131510/run/slam_map.yaml(단순화 월드·바퀴 S005 임시 사본에서 작성, 미채택, Git 제외)
+# - 대상 지도: log/b2_mapping/20261109_085358/run/slam_map.yaml(Git 제외, 미채택)
+#   원본 월드·S005 반영 운영 모델(바퀴 slip1 0.05)·robot_2 선반 포함 외곽 경로로 2026-11-09에 작성. 판정 not_judged.
 #   map.revision은 채택 지도의 map_info.yaml map_revision, 개발 지도는 0. image_sha256은 지도 이미지 해시다.
 #   둘 중 하나라도 실제 지도와 다르면 localization.launch.py가 시작을 거절한다.
-# - 출발 위치는 launch 출발 위치(robot_test.launch.py: robot_1 world (0, 0), robot_2 world (2.5, -1.5), yaw 0)와
-#   이 지도의 map 원점(지도 작성 때 robot_2 출발 위치)으로 정한 값이다. Gazebo 실제 자세를 읽어 쓰지 않는다.
+# - 출발 위치 = 이 지도의 검증 변환 T_world_map(accuracy.json optimal_T_world_map: x -1.00495, y -2.28476,
+#   yaw -0.000201)의 역변환 · launch 출발 위치(robot_test.launch.py WORLD_SPAWN_POSITIONS aws_warehouse.world:
+#   robot_1 world (0, 0), robot_2 world (-1.0, -2.3), yaw 0). T_world_map은 Gazebo 실제 자세로 구한 검증 전용 값이며,
+#   여기서는 시험용 출발 위치 계산에만 쓴다. 위치 추정 입력으로 실행 중 Gazebo 자세를 읽지 않는다.
+# - 이전 값(지도 20261108_131510, robot_2 출발 world (2.5, -1.5))은 출발 위치가 바뀌어 더는 쓰지 않는다.
 # - 해당 지점에서 시작함이 보장되는 개발 시뮬레이션의 최초 초기화에만 쓴다. 실행 중 위치를 잃어도 다시 넣지 않는다.
 map:
   revision: 0
-  image_sha256: 0d046059ffd141efb60d46278250faddbb21e8bb4215a35ac5063b5db1b86b1f
+  image_sha256: 4a8f0475f7e3d8f0f9c515201b86106292b8ae4a5fdcb0fa847b2214ded5cbda
 robots:
-  robot_1: {x: -2.5, y: 1.5, yaw: 0.0, position_std_m: 0.10, yaw_std_rad: 0.05}
-  robot_2: {x: 0.0, y: 0.0, yaw: 0.0, position_std_m: 0.10, yaw_std_rad: 0.05}
+  robot_1: {x: 1.0045, y: 2.2850, yaw: 0.0002, position_std_m: 0.10, yaw_std_rad: 0.05}
+  robot_2: {x: 0.0050, y: -0.0152, yaw: 0.0002, position_std_m: 0.10, yaw_std_rad: 0.05}

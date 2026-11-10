@@ -24,6 +24,8 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
   localization/reinitialize(같은 세션의 마지막 신뢰 위치 기반 제한 재위치)를 받는다(scripts/localization_supervisor.py).
 - 고정 출발 위치(start_poses:=<yaml>): 지도 revision·이미지 해시가 맞을 때만 감독 노드가 최초 1회 initialpose로 보낸다.
   initial_poses(수동 시험용 AMCL 매개변수)와 같은 로봇에 함께 쓰지 않는다.
+- 진단 기록(health_diagnostics:=<폴더>, 선택): 감독 노드가 <폴더>/<robot_id>_supervisor.jsonl에 판정 tick·신뢰 기록
+  판단·재위치 요청·보낸 initialpose를 덧붙인다. 시험 기록 전용이며 판정 동작은 바꾸지 않는다.
 - 전역 재위치·Nav2 연결은 이 launch 범위가 아니다.
 """
 
@@ -364,9 +366,14 @@ def start_poses_for(path, map_path, robot_ids):
 
 
 # 로봇 하나의 위치 신뢰성 감독 노드(LocalizationHealth 발행·재위치 서비스·고정 출발 위치 최초 초기화)
-def supervisor_node(robot_id, health_config, start_pose):
+def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir=""):
     parameters = {"use_sim_time": True, "robot_id": robot_id, "config_file": str(health_config),
                   "start_pose_enabled": start_pose is not None}
+
+    # 진단 기록(선택, 시험 기록 전용): 로봇별 파일에 판단 근거를 덧붙인다. 판정 동작은 바꾸지 않는다.
+    if diagnostics_dir:
+        parameters["diagnostics_file"] = str(Path(diagnostics_dir).expanduser().resolve()
+                                             / f"{robot_id}_supervisor.jsonl")
 
     if start_pose is not None:
         parameters.update({f"start_pose_{key}": value for key, value in start_pose.items()})
@@ -385,6 +392,7 @@ def setup(context):
     report = LaunchConfiguration("startup_report").perform(context) or None
     start_file = LaunchConfiguration("start_poses").perform(context)
     health_enabled = LaunchConfiguration("health").perform(context).lower() == "true"
+    diagnostics_dir = LaunchConfiguration("health_diagnostics", default="").perform(context)
     share = Path(get_package_share_directory("ax_localization"))
     health_config = Path(LaunchConfiguration("health_config").perform(context)
                          or share / "config" / "localization_health.yaml")
@@ -460,7 +468,7 @@ def setup(context):
         nodes.append((amcl, f"{namespace}/amcl"))
 
         if health_enabled:
-            actions.append(supervisor_node(robot_id, health_config, start))
+            actions.append(supervisor_node(robot_id, health_config, start, diagnostics_dir))
 
     # 시작 감시(전체 제한시간·전이 실패·프로세스 종료)
     monitored, _ = startup_actions(nodes, timeout_s, report)
@@ -486,5 +494,7 @@ def generate_launch_description():
                               description="로봇별 위치 신뢰성 감독(localization/health·reinitialize) 실행"),
         DeclareLaunchArgument("health_config", default_value="",
                               description="위치 신뢰성 판단 값 yaml(비우면 config/localization_health.yaml)"),
+        DeclareLaunchArgument("health_diagnostics", default_value="",
+                              description="감독 노드 진단 기록 폴더(시험 기록 전용, 비우면 끔. 판정 동작은 같음)"),
         OpaqueFunction(function=setup),
     ])

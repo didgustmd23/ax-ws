@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "world": "aws_warehouse.world",
+  "frame_id": "map",
+  "map_revision": 0,
+  "approved": false,
+  "reason": "MAP_NOT_ADOPTED; no agreed map coordinates, full robot outlines or region approval",
+  "source": "src/ax_localization/maps/aws_warehouse/README.md",
+  "regions": [
+    {"id": "station_src", "kind": "workstation", "bounds": null, "basis": "requires adopted map and shared location definition"},
+    {"id": "station_dst", "kind": "workstation", "bounds": null, "basis": "requires adopted map and shared location definition"},
+    {"id": "corridor_main", "kind": "corridor", "bounds": null, "basis": "B2 odom route is not a map-frame corridor boundary"},
+    {"id": "wait_src", "kind": "waiting", "bounds": null, "basis": "requires robot footprint and approach validation"},
+    {"id": "wait_dst", "kind": "waiting", "bounds": null, "basis": "requires robot footprint and approach validation"}
+  ]
+}

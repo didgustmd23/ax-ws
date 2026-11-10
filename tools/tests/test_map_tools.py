@@ -355,7 +355,13 @@ class DriveSafety(unittest.TestCase):
         route = self.tool.load_route(ROOT / 'src/ax_localization/config/routes/aws_warehouse.yaml')
         self.assertEqual(route['frame'], 'robot_2/odom')
         self.assertEqual(route['waypoints'][-1][:2], route['waypoints'][route['loop_waypoint'] - 1][:2])   # 루프 기준점으로 복귀
-        self.assertEqual(route['waypoints'][0], (-1.5, 0.0, True))
+        self.assertEqual(route['waypoints'][0], (2.0, 0.0, False))
+
+        # 경로 외곽은 A1의 robot_2 선반 포함 여유 외곽(a1_validation.yaml)과 같다(차체 폭만 쓰지 않는다).
+        a1 = yaml.safe_load((ROOT / 'src/ax_description/config/a1_validation.yaml').read_text(encoding='utf-8'))
+        xs, ys = zip(*a1['mobility']['robot_2']['footprint_xy_m'])
+        self.assertEqual((route['footprint']['front_m'], route['footprint']['rear_m'], route['footprint']['half_width_m']),
+                         (max(xs), -min(xs), max(max(ys), -min(ys))))
 
     def test_waypoint_command_reverse(self):
         limits = {'linear': 0.3, 'angular': 0.3}
@@ -515,7 +521,7 @@ class MapMetadata(unittest.TestCase):
         self.assertEqual(model['lidars']['front_lidar']['range_max_m'], 10.0)
         self.assertIsNone(model['lidars']['front_lidar']['noise_stddev_m'])
 
-    # 실제 운영 Xacro 출력에서 바퀴 마찰이 현재 소스 값(mu1 0.1, mu2 1.0, slip1 없음)과 같은지 확인한다.
+    # 실제 운영 Xacro 출력에서 바퀴 마찰이 S005 반영 소스 값(mu1 0.1, mu2 1.0, slip1 0.05)과 같은지 확인한다.
     def test_describe_model_matches_operating_xacro(self):
         import shutil
         import subprocess
@@ -533,7 +539,7 @@ class MapMetadata(unittest.TestCase):
 
         self.assertTrue(model['wheel_contacts'])
         self.assertEqual({(c['mu1'], c['mu2'], c['fdir1'], c['slip1']) for c in model['wheel_contacts'].values()},
-                         {(0.1, 1.0, '0 0 1', None)})
+                         {(0.1, 1.0, '0 0 1', 0.05)})
         self.assertTrue(any(lidar['samples'] == 360 for lidar in model['lidars'].values()))
 
     # 지도 요약의 원점·해상도·셀 수·관측 범위가 입력 격자와 같다.
@@ -644,6 +650,37 @@ class MapMetadata(unittest.TestCase):
             self.assertTrue(info['reload_check']['match'])
             self.assertTrue((reloaded == grid).all())
             self.assertEqual(geometry.as_dict()['origin'], [-2.0, 1.0])
+
+    # 지도 요약의 값은 YAML로 쓸 수 있는 기본 타입이다(관측 범위가 numpy.float64면 채택 기록 쓰기가 실패했다).
+    def test_map_summary_is_yaml_serializable(self):
+        with tempfile.TemporaryDirectory() as folder:
+            grid = room_grid()
+            mt.write_map(Path(folder) / 'm.yaml', grid, mt.GridGeometry(-5.894, -8.091, 0.05, grid.shape[1], grid.shape[0]))
+            summary = mt.map_summary(Path(folder) / 'm.yaml')
+
+        self.assertTrue(all(type(value) is float for value in summary['observed_bounds_map_m']))
+        self.assertEqual(yaml.safe_load(yaml.safe_dump(summary, allow_unicode=True))['origin'][:2], [-5.894, -8.091])
+
+    # 실제 지도 요약과 numpy 값이 든 메타정보로 채택하면 map_info.yaml이 쓰이고 다시 읽힌다.
+    def test_adopt_writes_real_metadata(self):
+        if self.tool is None:
+            self.skipTest('ROS·의존 패키지 필요')
+
+        with tempfile.TemporaryDirectory() as folder:
+            run, target = Path(folder) / 'run', Path(folder) / 'maps'
+            run.mkdir()
+            grid = room_grid()
+            mt.write_map(run / 'slam_map.yaml', grid, mt.GridGeometry(-5.894, -8.091, 0.05, grid.shape[1], grid.shape[0]))
+            (run / 'pose_graph.posegraph').write_bytes(b'graph')
+            (run / 'pose_graph.data').write_bytes(b'data')
+            info = {'map': mt.map_summary(run / 'slam_map.yaml'), 'value': np.float64(1.5), 'array': np.array([1, 2])}
+
+            self.tool.adopt_map(run, target, info)
+            written = yaml.safe_load((target / 'map_info.yaml').read_text(encoding='utf-8'))
+
+        self.assertEqual(written['map_revision'], 1)
+        self.assertEqual((written['value'], written['array']), (1.5, [1, 2]))
+        self.assertTrue(written['reload_check']['match'])
 
 
 if __name__ == '__main__':

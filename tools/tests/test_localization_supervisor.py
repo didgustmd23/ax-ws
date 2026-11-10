@@ -73,6 +73,13 @@ class SupervisorWithStubs(unittest.TestCase):
                        '-p', 'start_pose_enabled:=true', '-p', f'start_pose_x:={x}', '-p', f'start_pose_y:={y}',
                        '-p', f'start_pose_yaw:={yaw}', '-p', 'start_pose_position_std_m:=0.1',
                        '-p', 'start_pose_yaw_std_rad:=0.05']
+
+            # 진단 기록: robot_1은 정상 파일, robot_2는 쓰기마다 실패하는 /dev/full(실패 주입).
+            # robot_2는 진단만 꺼지고 아래 모든 판정·재위치 시험을 그대로 통과해야 한다.
+            if robot_id == 'robot_1':
+                command += ['-p', f'diagnostics_file:={cls.folder / "diag" / "robot_1_supervisor.jsonl"}']
+            else:
+                command += ['-p', 'diagnostics_file:=/dev/full']
             log = open(cls.folder / f'{robot_id}.log', 'w')
             cls.processes.append(subprocess.Popen(command, env=dict(os.environ, AX_SUPERVISOR_TEST=cls.marker),
                                                   stdout=log, stderr=subprocess.STDOUT, start_new_session=True))
@@ -129,6 +136,33 @@ class SupervisorWithStubs(unittest.TestCase):
         self.world.robots[robot_id]['tf'] = False
         self.assertTrue(self.world.wait(lambda: 'TF_MISSING' in self.world.reason(robot_id), 10.0),
                         str(self.world.latest.get(robot_id)))
+
+    # 진단 기록(선택): 켠 로봇만 tick마다 판단 근거·보낸 출발 위치를 JSON 줄로 남기고 끈 로봇은 파일이 없다.
+    def test_10_diagnostics_file(self):
+        import json
+
+        path = self.folder / 'diag' / 'robot_1_supervisor.jsonl'
+        self.assertTrue(self.world.wait(lambda: path.is_file() and path.stat().st_size > 0, 5.0))
+        rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+        ticks = [row for row in rows if row['kind'] == 'tick']
+        sent = [row for row in rows if row['kind'] == 'initialpose_sent']
+
+        self.assertGreater(len(ticks), 3)
+        self.assertTrue(any(row['trust_stored'] for row in ticks))
+        self.assertTrue(all(row['trust_stored'] == (row['trust_rejection'] is None) for row in ticks))
+        self.assertEqual([row['source'] for row in sent], ['START_POSE'])
+        self.assertAlmostEqual(sent[0]['pose'][0], START['robot_1'][0])
+        self.assertFalse((self.folder / 'diag' / 'robot_2_supervisor.jsonl').exists())
+
+    # 진단 쓰기 실패(/dev/full): 오류를 남기고 진단만 끈다. 노드는 살아 health를 계속 내고 재위치 요청에 응답한다.
+    def test_11_diagnostics_failure_keeps_running(self):
+        self.assertIsNone(self.processes[1].poll())
+        self.assertIn('진단 기록 실패로 진단만 끔', (self.folder / 'robot_2.log').read_text())
+        revision = self.world.latest['robot_2'].meta.revision
+        self.assertTrue(self.world.wait(lambda: self.world.state('robot_2') == 1, 5.0))
+        self.assertEqual(self.reinit('robot_2'), (False, 'REINIT_REJECTED_NOT_NEEDED'))
+        self.assertIsNone(self.processes[1].poll())
+        self.assertGreaterEqual(self.world.latest['robot_2'].meta.revision, revision)
 
     # 고정 출발 위치로 초기화되고, 메시지 형식(세션·revision·이상 탐지 없음)이 계약을 따른다.
     def test_1_start_pose_and_message(self):

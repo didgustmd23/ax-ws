@@ -16,6 +16,49 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from arm_geometry import ArmGeometry, ARM_JOINTS
 
 class A1Assets(unittest.TestCase):
+    def test_travel_pose_footprint_and_cargo_deck_contract(self):
+        import itertools
+        config = yaml.safe_load((ROOT/'src/ax_description/config/a1_validation.yaml').read_text())['mobility']
+        model = ArmGeometry()
+        target = config['robot_1']['travel_pose_rad']
+        self.assertTrue(model.screen_path([0.]*5, target)['allowed'])
+        polygon = np.array(config['robot_1']['footprint_xy_m'])
+        corners = np.array(list(itertools.product([-1, 1], repeat=3)))
+        tolerance = config['robot_1']['joint_tolerance_rad']
+        for delta in itertools.product([-tolerance, 0., tolerance], repeat=5):
+            frames = model.frames(np.array(target)+delta)
+            for name, offset, half in model.shapes:
+                pose = frames[name] @ offset
+                points = (corners*half) @ pose[:3, :3].T + pose[:3, 3]
+                self.assertTrue(np.all(points[:, :2] >= polygon.min(0)))
+                self.assertTrue(np.all(points[:, :2] <= polygon.max(0)))
+        source = ROOT/'src/ax_description/urdf/ax_2.urdf.xacro'
+        robot = ET.fromstring(xacro.process_file(str(source)).toxml())
+        deck = robot.find("link[@name='cargo_contact_link']/collision/geometry/box")
+        np.testing.assert_allclose(np.fromstring(deck.get('size'), sep=' ')[:2], config['robot_2']['deck_size_m'])
+        frame = robot.find("joint[@name='cargo_frame_joint']/origin")
+        self.assertAlmostEqual(float(frame.get('xyz').split()[2]), .001)
+        bounds = config['robot_2']['cargo_bounds_xy_m']
+        size = config['robot_2']['test_box_size_m']
+        self.assertLess(size[0], bounds[1]-bounds[0])
+        self.assertLess(size[1], bounds[3]-bounds[2])
+
+    def test_wheel_slip_is_present_in_converted_models(self):
+        import subprocess
+        import tempfile
+        for filename in ('ax.urdf.xacro', 'ax_2.urdf.xacro'):
+            text = xacro.process_file(str(ROOT/'src/ax_description/urdf'/filename)).toxml()
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder)/'model.urdf'
+                path.write_text(text)
+                converted = subprocess.run(['gz', 'sdf', '-p', str(path)], capture_output=True, text=True, check=True)
+            sdf = ET.fromstring(converted.stdout)
+            for name in ('front_left_wheel', 'front_right_wheel', 'rear_left_wheel', 'rear_right_wheel'):
+                wheel = sdf.find(f".//link[@name='{name}']")
+                values = wheel.findall('collision/surface/friction/ode/slip1')
+                self.assertTrue(values, 'URDF setting must reach Gazebo SDF')
+                self.assertTrue(all(float(value.text) == .05 for value in values))
+
     def test_interchangeable_tool_tcp_geometry(self):
         from arm_geometry import origin
         source = ROOT / 'src/ax_description/urdf/ax.urdf.xacro'

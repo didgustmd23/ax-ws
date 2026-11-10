@@ -217,15 +217,189 @@ def run_payload(payload, settings, output_directory):
         (output_directory / f'payload_{payload}.json').write_text(json.dumps(result, indent=2)+'\n')
     return result
 
+def run_mobility(settings, output, payloads=None):
+    """A1 모델 확인: 주행 자세와 수동 적재판. A3 적재 판정/A4 게이트 시험이 아니다."""
+    import xml.etree.ElementTree as ET
+    import xacro
+    from scipy.spatial.transform import Rotation
+    from gz.msgs10.contacts_pb2 import Contacts
+    from arm_geometry import origin
+
+    partition = 'ax-a1-mobility-' + uuid.uuid4().hex
+    os.environ.update(GZ_PARTITION=partition, ROS_DOMAIN_ID=str(20+secrets.randbelow(76)),
+        ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', LIBGL_ALWAYS_SOFTWARE='1',
+        ROS_LOG_DIR=str(output/'ros_logs'))
+    # 모델/설정 오류는 시뮬레이터를 띄우기 전에 검출한다.
+    geometry = ArmGeometry()
+    target = settings['mobility']['robot_1']['travel_pose_rad']
+    share = Path(get_package_share_directory('ax_description'))
+    robot2 = ET.fromstring(xacro.process_file(str(share/'urdf/ax_2.urdf.xacro')).toxml())
+    frames, pending = {'base_link': np.eye(4)}, robot2.findall('joint')
+    while pending:
+        count = len(pending)
+        for joint in pending[:]:
+            parent = joint.find('parent').get('link')
+            if parent in frames:
+                frames[joint.find('child').get('link')] = frames[parent] @ origin(joint.find('origin'))
+                pending.remove(joint)
+        if len(pending) == count:
+            raise ValueError('Disconnected robot_2 model')
+    cargo = frames['cargo_link']
+    rclpy.init()
+    observer = Observer(geometry, settings)
+    poses, contacts = {}, []
+    def on_pose(message):
+        for pose in message.pose:
+            if pose.name in ('robot_1', 'robot_2', 'a1_cargo_probe'):
+                poses[pose.name] = pose
+    def on_contact(message):
+        if message.contact:
+            contacts.append(observer.sim_time)
+    observer.gazebo.subscribe(Pose_V, '/world/ax_test/dynamic_pose/info', on_pose)
+    observer.gazebo.subscribe(Contacts, '/ax/robot_2/sensors/cargo_contact', on_contact)
+    drive2 = observer.create_publisher(TwistStamped, '/ax/robot_2/diff_drive_controller/cmd_vel', 10)
+    log = (output/'mobility.log').open('a')
+    log.write('\n=== A1 mobility run: payloads '+repr(payloads)+' ===\n')
+    log.flush()
+    launch = None
+    result = {'scope': 'flat-floor development model; no operational safety or hardware rating', 'cases': []}
+    def matrix(pose):
+        m = np.eye(4)
+        q = pose.orientation
+        m[:3, :3] = Rotation.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+        m[:3, 3] = [pose.position.x, pose.position.y, pose.position.z]
+        return m
+    def cargo_local():
+        return np.linalg.inv(matrix(poses['robot_2']) @ cargo) @ matrix(poses['a1_cargo_probe'])
+    try:
+        launch = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
+            'robots:=2', 'gui:=false', 'sensors:=false', 'tool:=epick'],
+            stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        observer.launch_process = launch
+        observer.wait(lambda: all(name in poses for name in ('robot_1', 'robot_2'))
+            and set(ARM_JOINTS) <= observer.positions.keys() and observer.arm.server_is_ready())
+        observer.advance(2.)
+        observer.move_hold('travel_forward', target)
+        profiles = [('robot_1', [0.]), ('robot_2', [0., .5, 1., 2.])] if payloads is None else [('robot_2', payloads)]
+        for robot_id, masses in profiles:
+            for mass in masses:
+                if mass:
+                    p = (matrix(poses['robot_2']) @ cargo)[:3, 3] + np.array([0., 0., .12])
+                    inertia = mass*.2*.2/6
+                    sdf = f'''<sdf version="1.8"><model name="a1_cargo_probe"><pose>{p[0]} {p[1]} {p[2]} 0 0 0</pose>
+                    <link name="box"><inertial><mass>{mass}</mass><inertia><ixx>{inertia}</ixx><iyy>{inertia}</iyy><izz>{inertia}</izz></inertia></inertial>
+                    <collision name="box"><geometry><box><size>.2 .2 .2</size></box></geometry></collision>
+                    <visual name="box"><geometry><box><size>.2 .2 .2</size></box></geometry></visual></link></model></sdf>'''
+                    # 외부 C++ CLI로 요청하여 고빈도 Python pose 콜백과 동기
+                    # request가 경합하지 않게 한다. 실제 생성은 pose 수신으로 확인한다.
+                    subprocess.run(['ros2', 'run', 'ros_gz_sim', 'create', '-world', 'ax_test',
+                        '-name', 'a1_cargo_probe', '-string', sdf,
+                        '-x', str(p[0]), '-y', str(p[1]), '-z', str(p[2])], check=True,
+                        stdout=log, stderr=subprocess.STDOUT, timeout=30)
+                    observer.wait(lambda: 'a1_cargo_probe' in poses)
+                    observer.advance(2.)
+                    local = cargo_local()
+                    if abs(local[2, 3]-.1) > .01:
+                        raise RuntimeError('Cargo deck failed to support box: ' + repr(local[:3, 3].tolist()))
+                for label, linear, angular, seconds in [
+                    ('left', 0., .3, 5.), ('right', 0., -.3, 5.),
+                    ('forward', .67, 0., 2.), ('reverse', -.67, 0., 2.),
+                    ('curve', .3, .3, 3.), ('reverse_curve', -.3, -.3, 3.)]:
+                    start = matrix(poses[robot_id])
+                    start_time = observer.sim_time
+                    samples, cargo_samples = [], []
+                    wall_deadline = time.monotonic()+max(60., (seconds+3.5)*30)
+                    # observer.spin은 robot_1 정지 heartbeat를 발행하므로 주행 시에는
+                    # 같은 루프에서 목표 명령을 뒤이어 발행한다.
+                    while observer.sim_time < start_time+seconds+3.5:
+                        if time.monotonic() > wall_deadline:
+                            raise TimeoutError('Simulation clock stopped during mobility check')
+                        if robot_id == 'robot_1':
+                            observer.last_zero = time.monotonic()
+                        observer.spin()
+                        elapsed = observer.sim_time-start_time
+                        message = TwistStamped()
+                        message.header.stamp.sec, message.header.stamp.nanosec = divmod(int(observer.sim_time*1e9), 1000000000)
+                        if elapsed < seconds:
+                            message.twist.linear.x, message.twist.angular.z = linear, angular
+                        (observer.drive if robot_id == 'robot_1' else drive2).publish(message)
+                        samples.append(matrix(poses[robot_id]))
+                        if mass:
+                            cargo_samples.append(cargo_local())
+                    end = samples[-1]
+                    tilt = max(math.acos(np.clip(m[2, 2], -1., 1.)) for m in samples)
+                    travel_error = max(abs(a-b) for a, b in zip(observer.current(), target))
+                    displacement = float(np.linalg.norm((end-start)[:2, 3]))
+                    drift = max((float(np.linalg.norm(m[:2, 3])) for m in cargo_samples), default=0.)
+                    height_error = max((abs(float(m[2, 3])-.1) for m in cargo_samples), default=0.)
+                    recent_contact = any(t >= start_time for t in contacts)
+                    moved = displacement > (.5 if label in ('forward', 'reverse') else .3) if linear else True
+                    passed = moved and tilt < .15 and travel_error < .03 and (label not in ('left', 'right') or displacement < .1) and (not mass or
+                        drift < .02 and height_error < .01 and recent_contact)
+                    case = dict(robot=robot_id, payload_kg=mass, case=label,
+                        displacement_m=displacement, max_tilt_rad=tilt,
+                        cargo_drift_m=drift, cargo_height_error_m=height_error,
+                        contact_seen=recent_contact if mass else None, passed=passed)
+                    result['cases'].append(case)
+                    print(json.dumps(case), flush=True)
+                    if not passed:
+                        raise RuntimeError('Mobility support check failed')
+                if mass:
+                    entity_id = poses['a1_cargo_probe'].id
+                    removed = subprocess.run(['gz', 'service', '-s', '/world/ax_test/remove',
+                        '--reqtype', 'gz.msgs.Entity', '--reptype', 'gz.msgs.Boolean',
+                        '--timeout', '10000', '--req', f'id: {entity_id} type: MODEL'],
+                        check=True, capture_output=True, text=True, timeout=15)
+                    if 'data: true' not in removed.stdout:
+                        raise RuntimeError('Cargo test box removal failed: '+removed.stdout+removed.stderr)
+                    poses.pop('a1_cargo_probe', None)
+                    observer.advance(.3)
+        result['passed'] = all(case['passed'] for case in result['cases'])
+    except Exception as error:
+        result.update(passed=False, error=repr(error))
+        print('A1 mobility error:', repr(error), flush=True)
+    finally:
+        observer.destroy_node()
+        rclpy.shutdown()
+        if launch is not None:
+            if launch.poll() is None:
+                launch.send_signal(signal.SIGINT)
+            try:
+                launch.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                os.killpg(launch.pid, signal.SIGKILL)
+                launch.wait()
+        result['cleanup'] = stop_tagged(partition)
+        result['passed'] = result.get('passed', False) and result['cleanup']['remaining_count'] == 0
+        log.close()
+        filename = 'mobility_summary.json' if payloads is None else 'mobility_payload_'+'_'.join(map(str, payloads))+'.json'
+        previous = output/filename
+        if previous.is_file():
+            old = json.loads(previous.read_text())
+            attempts = old.pop('previous_attempts', [])
+            result['previous_attempts'] = attempts+[old]
+        (output/filename).write_text(json.dumps(result, indent=2)+'\n')
+    return result
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--payload', type=float, choices=[0, .5, 1, 2])
+    parser.add_argument('--mobility', action='store_true', help='A1 travel pose and robot_2 passive cargo support checks')
+    parser.add_argument('--mobility-payloads', nargs='+', type=float, choices=[0, .5, 1, 2],
+                        help='With --mobility, recheck only these robot_2 loads')
     args = parser.parse_args()
+    if args.mobility_payloads is not None and not args.mobility:
+        parser.error('--mobility-payloads requires --mobility')
+    if args.mobility and args.payload is not None:
+        parser.error('--payload and --mobility are separate tests')
     share = Path(get_package_share_directory('ax_description'))
     settings = yaml.safe_load((share/'config/a1_validation.yaml').read_text())
     settings['limits'] = yaml.safe_load((share/'config/arm_joint_limits.yaml').read_text())['joint_limits']
     output = WORKSPACE / 'log/a1'
     output.mkdir(parents=True, exist_ok=True)
+    if args.mobility:
+        raise SystemExit(0 if run_mobility(settings, output, args.mobility_payloads)['passed'] else 1)
     masses = settings['payloads_kg'] if args.payload is None else [args.payload]
     results = [run_payload(mass, settings, output) for mass in masses]
     passed = all(result['passed'] for result in results)

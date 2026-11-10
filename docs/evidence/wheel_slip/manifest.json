@@ -346,7 +346,7 @@
  },
  "sanitized": "첨부 텍스트 파일의 개인 경로를 <workspace>, <tmp>, ~로 치환(사본만, 원본 로그 그대로)",
  "top_files_sha256": {
-  "README.md": "30438a191f22209b9bb20d85b39cd25c9cd8f73d811daf5c1160302c9055c075",
+  "README.md": "def6c111716a242c948fc066512ae117c25f198a314c3acd06610d3382fa1257",
   "s005.patch": "1a078468d4e991300043ecb09951cb514348ac27b2ea45fc44ca8a5abafdfdfb",
   "build_measurements.py": "f96f96ce2717847b2e5316fccfe7ce3ad3b45157762f95d431a51bdae42d6c44",
   "validity_summary.json": "09f51fb1c0aa8c737eca28a736fa509d992418794aac1fdf53e5a27fc94265c7",

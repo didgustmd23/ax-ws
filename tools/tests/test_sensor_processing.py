@@ -43,6 +43,23 @@ class Publisher:
 
 
 class SensorProcessingTests(unittest.TestCase):
+    def test_receive_timeout_counts_suspend_with_frozen_ros_and_monotonic_clocks(self):
+        from diagnostic_msgs.msg import DiagnosticStatus
+        node, receive, _ = self.receiver()
+        _, message, _ = images([1., 1.])
+        message.header.frame_id = 'robot_1/front_rgb_optical_frame'
+        message.header.stamp.sec = 10
+        # 절전 중 ROS/monotonic은 멈추고 BOOTTIME만 진행하는 조건.
+        with patch.object(sensor.time, 'monotonic', return_value=100.), \
+                patch.object(sensor.time, 'clock_gettime', return_value=100.) as clock:
+            receive(message)
+            clock.assert_called_with(sensor.time.CLOCK_BOOTTIME)
+        with patch.object(sensor.time, 'monotonic', return_value=100.), \
+                patch.object(sensor.time, 'clock_gettime', return_value=110.) as clock:
+            sensor.SensorProcessing.report(node)
+            self.assertEqual(node.diagnostics.messages[-1].status[0].level, DiagnosticStatus.STALE)
+            clock.assert_called_with(sensor.time.CLOCK_BOOTTIME)
+
     def pending_node(self):
         node, _, _ = self.receiver()
         node.cfg.update(tof_body_filter=True, tof_tf_wait_s=.15)
@@ -58,14 +75,14 @@ class SensorProcessingTests(unittest.TestCase):
         first = Range();first.header.stamp.sec = 10
         second = Range();second.header.stamp.sec = 10;second.header.stamp.nanosec = 1
         for msg in (first, second):
-            with patch.object(sensor.time, 'monotonic', return_value=100.):
+            with patch.object(sensor, 'boottime', return_value=100.):
                 sensor.SensorProcessing.queue_tof(node, msg)
-        with patch.object(sensor.time, 'monotonic', return_value=100.05):
+        with patch.object(sensor, 'boottime', return_value=100.05):
             sensor.SensorProcessing.drain_tof(node)
         node.tof.assert_not_called()
         self.assertEqual(len(node.tof_pending), 2)
         node.tf_buffer.can_transform.return_value = True
-        with patch.object(sensor.time, 'monotonic', return_value=100.08):
+        with patch.object(sensor, 'boottime', return_value=100.08):
             sensor.SensorProcessing.drain_tof(node)
         self.assertEqual([call.args[0] for call in node.tof.call_args_list], [first, second])
         self.assertFalse(node.tof_pending)
@@ -74,21 +91,21 @@ class SensorProcessingTests(unittest.TestCase):
     def test_tof_wait_timeout_stale_and_clock_reset(self):
         node = self.pending_node()
         message = Range();message.header.stamp.sec = 10
-        with patch.object(sensor.time, 'monotonic', return_value=100.):
+        with patch.object(sensor, 'boottime', return_value=100.):
             sensor.SensorProcessing.queue_tof(node, message)
         node.tof.side_effect = ValueError('TF unavailable')
-        with patch.object(sensor.time, 'monotonic', return_value=100.16):
+        with patch.object(sensor, 'boottime', return_value=100.16):
             sensor.SensorProcessing.drain_tof(node)
         self.assertFalse(node.health['tool_tof/raw']['ok'])
         self.assertFalse(node.tof_pending)
         node.tof.reset_mock()
-        with patch.object(sensor.time, 'monotonic', return_value=101.):
+        with patch.object(sensor, 'boottime', return_value=101.):
             sensor.SensorProcessing.queue_tof(node, message)
         node.now_ns = 11_000_000_000
         sensor.SensorProcessing.drain_tof(node)
         node.tof.assert_not_called()
         self.assertIn('stale', node.health['tool_tof/raw']['reason'])
-        with patch.object(sensor.time, 'monotonic', return_value=102.):
+        with patch.object(sensor, 'boottime', return_value=102.):
             sensor.SensorProcessing.queue_tof(node, message)
         node.now_ns = 1_000_000_000
         sensor.SensorProcessing.drain_tof(node)
@@ -153,9 +170,9 @@ class SensorProcessingTests(unittest.TestCase):
         _, message, _ = images([1., 1.])
         message.header.frame_id = 'robot_1/front_rgb_optical_frame'
         message.header.stamp.sec = 10
-        with patch.object(sensor.time, 'monotonic', return_value=100.):
+        with patch.object(sensor, 'boottime', return_value=100.):
             receive(message)
-        with patch.object(sensor.time, 'monotonic', return_value=102.1):
+        with patch.object(sensor, 'boottime', return_value=102.1):
             sensor.SensorProcessing.report(node)
             self.assertEqual(node.diagnostics.messages[-1].status[0].level, DiagnosticStatus.STALE)
             message.header.stamp.nanosec = 1

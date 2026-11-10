@@ -8,3 +8,25 @@ poses:
   neutral: [0.0, 0.0, 0.0, 0.0, 0.0]
   reach_left: [0.35, -0.30, 0.35, -0.20, 0.25]
   reach_right: [-0.35, 0.30, -0.35, 0.20, -0.25]
+
+# A1의 개발용 모델·외곽 정의. 자동 자세 전환/주행 허용 게이트는 구현하지 않는다.
+mobility:
+  wheel_slip1_m_s_per_n: 0.05
+  robot_1:
+    tool: epick
+    payload_kg: 0.0
+    travel_pose_rad: [-1.0, 0.0, 0.0, 0.0, 0.0]
+    joint_tolerance_rad: 0.02
+    # base_link 기준, 센서 포함 collision AABB + 약 20 mm 여유.
+    # ±0.02 rad의 3^5 자세 표본 기준이며 임의 작업 자세에 적용하지 않는다.
+    footprint_xy_m: [[-0.78, -0.42], [0.82, -0.42], [0.82, 0.42], [-0.78, 0.42]]
+  robot_2:
+    # 선반을 포함한 실제 collision 폭은 약 2.0m다. 바퀴/차체 폭만 쓰지 않는다.
+    footprint_xy_m: [[-0.62, -1.03], [0.66, -1.03], [0.66, 1.03], [-0.62, 1.03]]
+    cargo_frame: cargo_link
+    deck_size_m: [0.72, 0.72]
+    # 가장자리 20 mm를 뺀 상자 외곽 허용 영역. A3 판정/고정 장치가 아니다.
+    cargo_bounds_xy_m: [-0.34, 0.34, -0.34, 0.34]
+    test_box_size_m: [0.2, 0.2, 0.2]
+    test_payloads_kg: [0.5, 1.0, 2.0]
+    retention: passive_flat_deck_no_latch

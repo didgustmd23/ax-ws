@@ -8,9 +8,13 @@
 - 고정 출발 위치: start_pose_* 매개변수가 있으면 이 세션에서 AMCL이 처음 active가 됐을 때 한 번만 initialpose로 보낸다.
   위치를 잃었다는 이유로 다시 보내지 않는다.
 - 로봇을 움직이지 않는다. 판단 로직은 localization_health.py에 있다.
+- 진단 기록(선택): diagnostics_file 매개변수가 있으면 판정 tick·재위치 요청마다 판단 근거를 JSON 줄로 덧붙인다.
+  판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다(시험 기록 전용).
 """
 
 import hashlib
+import json
+import math
 from pathlib import Path
 import sys
 import time
@@ -87,6 +91,15 @@ class LocalizationSupervisor(Node):
         self.map_id = None
         self.start_pose_sent = False
         self.health = lh.Health(lh.UNKNOWN, False, "NOT_INITIALIZED")
+        diagnostics = self.declare_parameter("diagnostics_file", "").value
+        self.diagnostics = None
+
+        # 진단 기록은 선택 기능이다. 열지 못하면 오류만 남기고 판정·발행은 그대로 한다.
+        if diagnostics:
+            try:
+                self.diagnostics = open_diagnostics(diagnostics)
+            except OSError as error:
+                self.get_logger().error(f"진단 기록 파일을 열지 못해 진단만 끔: {diagnostics} ({error})")
 
         # 입력
         self.tf_buffer = Buffer()
@@ -219,9 +232,47 @@ class LocalizationSupervisor(Node):
 
         health = self.reinit.apply(health)
         self.tracker.check_map(self.map_id)
-        self.tracker.consider(health, self.inputs, now, self.map_id, self.reinit.active())
+        reinit_active = self.reinit.active()
+        rejection = self.tracker.rejection(health, self.inputs, self.map_id, reinit_active)
+        stored = self.tracker.consider(health, self.inputs, now, self.map_id, reinit_active)
         self.maybe_send_start_pose()
         self.publish(health, now)
+        self.write_diagnostics("tick", now, health, trust_stored=stored, trust_rejection=rejection)
+
+    # 진단 기록 한 줄을 덧붙인다(diagnostics_file이 있을 때만). 판정에는 쓰지 않는다.
+    def write_diagnostics(self, kind, now, health, **extra):
+        if self.diagnostics is None:
+            return
+
+        record = self.tracker.record
+        entry = {
+            "kind": kind, "sim": now, "mono": time.monotonic(), "wall_utc": time.time(),
+            "session": self.session, "revision": self.revision, "clock_valid": self.clock_valid,
+            "state": lh.STATE_NAMES[health.state], "valid": health.valid, "reason": health.reason,
+            "position_std_m": finite_or_none(health.position_std_m), "yaw_std_rad": finite_or_none(health.yaw_std_rad),
+            "tf_chain_ok": self.inputs.tf_chain_ok, "tf_valid_time": self.inputs.tf_valid_time,
+            "amcl_stamp": self.inputs.amcl_stamp, "amcl_updates": self.inputs.amcl_updates,
+            "odom_break_at": self.inputs.odom_break_at, "map_id": self.map_id,
+            "reinit_active": self.reinit.active(), "reinit_failure": self.reinit.failure,
+            "trust_record_stamp": None if record is None else record.stamp,
+            "trust_record_age_s": None if record is None else now - record.stamp,
+            "trust_path_m": self.tracker.path_m, "trust_path_rad": self.tracker.path_rad,
+            "trust_invalid_reason": self.tracker.invalid_reason,
+            **extra,
+        }
+        # 쓰기 실패(디스크 부족·닫힌 파일·권한 등)는 진단만 끄고 판정·발행·재위치 응답은 계속한다.
+        try:
+            self.diagnostics.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            self.diagnostics.flush()
+        except (OSError, ValueError) as error:
+            self.get_logger().error(f"진단 기록 실패로 진단만 끔(판정은 계속): {error}")
+
+            try:
+                self.diagnostics.close()
+            except (OSError, ValueError):
+                pass
+
+            self.diagnostics = None
 
     # 판정 결과를 발행한다. 상태·유효성·사유가 바뀌면 revision을 올린다.
     def publish(self, health, now):
@@ -263,7 +314,8 @@ class LocalizationSupervisor(Node):
             self.get_logger().info(f"재위치 접수: 후보 {tuple(round(v, 3) for v in candidate['pose'])}, "
                                    f"누적 이동 {candidate['travel_m']:.3f} m·{candidate['rotation_rad']:.3f} rad "
                                    f"(순변위 {candidate['net_travel_m']:.3f} m)")
-            self.send_initialpose(candidate["pose"], candidate["position_std_m"], candidate["yaw_std_rad"], now)
+            self.send_initialpose(candidate["pose"], candidate["position_std_m"], candidate["yaw_std_rad"], now,
+                                  source="REINIT")
             self.reinit.mark_sent(now)
             self.publish(self.reinit.apply(health), now)
         else:
@@ -271,6 +323,7 @@ class LocalizationSupervisor(Node):
 
         response.success = accepted
         response.message = code
+        self.write_diagnostics("reinit_request", now, health, accepted=accepted, code=code)
 
         return response
 
@@ -278,9 +331,7 @@ class LocalizationSupervisor(Node):
     # 이동 보정을 한다. AMCL의 TF 버퍼가 현재 시각보다 수십 ms 늦으면 "extrapolation into the future" 경고 뒤
     # 보정 없이 그대로 쓴다(Gazebo 시험에서 확인, 감독 노드가 다른 시각을 넣어도 같은 경고가 났다).
     # 재위치·최초 초기화는 정지 상태에서만 하므로 보정을 건너뛰어도 자세 차이가 없다.
-    def send_initialpose(self, pose, position_std, yaw_std, now):
-        import math
-
+    def send_initialpose(self, pose, position_std, yaw_std, now, source=""):
         message = PoseWithCovarianceStamped()
         message.header.frame_id = "map"
         message.pose.pose.position.x = pose[0]
@@ -289,6 +340,8 @@ class LocalizationSupervisor(Node):
         message.pose.pose.orientation.w = math.cos(pose[2] / 2)
         message.pose.covariance = lh.pose_covariance(position_std, yaw_std)
         self.initialpose.publish(message)
+        self.write_diagnostics("initialpose_sent", now, self.health, source=source, pose=list(pose),
+                               sent_position_std_m=position_std, sent_yaw_std_rad=yaw_std)
 
     # 고정 출발 위치를 이 세션에서 한 번만 보낸다. AMCL이 active이고 initialpose 구독자가 있을 때만.
     def maybe_send_start_pose(self):
@@ -322,9 +375,22 @@ class LocalizationSupervisor(Node):
 
         pose = self.start_pose
         self.send_initialpose((pose["x"], pose["y"], pose["yaw"]), pose["position_std_m"], pose["yaw_std_rad"],
-                              self.now())
+                              self.now(), source="START_POSE")
         self.start_pose_sent = True
         self.get_logger().info(f"고정 출발 위치로 최초 초기화: map ({pose['x']}, {pose['y']}, yaw {pose['yaw']})")
+
+
+# 진단 기록 파일을 덧붙이기로 연다(폴더가 없으면 만든다).
+def open_diagnostics(path):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    return path.open("a", encoding="utf-8")
+
+
+# 유한한 값만 그대로, 아니면 None(JSON에 NaN을 쓰지 않는다)
+def finite_or_none(value):
+    return value if value is not None and math.isfinite(value) else None
 
 
 # 노드를 실행한다.

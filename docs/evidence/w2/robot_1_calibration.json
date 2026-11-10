@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "robot_id": "robot_1",
+  "scope": "ideal front sensor geometry only",
+  "distance_tolerance_m": 0.015,
+  "cases": [
+    {
+      "target_depth_m": 1.0,
+      "samples": [
+        {
+          "stamp_s": 0.792,
+          "skew_s": 0.0,
+          "depth_m": 0.9982117414474487,
+          "expected_depth_m": 0.9981854572147184,
+          "scan_m": 0.9582026600837708,
+          "expected_scan_m": 0.958194649067714,
+          "cloud_xyz_m": [
+            0.09004966169595718,
+            0.05402979627251625,
+            0.9982117414474487
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        },
+        {
+          "stamp_s": 0.8580000000000001,
+          "skew_s": 0.0,
+          "depth_m": 0.9980764985084534,
+          "expected_depth_m": 0.9980829689813853,
+          "scan_m": 0.9582026600837708,
+          "expected_scan_m": 0.9580921618538347,
+          "cloud_xyz_m": [
+            0.09003745764493942,
+            0.05402247607707977,
+            0.9980764985084534
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        },
+        {
+          "stamp_s": 0.924,
+          "skew_s": 0.0,
+          "depth_m": 0.9981464147567749,
+          "expected_depth_m": 0.9982887472951367,
+          "scan_m": 0.9581067562103271,
+          "expected_scan_m": 0.9582979401948837,
+          "cloud_xyz_m": [
+            0.09004376828670502,
+            0.05402626097202301,
+            0.9981464147567749
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        }
+      ],
+      "mount_checks": [
+        {
+          "frame": "front_lidar",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "rear_lidar",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "front_rgbd",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "front_rgb",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "target_depth_m": 2.0,
+      "samples": [
+        {
+          "stamp_s": 1.518,
+          "skew_s": 0.0,
+          "depth_m": 2.0077433586120605,
+          "expected_depth_m": 2.008238197823868,
+          "scan_m": 1.9675016403198242,
+          "expected_scan_m": 1.9682569304388877,
+          "cloud_xyz_m": [
+            0.18112049996852875,
+            0.10867229849100113,
+            2.0077433586120605
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        },
+        {
+          "stamp_s": 1.584,
+          "skew_s": 0.0,
+          "depth_m": 2.0086371898651123,
+          "expected_depth_m": 2.0088396994394957,
+          "scan_m": 1.9675016403198242,
+          "expected_scan_m": 1.968858433447638,
+          "cloud_xyz_m": [
+            0.18120113015174866,
+            0.10872067511081696,
+            2.0086371898651123
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        },
+        {
+          "stamp_s": 1.65,
+          "skew_s": 0.0,
+          "depth_m": 2.0093541145324707,
+          "expected_depth_m": 2.0096598217619857,
+          "scan_m": 1.9688574075698853,
+          "expected_scan_m": 1.9696785590053036,
+          "cloud_xyz_m": [
+            0.18126580119132996,
+            0.10875948518514633,
+            2.0093541145324707
+          ],
+          "focal_px": 554.2562584220408,
+          "passed": true
+        }
+      ],
+      "mount_checks": [
+        {
+          "frame": "front_lidar",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "rear_lidar",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "front_rgbd",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        },
+        {
+          "frame": "front_rgb",
+          "translation_error_m": 0.0,
+          "rotation_error_rad": 0.0
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

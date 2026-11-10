@@ -1,6 +1,7 @@
 # B2 위치 신뢰성·마지막 신뢰 위치·재위치 판단 값(localization_supervisor.py).
 # 모두 개발용 출발값이다. 정확도 기준이 아니며 운영 모델·기준 월드에서 다시 정한다.
-# 상태·사유 코드는 공통 인터페이스 계약 4.2절·D-19 "위치"를 따른다. 시간은 sim time(s), clock_stall_wall_s만 벽시계.
+# 상태·사유 코드는 공통 인터페이스 계약 4.2절·D-19 "위치"를 따른다. 시간은 sim time(s)이고, 이름이 _wall_s로 끝나는
+# 항목(clock_stall_wall_s·reinit.timeout_wall_s·estimate_jump.intent_timeout_wall_s)만 단조 벽시계(s)다.
 health:
   publish_rate_hz: 5.0          # 계약 4.2절(5 Hz · 만료 1.0 s)
   scan_stale_s: 0.5             # 넘으면 DEGRADED(SCAN_STALE), scan_lost_s 넘으면 LOST(INPUT_LOST)
@@ -45,3 +46,19 @@ reinit:
   recover_std_ratio: 0.9
   consistency_m: 0.5            # 새 추정과 후보의 차이 허용. 2배를 넘으면 발산으로 실패
   consistency_rad: 0.3
+
+estimate_jump:                  # 추정 도약 감지(재위치 consistency와 따로 둔다). 모두 개발 출발값
+  position_m: 0.3               # 이전·새 추정을 같은 odom 자세에서 비교한 차이. 넘으면 LOST(ESTIMATE_DISCONTINUOUS) latch
+  yaw_rad: 0.3                  # 단일 회차 정상 갱신 최대 0.027 m·0.032 rad, lifecycle 재설정 도약 5.94 m·1.59 rad에서 출발
+  odom_match_s: 0.1             # 추정 시각과 odom 표본 시각 차 허용. 넘으면 근거 부족(DEGRADED ODOM_STALE, 신뢰 기록 보류)
+  odom_history_s: 5.0           # odom 표본 보관 기간
+  pair_position_m: 0.02         # amcl_pose와 현재 TF가 같은 갱신으로 볼 차이(신뢰 기록 조건)
+  pair_yaw_rad: 0.02
+  # 의도 후보와 새 추정의 일치·제한시간. 입력 기준과 제한시간 시작은 출처마다 다르다.
+  # - START_POSE·REINIT(감독 노드 initialpose 송신): 송신 시각 뒤 stamp의 입력만 쓰고, 제한시간도 송신부터 잰다.
+  # - LAUNCH_INITIAL_POSE(launch initial_poses, 송신 없음): 감독 노드 sim time이 처음 유효해진 시각 뒤 stamp의 입력만 쓰고,
+  #   제한시간은 AMCL active를 처음 확인한 때부터 잰다(그 전에는 만료하지 않음).
+  intent_position_m: 0.5        # 후보와 기준 뒤 새 추정(같은 odom 자세)의 일치 허용
+  intent_yaw_rad: 0.3
+  intent_timeout_s: 15.0        # 일치를 기다리는 제한(sim time, 시작 시각은 위 출처별 구분)
+  intent_timeout_wall_s: 60.0   # 같은 제한의 단조 벽시계 상한

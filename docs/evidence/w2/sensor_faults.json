@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "scope": "synthetic ROS transport, not physical calibration",
+  "cases": [
+    {
+      "name": "normal_rgb_preserves_stamp",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "duplicate",
+      "passed": true,
+      "detail": "Duplicate or reversed timestamp"
+    },
+    {
+      "name": "reversed",
+      "passed": true,
+      "detail": "Duplicate or reversed timestamp"
+    },
+    {
+      "name": "stale",
+      "passed": true,
+      "detail": "Missing clock or stale measurement"
+    },
+    {
+      "name": "future",
+      "passed": true,
+      "detail": "Future measurement"
+    },
+    {
+      "name": "wrong_robot_frame",
+      "passed": true,
+      "detail": "Unexpected frame_id"
+    },
+    {
+      "name": "rgbd_40ms_skew_no_cloud",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "rgbd_20ms_skew_recovers",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "invalid_depth_published_but_diagnosed",
+      "passed": true,
+      "detail": "No valid depth measurements; Valid depth fraction 0.0000"
+    },
+    {
+      "name": "scan_near_far_nan_preserved",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "clock_reset_accepts_new_session_stamp",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "missing_input_stale_with_frozen_sim_clock",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "fresh_input_recovers",
+      "passed": true,
+      "detail": null
+    }
+  ]
+}

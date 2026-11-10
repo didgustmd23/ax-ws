@@ -1,0 +1,28 @@
+{
+  "hash_policy": "SHA-256 of UTF-8 text bytes normalized CRLF to LF",
+  "source_files": {
+    "src/ax_navigation/CMakeLists.txt": "e9988d6af1ace4466d49637281f850bd5e6643cc31359e04ae3257032bbfcdea",
+    "src/ax_navigation/package.xml": "1f69bad6a347439b7520ff3a067fd334fe20fc59502f0453fa6980438ff14646",
+    "src/ax_navigation/launch/navigation.launch.py": "b7e4e45cd3297411b823a6582a54e45e780fdae7aa4465ab1fc256331e11a777",
+    "src/ax_navigation/config/navigate.xml": "235bac2d6f496850c1739f6d9420d9d4230779b3dbc64cf751db9568ee8dc6df",
+    "src/ax_description/config/sensor_mounts.yaml": "be3508a486d0f0230a5ea6f7a927845aa5320877ebc3a1a57ca99f09f5af2821",
+    "src/ax_description/config/sensor_contract.yaml": "59be1e7798becd085c100c5444c6acac2983f9711eb46f2a91bb0ed1cc53d0c8",
+    "src/ax_description/config/a1_validation.yaml": "b73730f6147f19d8964eee9b1ffad2f990254ffb273d85c2e9a99802c5fb2c06",
+    "src/ax_perception/scripts/sensor_processing.py": "9d3741c9fa48c6c18b7937bca0711af3074756f8d9a5050423d917f885d4d945",
+    "tools/check_w2_calibration.py": "7cb3980062459b088bef4853b809907a2115b47b20893df02d8a706651a5f07d",
+    "tools/check_w2_arm_sensors.py": "eb776bd87b4923aecf653fe96ff0d6d9306cee999a23817570622c18f2e02a8f",
+    "tools/check_w2_sensor_faults.py": "3ba5f00c3ef8106bfdb430d58e11a6a598bedce0cbaa31e7322de20564e4e342",
+    "tools/check_w2_navigation.py": "329f7349024ff59381b3347ed8bc3c41e035fe6985193decee6c3901cf83d9ef",
+    "tools/tests/test_navigation_config.py": "65740126a8b0e9dffbcb7a3fa697df330e1338975d42250e80aa3008723750cb"
+  },
+  "evidence_files": {
+    "README.md": "e252aab7bbfc870ee0aa998662a2c0dcea9a5fc5c0c275db64cc8599d936624c",
+    "arm_sensors.json": "7e4652a6a030b327b7a762decffa1842d508670bdee9332e0d21df4ea373eb53",
+    "arm_sensors_occluded.json": "8861701d938ca8eea82b261a2e1c8ca9f5781ab63440acff0f821e47e41e4b6c",
+    "navigation_mock.json": "46e95b1d9742e1354e3e1e9b9d56ec204abc244be9c0e4faabc4d5e1a4ccb1cf",
+    "robot_1_calibration.json": "40c452b81f01ba9be7da5522d84933b05aea4275762af8953212747063b6018f",
+    "robot_2_calibration.json": "ef2d6c107edea827f52d951de66f2dd3d033646f842cf08d236fef48fa6b3e5b",
+    "sensor_faults.json": "246a8da4d4283311e311ab788721e5af53c1077c4c42d64102034368d8c9e67d",
+    "summary.json": "50c224b5799eb1498063a6ba26af2b2c32be88b8490e8200c747fc5985a3bab7"
+  }
+}

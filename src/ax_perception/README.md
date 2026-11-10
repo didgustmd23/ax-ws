@@ -57,7 +57,7 @@ python3 -m unittest discover -s tools/tests -p test_sensor_processing.py
 ```
 
 실행 전에 ROS와 빌드 결과를 source한다.
-생성물 비교와 위 33개 검사는 2026-11-09 작업트리에서 통과했다.
+생성물 비교와 위 34개 검사는 2026-11-09 작업트리에서 통과했다.
 Gazebo 실행 결과는 JSON의 `passed`와 각 토픽 기록으로 확인한다. G1 통과 근거로 쓰지 않는다.
 
 2026-11-09 제어기 없는 두 로봇·epick·headless 월드에서 27개 중 26개 입력의 반복 수신과
@@ -74,3 +74,51 @@ python3 tools/check_w1_cargo_contact.py
 
 이 명령은 실행 중인 `ax_test`에 0.5 kg 시험 상자를 생성하고 검사 후 삭제한다.
 구동 명령·A3 적재 판정은 수행하지 않는다. 실행 중인 월드와 ROS domain·Gazebo partition을 맞춰야 한다.
+
+## W2 개발용 보정·동기화 검증 — 2026-11-09
+
+기존 전처리 구현을 실제 ROS·Gazebo 입력으로 확인했다. 실물 센서 보정 계수를 추정하거나
+실물 정확도를 인증한 작업이 아니다. 이상적인 시뮬레이션의 장착·투영·거리·시각 일관성을 검증한다.
+
+- robot_1/2 전방 RGB-D: 알려진 평면 1·2 m, 조건당 서로 다른 stamp 3개.
+  비중심 픽셀의 깊이·점군 X/Y/Z, CameraInfo 초점거리, 전방 LiDAR 광선 거리,
+  전후 LiDAR·전방 RGB/RGB-D 장착 TF를 설정과 비교했다. 15 mm 개발 허용값에서 통과했다.
+- robot_1 epick 팔: 팔 RGB-D 10·15 cm, ToF 8·15 cm에서 조건당 3표본.
+  관측 시각 TF·Gazebo 로봇 자세로 평면의 예상 거리를 계산해 20 mm 개발 허용값에서 통과했다.
+  팔 관측은 TF와 렌더링의 일관성 시험이며, TF와 독립된 팔 외부 보정은 아니다.
+- ROS 모의 입력 13조건: 정상 stamp 보존, 중복·역행·오래된 값·미래 값·다른 로봇 frame 거절,
+  RGB-D 40 ms 오차 거절/20 ms 회복, 전부 무효인 깊이의 점군·오류 진단,
+  LiDAR ±inf/NaN, 시계 역행, sim time 정지 중 수신 만료와 새 입력 회복을 확인했다.
+
+### 확인한 한계
+
+팔 카메라 중립 자세의 중심 광선에서 25 cm 시험판 대신 약 19.8 cm 앞의 형상이 관측됐다.
+가려진 시험판의 거리를 보정 오차로 해석하지 않는다. 해당 초기 실패 기록도 보존했다.
+10·15 cm 시험 통과는 모든 자세·전체 시야에서 물체 표면을 볼 수 있다는 뜻이 아니다.
+표면 관측이 필요한 C2/C4 연결 전에 작업 자세·관심 픽셀의 가림을 추가 확인해야 한다.
+팔 RGB 단독 영상의 가림·화질·C1 검출 성능, 하드웨어 내/외부 보정, IMU 오차 추정,
+센서 정격률·장시간·4대 부하·WSL 실제 절전 복귀는 이번 검증에 포함하지 않았다.
+
+### 재현
+
+아래 명령은 저장소 루트에서 ROS·빌드 결과를 source한 뒤 실행한다.
+실제 운용과 다른 ROS_DOMAIN_ID·GZ_PARTITION을 사용한다.
+
+```bash
+# 전방 센서: robot_1 또는 robot_2를 한 대씩 실행
+ros2 launch ax_description robot_test.launch.py gui:=false robot_ids:=robot_2 tool:=epick
+ros2 launch ax_perception sensors.launch.py robot_ids:=robot_2 tool:=epick
+python3 tools/check_w2_calibration.py --robot-id robot_2 --output log/w2/robot_2_calibration.json
+
+# 팔 센서: 위 실행을 종료하고 별도 격리 실행. A2는 관절 상태/유지에 사용하며 명령을 보내지 않는다.
+ros2 launch ax_control simulation.launch.py gui:=false robot_ids:=robot_1 tool:=epick
+ros2 launch ax_perception sensors.launch.py robot_ids:=robot_1 tool:=epick
+python3 tools/check_w2_arm_sensors.py
+
+# 오류 시험: Gazebo·다른 clock 발행자가 없는 별도 domain에서 B1 robot_2만 실행
+ros2 launch ax_perception sensors.launch.py robot_ids:=robot_2
+python3 tools/check_w2_sensor_faults.py
+```
+
+launch·검사기는 각각 별도 터미널에서 실행한다. 평면 검사기는 자기 이름의 시험판만 생성·삭제한다.
+오류 검사기는 합성 clock·센서를 발행한다. 결과와 초기 실패는 [W2 증거](../../docs/evidence/w2/)를 따른다.

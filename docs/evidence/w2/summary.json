@@ -1,0 +1,42 @@
+{
+  "date_kst": "2026-11-09",
+  "baseline_commit": "6ac7ec8",
+  "environment": {
+    "ros": "Jazzy",
+    "gazebo": "Harmonic",
+    "nav2": "1.3.13",
+    "os": "WSL Ubuntu 24.04"
+  },
+  "build": {
+    "packages": 8,
+    "passed": true
+  },
+  "unit_tests": {
+    "count": 217,
+    "passed": true,
+    "duration_s": 103.199,
+    "warning": "Existing B2 test harness unclosed log file ResourceWarning"
+  },
+  "subsequent_navigation_tests": {
+    "count": 3,
+    "passed": true,
+    "reason": "observation freshness configuration changed after full suite"
+  },
+  "front_max_abs_error_m": {
+    "robot_1": {
+      "depth": 0.0004948392118073741,
+      "lidar": 0.0013567931278137824
+    },
+    "robot_2": {
+      "depth": 4.768754302553191e-07,
+      "lidar": 1.0482471325845566e-05
+    }
+  },
+  "limits": [
+    "ideal simulator only",
+    "arm centre-ray 0.25 m target occluded; initial failed run retained",
+    "no independent arm extrinsic calibration",
+    "no actual B2/A4 navigation integration or driving",
+    "not G1"
+  ]
+}

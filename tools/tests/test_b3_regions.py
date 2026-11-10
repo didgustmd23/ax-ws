@@ -17,16 +17,12 @@ class RegionTests(unittest.TestCase):
         self.test_world = load_regions(ROOT / 'src/ax_environment/config/ax_test_regions.json')
         self.aws = load_regions(ROOT / 'src/ax_environment/config/aws_warehouse_regions.json')
 
-    def test_workstations_match_actual_world_not_invented_map_coordinates(self):
-        world = ET.parse(ROOT / 'src/ax_description/worlds/ax_test.world').getroot().find('world')
-        for region in self.test_world['regions']:
-            if region['kind'] != 'workstation':
-                continue
-            model = world.find(f"model[@name='{region['id']}']")
-            x, y, z, *_ = map(float, model.findtext('pose').split())
-            width, depth, height = map(float, model.findtext('link/collision/geometry/box/size').split())
-            self.assertEqual(region['bounds'], [x-width/2, y-depth/2, x+width/2, y+depth/2])
-            self.assertEqual(region['surface_height_m'], z+height/2)
+    def test_empty_world_does_not_claim_removed_workstations(self):
+        sys.path.insert(0, str(ROOT / 'tools'))
+        from empty_test_fixture import empty_world
+        world = empty_world().find('world')
+        self.assertEqual({m.get('name') for m in world.findall('model')}, {'ground_plane'})
+        self.assertFalse(any(r['kind'] == 'workstation' for r in self.test_world['regions']))
 
     def test_unadopted_aws_cannot_be_used_for_release(self):
         self.assertFalse(self.aws['approved'])

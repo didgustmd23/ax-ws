@@ -1,0 +1,1080 @@
+{
+  "capacity_m": [
+    0.72,
+    0.72,
+    0.5
+  ],
+  "classification": "individual dimensions on empty deck; not runtime perception or payload validation",
+  "samples": [
+    {
+      "model": "sample_fit_xs_01",
+      "size_m": [
+        0.12,
+        0.12,
+        0.12
+      ],
+      "position_m": [
+        -13.3,
+        -5.1,
+        0.062
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.15,
+      "stack_level": 1,
+      "stack_height_m": 0.362
+    },
+    {
+      "model": "sample_fit_xs_02",
+      "size_m": [
+        0.12,
+        0.12,
+        0.12
+      ],
+      "position_m": [
+        -13.3,
+        -5.1,
+        0.183
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.15,
+      "stack_level": 2,
+      "stack_height_m": 0.362
+    },
+    {
+      "model": "sample_fit_xs_03",
+      "size_m": [
+        0.12,
+        0.12,
+        0.12
+      ],
+      "position_m": [
+        -13.3,
+        -5.1,
+        0.304
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.15,
+      "stack_level": 3,
+      "stack_height_m": 0.362
+    },
+    {
+      "model": "sample_fit_small_01",
+      "size_m": [
+        0.2,
+        0.18,
+        0.18
+      ],
+      "position_m": [
+        -12.25,
+        -5.1,
+        0.092
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.15,
+      "stack_level": 1,
+      "stack_height_m": 0.361
+    },
+    {
+      "model": "sample_fit_small_02",
+      "size_m": [
+        0.2,
+        0.18,
+        0.18
+      ],
+      "position_m": [
+        -12.25,
+        -5.1,
+        0.273
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.15,
+      "stack_level": 2,
+      "stack_height_m": 0.361
+    },
+    {
+      "model": "sample_fit_medium_01",
+      "size_m": [
+        0.3,
+        0.25,
+        0.24
+      ],
+      "position_m": [
+        -11.200000000000001,
+        -5.1,
+        0.122
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.36,
+      "stack_level": 1,
+      "stack_height_m": 0.481
+    },
+    {
+      "model": "sample_fit_medium_02",
+      "size_m": [
+        0.3,
+        0.25,
+        0.24
+      ],
+      "position_m": [
+        -11.200000000000001,
+        -5.1,
+        0.363
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.36,
+      "stack_level": 2,
+      "stack_height_m": 0.481
+    },
+    {
+      "model": "sample_fit_large_01",
+      "size_m": [
+        0.4,
+        0.35,
+        0.3
+      ],
+      "position_m": [
+        -10.15,
+        -5.1,
+        0.152
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 0.84,
+      "stack_level": 1,
+      "stack_height_m": 0.3
+    },
+    {
+      "model": "sample_fit_xl_01",
+      "size_m": [
+        0.5,
+        0.45,
+        0.35
+      ],
+      "position_m": [
+        -9.100000000000001,
+        -5.1,
+        0.177
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 1.575,
+      "stack_level": 1,
+      "stack_height_m": 0.35
+    },
+    {
+      "model": "sample_fit_xxl_01",
+      "size_m": [
+        0.6,
+        0.6,
+        0.42
+      ],
+      "position_m": [
+        -8.05,
+        -5.1,
+        0.212
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.42
+    },
+    {
+      "model": "sample_fit_full_deck_01",
+      "size_m": [
+        0.68,
+        0.68,
+        0.46
+      ],
+      "position_m": [
+        -7.0,
+        -5.1,
+        0.232
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.46
+    },
+    {
+      "model": "sample_fit_near_limit_01",
+      "size_m": [
+        0.7,
+        0.7,
+        0.49
+      ],
+      "position_m": [
+        -13.3,
+        -3.8,
+        0.247
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.49
+    },
+    {
+      "model": "sample_fit_full_deck_spare_01",
+      "size_m": [
+        0.68,
+        0.68,
+        0.46
+      ],
+      "position_m": [
+        -12.25,
+        -3.8,
+        0.232
+      ],
+      "individual_size_fit": true,
+      "reason": "fits_empty_deck",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.46
+    },
+    {
+      "model": "sample_reject_wide_01",
+      "size_m": [
+        0.85,
+        0.85,
+        0.25
+      ],
+      "position_m": [
+        -11.200000000000001,
+        -3.8,
+        0.127
+      ],
+      "individual_size_fit": false,
+      "reason": "width+depth",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.501
+    },
+    {
+      "model": "sample_reject_wide_02",
+      "size_m": [
+        0.85,
+        0.85,
+        0.25
+      ],
+      "position_m": [
+        -11.200000000000001,
+        -3.8,
+        0.378
+      ],
+      "individual_size_fit": false,
+      "reason": "width+depth",
+      "mass_kg": 2.0,
+      "stack_level": 2,
+      "stack_height_m": 0.501
+    },
+    {
+      "model": "sample_reject_long_01",
+      "size_m": [
+        1.05,
+        0.35,
+        0.25
+      ],
+      "position_m": [
+        -10.15,
+        -3.8,
+        0.127
+      ],
+      "individual_size_fit": false,
+      "reason": "width",
+      "mass_kg": 1.837,
+      "stack_level": 1,
+      "stack_height_m": 0.752
+    },
+    {
+      "model": "sample_reject_long_02",
+      "size_m": [
+        1.05,
+        0.35,
+        0.25
+      ],
+      "position_m": [
+        -10.15,
+        -3.8,
+        0.378
+      ],
+      "individual_size_fit": false,
+      "reason": "width",
+      "mass_kg": 1.837,
+      "stack_level": 2,
+      "stack_height_m": 0.752
+    },
+    {
+      "model": "sample_reject_long_03",
+      "size_m": [
+        1.05,
+        0.35,
+        0.25
+      ],
+      "position_m": [
+        -10.15,
+        -3.8,
+        0.629
+      ],
+      "individual_size_fit": false,
+      "reason": "width",
+      "mass_kg": 1.837,
+      "stack_level": 3,
+      "stack_height_m": 0.752
+    },
+    {
+      "model": "sample_reject_deep_01",
+      "size_m": [
+        0.3,
+        0.95,
+        0.25
+      ],
+      "position_m": [
+        -9.100000000000001,
+        -3.8,
+        0.127
+      ],
+      "individual_size_fit": false,
+      "reason": "depth",
+      "mass_kg": 1.425,
+      "stack_level": 1,
+      "stack_height_m": 0.501
+    },
+    {
+      "model": "sample_reject_deep_02",
+      "size_m": [
+        0.3,
+        0.95,
+        0.25
+      ],
+      "position_m": [
+        -9.100000000000001,
+        -3.8,
+        0.378
+      ],
+      "individual_size_fit": false,
+      "reason": "depth",
+      "mass_kg": 1.425,
+      "stack_level": 2,
+      "stack_height_m": 0.501
+    },
+    {
+      "model": "sample_reject_tall_01",
+      "size_m": [
+        0.4,
+        0.4,
+        0.65
+      ],
+      "position_m": [
+        -8.05,
+        -3.8,
+        0.327
+      ],
+      "individual_size_fit": false,
+      "reason": "height",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 1.301
+    },
+    {
+      "model": "sample_reject_tall_02",
+      "size_m": [
+        0.4,
+        0.4,
+        0.65
+      ],
+      "position_m": [
+        -8.05,
+        -3.8,
+        0.978
+      ],
+      "individual_size_fit": false,
+      "reason": "height",
+      "mass_kg": 2.0,
+      "stack_level": 2,
+      "stack_height_m": 1.301
+    },
+    {
+      "model": "sample_reject_all_01",
+      "size_m": [
+        0.9,
+        0.9,
+        0.65
+      ],
+      "position_m": [
+        -7.0,
+        -3.8,
+        0.327
+      ],
+      "individual_size_fit": false,
+      "reason": "width+depth+height",
+      "mass_kg": 2.0,
+      "stack_level": 1,
+      "stack_height_m": 0.65
+    }
+  ],
+  "layout": {
+    "zone": "source_warehouse_south",
+    "box_count": 143,
+    "description": "40 three-level small-box stacks, 14 size-sample groups; northern and southern return lanes clear.",
+    "clear_lanes": [
+      {
+        "name": "south_rear_return",
+        "bounds_xy_m": [
+          -21.8,
+          -7.8,
+          -4.3,
+          -6.0
+        ]
+      },
+      {
+        "name": "north_behind_racks",
+        "bounds_xy_m": [
+          -21.8,
+          5.5,
+          -4.3,
+          7.8
+        ]
+      }
+    ],
+    "stacks": [
+      {
+        "models": [
+          "cargo_box_03",
+          "cargo_box_02",
+          "cargo_box_01"
+        ],
+        "center_xy_m": [
+          -18.0,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_06",
+          "cargo_box_05",
+          "cargo_box_04"
+        ],
+        "center_xy_m": [
+          -17.6,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_09",
+          "cargo_box_08",
+          "cargo_box_07"
+        ],
+        "center_xy_m": [
+          -17.2,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_101",
+          "cargo_box_10",
+          "cargo_box_100"
+        ],
+        "center_xy_m": [
+          -16.8,
+          -5.4
+        ],
+        "height_m": 0.562
+      },
+      {
+        "models": [
+          "cargo_box_102",
+          "cargo_box_104",
+          "cargo_box_103"
+        ],
+        "center_xy_m": [
+          -16.4,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_105",
+          "cargo_box_107",
+          "cargo_box_106"
+        ],
+        "center_xy_m": [
+          -16.0,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_108",
+          "cargo_box_11",
+          "cargo_box_109"
+        ],
+        "center_xy_m": [
+          -15.6,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_111",
+          "cargo_box_110",
+          "cargo_box_112"
+        ],
+        "center_xy_m": [
+          -15.2,
+          -5.4
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_114",
+          "cargo_box_113",
+          "cargo_box_115"
+        ],
+        "center_xy_m": [
+          -18.0,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_117",
+          "cargo_box_116",
+          "cargo_box_118"
+        ],
+        "center_xy_m": [
+          -17.6,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_12",
+          "cargo_box_120",
+          "cargo_box_119"
+        ],
+        "center_xy_m": [
+          -17.2,
+          -5.0
+        ],
+        "height_m": 0.682
+      },
+      {
+        "models": [
+          "cargo_box_15",
+          "cargo_box_14",
+          "cargo_box_13"
+        ],
+        "center_xy_m": [
+          -16.8,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_18",
+          "cargo_box_17",
+          "cargo_box_16"
+        ],
+        "center_xy_m": [
+          -16.4,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_21",
+          "cargo_box_20",
+          "cargo_box_19"
+        ],
+        "center_xy_m": [
+          -16.0,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_24",
+          "cargo_box_23",
+          "cargo_box_22"
+        ],
+        "center_xy_m": [
+          -15.6,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_27",
+          "cargo_box_26",
+          "cargo_box_25"
+        ],
+        "center_xy_m": [
+          -15.2,
+          -5.0
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_30",
+          "cargo_box_29",
+          "cargo_box_28"
+        ],
+        "center_xy_m": [
+          -18.0,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_33",
+          "cargo_box_32",
+          "cargo_box_31"
+        ],
+        "center_xy_m": [
+          -17.6,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_36",
+          "cargo_box_35",
+          "cargo_box_34"
+        ],
+        "center_xy_m": [
+          -17.2,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_39",
+          "cargo_box_38",
+          "cargo_box_37"
+        ],
+        "center_xy_m": [
+          -16.8,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_42",
+          "cargo_box_41",
+          "cargo_box_40"
+        ],
+        "center_xy_m": [
+          -16.4,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_45",
+          "cargo_box_44",
+          "cargo_box_43"
+        ],
+        "center_xy_m": [
+          -16.0,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_48",
+          "cargo_box_47",
+          "cargo_box_46"
+        ],
+        "center_xy_m": [
+          -15.6,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_51",
+          "cargo_box_50",
+          "cargo_box_49"
+        ],
+        "center_xy_m": [
+          -15.2,
+          -4.6000000000000005
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_54",
+          "cargo_box_53",
+          "cargo_box_52"
+        ],
+        "center_xy_m": [
+          -18.0,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_57",
+          "cargo_box_56",
+          "cargo_box_55"
+        ],
+        "center_xy_m": [
+          -17.6,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_60",
+          "cargo_box_59",
+          "cargo_box_58"
+        ],
+        "center_xy_m": [
+          -17.2,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_63",
+          "cargo_box_62",
+          "cargo_box_61"
+        ],
+        "center_xy_m": [
+          -16.8,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_66",
+          "cargo_box_65",
+          "cargo_box_64"
+        ],
+        "center_xy_m": [
+          -16.4,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_69",
+          "cargo_box_68",
+          "cargo_box_67"
+        ],
+        "center_xy_m": [
+          -16.0,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_72",
+          "cargo_box_71",
+          "cargo_box_70"
+        ],
+        "center_xy_m": [
+          -15.6,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_75",
+          "cargo_box_74",
+          "cargo_box_73"
+        ],
+        "center_xy_m": [
+          -15.2,
+          -4.2
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_78",
+          "cargo_box_77",
+          "cargo_box_76"
+        ],
+        "center_xy_m": [
+          -18.0,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_81",
+          "cargo_box_80",
+          "cargo_box_79"
+        ],
+        "center_xy_m": [
+          -17.6,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_84",
+          "cargo_box_83",
+          "cargo_box_82"
+        ],
+        "center_xy_m": [
+          -17.2,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_87",
+          "cargo_box_86",
+          "cargo_box_85"
+        ],
+        "center_xy_m": [
+          -16.8,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_90",
+          "cargo_box_89",
+          "cargo_box_88"
+        ],
+        "center_xy_m": [
+          -16.4,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_93",
+          "cargo_box_92",
+          "cargo_box_91"
+        ],
+        "center_xy_m": [
+          -16.0,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_96",
+          "cargo_box_95",
+          "cargo_box_94"
+        ],
+        "center_xy_m": [
+          -15.6,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "cargo_box_99",
+          "cargo_box_98",
+          "cargo_box_97"
+        ],
+        "center_xy_m": [
+          -15.2,
+          -3.8000000000000003
+        ],
+        "height_m": 0.622
+      },
+      {
+        "models": [
+          "sample_fit_xs_01",
+          "sample_fit_xs_02",
+          "sample_fit_xs_03"
+        ],
+        "center_xy_m": [
+          -13.3,
+          -5.1
+        ],
+        "height_m": 0.362
+      },
+      {
+        "models": [
+          "sample_fit_small_01",
+          "sample_fit_small_02"
+        ],
+        "center_xy_m": [
+          -12.25,
+          -5.1
+        ],
+        "height_m": 0.361
+      },
+      {
+        "models": [
+          "sample_fit_medium_01",
+          "sample_fit_medium_02"
+        ],
+        "center_xy_m": [
+          -11.200000000000001,
+          -5.1
+        ],
+        "height_m": 0.481
+      },
+      {
+        "models": [
+          "sample_fit_large_01"
+        ],
+        "center_xy_m": [
+          -10.15,
+          -5.1
+        ],
+        "height_m": 0.3
+      },
+      {
+        "models": [
+          "sample_fit_xl_01"
+        ],
+        "center_xy_m": [
+          -9.100000000000001,
+          -5.1
+        ],
+        "height_m": 0.35
+      },
+      {
+        "models": [
+          "sample_fit_xxl_01"
+        ],
+        "center_xy_m": [
+          -8.05,
+          -5.1
+        ],
+        "height_m": 0.42
+      },
+      {
+        "models": [
+          "sample_fit_full_deck_01"
+        ],
+        "center_xy_m": [
+          -7.0,
+          -5.1
+        ],
+        "height_m": 0.46
+      },
+      {
+        "models": [
+          "sample_fit_near_limit_01"
+        ],
+        "center_xy_m": [
+          -13.3,
+          -3.8
+        ],
+        "height_m": 0.49
+      },
+      {
+        "models": [
+          "sample_fit_full_deck_spare_01"
+        ],
+        "center_xy_m": [
+          -12.25,
+          -3.8
+        ],
+        "height_m": 0.46
+      },
+      {
+        "models": [
+          "sample_reject_wide_01",
+          "sample_reject_wide_02"
+        ],
+        "center_xy_m": [
+          -11.200000000000001,
+          -3.8
+        ],
+        "height_m": 0.501
+      },
+      {
+        "models": [
+          "sample_reject_long_01",
+          "sample_reject_long_02",
+          "sample_reject_long_03"
+        ],
+        "center_xy_m": [
+          -10.15,
+          -3.8
+        ],
+        "height_m": 0.752
+      },
+      {
+        "models": [
+          "sample_reject_deep_01",
+          "sample_reject_deep_02"
+        ],
+        "center_xy_m": [
+          -9.100000000000001,
+          -3.8
+        ],
+        "height_m": 0.501
+      },
+      {
+        "models": [
+          "sample_reject_tall_01",
+          "sample_reject_tall_02"
+        ],
+        "center_xy_m": [
+          -8.05,
+          -3.8
+        ],
+        "height_m": 1.301
+      },
+      {
+        "models": [
+          "sample_reject_all_01"
+        ],
+        "center_xy_m": [
+          -7.0,
+          -3.8
+        ],
+        "height_m": 0.65
+      }
+    ]
+  }
+}

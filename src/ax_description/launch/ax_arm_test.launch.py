@@ -11,4 +11,4 @@ def generate_launch_description():
     return LaunchDescription([IncludeLaunchDescription(
         PythonLaunchDescriptionSource(str(Path(get_package_share_directory('ax_description'))
                                           / 'launch' / 'robot_test.launch.py')),
-        launch_arguments={'robot_ids': 'robot_1', 'world': 'ax_test.world'}.items())])
+        launch_arguments={'robot_ids': 'robot_1', 'world': 'planned/ax_warehouse.world'}.items())])

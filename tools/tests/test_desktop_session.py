@@ -19,15 +19,15 @@ class SessionOwnership(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'src/ax_description').mkdir(parents=True)
-            world = root / 'install/ax_description/share/ax_description/worlds/ax_test.world'
+            world = root / 'install/ax_description/share/ax_description/worlds/planned/ax_warehouse.world'
             world.parent.mkdir(parents=True)
             world.touch()
             (root / 'install/setup.bash').touch()
             found = {'launch': [{'pid': 123, 'env': {},
-                                'args': 'ros2 launch ax_control simulation.launch.py tool:=robotiq world:=ax_test.world'}],
+                                'args': 'ros2 launch ax_control simulation.launch.py tool:=robotiq world:=planned/ax_warehouse.world'}],
                      'gazebo': [{'pid': 124}], 'remote': [], 'keyboard': [], 'terminal': []}
             args = SimpleNamespace(workspace=directory, action='start', tool='epick',
-                                   world='ax_test.world', switch_world=True, port=8765)
+                                   world='planned/ax_warehouse.world', switch_world=True, port=8765)
             # 재시작 대상 선택을 검사하며 실제 프로세스는 종료하지 않는다.
             with patch.object(desktop, 'discover', return_value=found), \
                     patch.object(desktop, 'stop_processes', side_effect=RuntimeError('restart selected')) as stop:

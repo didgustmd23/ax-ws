@@ -1,0 +1,19 @@
+# 모든 namespace의 cargo_height_guard 노드에 적용하는 기본 파라미터.
+# 길이·높이는 모두 m. 실행 시작 때 읽으므로 변경 후 노드를 재시작한다.
+/**:
+  ros__parameters:
+    # 적재판 상면(cargo_link)부터 허용하는 높이. 50cm 도달 시 추가 적재 금지.
+    max_height_m: 0.50
+    # cargo_link 상면에서 카메라 광학 원점까지 수직 거리. URDF 장착 위치와 같아야 한다.
+    camera_height_m: 1.026
+    # 감시할 적재판 영역의 두 변 길이. 카메라가 내려다보는 72×72cm 정사각형.
+    deck_width_m: 0.72
+    deck_length_m: 0.72
+    # 마지막 깊이 영상 수신 후 이 시간(s)이 지나면 적재 금지.
+    timeout_s: 1.0
+    # 감시 시야에서 유효한 깊이 픽셀의 최소 비율. 95% 미만이면 판단 불가로 금지.
+    min_valid_fraction: 0.95
+    # Gazebo 렌더링 셀 중심 보정(px). 실제 카메라는 해당 CameraInfo 규약에 맞춰 조정한다.
+    pixel_center_offset: 0.5
+    # 다음 상자의 높이를 알면 그만큼 여유를 예약한다. 0은 현재 높이만 판정한다.
+    next_box_height_m: 0.0

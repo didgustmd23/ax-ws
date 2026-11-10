@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- AX_2 운반 로봇 원본. 시각 메시·충돌/관성 생성물·센서 장착·바퀴 제어를 합성한다. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot_2">
+  <!-- 렌더링·접촉 센서의 실제 측정 활성화. 센서 외형 링크와는 별개다. -->
   <xacro:arg name="sensors_enabled" default="true"/>
+  <!-- Gazebo 모델 식별 이름. launch에서 robot_2 또는 robot_4 등으로 지정한다. -->
   <xacro:arg name="robot_name" default="robot_2"/>
+  <!-- 센서 메시지의 frame ID에 붙일 접두사. 다중 로봇 좌표계 이름 중복 방지. -->
   <xacro:arg name="frame_prefix" default=""/>
+  <!-- /ax/<ID>/sensors/... 토픽에 사용할 로봇 ID. -->
   <xacro:arg name="sensor_robot_id" default="robot_2"/>
   <!-- ros2_control namespace와 launch가 만든 제어기 설정 파일. 비어 있으면 플러그인을 만들지 않는다. -->
   <xacro:arg name="ros_namespace" default=""/>
   <xacro:arg name="ros2_control_params" default=""/>
   <xacro:arg name="ros2_control_common_params" default=""/>
+  <!-- 매크로 내부에서 사용할 모델 이름과 프레임 접두사 별칭. -->
   <xacro:property name="model_name" value="$(arg robot_name)"/>
   <xacro:property name="frames" value="$(arg frame_prefix)"/>
+  <!-- 메시 중심·바퀴 치수 / 충돌·질량 / 센서 정의 / 제어·접촉 매크로를 각각 불러온다. -->
   <xacro:include filename="ax_2_geometry.xacro"/>
   <xacro:include filename="ax_2_physical_properties.xacro"/>
   <xacro:include filename="sensors.xacro"/>
@@ -18,6 +24,7 @@
   <!-- CAD units mm; pivots are generated in m. +X forward, +Y left, +Z up.
        Independent virtual budgets: body 12 kg, shelf 5 kg, wheels 0.4 kg each.
        No arm, suction tool or cargo-state classifier is implied. -->
+  <!-- 공통 외형 생성: CAD mm를 m로 바꾸고 pivot을 빼서 해당 링크 원점에 맞춘다. -->
   <xacro:macro name="ax2_visual" params="file pivot">
     <visual>
       <origin xyz="${-pivot[0]} ${-pivot[1]} ${-pivot[2]}"/>
@@ -26,10 +33,12 @@
       </geometry>
     </visual>
   </xacro:macro>
+  <!-- 로봇 차체 강체이자 나머지 부품 배치의 기준 좌표계. 메시 외형과 물리 모델을 합친다. -->
   <link name="base_link">
     <xacro:ax2_visual file="ax_body" pivot="${ax2_body_pivot}"/>
     <xacro:ax2_physics_base_link/>
   </link>
+  <!-- 고정 부품 장착: 차체 CAD 중심과 부품 CAD 중심의 차이를 관절 위치로 사용한다. -->
   <xacro:macro name="ax2_fixed_joint" params="name child pivot">
     <joint name="${name}" type="fixed">
       <parent link="base_link"/>
@@ -38,26 +47,22 @@
           xyz="${pivot[0]-ax2_body_pivot[0]} ${pivot[1]-ax2_body_pivot[1]} ${pivot[2]-ax2_body_pivot[2]}"/>
     </joint>
   </xacro:macro>
+  <!-- 짐을 싣는 적재함 골격. 새 AX_2_Shelf에서 추출한 ax_shelf.obj가 외형이다. -->
   <link name="shelf_link">
     <xacro:ax2_visual file="ax_shelf" pivot="${ax2_shelf_pivot}"/>
     <xacro:ax2_physics_shelf_link/>
   </link>
+  <!-- 적재함을 차체에 고정한다. 접촉판과 카메라는 적재함을 따라 움직인다. -->
   <xacro:ax2_fixed_joint name="shelf_joint" child="shelf_link" pivot="${ax2_shelf_pivot}"/>
+  <!-- CAD의 ax_right 보조 외장. 실제 주행용 네 바퀴 링크와는 별개다. -->
   <link name="front_trim_link">
     <xacro:ax2_visual file="ax_right" pivot="${ax2_front_trim_pivot}"/>
     <xacro:ax2_physics_front_trim_link/>
   </link>
   <xacro:ax2_fixed_joint name="front_trim_joint" child="front_trim_link" pivot="${ax2_front_trim_pivot}"/>
-  <!-- The existing top_lidar mesh is retained as a housing. The configured
-       navigation sensors are exactly the front/rear 180-degree pair below. -->
-  <link name="top_lidar_housing_link">
-    <xacro:ax2_visual file="ax_top_lidar" pivot="${ax2_lidar_housing_pivot}"/>
-    <xacro:ax2_physics_top_lidar_housing_link/>
-  </link>
-  <xacro:ax2_fixed_joint
-      name="top_lidar_housing_joint"
-      child="top_lidar_housing_link"
-      pivot="${ax2_lidar_housing_pivot}"/>
+  <!-- 새 CAD에 없는 옛 상부 LiDAR 외장은 제외한다. 실제 전후 LiDAR 센서는 유지한다. -->
+  <!-- 바퀴 하나: CAD 외형, 원통 충돌체, 원통 질량 관성, 연속 회전 관절을 만든다.
+       링크의 Z축이 회전축이 되며 장착 회전으로 차체 Y축 방향에 정렬한다. -->
   <xacro:macro name="ax2_wheel" params="name file pivot">
     <link name="${name}_wheel">
       <visual>
@@ -66,11 +71,13 @@
           <mesh filename="package://ax_description/meshes/parts/AX_2/${file}.obj" scale="0.001 0.001 0.001"/>
         </geometry>
       </visual>
+      <!-- 시각 메시 대신 원통을 사용해 바닥 접촉 계산을 단순화한다. -->
       <collision>
         <geometry>
           <cylinder radius="${ax2_wheel_radius}" length="${ax2_wheel_width}"/>
         </geometry>
       </collision>
+      <!-- 바퀴 한 개의 질량과 균일 원통 가정 관성(kg·m²). -->
       <inertial>
         <mass value="${ax2_wheel_mass}"/>
         <inertia
@@ -91,13 +98,23 @@
       <axis xyz="0 0 1"/>
     </joint>
   </xacro:macro>
+  <!-- 왼쪽 앞 / 오른쪽 앞 / 왼쪽 뒤 / 오른쪽 뒤 바퀴의 실제 인스턴스. -->
   <xacro:ax2_wheel name="front_left" file="ax_tire_left_front" pivot="${ax2_front_left_wheel_pivot}"/>
   <xacro:ax2_wheel name="front_right" file="ax_tire_right_front" pivot="${ax2_front_right_wheel_pivot}"/>
   <xacro:ax2_wheel name="rear_left" file="ax_tire_left_rear" pivot="${ax2_rear_left_wheel_pivot}"/>
   <xacro:ax2_wheel name="rear_right" file="ax_tire_right_rear" pivot="${ax2_rear_right_wheel_pivot}"/>
+  <!-- 주행 관측용 전후 LiDAR, 전방 카메라, IMU. 장착 좌표는 sensor_mounts.yaml에서 읽는다. -->
   <xacro:ax_sensor_suite profile="ax2" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"/>
-  <!-- Development contact deck: 0.72 m square on the middle shelf, just above
+  <!-- Development overhead mount: optical axis vertically down, 100 degree FOV.
+       The camera is 1.026 m above cargo_link; add a physical mast for hardware. -->
+  <!-- 적재 높이 감시용 RGB-D. 적재판 위 1.026m에서 수직 아래를 보며 수평 시야각은 100도.
+       높이 제한 0.50m는 config/cargo_height.yaml에서 설정한다. 실물에는 지지 마스트가 필요하다. -->
+  <xacro:ax_camera name="cargo_rgbd" parent="cargo_link" xyz="0 0 1.026"
+      rpy="0 ${pi/2} 0" depth="${True}" horizontal_fov="${100*pi/180}" custom_intrinsics="${False}"
+      topic_prefix="/ax/$(arg sensor_robot_id)/sensors" frame_prefix="${frames}"/>
+  <!-- Development contact deck: 0.72 m square on the bottom shelf near the base, just above
        its padded collision surface. Raw contact is NOT an OCCUPIED verdict. -->
+  <!-- 72×72cm, 두께 2mm의 초록색 접촉 감지판. 골격 자체와 별도로 물리 충돌을 가진다. -->
   <link name="cargo_contact_link">
     <visual>
       <geometry>
@@ -117,21 +134,25 @@
       <inertia ixx="0.00216001666667" iyy="0.00216001666667" izz="0.00432" ixy="0" ixz="0" iyz="0"/>
     </inertial>
   </link>
+  <!-- 접촉판 중심을 CAD 높이 0.572m에 둔다. shelf pivot을 빼서 부모 링크 좌표로 변환. -->
   <joint name="cargo_contact_joint" type="fixed">
     <parent link="shelf_link"/>
     <child link="cargo_contact_link"/>
-    <origin xyz="0 0 ${1.2267-ax2_shelf_pivot[2]}"/>
+    <origin xyz="0 0 ${0.572-ax2_shelf_pivot[2]}"/>
   </joint>
+  <!-- URDF→SDF 변환 때 이 고정 관절을 보존하여 접촉 센서 연결 대상을 유지한다. -->
   <gazebo reference="cargo_contact_joint">
     <preserveFixedJoint>true</preserveFixedJoint>
   </gazebo>
   <!-- Task poses use the upper surface of the deck as their origin. -->
+  <!-- 적재판 윗면 기준 작업 좌표계. 외형·질량 없이 상자 배치와 높이 계산 원점으로 사용. -->
   <link name="cargo_link"/>
   <joint name="cargo_frame_joint" type="fixed">
     <parent link="cargo_contact_link"/>
     <child link="cargo_link"/>
     <origin xyz="0 0 0.001"/>
   </joint>
+  <!-- 적재판에 닿은 물체의 원시 접촉을 30Hz로 발행. 접촉만으로 층수·적재 가능 여부를 판정하지 않는다. -->
   <gazebo reference="cargo_contact_link">
     <sensor name="cargo_contact" type="contact">
       <topic>/ax/$(arg sensor_robot_id)/sensors/cargo_contact</topic>
@@ -158,10 +179,12 @@
     <xacro:ax_velocity_joint name="rear_left_wheel_joint"/>
     <xacro:ax_velocity_joint name="rear_right_wheel_joint"/>
   </ros2_control>
+  <!-- 각 바퀴의 마찰·접촉 파라미터를 동일한 공통 매크로로 적용한다. -->
   <xacro:ax_wheel_contact link="front_left_wheel"/>
   <xacro:ax_wheel_contact link="front_right_wheel"/>
   <xacro:ax_wheel_contact link="rear_left_wheel"/>
   <xacro:ax_wheel_contact link="rear_right_wheel"/>
+  <!-- 제어기 설정이 주어졌을 때 Gazebo와 ros2_control 하드웨어를 연결한다. -->
   <xacro:ax_gz_ros2_control namespace="$(arg ros_namespace)" params_file="$(arg ros2_control_params)"
                             common_params_file="$(arg ros2_control_common_params)"/>
 </robot>

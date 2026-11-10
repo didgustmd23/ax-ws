@@ -167,6 +167,8 @@ class Observer(Node):
 
 # 하중별 별도 partition/domain으로 시험을 실행하고 자기 프로세스만 정리한다.
 def run_payload(payload, settings, output_directory):
+    from empty_test_fixture import write_empty_world
+    fixture = write_empty_world(output_directory)
     partition = 'ax-w1-a1-' + uuid.uuid4().hex
     os.environ.update(GZ_PARTITION=partition, ROS_DOMAIN_ID=str(20+secrets.randbelow(76)),
                       ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', LIBGL_ALWAYS_SOFTWARE='1',
@@ -176,7 +178,8 @@ def run_payload(payload, settings, output_directory):
     observer = Observer(geometry, settings)
     log = (output_directory / f'payload_{payload}.log').open('w')
     process = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
-        'robot_ids:=robot_1', 'gui:=false', 'sensors:=false', 'tool:=epick', f'payload_mass:={payload}'],
+        'robot_ids:=robot_1', 'gui:=false', 'sensors:=false', 'tool:=epick', f'payload_mass:={payload}',
+        f'test_fixture_world:={fixture}'],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     observer.launch_process = process
     result = {'payload_kg': payload, 'fixture': 'fixed inertial test load, not a suction result', 'range_cases': [], 'load_cases': []}
@@ -219,6 +222,8 @@ def run_payload(payload, settings, output_directory):
 
 def run_mobility(settings, output, payloads=None):
     """A1 모델 확인: 주행 자세와 수동 적재판. A3 적재 판정/A4 게이트 시험이 아니다."""
+    from empty_test_fixture import write_empty_world
+    fixture = write_empty_world(output)
     import xml.etree.ElementTree as ET
     import xacro
     from scipy.spatial.transform import Rotation
@@ -273,7 +278,7 @@ def run_mobility(settings, output, payloads=None):
         return np.linalg.inv(matrix(poses['robot_2']) @ cargo) @ matrix(poses['a1_cargo_probe'])
     try:
         launch = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
-            'robots:=2', 'gui:=false', 'sensors:=false', 'tool:=epick'],
+            'robots:=2', 'gui:=false', 'sensors:=false', 'tool:=epick', f'test_fixture_world:={fixture}'],
             stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         observer.launch_process = launch
         observer.wait(lambda: all(name in poses for name in ('robot_1', 'robot_2'))

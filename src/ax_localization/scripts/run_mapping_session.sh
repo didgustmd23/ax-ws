@@ -43,6 +43,11 @@ done
 
 # ── 경로·환경 ────────────────────────────────────────────────────────
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# 이 실행기는 옛 AWS 전용 시험 조건을 보존한다. 현재 월드에 잘못 적용하지 않는다.
+if [ ! -f "$WS/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world" ]; then
+  echo "AWS 월드는 삭제됐습니다. 이 과거 지도 작성 시험기는 현재 창고 월드에 사용할 수 없습니다." >&2
+  exit 2
+fi
 STAMP="$(TZ=Asia/Seoul date +%Y%m%d_%H%M%S)"
 BASE="$WS/log/b2_mapping/$STAMP"
 SESSION="$BASE/session"

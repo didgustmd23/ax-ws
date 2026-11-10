@@ -1,29 +1,28 @@
 # 로봇별 분리 메시
 
-> 이 폴더의 메시는 모델 자산으로 유지한다. 메시를 사용하던 URDF/Xacro·물리 특성 생성기·분리 도구·시험은 커밋 `4f85007`를 마지막으로 작업트리에서 제거했으며 Git 이력으로만 남는다. 아래의 "현재"·URDF·도구 설명은 그 커밋 기준 기록이다.
+AX_1 활성 모델은 `../versions/AX_1_v2/`를 사용하고 AX_2는 이 폴더의 `AX_2/`를 사용한다. 새 CAD에 없는 옛 상부 LiDAR 외장은 `../versions/AX_2_previous/`에 보관하며 활성 모델에는 포함하지 않는다.
 
 현재 `AX_1.obj`, `AX_2.obj`, `AX_Box.obj`를 오브젝트 경계대로 분리한다. 원본 OBJ·MTL은 수정하지 않는다.
 
 | 폴더 | 원본 | 결과 | 사용 범위 |
 |---|---|---|---|
 | `AX_1/` | `../../AX_1.obj` | 원본 18개 + 받침·기둥 파생 2개 | 이전 `ax.urdf.xacro`의 차체·바퀴·팔 |
-| `AX_2/` | `../../AX_2.obj` | 원본 8개 | `ax_2.urdf.xacro`·별도 생성 물리 특성·센서에 연결 |
+| `AX_2/` | `../../AX_2.obj` | 현재 원본 7개 | `ax_2.urdf.xacro`·별도 생성 물리 특성·센서에 연결 |
 | `boxes/` | `../../AX_Box.obj` | 상자 5개 | 독립 물체 자산; 로봇 링크에 미연결 |
 
 표의 원본 경로는 각 하위 폴더 기준이다. 이전 평면 구조의 파츠는 위 구조로 교체했다. 이전 AX_1에 있던 선반은 현재 AX_1 원본에 없으며, AX_2 선반은 `AX_2/ax_shelf.obj`다.
 
 ## 재생성
 
-분리 도구는 커밋 `4f85007`의 `tools/`에 있다. 다시 생성하려면 먼저 `git checkout 4f85007 -- tools`로 복원한 뒤 저장소 루트에서 다음을 실행한다. 스크립트는 실행 위치에 의존하지 않는다.
+AX_2는 저장소 루트에서 현재 도구로 갱신한다. AX_1의 최초 분리 도구 사용법은 Git 이력에 남아 있다.
 
 ```bash
-python3 tools/split_robot_meshes.py
-python3 tools/sim/ax_regen_physics.py check
-# 생성 결과 교체가 필요할 때만 명시적으로 실행
-python3 tools/sim/ax_regen_physics.py regen
+python3 tools/update_ax2_parts.py
+python3 tools/update_ax2_parts.py --check
+python3 tools/generate_physical_properties.py --check
 ```
 
-`split_robot_meshes.py --output-dir /tmp/ax_mesh_parts`로 별도 폴더에도 생성할 수 있다. 각 폴더의 `manifest.json`에 원본·재질 SHA-256, 오브젝트 대응, 정점·UV·법선·면 수와 출력 해시를 기록한다. 원본 오브젝트를 제거·개명할 때에는 이전 manifest와 대조하여 더 이상 생성하지 않는 파츠를 별도로 정리해야 한다.
+각 폴더의 `manifest.json`에 원본·재질 SHA-256, 오브젝트 대응, 정점·UV·법선·면 수와 출력 해시를 기록한다. AX_2 원본의 오브젝트 이름이 바뀌면 생성기가 중단되므로 대응표를 명시적으로 갱신한다.
 
 ## 좌표·재질 규칙
 

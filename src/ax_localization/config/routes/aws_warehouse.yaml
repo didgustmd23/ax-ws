@@ -1,4 +1,5 @@
 # B2 지도 작성 경로(AWS 창고, robot_2). 개발용 시험 경로이며 운영 주행 경로가 아니다.
+# AWS 월드 삭제 후에는 기록·파서 회귀 시험용 자료다. 현재 두 창고 월드에서 사용하지 않는다.
 # 경유점은 frame 기준 좌표(m)다. map과 Gazebo world가 같다고 가정하지 않는다.
 # robot_2/odom 원점은 제어기가 시작한 순간의 차체 위치다(AWS 월드 launch 출발 위치 world (-1.0, -2.3), yaw 0.
 # robot_test.launch.py WORLD_SPAWN_POSITIONS. 기본 출발 (2.5, -1.5)은 선반 충돌과 겹쳐 2026-11-09에 옮겼다).
@@ -16,14 +17,12 @@ limits:
 goal_tolerance_m: 0.15
 heading_tolerance_rad: 0.12        # 이보다 크게 틀어지면 제자리 회전 먼저
 
-# 차체 외곽(base_link 기준 사각형, m). A1이 제공한 robot_2 선반 포함 여유 외곽
-# (ax_description/config/a1_validation.yaml mobility.robot_2.footprint_xy_m: x [-0.62, 0.66], y ±1.03).
-# 실제 collision 외곽은 x [-0.60, 0.64], y [-1.001, 0.995]다. 차체 폭(이전 가정 0.50)만 쓰면 선반이 부딪힌다.
-# 좌우가 같지 않은 외곽이 아니라 좌우 대칭 half_width로 둔다(1.03 = 둘 중 큰 쪽).
+# Current AX_2 footprint from a1_validation.yaml (metres).
+# Waypoints remain retired AWS parser/regression fixtures; not a validated current-world route.
 footprint:
-  front_m: 0.66
-  rear_m: 0.62
-  half_width_m: 1.03
+  front_m: 0.67
+  rear_m: 0.63
+  half_width_m: 0.53
 
 # 장애물 정지 거리 = 속도²/(2·감속) + 속도·처리 지연 + 여유
 safety:

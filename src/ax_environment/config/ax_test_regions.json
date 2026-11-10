@@ -1,16 +1,44 @@
 {
   "schema_version": 1,
-  "world": "ax_test.world",
+  "world": "generated_empty_test_fixture",
   "frame_id": "world",
   "map_revision": 0,
   "approved": false,
-  "reason": "DEVELOPMENT_WORLD_ONLY; map transform, folded arm/load outline and safety approval pending",
-  "source": "src/ax_description/worlds/ax_test.world",
+  "reason": "EMPTY_DEVELOPMENT_WORLD; logical regions only, no physical workstations or approved routes",
+  "source": "tools/empty_test_fixture.py",
   "regions": [
-    {"id": "station_src", "kind": "workstation", "bounds": [7.5, 2.5, 8.5, 3.5], "surface_height_m": 0.8, "basis": "world model station_src collision footprint; not a robot parking area"},
-    {"id": "station_dst", "kind": "workstation", "bounds": [7.5, -3.5, 8.5, -2.5], "surface_height_m": 0.8, "basis": "world model station_dst collision footprint; not a robot parking area"},
-    {"id": "corridor_main", "kind": "corridor", "bounds": [-2.0, -1.0, 6.0, 1.0], "basis": "B3 proposed logical test corridor on open ground; not a physical narrow aisle or approved route"},
-    {"id": "wait_src", "kind": "waiting", "bounds": [3.5, 2.0, 5.5, 4.0], "basis": "B3 proposed waiting region; full robot envelope and access not validated"},
-    {"id": "wait_dst", "kind": "waiting", "bounds": [3.5, -4.0, 5.5, -2.0], "basis": "B3 proposed waiting region; full robot envelope and access not validated"}
+    {
+      "id": "corridor_main",
+      "kind": "corridor",
+      "bounds": [
+        -2.0,
+        -1.0,
+        6.0,
+        1.0
+      ],
+      "basis": "B3 proposed logical test corridor on open ground; not a physical narrow aisle or approved route"
+    },
+    {
+      "id": "wait_src",
+      "kind": "waiting",
+      "bounds": [
+        3.5,
+        2.0,
+        5.5,
+        4.0
+      ],
+      "basis": "B3 proposed waiting region; full robot envelope and access not validated"
+    },
+    {
+      "id": "wait_dst",
+      "kind": "waiting",
+      "bounds": [
+        3.5,
+        -4.0,
+        5.5,
+        -2.0
+      ],
+      "basis": "B3 proposed waiting region; full robot envelope and access not validated"
+    }
   ]
 }

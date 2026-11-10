@@ -1008,6 +1008,8 @@ def main():
     arguments = parser.parse_args()
 
     route = load_route(arguments.route)
+    if route.get('world') == 'aws_warehouse.world':
+        parser.error('AWS 월드는 삭제됐습니다. 현재 두 창고 월드에 맞춰 새로 검증한 --route를 지정하세요.')
 
     if arguments.max_waypoints is not None:
         if arguments.max_waypoints < 1:

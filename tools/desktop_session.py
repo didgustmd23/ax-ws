@@ -161,17 +161,16 @@ def run(args):
             stop_processes(found['launch'] + found['keyboard'])
             found = discover(workspace)
         switched_world = False
-        selected_world = getattr(args, 'world', 'ax_test.world')
+        selected_world = getattr(args, 'world', 'planned/ax_warehouse.world')
         launch_tool = args.tool
         if args.action == 'start' and getattr(args, 'switch_world', False):
             package_share = workspace / 'install/ax_description/share/ax_description'
-            installed_world = (package_share / 'world_assets/aws_small_warehouse/aws_warehouse_harmonic.world'
-                               if selected_world == 'aws_warehouse.world' else package_share / 'worlds' / selected_world)
+            installed_world = package_share / 'worlds' / selected_world
             if not installed_world.is_file():
                 raise RuntimeError('Selected world is not installed. Build ax_description in the Ubuntu workspace first')
             if found['launch']:
                 arguments = shlex.split(found['launch'][0].get('args', ''))
-                active_world = next((value.split(':=', 1)[1] for value in arguments if value.startswith('world:=')), 'ax_test.world')
+                active_world = next((value.split(':=', 1)[1] for value in arguments if value.startswith('world:=')), 'planned/ax_warehouse.world')
                 active_tool = next((value.split(':=', 1)[1] for value in arguments if value.startswith('tool:=')), 'epick')
                 if active_world != selected_world or active_tool != launch_tool:
                     # 바로가기 시작은 설정된 기본 공구를 적용한다. 같은 월드라도
@@ -206,7 +205,7 @@ def run(args):
                     raise RuntimeError('Orphan Gazebo processes found; use AX Stop first')
                 found['launch'] = [spawn(workspace, logs, 'gazebo', ['ros2', 'launch', 'ax_control',
                     'simulation.launch.py', 'robots:=2', 'tool:=' + launch_tool,
-                    'world:=' + getattr(args, 'world', 'ax_test.world')], env)]
+                    'world:=' + getattr(args, 'world', 'planned/ax_warehouse.world')], env)]
                 created.extend(found['launch'])
             if not remote_only:
                 if not reused:
@@ -275,7 +274,7 @@ def main():
     parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])
     parser.add_argument('--workspace', default='~/ax-play-ws')
     parser.add_argument('--tool', choices=['robotiq', 'epick'], default='epick')
-    parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world'], default='ax_test.world')
+    parser.add_argument('--world', choices=['planned/ax_warehouse.world'], default='planned/ax_warehouse.world')
     parser.add_argument('--switch-world', action='store_true', help='Switch the owned AX session if another world is active')
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()

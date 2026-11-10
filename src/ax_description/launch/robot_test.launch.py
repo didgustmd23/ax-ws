@@ -7,6 +7,7 @@ controller_config_dir가 주어지면 그 폴더의 YAML로 gz_ros2_control 플�
 """
 import json
 import os
+import shlex
 from pathlib import Path
 import tempfile
 
@@ -31,6 +32,7 @@ COMMON_CONTROLLER_FILE = 'common_controllers.yaml'
 
 # Gazebo 센서 토픽을 로봇별 ROS 경로로 연결한다. 외부 제어 명령을 대신 생성하지 않는다.
 def bridges(robot_id, manipulator, tool='epick'):
+    # 로봇 ID별 namespace로 Gazebo 센서를 ROS에 연결해 다른 로봇의 영상과 섞이지 않게 한다.
     sensor_namespace = '/ax/' + robot_id + '/sensors/'
     configuration = []
     # 센서 스트림은 GZ_TO_ROS 방향과 SENSOR_DATA QoS로 등록한다.
@@ -44,7 +46,9 @@ def bridges(robot_id, manipulator, tool='epick'):
     for name in (['front_rgb', 'arm_rgb'] if manipulator else ['front_rgb']):
         add_sensor_bridge(name + '/image_raw', 'sensor_msgs/msg/Image', 'gz.msgs.Image')
         add_sensor_bridge(name + '/camera_info', 'sensor_msgs/msg/CameraInfo', 'gz.msgs.CameraInfo')
-    for name in (['front_rgbd', 'arm_rgbd'] if manipulator else ['front_rgbd']):
+    # 운반 로봇의 cargo_rgbd는 적재판을 내려다보는 카메라다.
+    # 영상·깊이·점군·보정값을 함께 연결하며 높이 감시 노드는 깊이와 보정값만 구독한다.
+    for name in (['front_rgbd', 'arm_rgbd'] if manipulator else ['front_rgbd', 'cargo_rgbd']):
         for suffix, ros_type, gz_type in [('image', 'Image', 'Image'), ('depth_image', 'Image', 'Image'),
                                 ('points', 'PointCloud2', 'PointCloudPacked'),
                                 ('camera_info', 'CameraInfo', 'CameraInfo')]:
@@ -59,13 +63,10 @@ def bridges(robot_id, manipulator, tool='epick'):
 
 # robot_1~robot_4 출발 위치(world x, y, m). yaw는 0(+X)이다.
 DEFAULT_SPAWN_POSITIONS = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
-# 월드별 예외. AWS 창고에서 기본 robot_2 (2.5, -1.5)는 선반 포함 외곽(x -0.62~0.66, y ±1.03 m)이
-# 동쪽 선반 충돌과 겹쳐 차체가 움직이지 않았다(2026-11-09 원본 월드 시험: odom 0.575 m, 실제 0.002 m).
-# robot_2는 중앙 빈 공간, robot_4는 B2 지도 작성 경로를 비키는 북서쪽 빈 공간으로 옮긴다(참조 지도 회전 원 여유
-# +2.19 m, +0.75 m). robot_1·robot_3은 기본값과 같다. B2 경로(ax_localization/config/routes/aws_warehouse.yaml)와
-# 함께 바꾼다.
+# Per-world spawn overrides keep each robot clear of walls, racks and cargo.
 WORLD_SPAWN_POSITIONS = {
-    'aws_warehouse.world': [(0.0, 0.0), (-1.0, -2.3), (-3.0, 0.0), (-4.6, 5.7)],
+    # 두 창고 월드의 출발 창고 내부 위치(m). 순서대로 robot_1~robot_4이며 통로 밖에서 시작한다.
+    'planned/ax_warehouse.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
 }
 
 
@@ -90,25 +91,24 @@ def setup(context):
     runtime = tempfile.TemporaryDirectory(prefix='ax-w1-')
     runtime_path = Path(runtime.name)
     selected_world = LaunchConfiguration('world').perform(context)
-    aws_assets = package_share / 'world_assets/aws_small_warehouse'
-    resources = os.pathsep.join([str(aws_assets / 'upstream'), str(aws_assets / 'upstream/models'),
-                                 str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
+    resources = os.pathsep.join([str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
                                  str(Path(get_package_share_directory('epick_description')).parent),
                                  os.environ.get('GZ_SIM_RESOURCE_PATH', '')])
     actions = [SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH', resources),
                RegisterEventHandler(OnShutdown(on_shutdown=lambda event, ctx: runtime.cleanup()))]
-    world = (aws_assets / 'aws_warehouse_harmonic.world' if selected_world == 'aws_warehouse.world' else
-             package_share / 'worlds' / selected_world)
+    # 빈 바닥 등은 테스트 도구가 임시 생성한다. 사용자 선택 맵에는 포함하지 않는다.
+    test_fixture_world = LaunchConfiguration('test_fixture_world').perform(context)
+    world = Path(test_fixture_world) if test_fixture_world else package_share / 'worlds' / selected_world
     if not world.is_file():
         raise ValueError('Selected world is not installed; rebuild ax_description: ' + str(world))
     actions.append(IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world),
+        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + shlex.quote(str(world)),
                           'on_exit_shutdown': 'true'}.items()))
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
-    spawn_positions = WORLD_SPAWN_POSITIONS.get(selected_world, DEFAULT_SPAWN_POSITIONS)
+    spawn_positions = DEFAULT_SPAWN_POSITIONS if test_fixture_world else WORLD_SPAWN_POSITIONS.get(selected_world, DEFAULT_SPAWN_POSITIONS)
     robot_id_selection = LaunchConfiguration('robot_ids').perform(context)
     selected_indices = [int(value.removeprefix('robot_')) - 1 for value in robot_id_selection.split(',')] if robot_id_selection else list(range(robot_count))
     if len(selected_indices) != len(set(selected_indices)) or any(robot_index not in range(4) for robot_index in selected_indices):
@@ -142,6 +142,12 @@ def setup(context):
         actions.append(spawn_robot)
         if sensors_enabled:
             all_bridges.extend(bridges(robot_id, manipulator, tool))
+        # 팔 없는 운반 로봇에만 높이 감시를 붙인다. robot_2와 robot_4의 namespace를 각각 사용한다.
+        # 센서가 꺼져 있으면 감시 노드도 실행하지 않으므로 적재 제어기가 허가를 가정하면 안 된다.
+        if not manipulator and sensors_enabled:
+            actions.append(Node(package='ax_description', executable='cargo_height_guard.py',
+                namespace=robot_namespace, parameters=[{'use_sim_time': True},
+                    str(package_share / 'config' / 'cargo_height.yaml')], output='screen'))
         if manipulator and sensors_enabled and tool in ('epick', 'suction'):
             actions.append(Node(package='ax_description', executable='tof_range.py', namespace=robot_namespace,
                 parameters=[{'use_sim_time': True, 'frame_id': robot_id + '/tool_tof_link',
@@ -158,8 +164,10 @@ def setup(context):
 # launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='ax_test.world',
-                              choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world']),
+        DeclareLaunchArgument('world', default_value='planned/ax_warehouse.world',
+                              choices=['planned/ax_warehouse.world']),
+        DeclareLaunchArgument('test_fixture_world', default_value='',
+                              description='Test-only generated SDF fixture; not a selectable map'),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('controller_config_dir', default_value='',

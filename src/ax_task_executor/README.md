@@ -34,7 +34,7 @@ export GZ_PARTITION=a3_first_demo
 
 ```bash
 ros2 launch ax_control simulation.launch.py \
-  world:=aws_warehouse.world robots:=2 sensors:=false
+  world:=planned/ax_warehouse.world robots:=2 sensors:=false
 ```
 
 터미널 2: 모의 결과 표시 노드 실행.

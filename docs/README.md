@@ -13,6 +13,9 @@
 
 ## A1 모델 안내
 
+현재 모델 스펙: [AX_1](guides/AX_1_SPEC.md) · [AX_2](guides/AX_2_SPEC.md).
+두 문서는 활성 URDF에서 생성하며 가상 질량·관성 가정과 실물 정격을 구분한다.
+
 [A1 메시·EPick·관절 검증](guides/A1_MODEL_ASSETS.md) · [바퀴·런치](guides/WHEEL_AND_LAUNCH_REPAIR.md) · [증거](evidence/a1/).
 
 ## 전체 시스템 구성도

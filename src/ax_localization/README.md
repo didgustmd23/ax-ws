@@ -129,11 +129,21 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
 | `UNKNOWN` | false | 판정 불가 | `NOT_INITIALIZED`(초기 위치 없음), `CLOCK_INVALID`(sim time 역행·벽시계 2 s 정지) |
 | `OK` | true | 입력·연결이 최신이고 표준편차가 기준(위치 0.25 m·방향 0.15 rad) 이하 | 없음 |
 | `DEGRADED` | true | 신뢰도 저하 | `TF_STALE`·`SCAN_STALE`·`ODOM_STALE`·`ESTIMATE_STALE`·`COVARIANCE_HIGH` |
-| `LOST` | true | 위치 상실 | `TF_MISSING`·`ESTIMATE_INVALID`(NaN·음수 분산·현재 자세 계산 불가)·`ODOM_INVALID`(odom 비유한 값)·`ODOM_DISCONTINUOUS`(odom 끊김 뒤 AMCL 새 추정 3개 전)·`INPUT_LOST`·`COVARIANCE_LOST`, 재위치 진행·실패 코드 |
+| `LOST` | true | 위치 상실 | `ESTIMATE_DISCONTINUOUS`(추정 도약 latch)·`TF_MISSING`·`ESTIMATE_INVALID`(NaN·음수 분산(반올림 경계 아래)·현재 자세 계산 불가)·`ODOM_INVALID`(odom 비유한 값)·`ODOM_DISCONTINUOUS`(odom 끊김 뒤 AMCL 새 추정 3개 전)·`INPUT_LOST`·`COVARIANCE_LOST`, 재위치 진행·실패 코드 |
 
 - **정지 중 AMCL 특성 반영:** AMCL은 정지 중 추정을 새로 내지 않는다. 그래서 갱신 정체(`ESTIMATE_STALE`)는 시간이 아니라 마지막 추정 뒤 odom 이동량(0.5 m·0.4 rad)으로 판단한다. 기준 odom은 추정을 받을 때의 odom이다. 추정이 odom보다 먼저 왔으면 그 뒤 처음 받은 유효한(끊김 없는) odom을 기준으로 삼고, 다음 추정 전까지 바꾸지 않는다. 기준·현재 자세 중 하나라도 비유한 값이면 이동량을 알 수 없으므로 `ESTIMATE_STALE`로 본다.
+- **공분산 반올림 경계:** 판단에 쓰는 대각 분산(xx·yy m², yaw rad²)이 −1e-12 이상 0 미만이면 반올림 오차로 보고 판정 내부에서만 0으로 쓴다(`ROUNDOFF_VARIANCE`). `initial_poses`(AMCL `set_initial_pose`)는 초기 공분산 0으로 필터를 시작해 yaw 분산이 −1.09e-13처럼 나온다(Jazzy pf 통계 계산의 반올림으로 본다. 입자 2000개 기준 설명용 오차 규모 추정은 약 1e-12 이하이며, 설치본 동일 커밋·모든 연산 오차를 증명한 엄밀 상한은 아니다). −1e-12 미만인 음수·비유한 값·길이 오류는 계속 `ESTIMATE_INVALID`다. 원시 메시지는 바꾸지 않고, 진단(`covariance_roundoff`)에 0으로 본 항목·원래 값·경계를 남긴다. 작거나 0인 공분산은 정확도·회복 근거가 아니며 도약 latch·초기화 확인·신뢰 기록·재위치 조건은 그대로 적용된다. 선형 분산의 상쇄 오차는 위치 값이 클수록 커질 수 있다. 원점에서 먼 위치라도 오차가 경계 안이면 0으로 보고, **오차가 −1e-12를 넘어선(−1e-12 미만) 표본만** 미지원으로 두어 무효(`ESTIMATE_INVALID`)로 거절한다(경계 확대·위치 비례 경계 없음).
 - **`OK`의 한계:** `OK`는 정확도 검증이 아니다. 공분산은 상한 검사에만 쓰고 정확도를 확정하지 않는다. 정확도는 평가 도구로 따로 보며 판정은 `not_judged`다.
 - **odom 이상:** odom 비유한 값과 연속성 상실(시각 역행·속도로 설명되지 않는 도약)은 판정에 바로 `LOST`로 들어간다. 끊김 뒤에는 AMCL 새 추정이 3개 쌓이기 전까지 `OK`가 되지 않고, 마지막 신뢰 위치도 지운다. **이번 범위에서 자동 복구 경로 없음.** 정지 상태에서는 `LOST`가 유지되고 재위치는 거절된다(`REJECTED_ODOM_DISCONTINUOUS`).
+- **입력 stamp:** `amcl_pose`·`map → odom` TF는 앞 stamp보다 늦은 것만 받아들인다. 같은 stamp는 값이 같으면 중복, 다르면 충돌로 나눈다. 받아들이지 않은 입력은 AMCL 갱신 수, odom 끊김 뒤 회복 수, 재위치 회복 수에 넣지 않고, 오래된 TF가 최신 추정을 덮지 않는다. 충돌이면 처음 값을 유지하고, 그 입력의 다음 새 값이 올 때까지 마지막 신뢰 위치를 갱신하지 않는다. 판정은 감독 진단의 `input` 줄에 남는다.
+- **추정 도약(`ESTIMATE_DISCONTINUOUS`):** 직전 비교 기준 `map → odom`과 새 추정을 **같은 odom 자세**(추정 시각 ±0.1 s의 가장 가까운 odom 표본)에서 비교한다. `map → odom` 평행이동 크기로 대신하지 않는다.
+  - 기준: 0.3 m·0.3 rad(`estimate_jump`, 재위치 `consistency`와 별도 키). 단일 회차 정상 갱신 최대 0.027 m·0.032 rad와 lifecycle 재설정 도약 5.94 m·1.59 rad에서 정한 **개발 출발값**이며 운영 확정값이 아니다.
+  - 비교 대상: TF와 `amcl_pose` 둘 다. `amcl_pose`가 TF보다 먼저 와도 기준과 그 시각 odom으로 비교한다.
+  - 비교 기준: 마지막으로 검증한 `map → odom`이다. TF 공백 동안에도 유지하며 마지막 신뢰 위치가 없어도 감시한다. 최초 TF는 비교 기준일 뿐 초기화가 맞다는 근거가 아니다.
+  - 도약이면 `LOST`·`ESTIMATE_DISCONTINUOUS`로 고정(latch)하고 마지막 신뢰 위치를 덮어쓰지 않는다. 공분산이 작아도, 시간이 지나도, 같은 추정이 다시 와도 풀리지 않는다. **해제는 허용된 재위치가 성공했을 때만**이며(아래 재위치), 그때 비교 기준을 검증된 새 추정으로 바꾼다.
+  - 근거 부족: 추정 시각의 odom 표본이 없거나 0.1 s보다 멀면 도약 여부를 확정하지 않는다. 비교 기준을 유지하고 `DEGRADED`(`ODOM_STALE`)로 내며 마지막 신뢰 위치를 갱신하지 않는다. 판정마다 다시 비교한다.
+  - 감독 노드가 보낸 초기 위치(`START_POSE`)·재위치 후보(`REINIT`)는 송신 뒤 stamp의 새 추정이 후보와 0.5 m·0.3 rad 안이면 한 번만 허용한다(sim 15 s·벽시계 60 s 제한, 시계 무효면 닫음). 그 밖의 도약은 이 기간에도 latch한다. 외부 `initialpose`는 허용 근거가 아니다.
+  - 우선순위: 시계 무효(`UNKNOWN`·`valid=false`)는 덮지 않고 사유만 덧붙인다(예: `CLOCK_INVALID,ESTIMATE_DISCONTINUOUS`).
 - **sim time 역행:** 한 번 역행하면 감독 노드를 다시 시작하기 전까지 `UNKNOWN`(`CLOCK_INVALID`)이 유지된다. 시뮬레이션을 다시 시작하거나 시간을 되돌렸다면 위치 추정 launch도 다시 시작한다. 벽시계 2 s 정지로 생긴 `CLOCK_INVALID`는 sim time이 다시 흐르면 풀린다.
 - **판정 불가 유지:** 시계가 무효면 재위치 중이거나 실패 뒤여도 `UNKNOWN`·`valid=false`를 유지하고, 재위치 코드를 뒤에 덧붙인다(예: `CLOCK_INVALID,REINIT_IN_PROGRESS`).
 - **이상 탐지 없음:** Isolation Forest가 없으므로 `anomaly_model_available=false`, `anomaly_score=0`이다.
@@ -149,15 +159,31 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
   - `initial_poses`와 같은 로봇에 겹침
 - 지도 revision은 채택 지도면 `map_info.yaml`의 `map_revision`, 개발 지도면 0이다.
 - **사용 범위:** 그 지점에서 시작함이 보장되는 개발 시뮬레이션의 **최초 초기화에만** 쓴다.
-  - 감독 노드가 AMCL이 active가 된 뒤 이 세션에서 한 번만 `initialpose`로 보낸다.
+  - 감독 노드가 AMCL이 active가 되고 sim time이 유효해진 뒤 이 세션에서 한 번만 `initialpose`로 보낸다.
+  - 송신 뒤 새 추정이 출발 위치와 맞아야 초기화를 확인한 것으로 보고, 그 뒤에만 마지막 신뢰 위치를 기록한다(아래 방식별 표).
   - 실행 중 위치를 잃어도 다시 보내지 않는다.
 - **값의 출처:** 출발 위치는 launch 출발 좌표와 지도 원점으로 정한 값이다. Gazebo 실제 자세는 읽지 않으며 평가에만 쓴다.
-- **`initial_poses`:** AMCL 매개변수로 넣는 수동 시험용이다. 감독 노드의 출발 위치 처리와 별개다.
+- **`initial_poses`:** AMCL 매개변수로 넣는 수동 시험용이다. 감독 노드는 `initialpose`를 보내지 않는다. launch가 검사한 같은 pose를 감독 노드에 최초 초기화 확인 후보(`expected_initial_*`)로만 넘긴다.
+
+**초기화 방식별 최초 확인** (확인 전에는 마지막 신뢰 위치를 기록하지 않는다. 도약 감시는 모든 방식에서 한다)
+
+| 방식 | 후보 | 확인 조건 | 확인 못 하면 |
+|---|---|---|---|
+| `start_poses` | 감독 노드가 보낸 `START_POSE` | 기준·제한시간 시작 = 송신 시각. 그 뒤 stamp의 새 TF(이미 받은 TF와 같은 값이어도)가 같은 odom 자세에서 후보와 0.5 m·0.3 rad 안 | 신뢰 기록 없음 |
+| `initial_poses` | launch가 AMCL 매개변수와 감독 노드 매개변수(`expected_initial_*`)로 같은 pose를 전달(`LAUNCH_INITIAL_POSE`). 감독 노드 송신 없음 | 기준 = 감독 노드 sim time이 유효해진 시각(그 뒤 stamp의 입력만 씀). 제한시간 시작 = AMCL active를 처음 확인한 시각(그 전에는 만료 안 함). 확인 = 기준 뒤 stamp의 **새 `amcl_pose`**가 후보와 맞고, 그 뒤 TF도 후보와 맞음. AMCL 첫 추정이 기준보다 먼저 와서 배제되고 로봇이 정지해 있어도 확인할 수 있도록, AMCL active 확인 뒤 확인·만료 전까지 0.5 s마다 `request_nomotion_update`를 부른다(`initialpose` 아님). 재발행 TF나 기준 전 추정(transient local로 다시 받은 이전 `amcl_pose`)만으로는 확인하지 않음 | 신뢰 기록 없음 |
+| 후보 없음(외부 `initialpose`·AMCL 자체 초기화) | 없음 | 확인하지 않음. 첫 TF는 비교 기준일 뿐이다 | 신뢰 기록 없음 |
+
+- 제한시간: 위 시작 시각부터 sim 15 s·벽시계 60 s(`estimate_jump.intent_timeout_*`). 시계가 무효해지면 닫는다. `initial_poses`에서 AMCL 활성화가 늦으면 active를 확인할 때까지 제한시간을 시작하지 않는다(그동안 신뢰 기록 없음). 활성화 뒤 15 s 안에 맞는 새 추정이 없으면 의도를 닫고 그 세션은 신뢰 기록 없이 남는다.
+- 확인 못 한 세션의 복구 제한: 마지막 신뢰 위치가 없으므로 재위치는 `REJECTED_NO_TRUSTED_POSE`로 거절된다. **이전과 달라진 점:** 후보 없음 모드는 예전에는 `OK`·표준편차 조건만으로 신뢰 위치를 기록했다. 이제는 기록하지 않는다. 외부 `initialpose`로 확인 권한을 주는 경로는 만들지 않았다.
+- 감독 노드 재시작 한계: 재시작한 감독 노드는 과거 추정을 초기화 근거로 쓰지 않는다. 다만 `initial_poses` 모드에서 재시작 뒤 제한시간 안에 AMCL이 launch pose 근처의 새 추정을 내면(예: 로봇이 출발 위치에 그대로 있음) 그것이 초기화 직후인지 구별하지 못한다. launch는 감독 노드를 자동 재시작하지 않는다.
 
 ### 재위치 (같은 세션의 마지막 신뢰 위치 기반)
 
 - **마지막 신뢰 위치:**
-  - 기록 조건: `OK`이고 표준편차가 위치 0.15 m·방향 0.10 rad 이하.
+  - 기록 조건: `OK`이고 표준편차가 위치 0.15 m·방향 0.10 rad 이하. 그리고 추정 쪽 조건을 모두 만족한다(진단 `trust_rejection` 코드).
+    - 도약 latch 없음(`ESTIMATE_DISCONTINUOUS`), 같은 stamp 충돌 없음(`INPUT_CONFLICT`), 근거 부족 없음(`ESTIMATE_UNVERIFIED`)
+    - 초기화 확인(`NOT_ESTABLISHED`가 아님): 위 초기화 방식별 확인 또는 재위치 성공
+    - 최신 `amcl_pose`와 현재 TF가 같은 갱신(`ESTIMATE_UNPAIRED`가 아님): 같은 odom 자세에서 0.02 m·0.02 rad 안. stamp 일대일 대응을 가정하지 않으며, 한쪽만 새로 오면 다른 쪽이 올 때까지 보류한다.
   - 기록 내용: 그때의 `map → odom`·표준편차·시각·지도 식별값과 odom 자세. 기록 뒤에는 odom 표본마다 **누적** 이동 거리·회전량을 더한다(왕복·반복 회전도 모두 셈). 로봇마다 따로 메모리에만 두며, 프로세스를 다시 시작하면 사라진다.
   - 갱신하지 않을 때: 재위치 중이거나 입력이 무효일 때.
   - 무효로 할 때: 지도 변경, sim time 역행, odom 끊김(시각 역행·속도로 설명되지 않는 도약·비유한 값). 무효가 된 기록은 복구 근거로 쓰지 않는다.
@@ -174,12 +200,15 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
      - 마지막 추정의 표준편차가 0.25 m·0.15 rad 이하이고 후보 표준편차의 0.9배 이하
      - 후보와 0.5 m·0.3 rad 이내
      - 전달 뒤의 `map → odom` TF가 최신, 스캔이 최신
+     - 현재 `map → odom` · odom 자세도 후보와 0.5 m·0.3 rad 이내
+     - 성공하면 같은 판정 주기에 추정 도약 latch를 풀고 비교 기준을 현재 TF로 바꾼다. 재위치 진행 판정은 latch를 반영하기 전 입력으로 하므로 latch가 성공 판정을 막지 않는다.
   6. **실패**(`LOST`·`REINIT_FAILED_*`)는 다음 요청이나 AMCL 회복 근거가 생길 때까지 유지한다.
      - `NOT_STOPPED`: 진행 중 정지 상태 상실
      - `CLOCK_INVALID`: 진행 중 sim time 역행·정지(상태는 `UNKNOWN`·`valid=false`)
      - `AMCL_UNAVAILABLE`: 15 s(sim time) 또는 60 s(벽시계) 동안 새 추정 없음
      - `TIMEOUT`: 추정은 왔으나 조건 미충족
      - `NOT_RECOVERED`: 후보에서 1.0 m·0.6 rad 넘게 벗어남
+- **latch와 실패:** 재위치가 실패하거나 거절되면(후보 없음·만료·이동 초과) 추정 도약 latch는 그대로 `LOST`다. AMCL 회복 근거로 `REINIT_FAILED_*`가 지워져도 latch는 남는다. odom 끊김·지도 변경으로 지운 신뢰 위치는 latch 해제 뒤에도 되살리지 않는다.
 - **응답 코드:** 진행 중 재요청은 `success=true`·`REINIT_IN_PROGRESS`이며 새 재위치를 만들지 않는다. 거절은 `success=false`와 `REINIT_REJECTED_*`이다(`NOT_STOPPED`·`ACTUATION_STALE`·`NO_TRUSTED_POSE`·`TRUSTED_POSE_EXPIRED`·`MOTION_TOO_LARGE`·`ODOM_DISCONTINUOUS`·`MAP_CHANGED`·`CLOCK_INVALID`·`NOT_NEEDED`).
 - **책임 범위:** 감독 노드는 로봇을 움직이지 않는다. 재위치 중 작업·이동 보류는 D, 실제 정지·구동은 A의 책임이다.
 - **절차 완료와 정확도:** 절차 완료(`OK`)와 정확도 판정은 다르다. 정확도는 평가 도구로 기록하며 `not_judged`다.
@@ -264,7 +293,9 @@ python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_healt
     - `none_in_reference`: 비교한 범위의 기준 사건이 모두 있다는 뜻이다.
     - `unverified`: 기준이 없다. 받은 줄 수만으로 전량 수집을 주장하지 않는다.
 - **감독 진단:** `supervisor/<robot_id>_supervisor.jsonl`에 남는다.
-  - 판정 tick마다: 상태·표준편차, 신뢰 기록 판단(`trust_stored`·`trust_rejection`), 기록 나이·누적 이동
+  - 판정 tick마다: 상태·표준편차, 신뢰 기록 판단(`trust_stored`·`trust_rejection`), 기록 나이·누적 이동, 추정 감시 요약(`estimate`: latch·초기화 확인·근거 부족·의도·비교 기준·갱신 대응)과 입력 판정 개수(`gates`)
+  - 입력 판정(`input`): `amcl_pose`·TF의 stamp·수용 여부(`ACCEPTED`·`DUPLICATE`·`CONFLICT`·`REVERSED`·`INVALID_STAMP`)와 도약 판단. 값이 같은 TF 재발행은 남기지 않는다.
+  - 추정 사건(`estimate_events`): `BASELINE`·`INTENT`·`INTENDED`·`UNVERIFIED`·`LATCHED`·`CONFLICT`·`RELEASED`·`INTENT_CLOSED`
   - 재위치 요청 응답, 감독 노드가 보낸 initialpose(`START_POSE`·`REINIT`)
   - 판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다.
 - **`--analyze`:** 회차 폴더에 `analysis.json`을 쓴다. 정확도는 `not_judged`다.
@@ -338,6 +369,21 @@ python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_healt
   - 개수 대조로 `unmatched_count 1`이다.
   - 구독 준비 여부가 `unknown`이라, 미수신인지 전송 손실인지는 구별하지 못한다.
 - **같은 stamp TF:** 57건은 모두 같은 값이었다. 충돌은 0건이다.
+
+#### 추정 도약 감지·공분산 반올림 확인 (2026-11-09~10, 단일 회차, `not_judged`)
+
+위 기준선은 도약 감지 **전** 소스 기록이다. 그 재설정 구간의 `DEGRADED`(실제 오차 6.00 m)는 현재 소스의 동작이 아니다. 아래는 현재 소스 기준이며, 판단 값·임계값은 바꾸지 않았다.
+
+| 회차(`log/b2_health/`) | 소스 | 결과 |
+|---|---|---|
+| `20261109_231033_robot2_jump_latch` (`start_poses`) | 도약 감지 확정 소스(공분산 반올림 보완 전) | C: 0.58 m 직진 뒤 AMCL lifecycle 재설정 → 0.53 m 도약 → `LOST`(`ESTIMATE_DISCONTINUOUS`), 고정 중 신뢰 기록 덮어쓰기 0 → 재위치 접수(기록 나이 10.8 s·누적 0.355 m) → 해제·`OK`. A: 정상 2구간 주행에서 도약 오검출 0(같은 odom 기준 갱신 최대 0.034 m·0.035 rad). B: 경로 끝 재설정 → 5.68 m·1.67 rad 도약 → `LOST` 유지, 재위치 `REJECTED_TRUSTED_POSE_EXPIRED`(61.6 s·6.68 m) |
+| `20261109_231523_robot2_initial_poses_smoke` | 같음 | 실패. 초기화 확인·`initialpose` 송신 0은 동작했으나 yaw 분산 −1.09e-13 때문에 `ESTIMATE_INVALID`가 유지돼 신뢰 기록 없음 |
+| `20261110_085514_robot2_initial_poses_roundoff` | 공분산 반올림 보완 뒤(최종 소스) | 같은 조건 정지 30 s: launch 후보 확인 → `OK` 179 tick·신뢰 기록 179, `initialpose` 송신 0. 진단에 y·yaw 정규화(원래 값)·경계 1e-12, 원시 음수 보존 |
+
+- **재사용 근거:** 반올림 보완은 대각 분산 [−1e-12, 0) 구간만 바꾼다. `jump_latch` 회차 `amcl_pose` 41건에는 1e-6 미만 대각이 없어 판정 경로가 같으므로 C/A/B를 다시 실행하지 않았다. 도약·신뢰 기록·재위치 경로는 단위·ROS 스텁 회귀로 다시 확인했다.
+- **한계:** 단일 회차, `robot_2` 하나, 정지·짧은 경로만. `roundoff` 회차에서는 AMCL 첫 추정이 기준 시각보다 늦게 와서 무이동 갱신 요청 경로가 실행되지 않았다(이전 실패 회차·ROS 스텁으로만 확인).
+- **기록 누락:** health 기록이 진단 tick보다 적다(`jump_latch` 수집 구간 1261 중 77, `roundoff` 169 중 28, 원인 미확정). 감독 노드가 보낸 `initialpose`는 `jump_latch`에서 2건 중 1건만 원시 기록에 있다(원인 미확정).
+- **정확도:** `roundoff` 회차 평가 출력의 위치 오차 0.000 m는 원인(출발 위치 계산·반올림·해상도)을 확인하지 않았으므로 성공 근거로 쓰지 않는다.
 
 ### 개발 시험 결과 — 단순화 월드·이전 지도 (2026-11-08, `not_judged`)
 

@@ -105,13 +105,6 @@
   <xacro:ax2_wheel name="rear_right" file="ax_tire_right_rear" pivot="${ax2_rear_right_wheel_pivot}"/>
   <!-- 주행 관측용 전후 LiDAR, 전방 카메라, IMU. 장착 좌표는 sensor_mounts.yaml에서 읽는다. -->
   <xacro:ax_sensor_suite profile="ax2" robot_id="$(arg sensor_robot_id)" frame_prefix="${frames}"/>
-  <!-- Development overhead mount: optical axis vertically down, 100 degree FOV.
-       The camera is 1.026 m above cargo_link; add a physical mast for hardware. -->
-  <!-- 적재 높이 감시용 RGB-D. 적재판 위 1.026m에서 수직 아래를 보며 수평 시야각은 100도.
-       높이 제한 0.50m는 config/cargo_height.yaml에서 설정한다. 실물에는 지지 마스트가 필요하다. -->
-  <xacro:ax_camera name="cargo_rgbd" parent="cargo_link" xyz="0 0 1.026"
-      rpy="0 ${pi/2} 0" depth="${True}" horizontal_fov="${100*pi/180}" custom_intrinsics="${False}"
-      topic_prefix="/ax/$(arg sensor_robot_id)/sensors" frame_prefix="${frames}"/>
   <!-- Development contact deck: 0.72 m square on the bottom shelf near the base, just above
        its padded collision surface. Raw contact is NOT an OCCUPIED verdict. -->
   <!-- 72×72cm, 두께 2mm의 초록색 접촉 감지판. 골격 자체와 별도로 물리 충돌을 가진다. -->

@@ -54,7 +54,6 @@
 | 전방 RGB-D 카메라 | `front_rgbd_link` | 기본 도형: URDF visual |
 | 전방 RGB 카메라 | `front_rgb_link` | 기본 도형: URDF visual |
 | 자세·가속도 센서 | `imu_link` | 기본 도형: URDF visual |
-| 적재 높이 RGB-D 카메라 | `cargo_rgbd_link` | 기본 도형: URDF visual |
 | 적재판 접촉 센서 | `cargo_contact_link` | 기본 도형: URDF visual |
 
 ## 공구·좌표 기준

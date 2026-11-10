@@ -15,7 +15,6 @@ epick_body: 다중 흡착판 · 12컵
 shelf_link: 적재함 골격
 front_trim_link: 전방 보조 외장
 cargo_contact_link: 적재판 접촉 센서
-cargo_rgbd_link: 적재 높이 RGB-D 카메라
 front_lidar_link: 전방 LiDAR
 rear_lidar_link: 후방 LiDAR
 front_rgbd_link: 전방 RGB-D 카메라

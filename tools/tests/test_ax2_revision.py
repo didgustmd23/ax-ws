@@ -74,12 +74,17 @@ class Ax2Revision(unittest.TestCase):
                 self.assertTrue(np.all(points[:,:2]>=footprint.min(0)-1e-8),link.get('name'))
                 self.assertTrue(np.all(points[:,:2]<=footprint.max(0)+1e-8),link.get('name'))
 
-    def test_cargo_camera_height_axis_and_config_consistency(self):
+    def test_cargo_camera_removed_and_contact_deck_preserved(self):
         cfg=yaml.safe_load((PKG/'config/cargo_height.yaml').read_text())['/**']['ros__parameters']
-        camera=self.frames['cargo_rgbd_optical_frame'];deck=self.frames['cargo_link']
-        np.testing.assert_allclose(camera[:3,2],[0,0,-1],atol=1e-10)
-        self.assertAlmostEqual(camera[2,3]-deck[2,3],cfg['camera_height_m'])
-        np.testing.assert_allclose(camera[:2,3],deck[:2,3])
+        deck=self.frames['cargo_link']
+        self.assertNotIn('cargo_rgbd_link',self.frames)
+        self.assertNotIn('cargo_rgbd_optical_frame',self.frames)
+        self.assertIsNone(self.robot.find(".//sensor[@name='cargo_rgbd']"))
+        self.assertIsNotNone(self.robot.find(".//sensor[@name='front_rgbd']"))
+        self.assertIsNotNone(self.robot.find(".//sensor[@name='cargo_contact']"))
+        spec=importlib.util.spec_from_file_location('camera_removal_launch',PKG/'launch/robot_test.launch.py')
+        launch=importlib.util.module_from_spec(spec);spec.loader.exec_module(launch)
+        self.assertFalse(any('cargo_rgbd' in b['ros_topic_name'] for b in launch.bridges('robot_2',False)))
         self.assertAlmostEqual(cfg['max_height_m'],.5)
         self.assertAlmostEqual(deck[2,3], .573-.33208145)
 

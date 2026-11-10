@@ -33,10 +33,9 @@
   <!-- Python ROS 노드 API와 깊이 영상·카메라 보정·거리 메시지. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <!-- 적재 금지 Bool, 높이 Float32, 사유 String 메시지. -->
-  <exec_depend>std_msgs</exec_depend>
-  <!-- 적재 허가 확인 서비스에 사용하는 Trigger 타입. -->
-  <exec_depend>std_srvs</exec_depend>
+  <!-- 과거 높이 감시 코드·ROS 회귀 검사에 사용하는 메시지와 서비스 타입. -->
+  <test_depend>std_msgs</test_depend>
+  <test_depend>std_srvs</test_depend>
   <!-- 깊이 영상 배열 변환과 높이 계산에 쓰는 NumPy. -->
   <exec_depend>python3-numpy</exec_depend>
 

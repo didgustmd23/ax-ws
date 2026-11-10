@@ -96,3 +96,16 @@ python3 tools/generate_parts_preview.py
 관련 단위 시험 27개와 설치 자산 검사가 통과했고, 공백이 있는 임시 경로에서 생성한
 빈 바닥으로 Gazebo 모델 생성이 되는 것도 확인했다.
 상세 로그: `log/single_world_checks.txt`, `log/single_world_fixture_smoke.txt`.
+
+## 2026-11-11 적재 높이 카메라 제거
+
+사용자 요청으로 공중에 배치했던 cargo_rgbd 카메라와 광학 프레임, ROS 브리지,
+높이 감시 노드의 설치·자동 실행을 제거했다. 전방 RGB-D와 접촉 센서는 유지한다.
+현재 50cm는 설계 기준으로만 남으며 자동 높이 측정·적재 금지 신호·허가 서비스는 없다.
+과거 높이 계산 코드와 테스트는 비활성 회귀 검증 자료로 보관한다.
+
+카메라 질량 0.15kg을 제외해 총질량 19.45kg, COM은 base_link 기준
+(0.0163041386, -0.0005727268, 0.0969004887)m로 갱신했다.
+관련 단위 시험 25개와 실제 Gazebo의 카메라·감시 노드 부재, 전방 카메라·접촉 센서·
+주행 제어기 유지 검사가 통과했다. 스펙 JSON/Markdown과 부품 이미지도 재생성했다.
+로그: `log/camera_removal_checks.txt`, `log/ax_revision_runtime/camera_removed.json`.

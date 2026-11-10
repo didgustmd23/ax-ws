@@ -99,9 +99,8 @@ def calculate(number):
     if number == 2:
         cfg = yaml.safe_load((PACKAGE/'config/cargo_height.yaml').read_text())['/**']['ros__parameters']
         data['cargo'] = dict(deck_size_m=[cfg['deck_width_m'],cfg['deck_length_m']],
-            max_height_m=cfg['max_height_m'], camera_height_above_deck_m=cfg['camera_height_m'],
+            max_height_m=cfg['max_height_m'], height_monitoring_enabled=False,
             deck_origin_in_base_m=frames['cargo_link'][:3,3].tolist(),
-            camera_origin_in_base_m=frames['cargo_rgbd_link'][:3,3].tolist(),
             tested_payloads_kg=[.5,1.,2.], rated_payload_kg=None)
     return data
 
@@ -128,10 +127,9 @@ def markdown(data):
     if 'cargo' in data:
         c = data['cargo']
         lines += ['## 적재부', '',
-            f'- 감시 적재면: {c["deck_size_m"]}m, 적재 높이 한계: {c["max_height_m"]}m.',
+            f'- 적재면: {c["deck_size_m"]}m, 설계상 적재 높이 기준: {c["max_height_m"]}m.',
             f'- 적재판 상면 원점: ({vector(c["deck_origin_in_base_m"])})m.',
-            f'- 카메라: 적재판 위 {c["camera_height_above_deck_m"]}m, 수직 하향, 수평 시야각 100도.',
-            '- 카메라 지지 마스트는 아직 모델링하지 않은 가상 설치다. 추가 시 질량·COM 재계산이 필요하다.',
+            '- 적재 높이 카메라는 제거했다. 자동 높이 측정·적재 금지 신호·허가 서비스는 현재 제공하지 않는다.',
             '- 기존 시험 하중 0.5/1/2kg은 정격 중량이 아니다. 새 적재함에서 별도 동적 검증이 필요하다.',
             '- 옛 상부 LiDAR 외장은 새 CAD에 없어 활성 모델에서 제외했다. 전후 LiDAR 센서는 유지한다.', '']
     lines += ['## 부품별 질량·무게중심', '', '| 표시 이름 | URDF 링크 | 질량(kg) | COM XYZ(m, base_link 기준) |', '|---|---|---:|---|']

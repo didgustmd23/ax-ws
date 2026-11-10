@@ -46,9 +46,7 @@ def bridges(robot_id, manipulator, tool='epick'):
     for name in (['front_rgb', 'arm_rgb'] if manipulator else ['front_rgb']):
         add_sensor_bridge(name + '/image_raw', 'sensor_msgs/msg/Image', 'gz.msgs.Image')
         add_sensor_bridge(name + '/camera_info', 'sensor_msgs/msg/CameraInfo', 'gz.msgs.CameraInfo')
-    # 운반 로봇의 cargo_rgbd는 적재판을 내려다보는 카메라다.
-    # 영상·깊이·점군·보정값을 함께 연결하며 높이 감시 노드는 깊이와 보정값만 구독한다.
-    for name in (['front_rgbd', 'arm_rgbd'] if manipulator else ['front_rgbd', 'cargo_rgbd']):
+    for name in (['front_rgbd', 'arm_rgbd'] if manipulator else ['front_rgbd']):
         for suffix, ros_type, gz_type in [('image', 'Image', 'Image'), ('depth_image', 'Image', 'Image'),
                                 ('points', 'PointCloud2', 'PointCloudPacked'),
                                 ('camera_info', 'CameraInfo', 'CameraInfo')]:
@@ -142,12 +140,6 @@ def setup(context):
         actions.append(spawn_robot)
         if sensors_enabled:
             all_bridges.extend(bridges(robot_id, manipulator, tool))
-        # 팔 없는 운반 로봇에만 높이 감시를 붙인다. robot_2와 robot_4의 namespace를 각각 사용한다.
-        # 센서가 꺼져 있으면 감시 노드도 실행하지 않으므로 적재 제어기가 허가를 가정하면 안 된다.
-        if not manipulator and sensors_enabled:
-            actions.append(Node(package='ax_description', executable='cargo_height_guard.py',
-                namespace=robot_namespace, parameters=[{'use_sim_time': True},
-                    str(package_share / 'config' / 'cargo_height.yaml')], output='screen'))
         if manipulator and sensors_enabled and tool in ('epick', 'suction'):
             actions.append(Node(package='ax_description', executable='tof_range.py', namespace=robot_namespace,
                 parameters=[{'use_sim_time': True, 'frame_id': robot_id + '/tool_tof_link',

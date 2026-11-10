@@ -118,7 +118,7 @@ class Models(unittest.TestCase):
 
     def test_sensor_frames_and_shared_world_plugins(self):
         for filename, robot_id, sensor_count in [('ax.urdf.xacro', 'robot_1', 8),
-                                                 ('ax_2.urdf.xacro', 'robot_2', 7)]:
+                                                 ('ax_2.urdf.xacro', 'robot_2', 6)]:
             root = model(filename, robot_id)
             self.assertEqual(len(root.findall('.//sensor')), sensor_count)
             for sensor in root.findall('.//sensor'):

@@ -18,9 +18,24 @@ ROBOT_IDS = ("robot_1", "robot_2")
 # 2. 메시지에 어떤 항목이 있는지 읽기
 # 입력: 메시지 이름 / 결과: 항목 이름과 종류
 def fields(message_type):
-    name = message_type.rsplit("/", 1)[-1]
+    # 메시지 종류에 따라 패키지와 이름을 구분함
+    if "/" in message_type:
+        package, name = message_type.split("/", 1)
+    else:
+        package, name = "ax_interfaces", message_type
+
+    # 우리 팀 메시지는 기존 폴더에서 찾음
+    local_path = SCHEMA / (name + ".msg")
+    if package == "ax_interfaces" and local_path.is_file():
+        msg_path = local_path
+    else:
+        # ROS2에 설치된 패키지 위치를 자동으로 찾음
+        from ament_index_python.packages import get_package_share_directory
+        msg_path = Path(get_package_share_directory(package)) / "msg" / (name + ".msg")
+
+    # 메시지 파일에서 필드 이름과 자료형을 읽음
     result = {}
-    for line in (SCHEMA / (name + ".msg")).read_text(encoding="utf-8").splitlines():
+    for line in msg_path.read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
         if line and "=" not in line:
             field_type, field_name = line.split()

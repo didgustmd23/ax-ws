@@ -1,0 +1,10 @@
+# 추가 라이브러리 설치 안내 (Ubuntu / WSL 터미널)
+# 1. 터미널에서 이 requirements.txt가 있는 폴더로 이동
+# 2. 아래 명령어 실행 (앞의 #은 입력하지 않음)
+# python3 -m pip install -r requirements.txt
+#
+# rfc8785 하나만 별도로 설치할 경우:
+# python3 -m pip install rfc8785
+#
+# 설치할 라이브러리 목록
+rfc8785

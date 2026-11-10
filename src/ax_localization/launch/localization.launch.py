@@ -9,6 +9,7 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
 - AMCL: /ax/<robot_id>/amcl. 입력 /ax/<robot_id>/sensors/front_lidar/scan_filtered(B1, scan:=raw면 원시 스캔),
   초기 위치 /ax/<robot_id>/initialpose, 추정 /ax/<robot_id>/amcl_pose, TF map → <robot_id>/odom.
 - initial_poses는 로봇별 시험용 초기 위치(map 기준 x, y, yaw)다. 지정하지 않은 로봇은 initialpose 토픽을 기다린다.
+  감독 노드에는 최초 초기화 확인 후보로만 넘긴다(감독 노드는 initialpose를 보내지 않는다).
 - lifecycle: launch가 map_server와 각 AMCL에 configure → activate를 보낸다(launch_ros LifecycleNode).
   nav2 lifecycle_manager는 쓰지 않는다. 시험에서 configure 응답이 DDS 발견 경합으로 유실되자 시간 제한 없이 멈췄고,
   bond가 끊긴 AMCL에 다시 붙으면 launch 초기 위치로 조용히 재초기화되기 때문이다.
@@ -366,9 +367,15 @@ def start_poses_for(path, map_path, robot_ids):
 
 
 # 로봇 하나의 위치 신뢰성 감독 노드(LocalizationHealth 발행·재위치 서비스·고정 출발 위치 최초 초기화)
-def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir=""):
+# expected_initial: initial_poses로 AMCL에 넣은 (x, y, yaw). 감독 노드는 보내지 않고 최초 초기화 확인 후보로만 쓴다.
+def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir="", expected_initial=None):
     parameters = {"use_sim_time": True, "robot_id": robot_id, "config_file": str(health_config),
-                  "start_pose_enabled": start_pose is not None}
+                  "start_pose_enabled": start_pose is not None,
+                  "expected_initial_enabled": expected_initial is not None}
+
+    if expected_initial is not None:
+        parameters.update({f"expected_initial_{key}": float(value)
+                           for key, value in zip(("x", "y", "yaw"), expected_initial)})
 
     # 진단 기록(선택, 시험 기록 전용): 로봇별 파일에 판단 근거를 덧붙인다. 판정 동작은 바꾸지 않는다.
     if diagnostics_dir:
@@ -468,7 +475,7 @@ def setup(context):
         nodes.append((amcl, f"{namespace}/amcl"))
 
         if health_enabled:
-            actions.append(supervisor_node(robot_id, health_config, start, diagnostics_dir))
+            actions.append(supervisor_node(robot_id, health_config, start, diagnostics_dir, pose))
 
     # 시작 감시(전체 제한시간·전이 실패·프로세스 종료)
     monitored, _ = startup_actions(nodes, timeout_s, report)

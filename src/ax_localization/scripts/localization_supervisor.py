@@ -8,8 +8,12 @@
 - 고정 출발 위치: start_pose_* 매개변수가 있으면 이 세션에서 AMCL이 처음 active가 됐을 때 한 번만 initialpose로 보낸다.
   위치를 잃었다는 이유로 다시 보내지 않는다.
 - 로봇을 움직이지 않는다. 판단 로직은 localization_health.py에 있다.
-- 진단 기록(선택): diagnostics_file 매개변수가 있으면 판정 tick·재위치 요청마다 판단 근거를 JSON 줄로 덧붙인다.
-  판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다(시험 기록 전용).
+- 입력 stamp: amcl_pose·map→odom TF는 늦은 stamp만 받아들인다. 같은 stamp는 값이 같으면 중복, 다르면 충돌로
+  나누고 갱신 수·회복 근거에 넣지 않는다(오래된 TF가 최신 추정을 덮지 않음).
+- 추정 도약: 이전·새 추정을 같은 odom 자세에서 비교해 기준을 넘으면 LOST(ESTIMATE_DISCONTINUOUS)로 latch하고
+  신뢰 기록 덮어쓰기를 막는다. 해제는 허용된 재위치 성공 때만이다(localization_health.EstimateMonitor).
+- 진단 기록(선택): diagnostics_file 매개변수가 있으면 판정 tick·입력 판정·재위치 요청마다 판단 근거를 JSON 줄로
+  덧붙인다. 판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다(시험 기록 전용).
 """
 
 import hashlib
@@ -77,6 +81,19 @@ class LocalizationSupervisor(Node):
             self.start_pose = {key: float(self.declare_parameter(f"start_pose_{key}", 0.0).value)
                                for key in ("x", "y", "yaw", "position_std_m", "yaw_std_rad")}
 
+        # launch initial_poses(AMCL 매개변수)로 넣은 최초 초기화 후보. 감독 노드는 initialpose를 보내지 않는다.
+        # 기준: sim time이 유효해진 첫 판정에서 후보를 기록하고(그 뒤 stamp의 새 입력만 씀), AMCL active를 처음 확인한
+        # 때부터 제한시간을 잰다. 확인은 그 뒤 새 amcl_pose와 TF가 후보와 맞을 때다.
+        self.expected_initial = None
+        self.expected_initial_noted = False
+        self.expected_active_seen = False
+        self.expected_state_pending = False
+        self.expected_nomotion_at = None
+
+        if self.declare_parameter("expected_initial_enabled", False).value:
+            self.expected_initial = tuple(float(self.declare_parameter(f"expected_initial_{key}", 0.0).value)
+                                          for key in ("x", "y", "yaw"))
+
         self.odom_frame = f"{self.robot_id}/odom"
         self.base_frame = f"{self.robot_id}/base_link"
         self.session = uuid.uuid4().hex
@@ -88,6 +105,10 @@ class LocalizationSupervisor(Node):
         self.continuity = lh.OdomContinuity(self.config["odom_continuity"])
         self.tracker = lh.TrustedPoseTracker(self.config)
         self.reinit = lh.Reinitializer(self.config)
+        self.amcl_gate = lh.StampGate()
+        self.tf_gate = lh.StampGate()
+        self.odom_history = lh.OdomHistory(self.config["estimate_jump"]["odom_history_s"])
+        self.monitor = lh.EstimateMonitor(self.config)
         self.map_id = None
         self.start_pose_sent = False
         self.health = lh.Health(lh.UNKNOWN, False, "NOT_INITIALIZED")
@@ -130,12 +151,26 @@ class LocalizationSupervisor(Node):
         return self.get_clock().now().nanoseconds * 1e-9
 
     # map→<robot>/odom 변환만 기록한다. 유효 시각 = stamp − tf_future_s(AMCL이 앞당긴 시각).
+    # 늦은 stamp만 받아들인다. 도약 판단을 입력 갱신보다 먼저 해 신뢰 기록 갱신과 경합하지 않게 한다.
     def on_tf(self, message):
         for transform in message.transforms:
             if transform.header.frame_id == "map" and transform.child_frame_id == self.odom_frame:
                 t, q = transform.transform.translation, transform.transform.rotation
-                self.inputs.tf_valid_time = seconds(transform.header.stamp) - self.config["health"]["tf_future_s"]
-                self.inputs.map_odom = (t.x, t.y, yaw_from_quaternion(q.x, q.y, q.z, q.w))
+                stamp = seconds(transform.header.stamp)
+                value = (t.x, t.y, yaw_from_quaternion(q.x, q.y, q.z, q.w))
+                verdict = self.tf_gate.check(stamp, value)
+                decision = None
+
+                if verdict == "ACCEPTED":
+                    valid_time = stamp - self.config["health"]["tf_future_s"]
+                    decision = self.monitor.on_tf(valid_time, value, self.odom_history, self.now(), time.monotonic(),
+                                                  self.clock_valid)
+                    self.inputs.tf_valid_time = valid_time
+                    self.inputs.map_odom = value
+                elif verdict == "CONFLICT":
+                    self.monitor.conflict("tf", stamp)
+
+                self.note_input("tf", stamp, verdict, decision, value)
 
     # 지도 식별값(격자 정보·내용 해시). 바뀌면 마지막 신뢰 위치를 무효로 만든다.
     def on_map(self, message):
@@ -153,9 +188,21 @@ class LocalizationSupervisor(Node):
         self.tracker.check_map(new_id)
 
     # AMCL 추정. 수신 시점의 odom 자세도 함께 남긴다(정지 중 무발행 판단).
+    # 늦은 stamp만 새 추정으로 센다(같은·역행 stamp는 갱신 수·회복 근거에 넣지 않는다).
     def on_amcl(self, message):
         pose = pose2d(message.pose.pose)
         stamp = seconds(message.header.stamp)
+        verdict = self.amcl_gate.check(stamp, pose + tuple(message.pose.covariance))
+
+        if verdict != "ACCEPTED":
+            if verdict == "CONFLICT":
+                self.monitor.conflict("amcl", stamp)
+
+            self.note_input("amcl", stamp, verdict, None, pose)
+            return
+
+        decision = self.monitor.on_amcl(stamp, pose, self.odom_history)
+        self.note_input("amcl", stamp, verdict, decision, pose)
         self.inputs.amcl_stamp = stamp
         self.inputs.amcl_pose = pose
         self.inputs.amcl_covariance = tuple(message.pose.covariance)
@@ -182,6 +229,7 @@ class LocalizationSupervisor(Node):
             self.tracker.invalidate(problem)
 
         self.tracker.on_odom(pose)
+        self.odom_history.add(stamp, pose)
         self.inputs.odom_break_at = self.continuity.broken_at
         self.inputs.amcl_after_break = self.continuity.amcl_after_break
 
@@ -217,8 +265,12 @@ class LocalizationSupervisor(Node):
             self.get_logger().warn("sim time 역행: 마지막 신뢰 위치 무효")
             self.tracker.invalidate("CLOCK_REVERSED")
 
+        # odom이 늦게 와서 비교하지 못한 추정을 다시 비교하고 의도 제한시간을 본다.
+        for stream, decision in self.monitor.retry(self.odom_history, now, time.monotonic(), self.clock_valid):
+            self.write_diagnostics("estimate_retry", now, self.health, stream=stream, decision=decision)
+
         self.inputs.tf_chain_ok = self.tf_chain_ok()
-        health = lh.evaluate(self.inputs, now, self.config, self.clock_valid)
+        health = self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid))
 
         # 재위치 진행: 무이동 갱신 요청과 회복·실패 판정
         if self.reinit.active():
@@ -230,19 +282,53 @@ class LocalizationSupervisor(Node):
             if result is not None:
                 self.get_logger().info(f"재위치 종료: {result}")
 
+                # 성공이면 latch를 풀고 비교 기준을 검증된 새 추정으로 바꾼 뒤(같은 tick) 판정을 다시 한다.
+                if result == "SUCCEEDED":
+                    self.monitor.release(self.inputs.map_odom)
+                    health = self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid))
+                else:
+                    self.monitor.cancel_intent(result)
+
         health = self.reinit.apply(health)
         self.tracker.check_map(self.map_id)
         reinit_active = self.reinit.active()
-        rejection = self.tracker.rejection(health, self.inputs, self.map_id, reinit_active)
-        stored = self.tracker.consider(health, self.inputs, now, self.map_id, reinit_active)
+        block = self.monitor.trust_block()
+        rejection = self.tracker.rejection(health, self.inputs, self.map_id, reinit_active, block)
+        stored = self.tracker.consider(health, self.inputs, now, self.map_id, reinit_active, block)
         self.maybe_send_start_pose()
+        self.maybe_note_expected_initial(now)
+        self.maybe_check_expected_active()
+        self.maybe_request_expected_update(now)
         self.publish(health, now)
-        self.write_diagnostics("tick", now, health, trust_stored=stored, trust_rejection=rejection)
+        self.write_diagnostics("tick", now, health, trust_stored=stored, trust_rejection=rejection,
+                               estimate=self.monitor.summary(),
+                               gates={"amcl": self.amcl_gate.counts, "tf": self.tf_gate.counts},
+                               covariance_roundoff=self.covariance_roundoff())
+
+    # 진단용: 현재 amcl_pose 공분산에서 반올림 경계로 0으로 본 대각 항목(원래 값)과 경계값. 진단이 꺼져 있으면 계산 안 함.
+    # 원시 공분산 배열은 그대로 두며 판정에는 쓰지 않는다(판정은 evaluate가 같은 함수로 따로 한다).
+    def covariance_roundoff(self):
+        if self.diagnostics is None or self.inputs.amcl_covariance is None:
+            return None
+
+        return {"epsilon": lh.ROUNDOFF_VARIANCE,
+                "normalized": lh.covariance_std_detail(self.inputs.amcl_covariance)[1]}
+
+    # 입력 판정(수용·배제와 도약 판단)을 진단에 남긴다. 받아들인 TF가 같은 값이면(재발행) 남기지 않는다.
+    def note_input(self, stream, stamp, verdict, decision, value):
+        if not (stream == "tf" and verdict == "ACCEPTED" and decision == "UNCHANGED"):
+            self.write_diagnostics("input", self.now(), self.health, stream=stream, stamp=stamp, verdict=verdict,
+                                   decision=decision, value=[finite_or_none(v) for v in value])
 
     # 진단 기록 한 줄을 덧붙인다(diagnostics_file이 있을 때만). 판정에는 쓰지 않는다.
     def write_diagnostics(self, kind, now, health, **extra):
+        events, self.monitor.events = self.monitor.events, []
+
         if self.diagnostics is None:
             return
+
+        if events:
+            extra = {**extra, "estimate_events": events}
 
         record = self.tracker.record
         entry = {
@@ -305,7 +391,7 @@ class LocalizationSupervisor(Node):
     def on_reinitialize(self, request, response):
         now = self.now()
         self.inputs.tf_chain_ok = self.tf_chain_ok()
-        health = self.reinit.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid))
+        health = self.reinit.apply(self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid)))
         accepted, code = self.reinit.request(health, self.inputs, self.tracker, now, self.map_id, self.clock_valid,
                                              time.monotonic())
 
@@ -340,12 +426,67 @@ class LocalizationSupervisor(Node):
         message.pose.pose.orientation.w = math.cos(pose[2] / 2)
         message.pose.covariance = lh.pose_covariance(position_std, yaw_std)
         self.initialpose.publish(message)
+        self.monitor.expect(pose, source, now, time.monotonic(), self.clock_valid)
         self.write_diagnostics("initialpose_sent", now, self.health, source=source, pose=list(pose),
                                sent_position_std_m=position_std, sent_yaw_std_rad=yaw_std)
 
-    # 고정 출발 위치를 이 세션에서 한 번만 보낸다. AMCL이 active이고 initialpose 구독자가 있을 때만.
+    # launch 초기 위치 후보를 의도로 한 번 기록한다(송신 없음). sim time이 유효해야 기준 시각이 생긴다.
+    def maybe_note_expected_initial(self, now):
+        if self.expected_initial is None or self.expected_initial_noted or not self.clock_valid:
+            return
+
+        self.expected_initial_noted = True
+        self.monitor.expect(self.expected_initial, "LAUNCH_INITIAL_POSE", now, time.monotonic(), True)
+        self.write_diagnostics("initial_expected", now, self.health, source="LAUNCH_INITIAL_POSE",
+                               pose=list(self.expected_initial), basis="CLOCK_VALID")
+
+    # launch 초기 위치 의도: AMCL active를 처음 확인하면 제한시간을 시작한다(상태 조회는 비동기, 한 번에 하나).
+    def maybe_check_expected_active(self):
+        if (self.monitor.intent is None or self.monitor.intent["source"] != "LAUNCH_INITIAL_POSE"
+                or self.expected_active_seen or self.expected_state_pending or not self.amcl_state.service_is_ready()):
+            return
+
+        self.expected_state_pending = True
+        self.amcl_state.call_async(GetState.Request()).add_done_callback(self.on_expected_state)
+
+    # AMCL 상태 응답(launch 초기 위치 의도용)
+    def on_expected_state(self, future):
+        self.expected_state_pending = False
+
+        try:
+            active = future.result().current_state.label == "active"
+        except Exception:
+            return
+
+        if active and not self.expected_active_seen:
+            self.expected_active_seen = True
+            now = self.now()
+            self.monitor.amcl_active(now, time.monotonic())
+            self.write_diagnostics("initial_expected_window", now, self.health, source="LAUNCH_INITIAL_POSE")
+
+    # launch 초기 위치 의도: 기준 시각 전에 온 첫 추정은 배제되고 정지 중에는 AMCL이 새 추정을 내지 않으므로,
+    # 제한시간이 시작된 뒤 확인될 때까지 nomotion_period_s마다 AMCL 무이동 갱신을 요청해 이 AMCL의 새 추정을 받는다.
+    # initialpose는 보내지 않으며 이전 추정(transient local)을 근거로 다시 쓰지 않는다.
+    def maybe_request_expected_update(self, now):
+        intent = self.monitor.intent
+
+        if (intent is None or intent["source"] != "LAUNCH_INITIAL_POSE" or intent["window_at"] is None
+                or self.reinit.active() or not self.nomotion.service_is_ready()):
+            return
+
+        last = self.expected_nomotion_at
+
+        if last is not None and now - last < self.config["reinit"]["nomotion_period_s"]:
+            return
+
+        self.expected_nomotion_at = now
+        self.nomotion.call_async(Empty.Request())
+        self.write_diagnostics("initial_expected_nomotion", now, self.health, source="LAUNCH_INITIAL_POSE")
+
+    # 고정 출발 위치를 이 세션에서 한 번만 보낸다. AMCL이 active이고 initialpose 구독자가 있고 sim time이
+    # 유효할 때만(송신 시각이 있어야 송신 뒤 새 입력으로 초기화를 확인할 수 있다).
     def maybe_send_start_pose(self):
-        if self.start_pose is None or self.start_pose_sent or self.amcl_state_pending:
+        if self.start_pose is None or self.start_pose_sent or self.amcl_state_pending or not self.clock_valid:
             return
 
         if self.inputs.amcl_updates > 0:
@@ -370,7 +511,7 @@ class LocalizationSupervisor(Node):
         except Exception:
             return
 
-        if not active or self.start_pose_sent:
+        if not active or self.start_pose_sent or not self.clock_valid:
             return
 
         pose = self.start_pose

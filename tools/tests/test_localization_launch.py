@@ -217,6 +217,22 @@ class LaunchNodes(unittest.TestCase):
         self.assertTrue(supervisors['/ax/robot_1']['start_pose_enabled'])
         self.assertEqual(supervisors['/ax/robot_1']['start_pose_x'], -2.5)
         self.assertFalse(amcls['/ax/robot_1']['set_initial_pose'])
+        self.assertFalse(supervisors['/ax/robot_1']['expected_initial_enabled'])
+
+    # initial_poses: AMCL 매개변수로 넣고, 감독 노드에는 최초 초기화 확인 후보로만 넘긴다(감독 노드 송신 없음).
+    # 지정하지 않은 로봇은 후보가 없다.
+    def test_initial_poses_to_supervisor(self):
+        described = [self.describe(node) for node in self.nodes('robot_1,robot_2', 'robot_2=0.5,-1.0,0.2')]
+        supervisors = {item[1]: item[3] for item in described if item[0] == 'ax_localization'}
+        amcls = {item[1]: item[3] for item in described if item[0] == 'nav2_amcl'}
+        robot_2 = supervisors['/ax/robot_2']
+
+        self.assertTrue(amcls['/ax/robot_2']['set_initial_pose'])
+        self.assertTrue(robot_2['expected_initial_enabled'])
+        self.assertEqual((robot_2['expected_initial_x'], robot_2['expected_initial_y'], robot_2['expected_initial_yaw']),
+                         (0.5, -1.0, 0.2))
+        self.assertFalse(robot_2['start_pose_enabled'])
+        self.assertFalse(supervisors['/ax/robot_1']['expected_initial_enabled'])
 
     # 고정 출발 위치 거절: 로봇 누락·지도 해시 불일치·initial_poses와 겹침·health 꺼짐
     def test_start_poses_rejected(self):

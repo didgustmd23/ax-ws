@@ -20,6 +20,13 @@ ROBOTS = ('robot_1', 'robot_2')
 START = {'robot_1': (-2.5, 1.5, 0.0), 'robot_2': (0.0, 0.0, 0.0)}
 ODOM = {'robot_1': (0.3, 0.1, 0.05), 'robot_2': (0.6, -0.2, 0.1), 'robot_3': (-0.4, 0.3, 0.0)}
 
+# initial_poses 정지 smoke(log/b2_health/20261109_231523_robot2_initial_poses_smoke) amcl_pose 실제 공분산
+ROUNDOFF_SAMPLE = [0.0] * 36
+ROUNDOFF_SAMPLE[0] = 7.420008617947671e-19
+ROUNDOFF_SAMPLE[1] = ROUNDOFF_SAMPLE[6] = -5.149960319306146e-19
+ROUNDOFF_SAMPLE[7] = -5.664956351236761e-18
+ROUNDOFF_SAMPLE[35] = -1.0924594562311242e-13
+
 # 시험용 판단 값: 재위치 제한시간만 줄인다.
 HEALTH_CONFIG = 'reinit:\n  timeout_s: 4.0\n'
 
@@ -115,13 +122,14 @@ class SupervisorWithStubs(unittest.TestCase):
         return '\n'.join((cls.folder / f'{robot_id}.log').read_text()[-1500:] for robot_id in ROBOTS)
 
     # 각 시험 전에 가짜 세계를 정상으로 되돌리고 두 로봇이 OK인지 확인한다.
-    # 앞 시험의 재위치 실패는 입력만 정상으로 돌려서는 지워지지 않으므로(회복 근거 필요) 재위치로 복구한다.
+    # 앞 시험의 재위치 실패·추정 도약 latch는 입력만 정상으로 돌려서는 지워지지 않으므로 재위치로 복구한다.
     def setUp(self):
         self.world.reset()
 
         for robot_id in ROBOTS:
             if not self.world.wait(lambda r=robot_id: self.world.state(r) == 1, 3.0) \
-                    and 'REINIT_FAILED' in self.world.reason(robot_id):
+                    and ('REINIT_FAILED' in self.world.reason(robot_id)
+                         or 'ESTIMATE_DISCONTINUOUS' in self.world.reason(robot_id)):
                 self.assertEqual(self.reinit(robot_id)[0], True)
 
             self.assertTrue(self.world.wait(lambda r=robot_id: self.world.state(r) == 1, 15.0),
@@ -285,6 +293,128 @@ class SupervisorWithStubs(unittest.TestCase):
         self.assertEqual(self.reinit('robot_1'), (False, 'REINIT_REJECTED_ODOM_DISCONTINUOUS'))
         self.assertEqual(self.world.state('robot_2'), 1)
 
+    # robot_1 진단 기록(JSON 줄)
+    def diagnostics(self):
+        import json
+
+        path = self.folder / 'diag' / 'robot_1_supervisor.jsonl'
+        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+    # [B2 도약 1단계] 같은 stamp(중복·충돌)·역행 stamp 입력을 받아들이지 않고 판정을 진단에 남긴다.
+    # 같은 stamp AMCL 추정은 갱신 수에 한 번만 들어가고, 오래된 stamp의 도약 TF는 최신 추정을 덮지 않는다(latch 없음).
+    def test_8a_stamp_gate(self):
+        robot = self.world.robots['robot_1']
+        map_odom = robot['map_odom']
+        pose = compose(map_odom, ODOM['robot_1'])
+        jumped = (map_odom[0] + 2.0, map_odom[1], map_odom[2])
+        before = [row for row in self.diagnostics() if row['kind'] == 'tick'][-1]['amcl_updates']
+
+        # amcl_pose는 STATE QoS(깊이 1)라 연달아 보내면 덮이므로 간격을 둔다(가짜 세계는 amcl_pose를 주기 발행하지 않음).
+        stamp = self.world.sim
+
+        moved = (pose[0] + 0.2, pose[1], pose[2])
+
+        for value, at in ((pose, stamp), (pose, stamp), (moved, stamp), (pose, stamp - 0.5)):
+            self.world.publish_amcl('robot_1', value, 0.05, 0.03, at)
+            time.sleep(0.2)
+
+        # TF는 발행 스레드를 멈춘 채(잠금) 순서를 정해 보낸다. 충돌 stamp는 마지막 정규 TF보다 조금 늦게 둔다.
+        with self.world.lock:
+            tf_stamp = self.world.sim + 1.005
+            self.world.publish_tf('map', 'robot_1/odom', map_odom, tf_stamp)
+            self.world.publish_tf('map', 'robot_1/odom', jumped, tf_stamp)
+            self.world.publish_tf('map', 'robot_1/odom', jumped, stamp - 2.0)
+
+        time.sleep(1.0)
+        self.world.publish_amcl('robot_1', pose, 0.05, 0.03, self.world.sim)
+        time.sleep(0.6)
+        rows = self.diagnostics()
+        inputs = [row for row in rows if row['kind'] == 'input']
+        amcl = [row['verdict'] for row in inputs if row['stream'] == 'amcl' and abs(row['stamp'] - stamp) < 0.6]
+        tf = [row['verdict'] for row in inputs if row['stream'] == 'tf'
+              and min(abs(row['stamp'] - tf_stamp), abs(row['stamp'] - (stamp - 2.0))) < 1e-6]
+
+        self.assertEqual(amcl[:4], ['ACCEPTED', 'DUPLICATE', 'CONFLICT', 'REVERSED'], self.logs())
+        self.assertEqual(tf, ['CONFLICT', 'REVERSED'])
+        ticks = [row for row in rows if row['kind'] == 'tick']
+        self.assertEqual(ticks[-1]['amcl_updates'], before + 2)
+        self.assertIsNone(ticks[-1]['estimate']['latched'])
+        self.assertTrue(any(event['event'] == 'CONFLICT' for row in rows for event in row.get('estimate_events', [])))
+        self.assertEqual(self.world.state('robot_1'), 1, self.world.reason('robot_1'))
+
+    # [B2 도약 2·4단계] 작은 공분산 위치 도약 → LOST(ESTIMATE_DISCONTINUOUS) latch, 신뢰 기록 덮어쓰기 차단.
+    # 공분산이 작은 새 추정·시간 경과로는 풀리지 않고, 보존한 기록 기반 재위치가 성공하면 풀리고 기록 갱신이 재개된다.
+    def test_8b_jump_latch_and_release(self):
+        robot = self.world.robots['robot_1']
+        original = robot['map_odom']
+        jumped = (original[0] + 1.0, original[1], original[2])
+
+        with self.world.lock:
+            robot['map_odom'] = jumped
+
+        self.assertTrue(self.world.wait(lambda: 'ESTIMATE_DISCONTINUOUS' in self.world.reason('robot_1'), 5.0),
+                        self.logs())
+        self.assertEqual(self.world.state('robot_1'), 3)
+        self.world.publish_amcl('robot_1', compose(jumped, ODOM['robot_1']), 0.02, 0.01, self.world.sim)
+        time.sleep(1.5)
+        self.assertEqual(self.world.state('robot_1'), 3)
+        self.assertIn('ESTIMATE_DISCONTINUOUS', self.world.reason('robot_1'))
+
+        rows = self.diagnostics()
+        latched_at = next(index for index, row in enumerate(rows)
+                          if any(event['event'] == 'LATCHED' for event in row.get('estimate_events', [])))
+        ticks_after = [row for row in rows[latched_at + 1:] if row['kind'] == 'tick']
+        record_stamps = {row['trust_record_stamp'] for row in ticks_after}
+        self.assertGreater(len(ticks_after), 5)
+        self.assertFalse(any(row['trust_stored'] for row in ticks_after))
+        self.assertEqual(len(record_stamps), 1)
+        self.assertEqual({row['trust_rejection'] for row in ticks_after}, {'ESTIMATE_DISCONTINUOUS'})
+
+        # 보존한 기록 기반 재위치(가짜 AMCL은 후보로 돌아온다) → 성공 해제
+        self.assertEqual(self.reinit('robot_1'), (True, 'REINIT_ACCEPTED'))
+        self.assertTrue(self.world.wait(lambda: self.world.state('robot_1') == 1, 10.0), self.logs())
+        self.assertAlmostEqual(robot['map_odom'][0], original[0], places=3)
+        time.sleep(0.6)
+        rows = self.diagnostics()
+        released = next(index for index, row in enumerate(rows)
+                        if any(event['event'] == 'RELEASED' for event in row.get('estimate_events', [])))
+        self.assertGreater(released, latched_at)
+        self.assertTrue(any(row['trust_stored'] for row in rows[released:] if row['kind'] == 'tick'))
+
+    # [B2 도약 2단계] TF 공백 뒤 첫 TF를 공백 전 마지막 비교 기준과 비교한다(위치·방향 도약 → latch).
+    def test_8c_jump_after_tf_gap(self):
+        robot = self.world.robots['robot_2']
+        original = robot['map_odom']
+        self.lose('robot_2')
+
+        with self.world.lock:
+            robot['map_odom'] = (original[0] - 2.0, original[1], original[2] + 0.5)
+
+        robot['tf'] = True
+        self.assertTrue(self.world.wait(lambda: 'ESTIMATE_DISCONTINUOUS' in self.world.reason('robot_2'), 5.0),
+                        self.logs())
+        time.sleep(1.0)
+        self.assertEqual(self.world.state('robot_2'), 3)
+
+    # [B2 도약 2단계] 수신 순서: 도약한 amcl_pose가 TF보다 먼저 와도(TF는 그대로) latch한다.
+    def test_8d_amcl_jump_before_tf(self):
+        robot = self.world.robots['robot_2']
+        pose = compose(robot['map_odom'], ODOM['robot_2'])
+        self.world.publish_amcl('robot_2', (pose[0] + 1.5, pose[1], pose[2]), 0.02, 0.01, self.world.sim)
+
+        self.assertTrue(self.world.wait(lambda: 'ESTIMATE_DISCONTINUOUS' in self.world.reason('robot_2'), 3.0),
+                        self.logs())
+
+    # [B2 도약 1단계] 재위치 중 AMCL이 같은 stamp 추정만 반복하면(수렴 공분산이어도) 회복이 아니다(TIMEOUT).
+    def test_8e_repeated_estimate_not_recovery(self):
+        self.world.robots['robot_2']['amcl'] = 'repeat'
+        self.lose('robot_2')
+
+        self.assertEqual(self.reinit('robot_2'), (True, 'REINIT_ACCEPTED'))
+        self.assertTrue(self.world.wait(lambda: 'REINIT_FAILED_TIMEOUT' in self.world.reason('robot_2'), 10.0),
+                        self.logs())
+        self.assertGreaterEqual(self.world.robots['robot_2']['nomotion_calls'], 3)
+
     # 입력 pose만 같은 공분산으로 돌아오면(echo) 완료하지 않고 제한시간에 TIMEOUT
     def test_7_echo_timeout(self):
         self.world.robots['robot_2']['amcl'] = 'echo'
@@ -354,6 +484,208 @@ class AmclBeforeOdom(unittest.TestCase):
             world.destroy_node()
             rclpy.try_shutdown()
             shutil.rmtree(folder, ignore_errors=True)
+
+
+# [검토 hop 3] launch initial_poses 모드: 감독 노드는 initialpose를 보내지 않고, 최초 초기화 후보(expected_initial_*)와
+# 기록 뒤 새 amcl_pose·TF가 맞을 때만 초기화를 확인해 신뢰 기록을 시작한다. 재발행 TF만으로는 확인하지 않는다.
+@unittest.skipUnless(ros_available(), 'ROS 2와 ax_interfaces 필요(source install/setup.bash)')
+class LaunchInitialPose(unittest.TestCase):
+
+    # 시험 하나: AMCL이 매개변수로 이미 초기화된 것처럼 TF를 내는 세계에서 감독 노드를 띄운다.
+    def test_expected_initial_confirmed_by_new_estimate(self):
+        import json
+        import rclpy
+        from rclpy.executors import MultiThreadedExecutor
+
+        folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_launch_pose_'))
+        os.environ.update(ROS_DOMAIN_ID=str(140 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+                          ROS_LOG_DIR=str(folder / 'roslog'))
+        rclpy.init()
+        world = make_world(('robot_3',))
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(world)
+        threading.Thread(target=executor.spin, daemon=True).start()
+        robot = world.robots['robot_3']
+        robot['map_odom'] = (0.2, -0.1, 0.05)
+        robot['tf'] = True
+        robot['amcl'] = 'silent'          # 무이동 갱신에 응답하지 않음: 재발행 TF만으로는 확인 안 됨을 먼저 본다
+        expected = compose(robot['map_odom'], ODOM['robot_3'])
+        world.start_clock()
+        diag = folder / 'robot_3_supervisor.jsonl'
+        log = open(folder / 'robot_3.log', 'w')
+        process = subprocess.Popen([str(SUPERVISOR), '--ros-args', '-r', '__ns:=/ax/robot_3',
+                                    '-p', 'robot_id:=robot_3', '-p', 'expected_initial_enabled:=true',
+                                    '-p', f'expected_initial_x:={expected[0]}',
+                                    '-p', f'expected_initial_y:={expected[1]}',
+                                    '-p', f'expected_initial_yaw:={expected[2]}', '-p', f'diagnostics_file:={diag}'],
+                                   stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+
+        # 진단 줄
+        def rows():
+            if not diag.is_file():
+                return []
+
+            return [json.loads(line) for line in diag.read_text().splitlines() if line.strip()]
+
+        try:
+            # 새 amcl_pose 전: 재발행 TF만 있어 초기화 미확인(신뢰 기록 없음)
+            self.assertTrue(world.wait(lambda: any(row['kind'] == 'initial_expected' for row in rows()), 15.0),
+                            (folder / 'robot_3.log').read_text()[-1500:])
+            time.sleep(1.5)
+            ticks = [row for row in rows() if row['kind'] == 'tick']
+            self.assertTrue(ticks)
+            self.assertFalse(any(row['trust_stored'] for row in ticks))
+            self.assertIn('NOT_ESTABLISHED', {row['trust_rejection'] for row in ticks})
+
+            # AMCL이 새 추정을 냄(기록 뒤 stamp, 후보와 같은 자세) → 확인 → 신뢰 기록 시작
+            world.publish_amcl('robot_3', expected, 0.05, 0.03, world.sim)
+            stored = lambda: any(row['kind'] == 'tick' and row['trust_stored'] for row in rows())  # noqa: E731
+            self.assertTrue(world.wait(stored, 5.0), (folder / 'robot_3.log').read_text()[-1500:])
+            events = [event for row in rows() for event in row.get('estimate_events', [])]
+            self.assertIn(('INTENDED', 'LAUNCH_INITIAL_POSE'),
+                          {(event['event'], event.get('source')) for event in events})
+            self.assertEqual(robot['initialposes'], [])
+            self.assertFalse(any(row['kind'] == 'initialpose_sent' for row in rows()))
+            self.assertTrue(any(row['kind'] == 'initial_expected_window' for row in rows()))
+            expected_row = next(row for row in rows() if row['kind'] == 'initial_expected')
+            self.assertEqual(expected_row['basis'], 'CLOCK_VALID')
+        finally:
+            process.send_signal(signal.SIGTERM)
+
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+
+            world.stop_clock()
+            executor.shutdown(timeout_sec=2.0)
+            world.destroy_node()
+            rclpy.try_shutdown()
+            shutil.rmtree(folder, ignore_errors=True)
+
+
+    # [검토 hop 5·7] 정상 startup 순서: AMCL 첫 추정이 감독 노드의 첫 유효 tick보다 먼저 오고 그 뒤 정지(같은 TF 재발행만).
+    # 첫 추정은 기준보다 앞서 배제되지만, 이 세션 AMCL의 새 추정을 받아 초기화를 확인해야 한다(영구 NOT_ESTABLISHED 금지).
+    def test_first_estimate_before_first_valid_tick(self):
+        result = self.run_supervisor(amcl_mode='ok')
+
+        self.assertTrue(result['stored'], result['log'])
+        self.assertIn(('INTENDED', 'LAUNCH_INITIAL_POSE'), result['events'])
+        self.assertEqual(result['initialposes'], [])
+        self.assertGreaterEqual(result['nomotion_calls'], 1)
+
+        # 확인 뒤에는 무이동 갱신 요청을 멈춘다.
+        self.assertIsNotNone(result['closed_sim'])
+        self.assertEqual([t for t in result['nomotion_sims'] if t > result['closed_sim']], [])
+
+    # [공분산 반올림] 무이동 갱신 새 추정이 실제 smoke 공분산(yaw −1.09e-13)이어도 판정·확인이 진행돼 신뢰 기록이
+    # 생기고, 진단에 정규화 대상·원래 값·경계가 남는다. initialpose 송신 없음.
+    def test_roundoff_covariance_estimate(self):
+        result = self.run_supervisor(amcl_mode='roundoff')
+
+        self.assertTrue(result['stored'], result['log'])
+        self.assertEqual(result['initialposes'], [])
+        roundoff = [row['covariance_roundoff'] for row in result['ticks'] if row.get('covariance_roundoff')]
+        normalized = [item for entry in roundoff for item in entry['normalized']]
+        self.assertTrue(normalized)
+        self.assertEqual({item['index'] for item in normalized}, {7, 35})
+        self.assertIn(-1.0924594562311242e-13, {item['value'] for item in normalized})
+        self.assertEqual({entry['epsilon'] for entry in roundoff}, {1e-12})
+
+    # 감독 노드 시작 전에 낸 amcl_pose(transient local로 다시 받음)·재발행 TF와 감독 노드 매개변수를 쓰는 세계에서
+    # 감독 노드를 띄워 결과를 모은다. amcl_mode: 가짜 AMCL 무이동 갱신 응답(ok·silent).
+    def run_supervisor(self, amcl_mode, config=''):
+        import json
+        import rclpy
+        from rclpy.executors import MultiThreadedExecutor
+
+        folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_first_'))
+        os.environ.update(ROS_DOMAIN_ID=str(80 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+                          ROS_LOG_DIR=str(folder / 'roslog'))
+        rclpy.init()
+        world = make_world(('robot_3',))
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(world)
+        threading.Thread(target=executor.spin, daemon=True).start()
+        robot = world.robots['robot_3']
+        robot['map_odom'] = (0.2, -0.1, 0.05)
+        robot['tf'] = True
+        robot['amcl'] = amcl_mode
+        expected = compose(robot['map_odom'], ODOM['robot_3'])
+        world.start_clock()
+        time.sleep(0.5)
+        world.publish_amcl('robot_3', expected, 0.05, 0.03, world.sim)
+        diag = folder / 'robot_3_supervisor.jsonl'
+        log = open(folder / 'robot_3.log', 'w')
+        command = [str(SUPERVISOR), '--ros-args', '-r', '__ns:=/ax/robot_3',
+                   '-p', 'robot_id:=robot_3', '-p', 'expected_initial_enabled:=true',
+                   '-p', f'expected_initial_x:={expected[0]}', '-p', f'expected_initial_y:={expected[1]}',
+                   '-p', f'expected_initial_yaw:={expected[2]}', '-p', f'diagnostics_file:={diag}']
+
+        if config:
+            (folder / 'health.yaml').write_text(config)
+            command += ['-p', f'config_file:={folder / "health.yaml"}']
+
+        process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+
+        # 진단 줄
+        def rows():
+            if not diag.is_file():
+                return []
+
+            return [json.loads(line) for line in diag.read_text().splitlines() if line.strip()]
+
+        # 의도가 닫힌(확인·만료) sim 시각
+        def closed():
+            return next((row['sim'] for row in rows() for event in row.get('estimate_events', [])
+                         if event['event'] == 'INTENT_CLOSED'), None)
+
+        try:
+            world.wait(lambda: world.state('robot_3') == 1, 15.0)
+            world.wait(lambda: closed() is not None, 8.0)
+            time.sleep(1.5)
+            all_rows = rows()
+            ticks = [row for row in all_rows if row['kind'] == 'tick']
+
+            return {'stored': any(row['trust_stored'] for row in ticks), 'ticks': ticks,
+                    'last_rejection': ticks[-1]['trust_rejection'] if ticks else None,
+                    'amcl_inputs': [row for row in all_rows if row['kind'] == 'input' and row['stream'] == 'amcl'],
+                    'events': {(event['event'], event.get('source')) for row in all_rows
+                               for event in row.get('estimate_events', [])},
+                    'initialposes': list(robot['initialposes']), 'nomotion_calls': robot['nomotion_calls'],
+                    'closed_sim': closed(),
+                    'closed_reasons': [event.get('reason') for row in all_rows
+                                       for event in row.get('estimate_events', [])
+                                       if event['event'] == 'INTENT_CLOSED'],
+                    'nomotion_sims': [row['sim'] for row in all_rows if row['kind'] == 'initial_expected_nomotion'],
+                    'log': (folder / 'robot_3.log').read_text()[-1500:]}
+        finally:
+            process.send_signal(signal.SIGTERM)
+
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+
+            world.stop_clock()
+            executor.shutdown(timeout_sec=2.0)
+            world.destroy_node()
+            rclpy.try_shutdown()
+            shutil.rmtree(folder, ignore_errors=True)
+
+    # 감독 노드 재시작 흉내: 감독 노드 시작 전에 낸 amcl_pose(transient local로 다시 받음)와 재발행 TF만 있고
+    # AMCL이 새 추정을 내지 않으면(무이동 갱신 무응답) 후보와 같은 자세여도 초기화를 확인하지 않는다.
+    def test_restart_old_estimate_not_confirmed(self):
+        # 의도 제한시간을 2 s(sim)로 줄여 만료 뒤 요청 중단까지 본다.
+        result = self.run_supervisor(amcl_mode='silent', config='estimate_jump:\n  intent_timeout_s: 2.0\n')
+
+        self.assertTrue(result['amcl_inputs'])
+        self.assertFalse(result['stored'])
+        self.assertEqual(result['last_rejection'], 'NOT_ESTABLISHED')
+        self.assertGreaterEqual(result['nomotion_calls'], 1)
+        self.assertEqual(result['initialposes'], [])
+        self.assertEqual(result['closed_reasons'], ['TIMEOUT'])
+        self.assertEqual([t for t in result['nomotion_sims'] if t > result['closed_sim']], [])
 
 
 # 가짜 세계 노드를 만든다(rclpy를 함수 안에서 불러 ROS 없는 환경에서도 모듈을 읽을 수 있게 한다).
@@ -434,7 +766,7 @@ def make_world(robot_ids):
                 for robot in self.robots.values():
                     robot.update(scan=True, tf=robot.get('map_odom') is not None, actuation=4,
                                  actuation_publish=True, amcl='ok', nomotion_calls=0, odom_override=None,
-                                 odom_publish=True)
+                                 odom_publish=True, repeat_stamp=None)
 
         # 가짜 시계와 입력 발행 스레드를 시작한다(벽시계 1 s = sim 1 s).
         def start_clock(self):
@@ -537,6 +869,7 @@ def make_world(robot_ids):
                 robot['echo_std'] = (std, math.sqrt(message.pose.covariance[35]))
 
         # 가짜 AMCL 무이동 갱신: ok면 수렴한 추정, echo면 입력 공분산 그대로, silent면 아무것도 내지 않는다.
+        # repeat면 수렴한 추정을 처음 stamp 그대로 반복한다(같은 추정 재수신).
         def on_nomotion(self, robot_id, response):
             with self.lock:
                 robot = self.robots[robot_id]
@@ -546,22 +879,37 @@ def make_world(robot_ids):
                     return response
 
                 pose = compose(robot['map_odom'], ODOM[robot_id])
+
+                # roundoff면 initial_poses smoke 실제 공분산(yy·yaw 극소 음수)으로 낸다.
+                if robot['amcl'] == 'roundoff':
+                    self.publish_amcl(robot_id, pose, 0.0, 0.0, self.sim, covariance=ROUNDOFF_SAMPLE)
+                    return response
+
+                if robot['amcl'] == 'repeat':
+                    if robot['repeat_stamp'] is None:
+                        robot['repeat_stamp'] = self.sim
+
+                    self.publish_amcl(robot_id, pose, 0.05, 0.03, robot['repeat_stamp'])
+                    return response
+
                 std = (0.05, 0.03) if robot['amcl'] == 'ok' else robot.get('echo_std', (0.3, 0.2))
                 self.publish_amcl(robot_id, pose, std[0], std[1], self.sim)
 
             return response
 
-        # amcl_pose 발행
-        def publish_amcl(self, robot_id, pose, std, yaw_std, at):
+        # amcl_pose 발행(covariance를 주면 36개를 그대로 쓴다)
+        def publish_amcl(self, robot_id, pose, std, yaw_std, at, covariance=None):
             message = PoseWithCovarianceStamped()
             message.header.stamp = stamp(at)
             message.header.frame_id = 'map'
             message.pose.pose.position.x, message.pose.pose.position.y = pose[0], pose[1]
             message.pose.pose.orientation.z, message.pose.pose.orientation.w = quaternion(pose[2])
-            covariance = [0.0] * 36
-            covariance[0] = covariance[7] = std ** 2
-            covariance[35] = yaw_std ** 2
-            message.pose.covariance = covariance
+            if covariance is None:
+                covariance = [0.0] * 36
+                covariance[0] = covariance[7] = std ** 2
+                covariance[35] = yaw_std ** 2
+
+            message.pose.covariance = list(covariance)
             self.pubs[robot_id]['amcl'].publish(message)
 
         # 가짜 AMCL lifecycle 상태: 항상 active

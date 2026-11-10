@@ -1,9 +1,9 @@
 {
   "source": "../../AX_2.obj",
-  "source_sha256": "dcc889b8df3c75d976059534c332efc12906ad19979a72afdb23ec7729e0650f",
+  "source_sha256": "02e4e37569d3cb395db26f6282ffcf1fc23a9bab3250be7577754c0692fafd9e",
   "coordinate_policy": "Original assembled coordinates, orientation, scale and mm units preserved; no recentering.",
   "material_libraries": {
-    "AX_2.mtl": "3a8a00b830729bf3b8fe67b552b2d3611f73d0ffc300e1ecbe0eeab36765e383"
+    "AX_2.mtl": "2c510083f3ed46ed8bdac42a4f8afcfd1450673ad4fc01d32585e5d0c8e900d5"
   },
   "excluded_objects": [],
   "parts": [

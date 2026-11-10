@@ -2,7 +2,7 @@
 # robotiq_description/UPSTREAM_FILES.json). Never convert their line endings
 # on checkout or commit; keep the bytes produced by tools/split_robot_meshes.py
 # or the pinned upstream source. AX_1.obj/.mtl intentionally keep CRLF.
-*.obj -text
+*.obj -text whitespace=cr-at-eol
 *.mtl -text whitespace=cr-at-eol
 *.dae -text
 *.stl -text

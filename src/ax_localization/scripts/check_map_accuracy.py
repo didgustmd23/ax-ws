@@ -12,6 +12,8 @@ base_link→LiDAR 장착 변환으로 world 좌표에 누적한 점유 격자다
 기준 파일(--criteria)이 없으면 판정하지 않는다(judgment: not_judged). 큰 정렬량만으로 실패 판정하지 않는다.
 
 --adopt: 저장 파일을 검사한 뒤 --map-dir 폴더에 map.yaml·map.pgm·pose graph·map_info.yaml을 교체한다.
+  판정(--criteria)이 PASS일 때만 채택하고, FAIL·not_judged면 파일을 바꾸지 않고 종료 코드 1로 끝낸다.
+  map_info.yaml의 경로는 작업공간 기준 상대 경로(밖이면 "~/" 기준)로 기록한다. 대조는 해시로 한다.
 교체 전 검사가 실패하면 기존 지도를 그대로 둔다. 새 월드 회차는 --map-dir를 명시해야 하며, 옛 AWS 형식 회차만
 생략 시 maps/aws_warehouse를 쓴다.
 
@@ -23,6 +25,7 @@ base_link→LiDAR 장착 변환으로 world 좌표에 누적한 점유 격자다
 
 import argparse
 from datetime import datetime
+import copy
 import json
 import math
 import os
@@ -69,6 +72,54 @@ def workspace_root():
 
 
 WORKSPACE = workspace_root()
+
+
+# 메타정보에 남길 경로를 작업 PC에 묶이지 않는 형태로 바꾼다(해시는 따로 기록하므로 경로는 표기용).
+# - 작업공간 안: 작업공간 기준 상대 경로(예: install/ax_localization/..., log/...)
+# - 홈 폴더 안(작업공간 밖): "~/" 기준 경로
+# - 그 밖의 절대 경로·상대 경로·빈 값: 그대로
+def portable_path(value, workspace=None, home=None):
+    if not value:
+        return value
+
+    path = Path(value)
+
+    if not path.is_absolute():
+        return str(value)
+
+    workspace = Path(workspace or WORKSPACE).resolve()
+    home = Path(home or Path.home()).resolve()
+
+    if path.is_relative_to(workspace):
+        return path.relative_to(workspace).as_posix()
+
+    if path.is_relative_to(home):
+        return "~/" + path.relative_to(home).as_posix()
+
+    return str(value)
+
+
+# 메타정보의 경로 필드(세션·주행 기록에서 옮긴 값)를 portable_path로 바꾼 사본을 돌려준다. 해시 값은 바꾸지 않는다.
+def portable_metadata(info, workspace=None, home=None):
+    info = copy.deepcopy(info)
+
+    def convert(container, key):
+        if isinstance(container, dict) and isinstance(container.get(key), str):
+            container[key] = portable_path(container[key], workspace, home)
+
+    convert(info.get("world") or {}, "world_file")
+    convert(((info.get("robot") or {}).get("sensor") or {}).get("scan_merge") or {}, "file")
+    convert(info.get("slam") or {}, "config")
+    convert(info.get("route") or {}, "file")
+    convert(info.get("wheel_friction") or {}, "override_file")
+
+    for record in (info.get("config_files") or {}).values():
+        convert(record, "source")
+
+    for key in ("result", "drive_result"):
+        convert(info.get("verification") or {}, key)
+
+    return info
 
 
 # 임시 파일에 쓴 뒤 바꿔 넣는다.
@@ -552,7 +603,7 @@ def map_metadata(run, drive, accuracy, slam_yaml):
     slam_input, scan_merge, input_problems = slam_input_record(session, drive)
     (missing if is_legacy_aws(session) else consistency).extend(input_problems)
 
-    return {
+    metadata = {
         "created": datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
         "map": mt.map_summary(run / "slam_map.yaml"),
         "world": world,
@@ -577,8 +628,8 @@ def map_metadata(run, drive, accuracy, slam_yaml):
             "judgment": accuracy["judgment"],
             "judgment_reason": accuracy.get("reason"),
             "metrics": accuracy["metrics_optimal"],
-            "result": str((run / "accuracy.json").relative_to(WORKSPACE)) if run.is_relative_to(WORKSPACE) else str(run / "accuracy.json"),
-            "drive_result": str((run / "drive_result.json").relative_to(WORKSPACE)) if run.is_relative_to(WORKSPACE) else str(run / "drive_result.json"),
+            "result": str(run / "accuracy.json"),
+            "drive_result": str(run / "drive_result.json"),
         },
         "T_world_map": {
             "use": "검증 전용. 운영 위치 추정·주행에 쓰지 않는다",
@@ -589,6 +640,9 @@ def map_metadata(run, drive, accuracy, slam_yaml):
         "missing": missing,
         "consistency_problems": consistency,
     }
+
+    # 세션·주행 기록에서 옮긴 경로는 작업 PC 절대 경로가 남지 않게 바꾼다(해시는 그대로).
+    return portable_metadata(metadata)
 
 
 # 채택 조건 중 메타데이터 문제(누락·개발용 임시 사본 조건)를 돌려준다.
@@ -641,7 +695,8 @@ def main():
     parser.add_argument("--occupied-ratio", type=float, default=0.25, help="참조 지도 점유 판정 비율")
     parser.add_argument("--tolerance-cells", type=int, default=1, help="일치 판정 허용 셀(±)")
     parser.add_argument("--criteria", type=Path, default=None, help="확정 임계값 YAML. 없으면 판정하지 않음")
-    parser.add_argument("--adopt", action="store_true", help="검사 후 --map-dir에 채택(새 월드는 --map-dir 필수)")
+    parser.add_argument("--adopt", action="store_true",
+                        help="검사 후 --map-dir에 채택(판정 PASS일 때만, 새 월드는 --map-dir 필수)")
     parser.add_argument("--map-dir", type=Path, default=None,
                         help="채택 대상 폴더. 생략하면 옛 AWS 형식 회차만 maps/aws_warehouse를 쓰고 새 월드는 거절")
     arguments = parser.parse_args()
@@ -820,6 +875,10 @@ def compare_map(run, drive, result, reference, geometry, truth, initial, argumen
 
         if result["drive_status"].get("partial_route"):
             problems.append("부분 경로(--waypoints) 지도")
+
+        # 판정 기준(--criteria)으로 PASS일 때만 채택한다. FAIL·not_judged(기준 미지정)는 파일을 바꾸지 않고 거절한다.
+        if result.get("judgment") != "PASS":
+            problems.append(f"판정 {result.get('judgment')}: PASS가 아니면 채택하지 않음(--criteria 지정 필요)")
 
         problems += stop_gate_problems(drive)
         problems += comparison.get("metadata_problems", [])

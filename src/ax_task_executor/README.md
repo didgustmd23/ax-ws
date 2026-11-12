@@ -260,6 +260,11 @@ ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1 -p policy:
 lease 원장도 **계속 남는다.** 같은 `request_id`를 재사용하면 재시작·정책 변경 뒤에도 예전 응답이 돌아오고,
 같은 `command_id`는 예전 수락 기록을 재사용한다. 시험마다 새 ID를 쓰고, 새로 시작하려면 `-p lease_db:=` 로 다른 경로를 지정한다.
 
+**알려진 한계(응답 지연):** 단일 스레드 `lease_check`에 4개 클라이언트가 1000회 요청한 측정에서 10회 중 3회,
+요청 1~2개가 0.8~2.5 s 늦게 서버에 도착했다(서버 처리는 0.03 s 이하, 측정 당시 loadavg 1~2).
+A2의 lease 대기(0.5 s)를 넘기면 무응답 거절(안전 쪽)로 나타날 수 있다.
+원인은 rclpy/rmw 서비스 처리 쪽으로 추정하지만 확정하지 못했다. 측정 자료는 `log/a3_executor_latency/20261112_210838`(작성 PC 기록, Git 제외)이다.
+
 구현하지 않은 것: lease 표·세대 발급·갱신·철회, 활성 `ManipulateObject` Goal과 `goal_id` 대조,
 배정 유효성(`tA + H`)·위임 예산 허용 목록, 재동기화(`LEASE_RESYNC_UNCERTAIN` 판정), A3 로컬 작업의
 "현재 실행 중 RETRACT_ARM" 대조, `valid_for_s`를 남은 lease 기한 이하로 줄이는 처리.

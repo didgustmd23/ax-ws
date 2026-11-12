@@ -65,6 +65,8 @@ DEFAULT_SPAWN_POSITIONS = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
 WORLD_SPAWN_POSITIONS = {
     # 두 창고 월드의 출발 창고 내부 위치(m). 순서대로 robot_1~robot_4이며 통로 밖에서 시작한다.
     'planned/ax_warehouse.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
+    # 단색 보존 월드는 기준(질감) 월드와 재질 외 구조가 같으므로 같은 출발 위치를 쓴다.
+    'planned/ax_warehouse_plain.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
 }
 
 
@@ -157,7 +159,7 @@ def setup(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('world', default_value='planned/ax_warehouse.world',
-                              choices=['planned/ax_warehouse.world']),
+                              choices=['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world']),
         DeclareLaunchArgument('test_fixture_world', default_value='',
                               description='Test-only generated SDF fixture; not a selectable map'),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),

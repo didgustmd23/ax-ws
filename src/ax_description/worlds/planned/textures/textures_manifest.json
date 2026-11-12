@@ -1,0 +1,3708 @@
+{
+ "generator": "gen_textures.py",
+ "seed": 20261112,
+ "ppm_target": 220.0,
+ "max_side_px": 4096,
+ "upright_ppm": 512.0,
+ "deck_ppm": 256.0,
+ "box_px": 512,
+ "sample_px": 256,
+ "format": "jpg",
+ "jpg_quality": 92,
+ "targets": [
+  {
+   "model": "floor_source",
+   "kind": "concrete",
+   "size_m": [
+    18.0,
+    16.0,
+    0.1
+   ],
+   "texture": "floor_floor_source.jpg",
+   "pixels_wh": [
+    3960,
+    3520
+   ]
+  },
+  {
+   "model": "wall_source_north",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_source_north.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "AN-01",
+    "AN-02",
+    "AN-03",
+    "AN-04"
+   ]
+  },
+  {
+   "model": "wall_source_south",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_source_south.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "AS-01",
+    "AS-02",
+    "AS-03",
+    "AS-04"
+   ]
+  },
+  {
+   "model": "wall_source_outer",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    16.0,
+    2.5
+   ],
+   "texture": "wall_wall_source_outer.jpg",
+   "pixels_wh": [
+    3520,
+    550
+   ],
+   "signs": [
+    "AW-01",
+    "AW-02",
+    "AW-03"
+   ]
+  },
+  {
+   "model": "floor_destination",
+   "kind": "concrete",
+   "size_m": [
+    18.0,
+    16.0,
+    0.1
+   ],
+   "texture": "floor_floor_destination.jpg",
+   "pixels_wh": [
+    3960,
+    3520
+   ]
+  },
+  {
+   "model": "wall_destination_north",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_destination_north.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "BN-01",
+    "BN-02",
+    "BN-03",
+    "BN-04"
+   ]
+  },
+  {
+   "model": "wall_destination_south",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_destination_south.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "BS-01",
+    "BS-02",
+    "BS-03",
+    "BS-04"
+   ]
+  },
+  {
+   "model": "wall_destination_outer",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    16.0,
+    2.5
+   ],
+   "texture": "wall_wall_destination_outer.jpg",
+   "pixels_wh": [
+    3520,
+    550
+   ],
+   "signs": [
+    "BE-01",
+    "BE-02",
+    "BE-03"
+   ]
+  },
+  {
+   "model": "floor_transfer_corridor",
+   "kind": "concrete",
+   "size_m": [
+    8.0,
+    1.8,
+    0.1
+   ],
+   "texture": "floor_floor_transfer_corridor.jpg",
+   "pixels_wh": [
+    1760,
+    396
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-19.0_lower_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-19.0_upper_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_lower_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-15.0_upper_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_lower_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "rack_-11.0_upper_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "cargo_box_01",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_02",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_03",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_04",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_05",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_06",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_07",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_08",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_09",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_10",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_11",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_12",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_13",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_14",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_15",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_16",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_17",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_18",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_19",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_20",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_21",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_22",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_23",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_24",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_25",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_26",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_27",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_28",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_29",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_30",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_31",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_32",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_33",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_34",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_35",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_36",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_37",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_38",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_39",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_40",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_41",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_42",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_43",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_44",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_45",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_46",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_47",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_48",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_49",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_50",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_51",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_52",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_53",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_54",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_55",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_56",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_57",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_58",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_59",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_60",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_61",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_62",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_63",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_64",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_65",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_66",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_67",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_68",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_69",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_70",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_71",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_72",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_73",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_74",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_75",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_76",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_77",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_78",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_79",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_80",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_81",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_82",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_83",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_84",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_85",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_86",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_87",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_88",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_89",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_90",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_91",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_92",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_93",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_94",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_95",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_96",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_97",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_98",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_99",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_100",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_101",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_102",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_103",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_104",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_105",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_106",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_107",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_108",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_109",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_110",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_111",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_112",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_113",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_114",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_115",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_116",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_117",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "cargo_box_118",
+   "kind": "cargo_box",
+   "size_m": [
+    0.18,
+    0.18,
+    0.18
+   ],
+   "texture": "cargo_box_180x180x180.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-180"
+  },
+  {
+   "model": "cargo_box_119",
+   "kind": "cargo_box",
+   "size_m": [
+    0.22,
+    0.2,
+    0.2
+   ],
+   "texture": "cargo_box_220x200x200.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-220"
+  },
+  {
+   "model": "cargo_box_120",
+   "kind": "cargo_box",
+   "size_m": [
+    0.25,
+    0.22,
+    0.24
+   ],
+   "texture": "cargo_box_250x220x240.jpg",
+   "pixels_wh": [
+    512,
+    512
+   ],
+   "label": "AX-250"
+  },
+  {
+   "model": "destination_rack_1_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_1_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_1_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_1_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_1_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_1_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_1_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_2_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_2_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_2_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_2_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_2_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_2_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_2_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_3_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_3_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_3_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_3_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_3_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_3_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_3_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_4_leg_-1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_4_leg_-1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_4_leg_1.3_-0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_4_leg_1.3_0.44",
+   "kind": "rack_upright",
+   "size_m": [
+    0.08,
+    0.08,
+    2.0
+   ],
+   "texture": "rack_upright.jpg",
+   "pixels_wh": [
+    41,
+    1024
+   ]
+  },
+  {
+   "model": "destination_rack_4_shelf_0.25",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_4_shelf_1.0",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "destination_rack_4_shelf_1.75",
+   "kind": "shelf_deck",
+   "size_m": [
+    2.8,
+    1.0,
+    0.08
+   ],
+   "texture": "shelf_deck.jpg",
+   "pixels_wh": [
+    717,
+    256
+   ]
+  },
+  {
+   "model": "floor_transfer_corridor_1",
+   "kind": "concrete",
+   "size_m": [
+    8.0,
+    1.8,
+    0.1
+   ],
+   "texture": "floor_floor_transfer_corridor_1.jpg",
+   "pixels_wh": [
+    1760,
+    396
+   ]
+  },
+  {
+   "model": "floor_transfer_corridor_2",
+   "kind": "concrete",
+   "size_m": [
+    8.0,
+    1.8,
+    0.1
+   ],
+   "texture": "floor_floor_transfer_corridor_2.jpg",
+   "pixels_wh": [
+    1760,
+    396
+   ]
+  },
+  {
+   "model": "wall_destination_north_1",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_destination_north_1.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "BN-05",
+    "BN-06",
+    "BN-07",
+    "BN-08"
+   ]
+  },
+  {
+   "model": "wall_destination_north_2",
+   "kind": "wall",
+   "size_m": [
+    18.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_wall_destination_north_2.jpg",
+   "pixels_wh": [
+    4048,
+    550
+   ],
+   "signs": [
+    "BN-09",
+    "BN-10",
+    "BN-11",
+    "BN-12"
+   ]
+  },
+  {
+   "model": "corridor_1_wall_north",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_1_wall_north.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C1-01"
+   ]
+  },
+  {
+   "model": "corridor_1_wall_south",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_1_wall_south.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C1-02"
+   ]
+  },
+  {
+   "model": "corridor_2_wall_north",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_2_wall_north.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C2-01"
+   ]
+  },
+  {
+   "model": "corridor_2_wall_south",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_2_wall_south.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C2-02"
+   ]
+  },
+  {
+   "model": "corridor_3_wall_north",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_3_wall_north.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C3-01"
+   ]
+  },
+  {
+   "model": "corridor_3_wall_south",
+   "kind": "wall",
+   "size_m": [
+    8.4,
+    0.2,
+    2.5
+   ],
+   "texture": "wall_corridor_3_wall_south.jpg",
+   "pixels_wh": [
+    1848,
+    550
+   ],
+   "signs": [
+    "C3-02"
+   ]
+  },
+  {
+   "model": "wall_source_door_section_1",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    2.0786562871818193,
+    2.5
+   ],
+   "texture": "wall_wall_source_door_section_1.jpg",
+   "pixels_wh": [
+    457,
+    550
+   ],
+   "signs": []
+  },
+  {
+   "model": "wall_source_door_section_2",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    3.22134371281818,
+    2.5
+   ],
+   "texture": "wall_wall_source_door_section_2.jpg",
+   "pixels_wh": [
+    709,
+    550
+   ],
+   "signs": [
+    "AD-01"
+   ]
+  },
+  {
+   "model": "wall_source_door_section_3",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    3.2820715288500293,
+    2.5
+   ],
+   "texture": "wall_wall_source_door_section_3.jpg",
+   "pixels_wh": [
+    722,
+    550
+   ],
+   "signs": [
+    "AD-02"
+   ]
+  },
+  {
+   "model": "wall_source_door_section_4",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    2.01792847114997,
+    2.5
+   ],
+   "texture": "wall_wall_source_door_section_4.jpg",
+   "pixels_wh": [
+    444,
+    550
+   ],
+   "signs": []
+  },
+  {
+   "model": "wall_destination_door_section_1",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    2.0786562871818193,
+    2.5
+   ],
+   "texture": "wall_wall_destination_door_section_1.jpg",
+   "pixels_wh": [
+    457,
+    550
+   ],
+   "signs": []
+  },
+  {
+   "model": "wall_destination_door_section_2",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    3.22134371281818,
+    2.5
+   ],
+   "texture": "wall_wall_destination_door_section_2.jpg",
+   "pixels_wh": [
+    709,
+    550
+   ],
+   "signs": [
+    "BD-01"
+   ]
+  },
+  {
+   "model": "wall_destination_door_section_3",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    3.2820715288500293,
+    2.5
+   ],
+   "texture": "wall_wall_destination_door_section_3.jpg",
+   "pixels_wh": [
+    722,
+    550
+   ],
+   "signs": [
+    "BD-02"
+   ]
+  },
+  {
+   "model": "wall_destination_door_section_4",
+   "kind": "wall",
+   "size_m": [
+    0.2,
+    2.01792847114997,
+    2.5
+   ],
+   "texture": "wall_wall_destination_door_section_4.jpg",
+   "pixels_wh": [
+    444,
+    550
+   ],
+   "signs": []
+  },
+  {
+   "model": "sample_fit_xs_01",
+   "kind": "sample",
+   "size_m": [
+    0.12,
+    0.12,
+    0.12
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_xs_02",
+   "kind": "sample",
+   "size_m": [
+    0.12,
+    0.12,
+    0.12
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_xs_03",
+   "kind": "sample",
+   "size_m": [
+    0.12,
+    0.12,
+    0.12
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_small_01",
+   "kind": "sample",
+   "size_m": [
+    0.2,
+    0.18,
+    0.18
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_small_02",
+   "kind": "sample",
+   "size_m": [
+    0.2,
+    0.18,
+    0.18
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_medium_01",
+   "kind": "sample",
+   "size_m": [
+    0.3,
+    0.25,
+    0.24
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_medium_02",
+   "kind": "sample",
+   "size_m": [
+    0.3,
+    0.25,
+    0.24
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_large_01",
+   "kind": "sample",
+   "size_m": [
+    0.4,
+    0.35,
+    0.3
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_xl_01",
+   "kind": "sample",
+   "size_m": [
+    0.5,
+    0.45,
+    0.35
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_xxl_01",
+   "kind": "sample",
+   "size_m": [
+    0.6,
+    0.6,
+    0.42
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_full_deck_01",
+   "kind": "sample",
+   "size_m": [
+    0.68,
+    0.68,
+    0.46
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_near_limit_01",
+   "kind": "sample",
+   "size_m": [
+    0.7,
+    0.7,
+    0.49
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_fit_full_deck_spare_01",
+   "kind": "sample",
+   "size_m": [
+    0.68,
+    0.68,
+    0.46
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_wide_01",
+   "kind": "sample",
+   "size_m": [
+    0.85,
+    0.85,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_wide_02",
+   "kind": "sample",
+   "size_m": [
+    0.85,
+    0.85,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_long_01",
+   "kind": "sample",
+   "size_m": [
+    1.05,
+    0.35,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_long_02",
+   "kind": "sample",
+   "size_m": [
+    1.05,
+    0.35,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_long_03",
+   "kind": "sample",
+   "size_m": [
+    1.05,
+    0.35,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_deep_01",
+   "kind": "sample",
+   "size_m": [
+    0.3,
+    0.95,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_deep_02",
+   "kind": "sample",
+   "size_m": [
+    0.3,
+    0.95,
+    0.25
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_tall_01",
+   "kind": "sample",
+   "size_m": [
+    0.4,
+    0.4,
+    0.65
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_tall_02",
+   "kind": "sample",
+   "size_m": [
+    0.4,
+    0.4,
+    0.65
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  },
+  {
+   "model": "sample_reject_all_01",
+   "kind": "sample",
+   "size_m": [
+    0.9,
+    0.9,
+    0.65
+   ],
+   "texture": "sample_grain.jpg",
+   "pixels_wh": [
+    256,
+    256
+   ]
+  }
+ ],
+ "files": {
+  "cargo_box_180x180x180.jpg": {
+   "bytes": 49977,
+   "sha256": "0d188e9a6a986bad450801f7d67dbc310a9b64fde5b9b19518eb7afb0188b361"
+  },
+  "cargo_box_220x200x200.jpg": {
+   "bytes": 50989,
+   "sha256": "2533cc563e5408ca97b6e2940b790b77050616c840504a2d9dbd87e03f5c58e7"
+  },
+  "cargo_box_250x220x240.jpg": {
+   "bytes": 51717,
+   "sha256": "1ca2850e8803f36b3c31f69157f5f3c4236eefd53e7b15c623c3b43a446a0845"
+  },
+  "floor_floor_destination.jpg": {
+   "bytes": 4425694,
+   "sha256": "ff940dc38d51931f16c0e30d556ab9eb1bba2c9601e010517e8a8580ddaf2247"
+  },
+  "floor_floor_source.jpg": {
+   "bytes": 4426327,
+   "sha256": "80bacb151305c3bcf5e9bb59de469b2877e66a129b33fd90c69501bc8bf6830e"
+  },
+  "floor_floor_transfer_corridor.jpg": {
+   "bytes": 223237,
+   "sha256": "5e70ee1af6d70c420369d62fdd8e78b914e3cbb2bee6d62abbea0046e4a631f2"
+  },
+  "floor_floor_transfer_corridor_1.jpg": {
+   "bytes": 222849,
+   "sha256": "952a676f79e6ed8d9dbb64241a74c5ae7fd43a72022fa636ea1dc47fece85af3"
+  },
+  "floor_floor_transfer_corridor_2.jpg": {
+   "bytes": 222965,
+   "sha256": "b98a9ebc6e53a6317b751290202bab7250a08407f43d1a6f83194f8284e445d2"
+  },
+  "rack_upright.jpg": {
+   "bytes": 12970,
+   "sha256": "8fd6f563765484c4b3c6d9f55f9845f13a2f08c6e29f8a5842ee4fc6515215b2"
+  },
+  "sample_grain.jpg": {
+   "bytes": 13738,
+   "sha256": "632db8e53fc23529414105c130aa3afce596e7b4d6996ee9ec64b8f568ddb92b"
+  },
+  "shelf_deck.jpg": {
+   "bytes": 66515,
+   "sha256": "5e1f9b0f2ce374f1057f370a60a97a65c576f5341a4f4b2f162d03d8d78d7583"
+  },
+  "wall_corridor_1_wall_north.jpg": {
+   "bytes": 197284,
+   "sha256": "a3150cf98f969e50acc7da758a445679cb1aa4e6d1643f82990189ae9d4c785c"
+  },
+  "wall_corridor_1_wall_south.jpg": {
+   "bytes": 197190,
+   "sha256": "c79c93da11fa77052cb4ae7b890756e5b80e9a41411f8a03df8c7f74a1b26e33"
+  },
+  "wall_corridor_2_wall_north.jpg": {
+   "bytes": 197449,
+   "sha256": "4e93631b19ad37dd7187084f82c211619f7457a16124703008b3b9cb13fd2fb0"
+  },
+  "wall_corridor_2_wall_south.jpg": {
+   "bytes": 197249,
+   "sha256": "35fdc4145eb9971bc8e31e33f929655b42595c55c9d4bf5a0e654c9bbe7844eb"
+  },
+  "wall_corridor_3_wall_north.jpg": {
+   "bytes": 197190,
+   "sha256": "e5e1f939c2160ad59431d2d05f773613dfb65f036bc5c0f1e6b522e4adf7ec0b"
+  },
+  "wall_corridor_3_wall_south.jpg": {
+   "bytes": 197482,
+   "sha256": "6b7084f88735343e1fd4fd025c641f5504c4ecc82b69506993eee1b9a3ed4c53"
+  },
+  "wall_wall_destination_door_section_1.jpg": {
+   "bytes": 49024,
+   "sha256": "9f3f20108c0c2142e2b8e2438304b0265b558616234210dd2591a99e4b297ef6"
+  },
+  "wall_wall_destination_door_section_2.jpg": {
+   "bytes": 76401,
+   "sha256": "8dde73acf454984c7fd9790adaa804fc068e9017e54b13cf6fcc97f12b8e0d4f"
+  },
+  "wall_wall_destination_door_section_3.jpg": {
+   "bytes": 78250,
+   "sha256": "b92eac7b3a2b2eca84ed811c6cd6adbb29c664ae2854d7eb9b9e40279405bafe"
+  },
+  "wall_wall_destination_door_section_4.jpg": {
+   "bytes": 47639,
+   "sha256": "f615dfe772bdb3632582dc98a290ebe50774a27f89151f35fbb1065686389fa9"
+  },
+  "wall_wall_destination_north.jpg": {
+   "bytes": 434606,
+   "sha256": "79021b36b937e406bd6417c03a11130cd61fe1543b9b87fe751a39dd3ac8fbce"
+  },
+  "wall_wall_destination_north_1.jpg": {
+   "bytes": 434833,
+   "sha256": "a4d42550028be9bd6ddd9a5be3b87c0e7aea7cd7c286abb4cc03a9b9ee5cb36e"
+  },
+  "wall_wall_destination_north_2.jpg": {
+   "bytes": 433922,
+   "sha256": "39ce8625d7a5cc0dbf4f6a029c42e5051e6daeda2d4f754be13a4dc2acef595b"
+  },
+  "wall_wall_destination_outer.jpg": {
+   "bytes": 376305,
+   "sha256": "6e0b6df78cbe64d7c78156624f6f812adcdc3fe9a808775e90b7ff12eb4a9808"
+  },
+  "wall_wall_destination_south.jpg": {
+   "bytes": 436179,
+   "sha256": "bee888c28b108f4661d5b96c978c1adc7639da1c476c19ff3bef6f1670538a87"
+  },
+  "wall_wall_source_door_section_1.jpg": {
+   "bytes": 48776,
+   "sha256": "5537f3125f79ad504875b5c19470d90e69ba1602f370cbd742a734b40d2de4a6"
+  },
+  "wall_wall_source_door_section_2.jpg": {
+   "bytes": 77097,
+   "sha256": "64999dceec818c8fe18e329d65e2006b6f840c32f801ee24fa327ec167c7e170"
+  },
+  "wall_wall_source_door_section_3.jpg": {
+   "bytes": 78115,
+   "sha256": "88fc7dcb4760c78b5452bb8e5949d62a986d7d8721771ebace029ef525f662d2"
+  },
+  "wall_wall_source_door_section_4.jpg": {
+   "bytes": 47507,
+   "sha256": "f3c0c34b39d81b316440208ae65f1106531ee45e9cfdccfffa39571d8671e95c"
+  },
+  "wall_wall_source_north.jpg": {
+   "bytes": 435245,
+   "sha256": "16eae592e07d1729c6380c287a4b156cd8ef4dca515f455da4e5a8c5f25bb4fd"
+  },
+  "wall_wall_source_outer.jpg": {
+   "bytes": 377332,
+   "sha256": "0fba35a0b83ece6685fd4384b49ec74a9c080be233b880615ac80e8f3c0c269d"
+  },
+  "wall_wall_source_south.jpg": {
+   "bytes": 435245,
+   "sha256": "38c6543dfa5e215f2d7e81c01b32dda8d6cd27be58006794f852191beefa999b"
+  }
+ }
+}

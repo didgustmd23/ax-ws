@@ -64,7 +64,8 @@ class Models(unittest.TestCase):
                         self.assertNotIn(joint_name, drive[('right' if side == 'left' else 'left') + '_wheel_names'])
 
     def test_only_current_warehouse_is_selectable_and_empty_fixture_is_generated(self):
-        self.assertEqual({p.relative_to(PKG / 'worlds').as_posix() for p in (PKG / 'worlds').rglob('*.world')}, {'planned/ax_warehouse.world'})
+        self.assertEqual({p.relative_to(PKG / 'worlds').as_posix() for p in (PKG / 'worlds').rglob('*.world')},
+                         {'planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'})
         world = ET.parse(PKG / 'worlds/planned/ax_warehouse.world').getroot().find('world')
         self.assertEqual(world.get('name'), 'ax_test')
         self.assertEqual(sum(m.get('name').startswith('floor_transfer_corridor') for m in world.findall('model')), 3)

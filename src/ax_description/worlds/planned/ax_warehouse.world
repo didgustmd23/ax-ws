@@ -97,6 +97,14 @@
             <ambient>0.419999987 0.460000008 0.49000001 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.419999987 0.460000008 0.49000001 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/floor_floor_source.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -178,6 +186,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_north.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -259,6 +275,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_south.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -340,6 +364,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_outer.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -421,6 +453,14 @@
             <ambient>0.419999987 0.460000008 0.49000001 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.419999987 0.460000008 0.49000001 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/floor_floor_destination.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -502,6 +542,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_north.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -583,6 +631,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_south.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -664,6 +720,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_outer.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -745,6 +809,14 @@
             <ambient>0.519999981 0.49000001 0.389999986 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.519999981 0.49000001 0.389999986 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/floor_floor_transfer_corridor.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1058,6 +1130,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1139,6 +1219,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1220,6 +1308,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1301,6 +1397,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1382,6 +1486,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1463,6 +1575,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1544,6 +1664,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1625,6 +1753,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1706,6 +1842,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1787,6 +1931,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1868,6 +2020,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -1949,6 +2109,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2030,6 +2198,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2111,6 +2287,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2192,6 +2376,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2273,6 +2465,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2354,6 +2554,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2435,6 +2643,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2516,6 +2732,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2597,6 +2821,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2678,6 +2910,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2759,6 +2999,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2840,6 +3088,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -2921,6 +3177,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3002,6 +3266,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3083,6 +3355,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3164,6 +3444,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3245,6 +3533,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3326,6 +3622,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3407,6 +3711,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3488,6 +3800,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3569,6 +3889,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3650,6 +3978,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3731,6 +4067,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3812,6 +4156,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3893,6 +4245,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -3974,6 +4334,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4055,6 +4423,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4136,6 +4512,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4217,6 +4601,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4298,6 +4690,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4379,6 +4779,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4482,6 +4890,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4563,6 +4979,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4644,6 +5068,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4725,6 +5157,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4806,6 +5246,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4887,6 +5335,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -4968,6 +5424,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5049,6 +5513,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5130,6 +5602,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5211,6 +5691,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5292,6 +5780,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5373,6 +5869,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5454,6 +5958,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5535,6 +6047,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5616,6 +6136,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5697,6 +6225,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5778,6 +6314,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5859,6 +6403,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -5940,6 +6492,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6021,6 +6581,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6102,6 +6670,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6183,6 +6759,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6264,6 +6848,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6345,6 +6937,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6426,6 +7026,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6507,6 +7115,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6588,6 +7204,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6669,6 +7293,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6750,6 +7382,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6831,6 +7471,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6912,6 +7560,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -6993,6 +7649,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7074,6 +7738,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7155,6 +7827,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7236,6 +7916,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7317,6 +8005,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7398,6 +8094,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7479,6 +8183,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7560,6 +8272,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7641,6 +8361,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7722,6 +8450,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7803,6 +8539,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7884,6 +8628,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -7965,6 +8717,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8046,6 +8806,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8127,6 +8895,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8208,6 +8984,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8289,6 +9073,14 @@
             <ambient>0.670000017 0.430000007 0.219999999 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.670000017 0.430000007 0.219999999 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8370,6 +9162,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8451,6 +9251,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8532,6 +9340,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8613,6 +9429,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8694,6 +9518,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8775,6 +9607,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8856,6 +9696,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -8937,6 +9785,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9018,6 +9874,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9099,6 +9963,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9180,6 +10052,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9261,6 +10141,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9342,6 +10230,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9423,6 +10319,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9504,6 +10408,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9585,6 +10497,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9666,6 +10586,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9747,6 +10675,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9828,6 +10764,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9909,6 +10853,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -9990,6 +10942,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10071,6 +11031,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10152,6 +11120,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10233,6 +11209,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10314,6 +11298,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10395,6 +11387,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10476,6 +11476,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10557,6 +11565,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10638,6 +11654,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10719,6 +11743,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10800,6 +11832,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10881,6 +11921,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -10962,6 +12010,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11043,6 +12099,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11124,6 +12188,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11205,6 +12277,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11286,6 +12366,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11367,6 +12455,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11448,6 +12544,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11529,6 +12633,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11610,6 +12722,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11691,6 +12811,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11772,6 +12900,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11853,6 +12989,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -11934,6 +13078,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12015,6 +13167,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12096,6 +13256,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12177,6 +13345,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12258,6 +13434,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12339,6 +13523,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12420,6 +13612,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12501,6 +13701,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12582,6 +13790,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12663,6 +13879,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12744,6 +13968,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12825,6 +14057,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12906,6 +14146,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -12987,6 +14235,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13068,6 +14324,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13149,6 +14413,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13230,6 +14502,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13311,6 +14591,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13392,6 +14680,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13473,6 +14769,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13554,6 +14858,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13635,6 +14947,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13716,6 +15036,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13797,6 +15125,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13878,6 +15214,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -13959,6 +15303,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_180x180x180.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14040,6 +15392,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_220x200x200.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14121,6 +15481,14 @@
             <ambient>0.850000024 0.620000005 0.330000013 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.850000024 0.620000005 0.330000013 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/cargo_box_250x220x240.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14180,6 +15548,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14261,6 +15637,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14342,6 +15726,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14423,6 +15815,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14504,6 +15904,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14585,6 +15993,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14666,6 +16082,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14747,6 +16171,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14828,6 +16260,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14909,6 +16349,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -14990,6 +16438,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15071,6 +16527,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15152,6 +16616,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15233,6 +16705,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15314,6 +16794,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15395,6 +16883,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15476,6 +16972,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15557,6 +17061,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15638,6 +17150,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15719,6 +17239,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15800,6 +17328,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15881,6 +17417,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -15962,6 +17506,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16043,6 +17595,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16124,6 +17684,14 @@
             <ambient>0.180000007 0.280000001 0.360000014 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.180000007 0.280000001 0.360000014 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/rack_upright.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.7</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16205,6 +17773,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16286,6 +17862,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16367,6 +17951,14 @@
             <ambient>0.300000012 0.400000006 0.479999989 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.300000012 0.400000006 0.479999989 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/shelf_deck.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16448,6 +18040,14 @@
             <ambient>0.519999981 0.49000001 0.389999986 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.519999981 0.49000001 0.389999986 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/floor_floor_transfer_corridor_1.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16529,6 +18129,14 @@
             <ambient>0.519999981 0.49000001 0.389999986 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.519999981 0.49000001 0.389999986 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/floor_floor_transfer_corridor_2.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16610,6 +18218,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_north_1.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16691,6 +18307,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_north_2.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16772,6 +18396,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_1_wall_north.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16853,6 +18485,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_1_wall_south.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -16934,6 +18574,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_2_wall_north.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17015,6 +18663,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_2_wall_south.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17096,6 +18752,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_3_wall_north.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17177,6 +18841,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_corridor_3_wall_south.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17258,6 +18930,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_door_section_1.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17339,6 +19019,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_door_section_2.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17420,6 +19108,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_door_section_3.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17501,6 +19197,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_source_door_section_4.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17582,6 +19286,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_door_section_1.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17663,6 +19375,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_door_section_2.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17744,6 +19464,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_door_section_3.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17825,6 +19553,14 @@
             <ambient>0.600000024 0.660000026 0.720000029 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.600000024 0.660000026 0.720000029 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/wall_wall_destination_door_section_4.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.8</roughness>
+              </metal>
+            </pbr>
           </material>
           <!--이 물체 또는 조명이 그림자를 만드는지 지정한다.-->
           <cast_shadows>false</cast_shadows>
@@ -17914,6 +19650,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -17973,6 +19717,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18032,6 +19784,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18091,6 +19851,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18150,6 +19918,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18209,6 +19985,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18268,6 +20052,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18327,6 +20119,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18386,6 +20186,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18445,6 +20253,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18504,6 +20320,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18563,6 +20387,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18622,6 +20454,14 @@
             <ambient>0.18 0.65 0.30 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.18 0.65 0.30 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18681,6 +20521,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18740,6 +20588,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18799,6 +20655,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18858,6 +20722,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18917,6 +20789,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -18976,6 +20856,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -19035,6 +20923,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -19094,6 +20990,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -19153,6 +21057,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>
@@ -19212,6 +21124,14 @@
             <ambient>0.85 0.16 0.12 1</ambient>
             <!--확산광에 반응하는 색 R G B A.-->
             <diffuse>0.85 0.16 0.12 1</diffuse>
+            <!--질감: 기존 ambient·diffuse 색에 곱해지는 밝기 변조 이미지(tools/gen_textures.py 절차 생성).-->
+            <pbr>
+              <metal>
+                <albedo_map>model://ax_description/worlds/planned/textures/sample_grain.jpg</albedo_map>
+                <metalness>0.0</metalness>
+                <roughness>0.9</roughness>
+              </metal>
+            </pbr>
           </material>
         </visual>
       </link>

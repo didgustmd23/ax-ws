@@ -17,6 +17,9 @@ PKG = ROOT/'src/ax_description'
 sys.path.insert(0, str(ROOT/'tools'))
 from arm_geometry import origin
 
+# 선택 가능한 월드: 기준(질감) 월드와 단색 보존 월드(재질만 다름, 같은 구조 검사를 적용).
+WORLDS=('ax_warehouse.world','ax_warehouse_plain.world')
+
 
 class Ax2Revision(unittest.TestCase):
     @classmethod
@@ -100,21 +103,30 @@ class Ax2Revision(unittest.TestCase):
 
     def test_worlds_three_clear_corridors_and_all_size_samples(self):
         self.assertEqual({p.relative_to(ROOT).as_posix() for p in ROOT.rglob('*.world')
-                          if not any(part in ('build','install','log','.git') for part in p.parts)},
-                         {'src/ax_description/worlds/planned/ax_warehouse.world'})
-        world=ET.parse(PKG/'worlds/planned/ax_warehouse.world').getroot().find('world')
-        models={m.get('name'):m for m in world.findall('model')}
-        self.assertEqual(sum(n.startswith('floor_transfer_corridor') for n in models),3)
-        self.assertEqual(sum(n.startswith('cargo_box_') for n in models),120)
-        self.assertEqual(sum(n.startswith('sample_') for n in models),23)
-        for name,m in models.items():
-            if not name.startswith('floor_transfer_corridor'):continue
-            self.assertEqual(m.findtext('static'),'true')
-            width=float(m.findtext('link/collision/geometry/box/size').split()[1])
-            self.assertAlmostEqual(width,1.8)
+                          if not any(part in ('build','install','log') or part.startswith('.')
+                                     for part in p.relative_to(ROOT).parts)},
+                         {'src/ax_description/worlds/planned/'+name for name in WORLDS})
+        for world_name in WORLDS:
+            with self.subTest(world=world_name):
+                world=ET.parse(PKG/'worlds/planned'/world_name).getroot().find('world')
+                models={m.get('name'):m for m in world.findall('model')}
+                self.assertEqual(sum(n.startswith('floor_transfer_corridor') for n in models),3)
+                self.assertEqual(sum(n.startswith('cargo_box_') for n in models),120)
+                self.assertEqual(sum(n.startswith('sample_') for n in models),23)
+                for name,m in models.items():
+                    if not name.startswith('floor_transfer_corridor'):continue
+                    self.assertEqual(m.findtext('static'),'true')
+                    width=float(m.findtext('link/collision/geometry/box/size').split()[1])
+                    self.assertAlmostEqual(width,1.8)
 
     def test_compact_stacks_have_support_and_rear_routes_are_clear(self):
-        world=ET.parse(PKG/'worlds/planned/ax_warehouse.world').getroot().find('world')
+        for world_name in WORLDS:
+            with self.subTest(world=world_name):
+                self.check_stacks_and_routes(world_name)
+
+    # 한 월드의 상자 지지·비관통, 샘플 위치, 비워 둔 통로를 검사한다.
+    def check_stacks_and_routes(self, world_name):
+        world=ET.parse(PKG/'worlds/planned'/world_name).getroot().find('world')
         models={m.get('name'):m for m in world.findall('model')}
         boxes={}
         for name,m in models.items():

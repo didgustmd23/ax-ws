@@ -68,6 +68,19 @@ WORLD_SPAWN_POSITIONS = {
     # 단색 보존 월드는 기준(질감) 월드와 재질 외 구조가 같으므로 같은 출발 위치를 쓴다.
     'planned/ax_warehouse_plain.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
 }
+# 큰 영상·점군 발행 노드에 줄 Fast DDS 프로필(config/fastdds_large_data.xml 주석 참고).
+DDS_PROFILE_ENV = 'FASTRTPS_DEFAULT_PROFILES_FILE'
+
+
+# 큰 메시지 발행 노드의 추가 환경을 만든다. 사용자가 프로필을 이미 지정했거나 파일이 없으면 비워 둔다.
+# rmw_fastrtps가 아닌 RMW는 이 변수를 읽지 않으므로 영향이 없다.
+def large_data_env(package_share):
+    profile = Path(package_share) / 'config' / 'fastdds_large_data.xml'
+
+    if os.environ.get(DDS_PROFILE_ENV) or not profile.is_file():
+        return {}
+
+    return {DDS_PROFILE_ENV: str(profile)}
 
 
 # 실행 인자를 평가해 월드·모델·센서 브리지를 구성한다. 제어기 spawner는 만들지 않는다(ax_control 담당).
@@ -148,8 +161,10 @@ def setup(context):
                              'input_topic': 'sensors/' + ('epick_tof' if tool == 'epick' else 'suction_tof') + '/scan'}], output='screen'))
     bridge_file = runtime_path / 'bridge.yaml'
     bridge_file.write_text(yaml.safe_dump(all_bridges))
+    # 영상·깊이·점군을 ROS로 내는 발행자이므로 큰 메시지 DDS 프로필을 이 노드에만 준다.
     actions.append(Node(package='ros_gz_bridge', executable='parameter_bridge',
-        parameters=[{'config_file': str(bridge_file), 'use_sim_time': True}], output='screen'))
+        parameters=[{'config_file': str(bridge_file), 'use_sim_time': True}], output='screen',
+        additional_env=large_data_env(package_share)))
     (runtime_path / 'manifest.json').write_text(json.dumps({'robots': len(selected_indices), 'control': control,
         'world': str(world), 'bridge_count': len(all_bridges)}, indent=2))
     return actions

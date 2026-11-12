@@ -1,5 +1,7 @@
 """Check robot routing, mock outcomes, and isolated Gazebo entities using ROS."""
+from copy import deepcopy
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -28,6 +30,10 @@ class MockRobotTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        # 기본 보존 경로를 쓰는 시험도 사용자 ~/.ros를 건드리지 않게 ROS_HOME을 임시 폴더로 둔다.
+        patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def init_ros(self, robot):
         rclpy.init(args=['--ros-args', '-p', f'robot_id:={robot}', '-p',
@@ -62,7 +68,7 @@ class MockRobotTests(unittest.TestCase):
                 node.set_parameters([rclpy.parameter.Parameter('mock_delay_s', value=1.5)])
                 observer = Node('cancel_test_client')
                 client = ActionClient(observer, ExecuteLocalTask,
-                                      f'/a3_mock/{robot}/execute_local_task')
+                                      action_name(robot))
                 executor = SingleThreadedExecutor()
                 executor.add_node(node)
                 executor.add_node(observer)
@@ -211,7 +217,7 @@ class MockRobotTests(unittest.TestCase):
                 node = MockExecutor()
                 client_node = Node('a3_mock_test_client')
                 client = ActionClient(client_node, ExecuteLocalTask,
-                                      f'/a3_mock/{robot}/execute_local_task')
+                                      action_name(robot))
                 executor = SingleThreadedExecutor()
                 executor.add_node(node)
                 executor.add_node(client_node)
@@ -283,17 +289,17 @@ class MockRobotTests(unittest.TestCase):
                         rclpy.shutdown()
 
     def test_both_robots_route_results_and_keep_indicators_separate(self):
-        for robot in ('robot_1', 'robot_2'):
+        for robot in ('robot_1', 'robot_2', 'robot_3', 'robot_4'):
             with self.subTest(robot=robot):
                 self.init_ros(robot)
                 executor = MockExecutor()
                 display = MockDisplay()
                 try:
                     self.assertIn(
-                        f'/a3_mock/{robot}/execute_local_task/_action/send_goal',
+                        action_name(robot) + '/_action/send_goal',
                         [name for name, _ in executor.get_service_names_and_types()])
                     topic = ('/a3_mock/result_display' if robot == 'robot_2'
-                             else '/a3_mock/robot_1/result_display')
+                             else f'/a3_mock/{robot}/result_display')
                     self.assertEqual(executor.result_display.topic_name, topic)
                     self.assertIn(topic, [s.topic_name for s in display.subscriptions])
                     for value, outcome, load in (
@@ -314,24 +320,256 @@ class MockRobotTests(unittest.TestCase):
                         display.update()
                         calls = display.service.call_args_list
                         prefix = ('a3_mock_indicator_' if robot == 'robot_2'
-                                  else 'a3_mock_indicator_robot_1_')
+                                  else f'a3_mock_indicator_{robot}_')
                         self.assertEqual(len(calls), 4)
                         for call in calls[:3]:
                             self.assertTrue(call.args[2].startswith(f'name: "{prefix}'))
                             if robot == 'robot_2':
-                                self.assertNotIn('robot_1', call.args[2])
+                                self.assertNotIn('robot_', call.args[2])
                         sdf = calls[-1].args[2][5:]
                         # The service request wraps the XML in protobuf quotes.
                         model = ET.fromstring(json.loads(sdf)).find('model')
                         self.assertEqual(model.attrib['name'], prefix + value)
                         self.assertEqual(model.findtext('static'), 'true')
                         self.assertIsNone(model.find('link/collision'))
+                        # 로봇마다 표시 위치가 겹치지 않는다(robot_1·robot_2는 이전 위치 유지).
                         self.assertEqual(model.findtext('pose').split()[0],
-                                         '-1' if robot == 'robot_1' else '0')
+                                         {'robot_1': '-1', 'robot_2': '0',
+                                          'robot_3': '-2', 'robot_4': '1'}[robot])
                 finally:
                     display.destroy_node()
                     executor.destroy_node()
                     rclpy.shutdown()
+
+
+# 계약 Action 경로(INTERFACE_CONTRACT 4.3절)
+def action_name(robot):
+    return f'/ax/{robot}/executor/execute_local_task'
+
+
+class MockExecutorRegressionTests(unittest.TestCase):
+    """중복 Goal·Goal 단위 취소·작업 끼어들기 회귀 시험(2026-11-12 A3 수정)."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        # 기본 보존 경로를 쓰는 시험도 사용자 ~/.ros를 건드리지 않게 ROS_HOME을 임시 폴더로 둔다.
+        patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    # 격리 DB로 ROS를 초기화한다
+    def init_ros(self, robot):
+        rclpy.init(args=['--ros-args', '-p', f'robot_id:={robot}', '-p',
+                        f'execution_db:={self.temp.name}/executions.sqlite3'])
+
+    # 서버·클라이언트·실행기를 만들고 정리 함수를 등록한다
+    def start(self, robot, delay):
+        self.init_ros(robot)
+        node = MockExecutor()
+        node.set_parameters([
+            rclpy.parameter.Parameter('mock_delay_s', value=delay),
+            rclpy.parameter.Parameter('mock_load', value='STOWED')])
+        client_node = Node('a3_regression_client')
+        client = ActionClient(client_node, ExecuteLocalTask, action_name(robot))
+        executor = SingleThreadedExecutor()
+        executor.add_node(node)
+        executor.add_node(client_node)
+
+        def stop():
+            executor.shutdown()
+            client.destroy()
+            client_node.destroy_node()
+            node.destroy_node()
+            rclpy.shutdown()
+
+        self.addCleanup(stop)
+        self.assertTrue(client.wait_for_server(timeout_sec=5))
+
+        return node, client, executor
+
+    # future가 끝날 때까지 실행기를 돌린다
+    def wait(self, executor, future, timeout=8):
+        executor.spin_until_future_complete(future, timeout_sec=timeout)
+        self.assertTrue(future.done(), 'ROS 응답 시간 초과')
+
+        return future.result()
+
+    # 상태 발행 사본과 결과 표시 발행 횟수를 기록하도록 바꾼다
+    @staticmethod
+    def capture(node):
+        snapshots, displays = [], []
+        publish_status = node.task_status_publisher.publish
+        publish_display = node.result_display.publish
+
+        def status(message):
+            snapshots.append(deepcopy(message))
+            return publish_status(message)
+
+        def display(message):
+            displays.append(message.data)
+            return publish_display(message)
+
+        node.task_status_publisher = Mock(wraps=node.task_status_publisher)
+        node.task_status_publisher.publish = status
+        node.result_display = Mock(wraps=node.result_display)
+        node.result_display.publish = display
+
+        return snapshots, displays
+
+    # revision이 바뀐 발행만 골라 단계 순서를 만든다
+    @staticmethod
+    def phases(snapshots):
+        seen, order = set(), []
+
+        for message in snapshots:
+            if message.meta.revision in seen:
+                continue
+
+            seen.add(message.meta.revision)
+            order.append((message.execution.execution_id, message.local_phase))
+
+        return order
+
+    # 재요청 Goal을 취소해도 원래 Goal 작업은 취소되지 않는다
+    def test_duplicate_goal_cancel_does_not_cancel_original(self):
+        node, client, executor = self.start('robot_2', 1.0)
+
+        original = self.wait(executor, client.send_goal_async(MockRobotTests.request('dup-cancel')))
+        duplicate = self.wait(executor, client.send_goal_async(MockRobotTests.request('dup-cancel')))
+        self.assertTrue(original.accepted and duplicate.accepted)
+
+        cancel = self.wait(executor, duplicate.cancel_goal_async())
+        self.assertEqual(len(cancel.goals_canceling), 0)
+
+        first = self.wait(executor, original.get_result_async())
+        second = self.wait(executor, duplicate.get_result_async())
+
+        self.assertEqual(first.status, 4)  # Action STATUS_SUCCEEDED
+        self.assertEqual(first.result.status.outcome, ResultStatus.SUCCEEDED)
+        self.assertEqual(second.result.status.outcome, ResultStatus.SUCCEEDED)
+        self.assertEqual(node.store.cached_result('dup-cancel')['status']['outcome'],
+                         ResultStatus.SUCCEEDED)
+
+    # 원래 Goal 취소는 Action 상태 CANCELED와 결과 CANCELED가 일치한다
+    def test_original_cancel_state_matches_result(self):
+        node, client, executor = self.start('robot_1', 1.0)
+
+        original = self.wait(executor, client.send_goal_async(MockRobotTests.request('orig-cancel')))
+        cancel = self.wait(executor, original.cancel_goal_async())
+        self.assertEqual(len(cancel.goals_canceling), 1)
+
+        result = self.wait(executor, original.get_result_async())
+
+        self.assertEqual(result.status, 5)  # Action STATUS_CANCELED
+        self.assertEqual(result.result.status.outcome, ResultStatus.CANCELED)
+        self.assertEqual(result.result.status.error_code, 'MOCK_CANCELED')
+
+    # 진행 중·완료 직후 재요청은 상태 단계를 처음으로 되돌리지 않고 결과 표시도 다시 내지 않는다
+    def test_replay_does_not_restart_phases(self):
+        node, client, executor = self.start('robot_2', 0.5)
+        snapshots, displays = self.capture(node)
+
+        original = self.wait(executor, client.send_goal_async(MockRobotTests.request('replay-order')))
+        inflight = self.wait(executor, client.send_goal_async(MockRobotTests.request('replay-order')))
+        self.wait(executor, original.get_result_async())
+        self.wait(executor, inflight.get_result_async())
+
+        revision = node.task_status.meta.revision
+        later = self.wait(executor, client.send_goal_async(MockRobotTests.request('replay-order')))
+        replay = self.wait(executor, later.get_result_async())
+
+        self.assertEqual(replay.result.status.outcome, ResultStatus.SUCCEEDED)
+        self.assertEqual(self.phases(snapshots), [
+            ('replay-order', 'MOCK_VALIDATING'),
+            ('replay-order', 'MOCK_CONFIRM_LOAD'),
+            ('replay-order', 'MOCK_SUCCEEDED')])
+        self.assertEqual(node.task_status.meta.revision, revision)
+        self.assertEqual(displays, ['STOWED'])
+
+    # 이전 작업 재요청이 다른 작업 처리 중에 와도 상태 Topic의 실행이 이전 작업으로 바뀌지 않는다
+    def test_other_execution_keeps_status_during_replay(self):
+        self.init_ros('robot_2')
+        node = MockExecutor()
+        self.addCleanup(rclpy.shutdown)
+        self.addCleanup(node.destroy_node)
+        node.set_parameters([rclpy.parameter.Parameter('mock_load', value='STOWED')])
+
+        first = MockRobotTests.request('first-task')
+        self.assertEqual(node.accept_goal(first), GoalResponse.ACCEPT)
+        node.execute(Mock(request=first))
+
+        second = MockRobotTests.request('second-task')
+        self.assertEqual(node.accept_goal(second), GoalResponse.ACCEPT)
+        node._begin_execution(Mock(request=second))
+
+        # 첫 작업 진행 중에 수락된 재요청 Goal이 다른 작업 처리 중에 실행되는 경우다.
+        replay_goal = Mock(request=first)
+        replay = node.execute(replay_goal)
+
+        self.assertEqual(replay.status.outcome, ResultStatus.SUCCEEDED)
+        replay_goal.succeed.assert_called_once()
+        self.assertEqual(node.task_status.execution.execution_id, 'second-task')
+        self.assertEqual(node.task_status.local_phase, 'MOCK_CONFIRM_LOAD')
+        self.assertEqual(node._active_execution_id, 'second-task')
+
+        # 끝난 작업의 새 재요청은 다른 작업 처리 중에도 수락해 저장 결과만 돌려준다.
+        self.assertEqual(node.accept_goal(first), GoalResponse.ACCEPT)
+        self.assertEqual(node._active_execution_id, 'second-task')
+
+    # 로봇 4대를 허용하고 그 밖의 ID는 거절한다
+    def test_four_robots_and_contract_action_path(self):
+        for robot in ('robot_1', 'robot_2', 'robot_3', 'robot_4'):
+            with self.subTest(robot=robot):
+                self.init_ros(robot)
+
+                try:
+                    node = MockExecutor()
+                    self.assertIn(action_name(robot) + '/_action/send_goal',
+                                  [name for name, _ in node.get_service_names_and_types()])
+                    node.destroy_node()
+                finally:
+                    rclpy.shutdown()
+
+        self.init_ros('robot_5')
+        self.addCleanup(rclpy.shutdown)
+
+        with self.assertRaises(ValueError):
+            MockExecutor()
+
+    # execution_db를 지정하지 않으면 ROS_HOME 아래 로봇별 보존 경로를 쓰고, 재시작해도 기록이 남는다
+    def test_default_db_is_persistent_per_robot(self):
+        rclpy.init(args=['--ros-args', '-p', 'robot_id:=robot_3'])
+        self.addCleanup(rclpy.shutdown)
+        expected = str(Path(os.environ['ROS_HOME']) / 'ax_task_executor/robot_3/executions.sqlite3')
+
+        first = MockExecutor()
+        self.assertEqual(first.get_parameter('execution_db').value, expected)
+        first.set_parameters([rclpy.parameter.Parameter('mock_load', value='STOWED')])
+        request = MockRobotTests.request('persist-task')
+        self.assertEqual(first.accept_goal(request), GoalResponse.ACCEPT)
+        first.execute(Mock(request=request))
+        # 수락만 하고 결과 전에 종료한 실행
+        pending = MockRobotTests.request('persist-pending')
+        self.assertEqual(first.accept_goal(pending), GoalResponse.ACCEPT)
+        first.destroy_node()
+
+        # 같은 기본 경로로 재시작: 완료 결과와 수락 기록(최초 시험 입력)이 유지된다.
+        second = MockExecutor()
+        self.addCleanup(second.destroy_node)
+        second.set_parameters([rclpy.parameter.Parameter('mock_load', value='EMPTY')])
+        second.make_result = Mock(wraps=second.make_result)
+
+        self.assertEqual(second.get_parameter('execution_db').value, expected)
+        self.assertEqual(second.store.cached_result('persist-task')['status']['outcome'],
+                         ResultStatus.SUCCEEDED)
+        self.assertEqual(second.execute(Mock(request=pending)).load_state, LoadState.STOWED)
+        self.assertEqual(second.accept_goal(MockRobotTests.request('persist-task')), GoalResponse.ACCEPT)
+        replay = second.execute(Mock(request=MockRobotTests.request('persist-task')))
+        self.assertEqual(replay.status.outcome, ResultStatus.SUCCEEDED)
+
+        # 로봇별 파일이다.
+        self.assertNotEqual(expected, str(Path(os.environ['ROS_HOME']) / 'ax_task_executor/robot_2/executions.sqlite3'))
 
 
 if __name__ == '__main__':

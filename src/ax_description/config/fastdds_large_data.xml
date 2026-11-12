@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 큰 영상·점군 발행 노드용 Fast DDS 프로필(rmw_fastrtps 전용, 다른 RMW는 이 파일을 읽지 않는다).
+     출처: B2 사전 시험 T2(log/b2_custom_warehouse/20261112_100617/option_c, fastdds_shm32.xml)와
+     적용안 조사(log/dds_camera_fix/20261112_102104/REPORT.md). 기본 공유 메모리 세그먼트(약 0.5 MB, 실측 549,408 B)는
+     640x480 깊이 영상(1,228,800 B)·B1 점군(4,915,200 B)보다 작아 best effort 표본을 잃는다(실측 수신 48%·8%).
+     세그먼트는 발행 참가자의 것이므로 발행 노드에만 적용하면 기본 설정 구독자도 100% 받는다.
+     세그먼트는 프로세스마다 실제 메모리(/dev/shm)를 약 35 MB 쓴다. 모든 노드에 일괄 적용하지 않는다.
+     적용: robot_test.launch.py(parameter_bridge), ax_perception sensors.launch.py(sensor_processing)가
+     FASTRTPS_DEFAULT_PROFILES_FILE이 비어 있을 때만 이 파일을 지정한다. -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <!-- 같은 PC 안 전송: 공유 메모리 세그먼트 32 MB(영상·깊이·점군 동시 전송 여유). -->
+    <transport_descriptor>
+      <transport_id>ax_shm_large</transport_id>
+      <type>SHM</type>
+      <segment_size>33554432</segment_size>
+    </transport_descriptor>
+    <!-- 탐색과 다른 PC 통신용 UDPv4. 소켓 버퍼 4 MB를 요청한다. 실제 크기는 커널 상한(net.core.rmem_max·wmem_max)을
+         넘지 못한다. 이 개발 PC(WSL)의 상한은 4194304라 그대로 적용되지만, 일반 Ubuntu 기본값은 212992라 그 크기로 잘릴 수 있다.
+         같은 PC 안 전송은 위 SHM 경로를 쓰므로 영향이 없고, 다른 PC로 가는 UDP 큰 메시지에만 영향이 있다. -->
+    <transport_descriptor>
+      <transport_id>ax_udp_large</transport_id>
+      <type>UDPv4</type>
+      <sendBufferSize>4194304</sendBufferSize>
+      <receiveBufferSize>4194304</receiveBufferSize>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="ax_large_data" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>ax_shm_large</transport_id>
+        <transport_id>ax_udp_large</transport_id>
+      </userTransports>
+      <!-- 기본 SHM·UDP를 끄고 위 두 전송만 쓴다(끄지 않으면 기본 0.5 MB SHM이 함께 남는다). -->
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

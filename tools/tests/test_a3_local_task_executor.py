@@ -176,7 +176,7 @@ class LocalTaskExecutorTests(unittest.TestCase):
                 seen.add(message.meta.revision)
                 order.append(message.local_phase)
 
-        self.assertEqual(order, ['MOCK_VALIDATING', 'MOCK_CONFIRM_LOAD', 'MOCK_SUCCEEDED'])
+        self.assertEqual(order, ['MOCK_VALIDATING', 'MOCK_CHECKING_LOAD', 'MOCK_SUCCEEDED'])
 
     # 재요청 Goal 취소는 거절, 원래 Goal 취소는 Action 상태·결과 모두 CANCELED
     def test_goal_scoped_cancel(self):

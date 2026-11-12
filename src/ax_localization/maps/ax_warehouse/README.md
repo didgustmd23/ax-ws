@@ -15,10 +15,15 @@
 | `pose_graph.posegraph` | `6e024528eb0235799938cf81507ad7e0dbf51f2f7c04f3192b8df54879f3d764` | 원 세션 경로·해시에 보존, Git 제외(`log/b2_mapping/20261112_083635/run/`, map_info.yaml은 생성 파일이라 원 기록 유지). slam_toolbox 이어 작성·재로딩용 |
 | `pose_graph.data` | `10015da39277115a54faf262f9cb1f9ecb077db22390d2a69704ff4fea43d597` | 〃 |
 | `map_info.yaml` | `e19d21dacd5d9277bc56710f323425e0f4c6b4bb0b30923ecb9e17736157ddce` | revision·월드·모델·센서·마찰·설정·병합 노드 해시, 판정·지표 |
+| `applicable_worlds.yaml` | (손 관리 파일, 해시 생략) | 이 지도를 적용할 월드·해시·근거. 생성 파일 아님 |
 
 pose graph 두 파일은 용량(약 13 MB) 때문에 저장소에 넣지 않는다(2026-11-12 사용자 결정). `map_info.yaml`의 `pose_graph.files`·`files` 해시는 채택 당시 이 폴더에 둔 파일 기준이며, 원 회차 파일과 같다. 이어 작성·재로딩이 필요하면 원 회차 파일을 해시로 확인한 뒤 쓴다.
 
-`map_info.yaml`의 `world.world_sha256`은 지도를 만든 기준 월드 `9b5bb281…`(session 사본 일치)다.
+`map_info.yaml`의 `world.world_sha256`은 지도를 만든 월드 `9b5bb281…`(session 사본 일치)다. 이 월드는 2026-11-12 기준 월드 교체 뒤 단색 보존 월드 `planned/ax_warehouse_plain.world`로 이름만 바뀌었다(내용 동일).
+
+- 같은 경로 `planned/ax_warehouse.world`에는 이제 질감 월드(`35a8c0ef…`)가 있다. map_info.yaml의 `world_file`은 기록 당시 경로이므로 해시로 구분한다.
+- 이 지도를 쓸 수 있는 월드와 근거는 손으로 관리하는 [`applicable_worlds.yaml`](applicable_worlds.yaml)에 있다(단색·질감 두 월드, LiDAR 동일 근거). 지도 이미지가 그대로라 `map_revision`은 1이다.
+- 해시 대조 시험: `tools/tests/test_map_applicable_worlds.py`.
 
 ## 좌표계
 - map 원점은 robot_2 출발 자세다. world 기준 `T_world_map`은 초기 (−6.800, 0, 0)이고, 참조 지도와의 최적 정합은 (−6.822, +0.006, +0.0003 rad)다. 평가 전용 값이며 운영 위치 추정에 쓰지 않는다.
@@ -55,7 +60,7 @@ pose graph 두 파일은 용량(약 13 MB) 때문에 저장소에 넣지 않는�
 
 ## AMCL 회귀 (2026-11-12)
 **조건**
-- 설치본 기준 월드(`9b5bb281…`), robot_2만, headless, RTF 약 0.20(0.200~0.206).
+- 설치본 당시 기준 월드, 지금의 단색 보존 월드(`planned/ax_warehouse_plain.world`, `9b5bb281…`), robot_2만, headless, RTF 약 0.20(0.200~0.206).
 - AMCL 입력은 앞 LiDAR `scan_filtered`만이다. AMCL·health 설정은 설치본 그대로다.
 - 지도는 이 폴더의 `map.yaml`(revision 1)을 절대 경로로 지정했다. initial pose는 robot_2 (0, 0, 0)이다(map 원점 = 출발 자세).
 - 실제 위치 비교에는 채택 평가의 `T_world_map`을 썼다(검증 전용).

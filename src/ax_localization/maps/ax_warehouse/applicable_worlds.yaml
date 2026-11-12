@@ -1,0 +1,35 @@
+# 채택 지도 revision 1을 쓸 수 있는 월드 목록 (손으로 관리하는 파일, 생성 파일 아님)
+#
+# map_info.yaml은 check_map_accuracy.py --adopt가 만든 생성 파일이라 그대로 둔다.
+# 그 world 절(world_sha256 9b5bb281…)은 지도를 만든 회차의 월드, 즉 지금의 단색 보존 월드를 가리킨다.
+# 2026-11-12 기준 월드를 질감 버전으로 교체하면서(사용자 결정, 선택지 C1) 같은 경로
+# planned/ax_warehouse.world에 질감 월드가 놓였으므로, 지도를 적용할 월드를 여기 따로 적는다.
+#
+# 지도 이미지(map.pgm·map.yaml)는 바꾸지 않았으므로 map_revision은 1로 유지한다.
+# revision을 올리면 등록 지점·재고 좌표 무효 신호가 되므로 지도 내용이 바뀔 때만 올린다.
+#
+# 아래 sha256은 tools/tests/test_map_applicable_worlds.py가 실제 월드 파일과 대조한다.
+# 월드가 바뀌어 시험이 실패하면 LiDAR 동등성을 다시 확인한 뒤에만 해시를 고친다.
+map_revision: 1
+authored_world:
+  # 지도를 작성한 월드(map_info.yaml world 절과 같은 바이트)
+  launch_name: planned/ax_warehouse_plain.world
+  source: src/ax_description/worlds/planned/ax_warehouse_plain.world
+  sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
+  mapping_session: log/b2_mapping/20261112_083635  # 작성 PC 기록, Git 제외
+  note: 작성 당시 이름은 planned/ax_warehouse.world였고, 교체 때 내용 그대로 이 이름으로 옮겼다.
+applicable_worlds:
+  - launch_name: planned/ax_warehouse_plain.world
+    sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
+    basis: 지도를 작성한 월드
+  - launch_name: planned/ax_warehouse.world
+    sha256: 35a8c0eff4199c32adf97ca3b75b65b12355d30d2f1759be5c59e7cc319ef807
+    basis: 단색 월드의 재질 240개에 시각 질감(pbr albedo_map)만 더했고 geometry·collision·pose는 같다.
+    evidence:
+      # 근거 폴더는 작성 PC 기록이며 Git에 넣지 않는다.
+      - 구조 동일 - python3 tools/make_textured_world.py --check (구조 차이 0, 재생성 일치)
+      - LiDAR 동일 - log/b2_textured_world/20261112_074753/runs/20261112_093103/REPORT.md
+        (5자세 x 앞·뒤 x 5스캔, 거리 차이 0.0000 m, 유한/무한 불일치 0)
+      - LiDAR 동일 - log/b2_custom_warehouse/20261112_100617/option_c/REPORT.md
+        (RTAB-Map 비교 회차 1·2 같은 자세 86·92쌍, 최대 차이 0.0·0.055 mm)
+    limits: 카메라 영상은 다르다(바닥 약 21 % 어두움). 영상 기반 위치 추정·RTAB-Map 결과는 이 지도와 별도로 확인한다.

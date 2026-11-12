@@ -47,11 +47,13 @@ ros2 launch ax_control simulation.launch.py
 
 ### 통합 시험 월드와 다른 PC 실행
 
-시험 월드는 `ax_test.world` 하나다. 30×30 m 바닥의 원점 주변은 주행 시험용으로 비워 두고,
-작업 테이블 두 개는 (8, 3), (8, -3)에 배치했다. 0.5 kg 상자는 첫 테이블 위에 있다.
-Planned warehouse: `src/ax_description/worlds/planned/ax_warehouse.world` (stored separately; not used by the default launch).
+실행 월드는 현재 만든 창고 맵 `planned/ax_warehouse.world` 하나다. 빈 월드는 삭제했다.
+`planned/ax_warehouse.world`는 44×16m의 두 창고, 폭 1.8m 연결 통로 3개,
+출발 선반 6개·도착 선반 4개·크기별 동적 상자 143개를 포함한다. AWS 월드는 제거했다.
 선택 실행: `ros2 launch ax_control simulation.launch.py world:=planned/ax_warehouse.world`.
-`ax_control simulation.launch.py`, `robot_test.launch.py`와 기존 개별/동시 런치는 모두 이 월드를 사용한다.
+기본 실행과 월드 선택 메뉴는 모두 현재 창고를 연다. 주행 시험의 빈 바닥은 테스트 때만 임시 생성한다.
+모델별 스펙: [AX_1](docs/guides/AX_1_SPEC.md) · [AX_2](docs/guides/AX_2_SPEC.md).
+부품 명칭과 최신 형상은 [부품 미리보기](src/ax_description/meshes/README.md)를 따른다.
 다른 PC의 설치·빌드 절차는 [실행 안내](docs/guides/RUN_ON_ANOTHER_PC.md)를 따른다.
 주행·팔을 키보드로 조종하는 방법은 [키보드 조종 안내](docs/guides/KEYBOARD_CONTROL.md)를 따른다.
 별도 브라우저 창에서 마우스로 조종하려면 [리모컨 안내](docs/guides/REMOTE_CONTROL.md)를 따른다.
@@ -103,7 +105,8 @@ ToF +inf/-inf는 원뜻을 보존하며 NaN은 유효하지 않은 측정이다.
 
 ## C1 상자 검출 (개발용 기준 모델)
 
-현재 시험 월드의 0.2 m `test_box` 한 종류로 시작한다.
+초기 인식 기준은 0.2m 시험 상자였다. 현재 창고에는 다양한 크기의 상자가 있으며,
+이들의 크기·색 구분이 기존 인식기의 학습·적재 가능 판정에 자동 반영되는 것은 아니다.
 [YOLO11n](https://docs.ultralytics.com/models/yolo11/)을 사용하며 학습용 시뮬레이터 정답과
 운영 영상 추론을 구분한다. 수집기는 임시 RGB-D 카메라로 보이는 상자 표면을 라벨링하고
 카메라를 제거한다. 학습·검증·평가는 시점 영역을 나누며 상자 없는 영상도 포함한다.

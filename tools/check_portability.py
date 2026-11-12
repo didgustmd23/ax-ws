@@ -30,8 +30,8 @@ for folder in ('src', 'tools', 'maps'):
         for prefix in ('/' + 'home/', '/' + 'mnt/', '/' + 'Users/', 'file' + '://'):
             assert prefix not in text, str(file.relative_to(ROOT)) + ': machine-specific path'
         assert not re.search(r'(?<![A-Za-z])[A-Za-z]:[\\/]', text), str(file.relative_to(ROOT))
-worlds = list((share / 'worlds').glob('*.world'))
-assert [p.name for p in worlds] == ['ax_test.world'], worlds
+worlds = list((share / 'worlds').rglob('*.world'))
+assert {p.relative_to(share / 'worlds').as_posix() for p in worlds} == {'planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'}, worlds
 for path in worlds:
     ET.parse(path)
 import yaml

@@ -1,29 +1,45 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
+  <!-- 패키지 식별 정보: 이름, 배포 버전, 설명, 관리자, 라이선스. -->
   <name>ax_description</name>
   <version>0.1.0</version>
   <description>AX robot URDF and mesh descriptions.</description>
   <maintainer email="didgustmd23@gmail.com">AX Team</maintainer>
   <license>Apache-2.0</license>
 
+  <!-- CMakeLists.txt의 설치 규칙을 처리하는 ROS 2 빌드 도구. -->
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- URDF 매크로와 파라미터를 실제 로봇 기술 XML로 변환한다. -->
   <exec_depend>xacro</exec_depend>
+  <!-- AX_1 공구 모델에서 포함하는 흡착기·그리퍼 메시와 URDF. -->
   <exec_depend>epick_description</exec_depend>
   <exec_depend>robotiq_description</exec_depend>
+  <!-- Python launch 구성 및 로봇의 관절 좌표 변환(TF) 발행. -->
   <exec_depend>launch</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
+  <!-- Gazebo 실행과 로봇 모델 생성 명령. -->
   <exec_depend>ros_gz_sim</exec_depend>
   <!-- 모델의 ros2_control 블록이 쓰는 Gazebo 하드웨어 플러그인. 제어기 패키지는 A2 ax_control이 의존한다. -->
   <exec_depend>gz_ros2_control</exec_depend>
+  <!-- ROS 노드를 launch에서 실행하고 패키지 공유 경로를 찾는 기능. -->
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
+  <!-- 센서·제어 설정 YAML 읽기. -->
   <exec_depend>python3-yaml</exec_depend>
+  <!-- Gazebo 센서 토픽을 ROS 메시지로 연결하고 접촉 메시지 타입을 제공한다. -->
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_interfaces</exec_depend>
+  <!-- Python ROS 노드 API와 깊이 영상·카메라 보정·거리 메시지. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <!-- 과거 높이 감시 코드·ROS 회귀 검사에 사용하는 메시지와 서비스 타입. -->
+  <test_depend>std_msgs</test_depend>
+  <test_depend>std_srvs</test_depend>
+  <!-- 깊이 영상 배열 변환과 높이 계산에 쓰는 NumPy. -->
+  <exec_depend>python3-numpy</exec_depend>
 
+  <!-- 시험·검증에 필요한 제어기, 관절 궤적, 시계 메시지와 수치 계산 라이브러리. -->
   <test_depend>controller_manager_msgs</test_depend>
   <test_depend>control_msgs</test_depend>
   <test_depend>trajectory_msgs</test_depend>
@@ -32,6 +48,7 @@
   <test_depend>python3-scipy</test_depend>
 
   <export>
+    <!-- Gazebo가 패키지 모델을 검색할 수 있는 경로와 ament 빌드 형식. -->
     <gazebo_ros gazebo_model_path="${prefix}/.."/>
     <build_type>ament_cmake</build_type>
   </export>

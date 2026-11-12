@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """B2 지도 정확도 비교. SLAM 지도를 "Gazebo 실제 자세 기반 참조 지도"와 정렬·형상 비교한다.
 
-  python3 src/ax_localization/scripts/check_map_accuracy.py <run 폴더> [--criteria 기준.yaml] [--adopt]
+  python3 src/ax_localization/scripts/check_map_accuracy.py <run 폴더> [--criteria 기준.yaml] [--adopt --map-dir <폴더>]
 
 참조 지도: mapping_drive.py가 기록한 같은 앞 LiDAR 스캔을, 스캔 측정 시각에 보간한 Gazebo 차체 자세와
 base_link→LiDAR 장착 변환으로 world 좌표에 누적한 점유 격자다. 자세를 보간할 수 없는 스캔은 제외하고 수를 남긴다.
@@ -11,8 +11,14 @@ base_link→LiDAR 장착 변환으로 world 좌표에 누적한 점유 격자다
 최적 정렬 기준으로 장애물 검출 비율·역방향 일치 비율·벽 위치 오차(평균·95백분위수·최대)·관측 범위를 계산한다.
 기준 파일(--criteria)이 없으면 판정하지 않는다(judgment: not_judged). 큰 정렬량만으로 실패 판정하지 않는다.
 
---adopt: 저장 파일을 검사한 뒤 src/ax_localization/maps/<이름>/에 map.yaml·map.pgm·pose graph·map_info.yaml을 교체한다.
-교체 전 검사가 실패하면 기존 지도를 그대로 둔다.
+--adopt: 저장 파일을 검사한 뒤 --map-dir 폴더에 map.yaml·map.pgm·pose graph·map_info.yaml을 교체한다.
+교체 전 검사가 실패하면 기존 지도를 그대로 둔다. 새 월드 회차는 --map-dir를 명시해야 하며, 옛 AWS 형식 회차만
+생략 시 maps/aws_warehouse를 쓴다.
+
+월드·실행 조건: 새 월드 회차는 session.json의 월드 경로(world)·Gazebo 내부 이름(gz_world)·월드 파일 해시와
+회차 사본(session/world.world·route.yaml·config/*)을 대조한다. 설정 해시는 회차 기록(config_files)만 쓰고 현재 파일로
+채우지 않는다. 불일치·누락은 메타정보 문제로 남겨 채택하지 않는다. 부분 경로(--waypoints) 결과는 단계별 결과를
+보존하되 전체 status를 incomplete(종료 코드 1)로 둔다.
 """
 
 import argparse
@@ -35,6 +41,22 @@ import map_tools as mt  # noqa: E402
 
 # 스캔 시각과 앞뒤 실제 자세 표본 간격이 이보다 크면 보간하지 않는다(s).
 DEFAULT_MAX_GAP_S = 0.1
+
+# 옛 AWS 월드 이름. session.json에 world가 없거나 이 값이면 옛 AWS 형식 회차로 읽는다.
+AWS_WORLD = "aws_warehouse.world"
+AWS_MAP_DIR = "src/ax_localization/maps/aws_warehouse"
+
+# run_mapping_session.sh가 실행 전에 사본·해시를 남기는 설정(session.json config_files). 제어기 설정은 로봇별로 다르다
+# (robot_test.launch.py CONTROLLER_FILES·simulation.launch.py MANIPULATORS).
+COMMON_CONFIG_NAMES = ("slam_mapping.yaml", "common_controllers.yaml", "sensor_mounts.yaml", "a1_validation.yaml")
+CONTROLLER_FILES = {"robot_1": "ax1_controllers.yaml", "robot_3": "ax1_controllers.yaml",
+                    "robot_2": "ax2_controllers.yaml", "robot_4": "ax2_controllers.yaml"}
+
+
+# 로봇에 필요한 설정 파일 이름 목록(제어기 파일 포함). 모르는 로봇이면 제어기 없이 돌려준다.
+def required_config_names(robot_id):
+    controller = CONTROLLER_FILES.get(robot_id)
+    return (COMMON_CONFIG_NAMES[0], *((controller,) if controller else ()), *COMMON_CONFIG_NAMES[1:])
 
 
 # 저장소 루트: src/ax_localization이 있는 상위 폴더. 설치본에서 실행하면 현재 폴더.
@@ -355,26 +377,159 @@ def read_session(run):
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 
+# 옛 AWS 형식 회차인지(session.json이 없거나 world가 없거나 AWS 월드). 새 월드 회차는 session.json에 world가 있다.
+def is_legacy_aws(session):
+    return session is None or session.get("world") in (None, AWS_WORLD)
+
+
+# 회차 session 폴더 안 사본 파일의 SHA-256. session.json의 상대 경로(session/…)를 run 폴더 기준으로 푼다.
+def session_copy_sha(run, relative):
+    if not relative:
+        return None
+
+    path = run.parent / relative
+    return mt.file_sha256(path) if path.is_file() else None
+
+
+# 기준 월드 기록과 새 월드의 일치 문제. 새 월드는 회차 session.json의 실행 월드 경로·내부 이름·파일 해시를 쓰고
+# 월드 사본(session/world.world)·경로 사본(session/route.yaml)의 world·주행 기록의 world와 대조한다.
+# 옛 AWS 형식은 기존처럼 AWS 출처(SOURCE.json)를 붙인다. AWS 출처는 AWS 기록에만 붙인다.
+def world_record(run, session, drive):
+    problems, missing = [], []
+
+    if is_legacy_aws(session):
+        source_file = WORKSPACE / "world_assets/aws_small_warehouse/SOURCE.json"
+        source = json.loads(source_file.read_text(encoding="utf-8")) if source_file.is_file() else {}
+        world = {"launch_name": AWS_WORLD, "format": "legacy_aws",
+                 "reference_assets": {"repository": source.get("repository"), "commit": source.get("commit"),
+                                      "archive_sha256": source.get("archive_sha256")}}
+
+        if session and session.get("world_sha256"):
+            world.update({key: session.get(key) for key in ("world_condition", "world_file", "world_sha256")})
+        else:
+            world.update({"world_condition": (session or {}).get("world_condition"), "world_file": None, "world_sha256": None})
+            missing.append("world: session.json에 실행 월드 파일 해시 없음")
+
+        return world, missing, problems
+
+    name = session["world"]
+    world = {"launch_name": name, "gz_world": session.get("gz_world"), "format": "session_world",
+             "world_condition": session.get("world_condition"), "world_file": session.get("world_file"),
+             "world_sha256": session.get("world_sha256"), "reference_assets": None,
+             "source_note": f"src/ax_description/{name if '/' not in name else 'worlds/' + name} (프로젝트 월드, 외부 출처 없음)"}
+
+    if not world["world_sha256"]:
+        missing.append("world: session.json에 실행 월드 파일 해시 없음")
+
+    if not world["gz_world"]:
+        problems.append("world: session.json에 Gazebo 내부 이름(gz_world) 없음")
+
+    copy_sha = session_copy_sha(run, "session/world.world")
+    world["world_copy"] = {"file": "session/world.world", "sha256": copy_sha,
+                           "matches": copy_sha is not None and copy_sha == world["world_sha256"]}
+
+    if not world["world_copy"]["matches"]:
+        problems.append(f"world: 회차 월드 사본 해시({copy_sha})가 기록 해시({world['world_sha256']})와 다름 또는 사본 없음")
+
+    route_copy = run.parent / (session.get("route_copy") or "session/route.yaml")
+
+    try:
+        route_world = (yaml.safe_load(route_copy.read_text(encoding="utf-8")) or {}).get("world")
+    except (OSError, yaml.YAMLError) as error:
+        route_world = None
+        problems.append(f"route: 회차 경로 사본을 읽지 못함({type(error).__name__})")
+
+    world["route_world"] = route_world
+
+    if route_world != name:
+        problems.append(f"route: 경로 world {route_world!r} ≠ 실행 월드 {name!r}")
+
+    route_sha = session_copy_sha(run, session.get("route_copy") or "session/route.yaml")
+
+    if not session.get("route_sha256") or route_sha != session.get("route_sha256") or drive["route"].get("sha256") != route_sha:
+        problems.append(f"route: 경로 해시 불일치(session {session.get('route_sha256')}, 사본 {route_sha}, "
+                        f"주행 기록 {drive['route'].get('sha256')})")
+
+    drive_world = drive.get("world") or {}
+
+    if drive_world.get("file") != name or drive_world.get("gz_world") != world["gz_world"]:
+        problems.append(f"world: 주행 기록 world {drive_world} ≠ 실행 월드 {name!r}·{world['gz_world']!r}")
+
+    return world, missing, problems
+
+
+# 실행 시점 설정(session.json config_files)의 기록 해시와 회차 사본 해시를 대조한다. 현재 파일로 채우지 않는다.
+# 기록 형식: {"robot_id", "controller_file", "files": {이름: {package, source, copy, sha256}}}.
+# 주행 로봇(robot_id)에 맞는 제어기 파일이 기록돼 있어야 하며, 다른 로봇용 제어기 기록은 문제로 남긴다.
+def config_record(run, session, robot_id):
+    recorded = (session or {}).get("config_files")
+    files, problems = {}, []
+
+    if not isinstance(recorded, dict) or not isinstance(recorded.get("files"), dict):
+        return {}, ["config_files: session.json에 실행 시점 설정 사본·해시 기록 없음(현재 파일로 채우지 않음)"]
+
+    expected_controller = CONTROLLER_FILES.get(robot_id)
+
+    if expected_controller is None:
+        problems.append(f"config_files: 제어기 설정을 정할 수 없는 로봇 {robot_id!r}")
+
+    if recorded.get("robot_id") != robot_id or recorded.get("controller_file") != expected_controller:
+        problems.append(f"config_files: 기록 로봇·제어기({recorded.get('robot_id')}, {recorded.get('controller_file')})가 "
+                        f"주행 로봇({robot_id}, {expected_controller})과 다름")
+
+    for name in required_config_names(robot_id):
+        item = recorded["files"].get(name)
+
+        if not isinstance(item, dict) or not item.get("sha256"):
+            problems.append(f"config_files: {name} 기록 없음")
+            continue
+
+        copy_sha = session_copy_sha(run, item.get("copy"))
+        files[name] = {"package": item.get("package"), "source": item.get("source"), "copy": item.get("copy"),
+                       "recorded_sha256": item["sha256"], "copy_sha256": copy_sha, "copy_matches": copy_sha == item["sha256"]}
+
+        if copy_sha != item["sha256"]:
+            problems.append(f"config_files: {name} 사본 해시({copy_sha})가 기록 해시와 다름 또는 사본 없음")
+
+    unexpected = sorted(set(recorded["files"]) - set(required_config_names(robot_id)))
+
+    if unexpected:
+        problems.append(f"config_files: 주행 로봇에 맞지 않는 설정 기록 {unexpected}")
+
+    return files, problems
+
+
+# SLAM 입력 스캔 종류(session.json scan, 주행 기록 slam_scan_input)와 병합 노드 기록을 대조한다.
+# 돌려주는 값: (입력 종류 또는 None, {"file", "sha256"} 또는 None, 문제 목록). 옛 기록(둘 다 없음)은 문제로 보지 않는다.
+def slam_input_record(session, drive):
+    recorded = (session or {}).get("scan")
+    driven = drive.get("slam_scan_input")
+    scan_merge = (session or {}).get("scan_merge")
+    problems = []
+
+    if recorded and driven and recorded != driven:
+        problems.append(f"slam_input: session.json scan({recorded})과 주행 기록 slam_scan_input({driven})이 다름")
+
+    if (recorded or driven) == "merged" and not (isinstance(scan_merge, dict) and scan_merge.get("sha256")):
+        problems.append("slam_input: 병합 입력인데 session.json에 scan_merge 파일·해시 기록 없음")
+
+    return recorded or driven, scan_merge, problems
+
+
 # 채택 메타데이터를 만든다. 확보하지 못한 항목은 값을 채우지 않고 missing에 사유를 남긴다.
+# 실행 조건 불일치(새 월드 월드·경로·설정)는 consistency_problems에 남겨 채택 전에 거절한다.
 def map_metadata(run, drive, accuracy, slam_yaml):
     route_path = Path(drive["route"]["path"])
-    source_file = WORKSPACE / "world_assets/aws_small_warehouse/SOURCE.json"
-    slam_config = WORKSPACE / "src/ax_localization/config/slam_mapping.yaml"
-    source = json.loads(source_file.read_text(encoding="utf-8")) if source_file.is_file() else {}
     session = read_session(run)
     model = drive.get("model") or {}
-    missing = []
+    world, missing, consistency = world_record(run, session, drive)
+    configs, config_problems = config_record(run, session, drive["robot_id"])
 
-    # 기준 월드: 실제 실행에 쓴 월드 파일(session.json)
-    world = {"launch_name": "aws_warehouse.world",
-             "reference_assets": {"repository": source.get("repository"), "commit": source.get("commit"),
-                                  "archive_sha256": source.get("archive_sha256")}}
-
-    if session and session.get("world_sha256"):
-        world.update({key: session.get(key) for key in ("world_condition", "world_file", "world_sha256")})
+    # 옛 AWS 형식 회차는 설정 기록이 없던 형식이라 누락으로 남기고, 새 월드 회차는 채택 전 문제로 본다.
+    if is_legacy_aws(session):
+        missing += config_problems
     else:
-        world.update({"world_condition": (session or {}).get("world_condition"), "world_file": None, "world_sha256": None})
-        missing.append("world: session.json에 실행 월드 파일 해시 없음")
+        consistency += config_problems
 
     # 바퀴 조건(운영/임시 사본)은 실행 조건 기록에서, 실제 마찰 값은 spawn robot_description에서 읽는다.
     friction = {"condition": (session or {}).get("wheel_condition"), "wheel_contacts": None,
@@ -393,17 +548,27 @@ def map_metadata(run, drive, accuracy, slam_yaml):
     if session is None:
         missing.append("session: session.json 없음(실행 조건·코드 버전 미확인)")
 
+    # SLAM 입력 스캔 종류와 병합 노드(scan_merge.py) 해시. 병합 입력인데 기록이 없거나 주행 기록과 다르면 채택 전 문제로 본다.
+    slam_input, scan_merge, input_problems = slam_input_record(session, drive)
+    (missing if is_legacy_aws(session) else consistency).extend(input_problems)
+
     return {
         "created": datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
         "map": mt.map_summary(run / "slam_map.yaml"),
         "world": world,
         "robot": {"id": drive["robot_id"], "model": robot_model,
-                  "sensor": {"input": drive["scan_input"], "frame": accuracy["scan_frame"],
+                  "sensor": {"input": drive["scan_input"], "slam_input": slam_input, "scan_merge": scan_merge,
+                             "frame": accuracy["scan_frame"],
                              "mount_base_link": accuracy["front_mount"], "lidars": lidars}},
         "wheel_friction": friction,
         "code": {key: (session or {}).get(key) for key in ("git_commit", "git_dirty")},
-        "slam": {"package": "slam_toolbox (async, mapping)", "config": str(slam_config.relative_to(WORKSPACE)),
-                 "config_sha256": mt.file_sha256(slam_config), "resolution_m": slam_yaml["resolution"]},
+        "slam": {"package": "slam_toolbox (async, mapping)",
+                 "config": (configs.get("slam_mapping.yaml") or {}).get("source"),
+                 "config_copy": (configs.get("slam_mapping.yaml") or {}).get("copy"),
+                 # 회차 기록 해시만 쓴다. 기록이 없으면 None(현재 파일 해시로 채우지 않는다).
+                 "config_sha256": (configs.get("slam_mapping.yaml") or {}).get("recorded_sha256"),
+                 "resolution_m": slam_yaml["resolution"]},
+        "config_files": configs,
         "route": {"file": str(route_path), "sha256": drive["route"]["sha256"]},
         "pose_graph": {"files": ["pose_graph.posegraph", "pose_graph.data"],
                        "resume": "slam_toolbox deserialize_map 또는 map_file_name 파라미터로 이어 작성·위치 추정"},
@@ -422,12 +587,13 @@ def map_metadata(run, drive, accuracy, slam_yaml):
             "method": accuracy["transforms"]["initial_method"] + " → 참조 지도와 ICP 정렬",
         },
         "missing": missing,
+        "consistency_problems": consistency,
     }
 
 
 # 채택 조건 중 메타데이터 문제(누락·개발용 임시 사본 조건)를 돌려준다.
 def metadata_problems(metadata):
-    problems = list(metadata["missing"])
+    problems = list(metadata["missing"]) + list(metadata.get("consistency_problems", []))
     world_condition = metadata["world"].get("world_condition")
     wheel_condition = metadata["wheel_friction"]["condition"]
 
@@ -440,6 +606,33 @@ def metadata_problems(metadata):
     return problems
 
 
+# 전체 평가 상태와 사유. 세 단계(주행·궤적·지도)가 모두 completed이고 전체 경로일 때만 completed다.
+# 부분 경로(--waypoints)는 지도 비교까지 끝났어도 incomplete이며, 세부 결과는 그대로 둔다.
+def overall_status(result):
+    stages = ("drive_status", "trajectory_comparison", "map_comparison")
+    pending = [key for key in stages if result[key]["status"] != "completed"]
+
+    if pending:
+        return "incomplete", "미완료 단계: " + ", ".join(pending)
+
+    if result["drive_status"].get("partial_route"):
+        return "incomplete", "부분 경로(--waypoints): 단계별 결과는 보존하지만 전체 경로 평가가 아님"
+
+    return "completed", None
+
+
+# 채택 대상 폴더와 문제 목록. 새 월드 회차는 --map-dir를 명시해야 한다(기본 폴더로 추정하지 않음).
+# 옛 AWS 형식 회차만 기존 기본 폴더(maps/aws_warehouse)를 쓴다.
+def adoption_target(map_dir, metadata):
+    if map_dir is not None:
+        return Path(map_dir), []
+
+    if metadata["world"].get("format") == "legacy_aws":
+        return WORKSPACE / AWS_MAP_DIR, []
+
+    return None, [f"채택 대상 폴더 미지정: 새 월드({metadata['world'].get('launch_name')})는 --map-dir를 명시해야 함"]
+
+
 # 명령행 인자를 읽어 비교하고 결과를 저장한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -448,8 +641,9 @@ def main():
     parser.add_argument("--occupied-ratio", type=float, default=0.25, help="참조 지도 점유 판정 비율")
     parser.add_argument("--tolerance-cells", type=int, default=1, help="일치 판정 허용 셀(±)")
     parser.add_argument("--criteria", type=Path, default=None, help="확정 임계값 YAML. 없으면 판정하지 않음")
-    parser.add_argument("--adopt", action="store_true", help="검사 후 maps/aws_warehouse에 채택")
-    parser.add_argument("--map-dir", type=Path, default=WORKSPACE / "src/ax_localization/maps/aws_warehouse")
+    parser.add_argument("--adopt", action="store_true", help="검사 후 --map-dir에 채택(새 월드는 --map-dir 필수)")
+    parser.add_argument("--map-dir", type=Path, default=None,
+                        help="채택 대상 폴더. 생략하면 옛 AWS 형식 회차만 maps/aws_warehouse를 쓰고 새 월드는 거절")
     arguments = parser.parse_args()
 
     run = arguments.run.resolve()
@@ -514,9 +708,10 @@ def main():
         except Exception as error:
             result["map_comparison"] = {"status": "failed", "error": f"{type(error).__name__}: {error}"}
 
-    result["status"] = ("completed" if all(result[key]["status"] == "completed"
-                                           for key in ("drive_status", "trajectory_comparison", "map_comparison"))
-                        else "incomplete")
+    result["status"], reason = overall_status(result)
+
+    if reason:
+        result["incomplete_reason"] = reason
 
     # 채택을 요청했는데 채택하지 못하면 정상 완료가 아니다.
     adoption = result["map_comparison"].get("adoption")
@@ -590,7 +785,9 @@ def compare_map(run, drive, result, reference, geometry, truth, initial, argumen
     comparison["metrics_optimal"] = mt.compare_grids(reference, compared, geometry.resolution, arguments.tolerance_cells)
     comparison["limits"] = [
         "참조와 SLAM이 같은 앞 LiDAR 스캔을 써서 센서 오차·가림·LiDAR 높이 밖 장애물을 함께 놓친다",
-        "LiDAR는 렌더링 형상을 보므로 물리 collision과 다를 수 있다(AWS 메시)",
+        ("LiDAR는 렌더링 형상을 보므로 물리 collision과 다를 수 있다(AWS 메시)"
+         if is_legacy_aws(read_session(run)) else
+         "새 월드는 collision·visual이 같은 상자다. LiDAR 평면(약 0.41 m) 밖 선반판·낮은 상자는 참조·SLAM 모두에 없다"),
         "참조 지도는 스캔 측정 시각 보간 자세를 쓰며 보간 불가 스캔은 제외했다",
     ]
 
@@ -603,10 +800,13 @@ def compare_map(run, drive, result, reference, geometry, truth, initial, argumen
     comparison["files"] = ["overlay.png", "reference_map.yaml", "reference_map.pgm"]
 
     # 채택 여부와 무관하게 메타정보 초안과 누락·개발 조건을 결과에 남긴다.
+    draft = None
+
     try:
         draft = map_metadata(run, drive, dict(result, metrics_optimal=comparison["metrics_optimal"]), slam_yaml)
         comparison["map"] = draft["map"]
         comparison["metadata_problems"] = metadata_problems(draft)
+        comparison["world"] = draft["world"]
     except (KeyError, OSError, ValueError, TypeError) as error:
         comparison["metadata_problems"] = [f"메타정보 생성 실패: {type(error).__name__}: {error}"]
 
@@ -623,17 +823,24 @@ def compare_map(run, drive, result, reference, geometry, truth, initial, argumen
 
         problems += stop_gate_problems(drive)
         problems += comparison.get("metadata_problems", [])
+        target = None
+
+        if draft is None:
+            problems.append("메타정보 초안 없음")
+        else:
+            target, target_problems = adoption_target(arguments.map_dir, draft)
+            problems += target_problems
 
         if problems:
-            comparison["adoption"] = {"status": "refused", "dir": str(arguments.map_dir), "problems": problems}
+            comparison["adoption"] = {"status": "refused", "dir": str(target) if target else None, "problems": problems}
         else:
             try:
                 metadata = map_metadata(run, drive, dict(result, metrics_optimal=comparison["metrics_optimal"]), slam_yaml)
-                info = adopt_map(run, arguments.map_dir.resolve(), metadata)
-                comparison["adoption"] = {"status": "adopted", "dir": str(arguments.map_dir),
+                info = adopt_map(run, target.resolve(), metadata)
+                comparison["adoption"] = {"status": "adopted", "dir": str(target),
                                           "map_revision": info["map_revision"], "reload_check": info["reload_check"]}
             except (RuntimeError, OSError, ValueError, KeyError) as error:
-                comparison["adoption"] = {"status": "refused", "dir": str(arguments.map_dir),
+                comparison["adoption"] = {"status": "refused", "dir": str(target),
                                           "problems": [f"{type(error).__name__}: {error}"]}
 
     comparison["status"] = "completed"

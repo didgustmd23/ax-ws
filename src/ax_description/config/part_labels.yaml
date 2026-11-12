@@ -1,0 +1,25 @@
+# UI·부품 미리보기·스펙 문서에 공통으로 사용하는 활성 URDF 링크 명칭.
+base_link: 차체
+front_left_wheel: 왼쪽 앞바퀴
+front_right_wheel: 오른쪽 앞바퀴
+rear_left_wheel: 왼쪽 뒷바퀴
+rear_right_wheel: 오른쪽 뒷바퀴
+arm_mount_link: 팔 고정 받침
+column_link: 회전 기둥
+arm_rotating_base_link: 윗팔 연결 받침
+upper_arm_link: 윗팔
+forearm_link: 아래팔
+wrist_link: 손목
+gripper_base_link: 공구 연결부
+epick_body: 다중 흡착판 · 12컵
+shelf_link: 적재함 골격
+front_trim_link: 전방 보조 외장
+cargo_contact_link: 적재판 접촉 센서
+front_lidar_link: 전방 LiDAR
+rear_lidar_link: 후방 LiDAR
+front_rgbd_link: 전방 RGB-D 카메라
+front_rgb_link: 전방 RGB 카메라
+arm_rgbd_link: 손목 RGB-D 카메라
+arm_rgb_link: 팔 RGB 카메라
+imu_link: 자세·가속도 센서
+epick_tof_link: 흡착판 거리 센서

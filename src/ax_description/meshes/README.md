@@ -4,9 +4,9 @@
 
 각 부품은 보기 좋게 개별 확대했습니다. 그림 사이의 크기는 실물 비율이 아니며, 전체 조립 모습은 기본 관절 자세입니다. 재질과 조명 표현은 Gazebo와 다를 수 있습니다.
 
-## 로봇1
+## AX_1 · robot_1 계열
 
-![로봇1 전체 조립과 부품별 미리보기](robot_1_parts.png)
+![AX_1 전체 조립과 부품별 미리보기](robot_1_parts.png)
 
 [원본 모델 설정](../urdf/ax.urdf.xacro)
 
@@ -34,18 +34,17 @@
 | 흡착판 거리 센서 | `epick_tof_link` | 기본 도형: URDF visual |
 | 팔 RGB 카메라 | `arm_rgb_link` | 기본 도형: URDF visual |
 
-## 로봇2
+## AX_2 · robot_2 계열
 
-![로봇2 전체 조립과 부품별 미리보기](robot_2_parts.png)
+![AX_2 전체 조립과 부품별 미리보기](robot_2_parts.png)
 
 [원본 모델 설정](../urdf/ax_2.urdf.xacro)
 
 | 부품 설명 | 실제 링크 이름 | 형상 파일·설정 |
 |---|---|---|
 | 차체 | `base_link` | [ax_body.obj](parts/AX_2/ax_body.obj) |
-| 적재함 | `shelf_link` | [ax_shelf.obj](parts/AX_2/ax_shelf.obj) |
-| 보조 부품(현재 바퀴 모양 메시) | `front_trim_link` | [ax_right.obj](parts/AX_2/ax_right.obj) |
-| 상부 LiDAR 하우징(외형) | `top_lidar_housing_link` | [ax_top_lidar.obj](parts/AX_2/ax_top_lidar.obj) |
+| 적재함 골격 | `shelf_link` | [ax_shelf.obj](parts/AX_2/ax_shelf.obj) |
+| 전방 보조 외장 | `front_trim_link` | [ax_right.obj](parts/AX_2/ax_right.obj) |
 | 왼쪽 앞바퀴 | `front_left_wheel` | [ax_tire_left_front.obj](parts/AX_2/ax_tire_left_front.obj) |
 | 오른쪽 앞바퀴 | `front_right_wheel` | [ax_tire_right_front.obj](parts/AX_2/ax_tire_right_front.obj) |
 | 왼쪽 뒷바퀴 | `rear_left_wheel` | [ax_tire_left_rear.obj](parts/AX_2/ax_tire_left_rear.obj) |
@@ -55,7 +54,7 @@
 | 전방 RGB-D 카메라 | `front_rgbd_link` | 기본 도형: URDF visual |
 | 전방 RGB 카메라 | `front_rgb_link` | 기본 도형: URDF visual |
 | 자세·가속도 센서 | `imu_link` | 기본 도형: URDF visual |
-| 적재함 접촉 센서 영역 | `cargo_contact_link` | 기본 도형: URDF visual |
+| 적재판 접촉 센서 | `cargo_contact_link` | 기본 도형: URDF visual |
 
 ## 공구·좌표 기준
 

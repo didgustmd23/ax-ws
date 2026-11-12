@@ -14,7 +14,7 @@ from controller_manager_msgs.srv import ListControllers
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', type=Path)
-parser.add_argument('--world', choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world'], default='ax_test.world')
+parser.add_argument('--world', choices=['planned/ax_warehouse.world'], default='planned/ax_warehouse.world')
 args = parser.parse_args()
 rclpy.init()
 node = rclpy.create_node('ax_unified_runtime_check')
@@ -54,9 +54,9 @@ while time.monotonic() < deadline:
 scene = subprocess.run(['gz', 'service', '-s', '/world/ax_test/scene/info',
     '--reqtype', 'gz.msgs.Empty', '--reptype', 'gz.msgs.Scene', '--timeout', '5000', '--req', ''],
     capture_output=True, text=True, check=True).stdout
-names = (('robot_1', 'robot_2', 'aws_robomaker_warehouse_ShelfF_01_001', 'aws_robomaker_warehouse_GroundB_01_001')
-         if args.world == 'aws_warehouse.world' else
-         ('robot_1', 'robot_2', 'station_src', 'station_dst', 'test_box', 'ground_plane'))
+names = (('robot_1', 'robot_2', 'floor_source', 'floor_destination', 'corridor_2_wall_north')
+         if args.world == 'planned/ax_warehouse.world' else
+         ('robot_1', 'robot_2', 'ground_plane'))
 entities = {name: f'name: "{name}"' in scene for name in names}
 passed = len(readings) == 6 and all(entities.values())
 for robot in ('robot_1', 'robot_2'):

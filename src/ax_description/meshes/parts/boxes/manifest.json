@@ -1,9 +1,9 @@
 {
   "source": "../../AX_Box.obj",
-  "source_sha256": "d68b5cadf9686b0a3b43313894c59294b95e51067f0aaad5e97e8a76ca5fae8a",
+  "source_sha256": "068eae56ae21f619deb9a29b106491c998082ab833ebcf2b0a592350ac804b05",
   "coordinate_policy": "Original assembled coordinates, orientation, scale and units preserved; no recentering. Source units assumed mm.",
   "material_libraries": {
-    "AX_Box.mtl": "38f1ef7d855811a628317599075969613dd6d6f34b1c1c12f610bb4f6ffd8658"
+    "AX_Box.mtl": "41d04fb76cb7e8fb99da5cddbf01ae8055059376848613920e63370b4a5884fc"
   },
   "excluded_objects": [],
   "parts": [

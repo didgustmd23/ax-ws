@@ -2,9 +2,15 @@
 <package format="3">
   <name>ax_environment</name>
   <version>0.0.0</version>
-  <description>B3 region definitions and conservative geometry checks.</description>
+  <description>B3 region definitions, conservative geometry checks and corridor observation publisher.</description>
   <maintainer email="freem@todo.todo">freem</maintainer>
   <license>Apache-2.0</license>
   <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>ax_interfaces</exec_depend>
+  <exec_depend>ax_description</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

@@ -42,7 +42,9 @@ try {
     if (-not $Workspace) { $Workspace = if ($config) { $config.workspace } else { '~/ax-play-ws' } }
     $tool = if ($config) { $config.tool } else { 'epick' }
     $port = if ($config) { [int]$config.port } else { 8765 }
-    $worldArguments = @()
+    # 마지막으로 선택한 월드를 일반 Start에서도 다시 연다.
+    $world = 'planned/ax_warehouse.world'
+    $worldArguments = @('--world', $world)
     if ($Action -eq 'ChooseWorld') {
         Add-Type -AssemblyName System.Windows.Forms
         Add-Type -AssemblyName System.Drawing
@@ -59,9 +61,7 @@ try {
         $list = New-Object Windows.Forms.ComboBox
         $list.DropDownStyle = 'DropDownList'
         $list.SetBounds(20, 50, 410, 30)
-        [void]$list.Items.Add('기존 시험 월드 (30 x 30 m)')
-        [void]$list.Items.Add('창고 월드 (20 x 15 m)')
-        [void]$list.Items.Add('AWS 물류 창고 (선반·집기 / 지붕 없음)')
+        [void]$list.Items.Add('두 창고 월드 (44 x 16 m / 연결 통로 3개)')
         $list.SelectedIndex = 0
         $note = New-Object Windows.Forms.Label
         $note.Text = "다른 월드가 실행 중이면 AX 세션을 종료하고 전환합니다.`r`n같은 월드는 다시 생성하지 않습니다."
@@ -79,7 +79,7 @@ try {
         $form.CancelButton = $cancel
         try {
             if ($form.ShowDialog() -ne [Windows.Forms.DialogResult]::OK) { return }
-            $world = @('ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world')[$list.SelectedIndex]
+            $world = 'planned/ax_warehouse.world'
         } finally { $form.Dispose() }
         $worldArguments = @('--world', $world, '--switch-world')
         $Action = 'Start'
@@ -93,6 +93,11 @@ try {
 # Python은 stdout 마지막 줄에 JSON을 출력한다. JSON의 ok와 프로세스 종료 코드를 모두 확인한다.
     $result = ($raw | Select-Object -Last 1) | ConvertFrom-Json
     if ($exitCode -ne 0 -or -not $result.ok) { throw $result.error }
+    if ($Action -eq 'Start') {
+        $savedConfig = [ordered]@{ distro = $Distro; workspace = $Workspace; port = $port; tool = $tool; world = $world }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $configPath) -Force | Out-Null
+        $savedConfig | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding UTF8
+    }
 # AX 터미널은 전용 창/고정 제목으로 열어 Stop에서 다른 사용자 탭과 구분한다.
     if ($Action -eq 'Start') {
         if ($result.world_switched) {

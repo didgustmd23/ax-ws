@@ -311,8 +311,10 @@ def main():
     log = output.with_suffix('.log').open('w')
     rclpy.init()
     observer = DriveObserver()
+    from empty_test_fixture import write_empty_world
+    fixture = write_empty_world(output.parent)
     process = subprocess.Popen(['ros2', 'launch', 'ax_control', 'simulation.launch.py',
-        'robots:=2', 'gui:=false', 'world:=ax_test.world'],
+        'robots:=2', 'gui:=false', f'test_fixture_world:={fixture}'],
         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     observer.launch_process = process
     report = {'passed': False, 'installed_package': get_package_share_directory('ax_description'), 'trials': []}

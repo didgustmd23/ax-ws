@@ -1,0 +1,11 @@
+{
+  "source_object": "AX_2_Top_lidar",
+  "file": "ax_top_lidar.obj",
+  "vertices": 960,
+  "texture_coordinates": 980,
+  "normals": 651,
+  "faces": 1578,
+  "sha256": "8b0d8136c1ebacfbf1437cccb7aec52496ba4c485ef1c9d51bb6a2b8543bbb6c",
+  "source_sha256": "eecb4762a0941df0bc274c0f0a31ffc174490e338ea7ef8849fb895603a53a35",
+  "status": "Retired: absent from current AX_2 CAD; decorative housing, not active navigation sensor."
+}

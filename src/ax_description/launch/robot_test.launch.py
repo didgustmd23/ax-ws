@@ -7,6 +7,7 @@ controller_config_dir가 주어지면 그 폴더의 YAML로 gz_ros2_control 플�
 """
 import json
 import os
+import shlex
 from pathlib import Path
 import tempfile
 
@@ -31,6 +32,7 @@ COMMON_CONTROLLER_FILE = 'common_controllers.yaml'
 
 # Gazebo 센서 토픽을 로봇별 ROS 경로로 연결한다. 외부 제어 명령을 대신 생성하지 않는다.
 def bridges(robot_id, manipulator, tool='epick'):
+    # 로봇 ID별 namespace로 Gazebo 센서를 ROS에 연결해 다른 로봇의 영상과 섞이지 않게 한다.
     sensor_namespace = '/ax/' + robot_id + '/sensors/'
     configuration = []
     # 센서 스트림은 GZ_TO_ROS 방향과 SENSOR_DATA QoS로 등록한다.
@@ -59,14 +61,26 @@ def bridges(robot_id, manipulator, tool='epick'):
 
 # robot_1~robot_4 출발 위치(world x, y, m). yaw는 0(+X)이다.
 DEFAULT_SPAWN_POSITIONS = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
-# 월드별 예외. AWS 창고에서 기본 robot_2 (2.5, -1.5)는 선반 포함 외곽(x -0.62~0.66, y ±1.03 m)이
-# 동쪽 선반 충돌과 겹쳐 차체가 움직이지 않았다(2026-11-09 원본 월드 시험: odom 0.575 m, 실제 0.002 m).
-# robot_2는 중앙 빈 공간, robot_4는 B2 지도 작성 경로를 비키는 북서쪽 빈 공간으로 옮긴다(참조 지도 회전 원 여유
-# +2.19 m, +0.75 m). robot_1·robot_3은 기본값과 같다. B2 경로(ax_localization/config/routes/aws_warehouse.yaml)와
-# 함께 바꾼다.
+# Per-world spawn overrides keep each robot clear of walls, racks and cargo.
 WORLD_SPAWN_POSITIONS = {
-    'aws_warehouse.world': [(0.0, 0.0), (-1.0, -2.3), (-3.0, 0.0), (-4.6, 5.7)],
+    # 두 창고 월드의 출발 창고 내부 위치(m). 순서대로 robot_1~robot_4이며 통로 밖에서 시작한다.
+    'planned/ax_warehouse.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
+    # 단색 보존 월드는 기준(질감) 월드와 재질 외 구조가 같으므로 같은 출발 위치를 쓴다.
+    'planned/ax_warehouse_plain.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
 }
+# 큰 영상·점군 발행 노드에 줄 Fast DDS 프로필(config/fastdds_large_data.xml 주석 참고).
+DDS_PROFILE_ENV = 'FASTRTPS_DEFAULT_PROFILES_FILE'
+
+
+# 큰 메시지 발행 노드의 추가 환경을 만든다. 사용자가 프로필을 이미 지정했거나 파일이 없으면 비워 둔다.
+# rmw_fastrtps가 아닌 RMW는 이 변수를 읽지 않으므로 영향이 없다.
+def large_data_env(package_share):
+    profile = Path(package_share) / 'config' / 'fastdds_large_data.xml'
+
+    if os.environ.get(DDS_PROFILE_ENV) or not profile.is_file():
+        return {}
+
+    return {DDS_PROFILE_ENV: str(profile)}
 
 
 # 실행 인자를 평가해 월드·모델·센서 브리지를 구성한다. 제어기 spawner는 만들지 않는다(ax_control 담당).
@@ -90,25 +104,24 @@ def setup(context):
     runtime = tempfile.TemporaryDirectory(prefix='ax-w1-')
     runtime_path = Path(runtime.name)
     selected_world = LaunchConfiguration('world').perform(context)
-    aws_assets = package_share / 'world_assets/aws_small_warehouse'
-    resources = os.pathsep.join([str(aws_assets / 'upstream'), str(aws_assets / 'upstream/models'),
-                                 str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
+    resources = os.pathsep.join([str(package_share.parent), str(Path(get_package_share_directory('robotiq_description')).parent),
                                  str(Path(get_package_share_directory('epick_description')).parent),
                                  os.environ.get('GZ_SIM_RESOURCE_PATH', '')])
     actions = [SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH', resources),
                RegisterEventHandler(OnShutdown(on_shutdown=lambda event, ctx: runtime.cleanup()))]
-    world = (aws_assets / 'aws_warehouse_harmonic.world' if selected_world == 'aws_warehouse.world' else
-             package_share / 'worlds' / selected_world)
+    # 빈 바닥 등은 테스트 도구가 임시 생성한다. 사용자 선택 맵에는 포함하지 않는다.
+    test_fixture_world = LaunchConfiguration('test_fixture_world').perform(context)
+    world = Path(test_fixture_world) if test_fixture_world else package_share / 'worlds' / selected_world
     if not world.is_file():
         raise ValueError('Selected world is not installed; rebuild ax_description: ' + str(world))
     actions.append(IncludeLaunchDescription(PythonLaunchDescriptionSource(str(
         Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py')),
-        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + str(world),
+        launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + shlex.quote(str(world)),
                           'on_exit_shutdown': 'true'}.items()))
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
-    spawn_positions = WORLD_SPAWN_POSITIONS.get(selected_world, DEFAULT_SPAWN_POSITIONS)
+    spawn_positions = DEFAULT_SPAWN_POSITIONS if test_fixture_world else WORLD_SPAWN_POSITIONS.get(selected_world, DEFAULT_SPAWN_POSITIONS)
     robot_id_selection = LaunchConfiguration('robot_ids').perform(context)
     selected_indices = [int(value.removeprefix('robot_')) - 1 for value in robot_id_selection.split(',')] if robot_id_selection else list(range(robot_count))
     if len(selected_indices) != len(set(selected_indices)) or any(robot_index not in range(4) for robot_index in selected_indices):
@@ -148,8 +161,10 @@ def setup(context):
                              'input_topic': 'sensors/' + ('epick_tof' if tool == 'epick' else 'suction_tof') + '/scan'}], output='screen'))
     bridge_file = runtime_path / 'bridge.yaml'
     bridge_file.write_text(yaml.safe_dump(all_bridges))
+    # 영상·깊이·점군을 ROS로 내는 발행자이므로 큰 메시지 DDS 프로필을 이 노드에만 준다.
     actions.append(Node(package='ros_gz_bridge', executable='parameter_bridge',
-        parameters=[{'config_file': str(bridge_file), 'use_sim_time': True}], output='screen'))
+        parameters=[{'config_file': str(bridge_file), 'use_sim_time': True}], output='screen',
+        additional_env=large_data_env(package_share)))
     (runtime_path / 'manifest.json').write_text(json.dumps({'robots': len(selected_indices), 'control': control,
         'world': str(world), 'bridge_count': len(all_bridges)}, indent=2))
     return actions
@@ -158,8 +173,10 @@ def setup(context):
 # launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='ax_test.world',
-                              choices=['ax_test.world', 'planned/ax_warehouse.world', 'aws_warehouse.world']),
+        DeclareLaunchArgument('world', default_value='planned/ax_warehouse.world',
+                              choices=['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world']),
+        DeclareLaunchArgument('test_fixture_world', default_value='',
+                              description='Test-only generated SDF fixture; not a selectable map'),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),
         DeclareLaunchArgument('gui', default_value='true', choices=['true', 'false']),
         DeclareLaunchArgument('controller_config_dir', default_value='',

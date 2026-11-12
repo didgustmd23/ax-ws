@@ -7,6 +7,7 @@ import os
 import subprocess
 import xml.etree.ElementTree as ET
 import numpy as np
+import yaml
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from arm_geometry import origin
@@ -19,19 +20,7 @@ from matplotlib import font_manager, ft2font
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'src/ax_description'
 OUT = PACKAGE / 'meshes'
-LABELS = {
-    'base_link': '차체', 'front_left_wheel': '왼쪽 앞바퀴', 'front_right_wheel': '오른쪽 앞바퀴',
-    'rear_left_wheel': '왼쪽 뒷바퀴', 'rear_right_wheel': '오른쪽 뒷바퀴',
-    'arm_mount_link': '팔 고정 받침', 'column_link': '회전 기둥', 'arm_rotating_base_link': '윗팔 연결 받침',
-    'upper_arm_link': '윗팔', 'forearm_link': '아래팔', 'wrist_link': '손목',
-    'gripper_base_link': '공구 연결부', 'epick_body': '다중 흡착판 · 12컵',
-    'shelf_link': '적재함', 'front_trim_link': '보조 부품(현재 바퀴 모양 메시)',
-    'top_lidar_housing_link': '상부 LiDAR 하우징(외형)', 'cargo_contact_link': '적재함 접촉 센서 영역',
-    'front_lidar_link': '전방 LiDAR', 'rear_lidar_link': '후방 LiDAR',
-    'front_rgbd_link': '전방 RGB-D 카메라', 'front_rgb_link': '전방 RGB 카메라',
-    'arm_rgbd_link': '손목 RGB-D 카메라', 'arm_rgb_link': '팔 RGB 카메라',
-    'imu_link': '자세·가속도 센서', 'epick_tof_link': '흡착판 거리 센서',
-}
+LABELS = yaml.safe_load((PACKAGE/'config/part_labels.yaml').read_text(encoding='utf-8'))
 
 
 def korean_font():
@@ -179,7 +168,7 @@ def draw(parts, number):
         ax.set_axis_off()
         title = ('전체 조립 · 기본 자세' if name == 'Neutral assembly' else LABELS.get(name, name)+'\n'+name) if font else name
         ax.set_title(title, fontsize=10, color='#263747', pad=0, fontproperties=font)
-    title = f'로봇{number} · 실제 부품 형상 · 각 부품은 개별 확대' if font else f'AX_{number} | actual visual geometry | panels individually scaled'
+    title = f'AX_{number} · 실제 부품 형상 · 각 부품은 개별 확대' if font else f'AX_{number} | actual visual geometry | panels individually scaled'
     fig.suptitle(title, fontsize=17, fontproperties=font)
     fig.tight_layout(rect=(0, 0, 1, .97))
     fig.savefig(OUT/f'robot_{number}_parts.png', dpi=130, bbox_inches='tight', pad_inches=.2)
@@ -193,7 +182,7 @@ def main():
     for number, model in [(1, 'ax.urdf.xacro'), (2, 'ax_2.urdf.xacro')]:
         parts = panels(model)
         draw(parts, number)
-        lines += [f'## 로봇{number}', '', f'![로봇{number} 전체 조립과 부품별 미리보기](robot_{number}_parts.png)', '',
+        lines += [f'## AX_{number} · robot_{number} 계열', '', f'![AX_{number} 전체 조립과 부품별 미리보기](robot_{number}_parts.png)', '',
                   f'[원본 모델 설정](../urdf/{model})', '', '| 부품 설명 | 실제 링크 이름 | 형상 파일·설정 |', '|---|---|---|']
         for name, _, _, sources in parts:
             links = ['['+s.split('/')[-1]+']('+s+')' if not s.startswith(('기본', 'package:')) else s for s in sources]

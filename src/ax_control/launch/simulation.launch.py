@@ -36,7 +36,8 @@ ATTACH_TOOLS = {"epick", "suction"}
 
 # robot_test.launch.py에 그대로 넘기는 인자와 기본값
 PASS_THROUGH_ARGUMENTS = {
-    "world": "ax_test.world",
+    "world": "planned/ax_warehouse.world",
+    "test_fixture_world": "",
     "robots": "2",
     "robot_ids": "",
     "gui": "true",

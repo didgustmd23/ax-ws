@@ -1,0 +1,503 @@
+{
+  "model": "AX_1",
+  "source_urdf": "ax.urdf.xacro",
+  "pose": "all movable joints at zero; tool=epick for AX_1; unloaded",
+  "basis": "Virtual simulation assumptions, not measured hardware specifications or rated payload.",
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "inertia": "kg*m^2",
+    "angle": "rad"
+  },
+  "total_mass_kg": 28.17086427304,
+  "com_in_base_m": [
+    0.09563731883331913,
+    0.05402107808431672,
+    0.5426983702186422
+  ],
+  "inertia_at_total_com_kg_m2": [
+    [
+      11.949621734938855,
+      -0.35948513630086515,
+      -1.6899356294649586
+    ],
+    [
+      -0.35948513630086515,
+      12.708540528752785,
+      -0.8019644962850434
+    ],
+    [
+      -1.6899356294649586,
+      -0.8019644962850434,
+      2.8209560169065298
+    ]
+  ],
+  "visual_bounds_base_m": [
+    [
+      -0.76,
+      -0.387,
+      -0.38904725000000007
+    ],
+    [
+      0.8,
+      0.6133642227669046,
+      1.7285705500000001
+    ]
+  ],
+  "visual_size_m": [
+    1.56,
+    1.0003642227669047,
+    2.1176178
+  ],
+  "wheel_radius_m": 0.19631,
+  "wheel_separation_m": 0.622,
+  "wheelbase_m": 0.88,
+  "wheel_separation_multiplier": 1.2315,
+  "max_linear_velocity_m_s": 0.67,
+  "max_angular_velocity_rad_s": 0.5,
+  "max_linear_acceleration_m_s2": 0.67,
+  "unloaded_com_xy_inside_wheel_centers": true,
+  "rated_payload_kg": null,
+  "links": [
+    {
+      "link": "base_link",
+      "label": "\ucc28\uccb4",
+      "mass_kg": 8.0,
+      "com_in_base_m": [
+        0.00645762492671,
+        4.72572327765e-06,
+        -0.115947120625
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/base_link.obj"
+      ]
+    },
+    {
+      "link": "front_left_wheel",
+      "label": "\uc67c\ucabd \uc55e\ubc14\ud034",
+      "mass_kg": 0.5,
+      "com_in_base_m": [
+        0.437,
+        0.311,
+        -0.19277325
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/front_left_wheel.obj"
+      ]
+    },
+    {
+      "link": "front_right_wheel",
+      "label": "\uc624\ub978\ucabd \uc55e\ubc14\ud034",
+      "mass_kg": 0.5,
+      "com_in_base_m": [
+        0.437,
+        -0.311,
+        -0.19277325
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/front_right_wheel.obj"
+      ]
+    },
+    {
+      "link": "rear_left_wheel",
+      "label": "\uc67c\ucabd \ub4b7\ubc14\ud034",
+      "mass_kg": 0.5,
+      "com_in_base_m": [
+        -0.443,
+        0.311,
+        -0.19277325
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/rear_left_wheel.obj"
+      ]
+    },
+    {
+      "link": "rear_right_wheel",
+      "label": "\uc624\ub978\ucabd \ub4b7\ubc14\ud034",
+      "mass_kg": 0.5,
+      "com_in_base_m": [
+        -0.443,
+        -0.311,
+        -0.19277325
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/rear_right_wheel.obj"
+      ]
+    },
+    {
+      "link": "arm_mount_link",
+      "label": "\ud314 \uace0\uc815 \ubc1b\uce68",
+      "mass_kg": 3.0,
+      "com_in_base_m": [
+        -0.0175411994985,
+        -0.00969629540333,
+        0.396708900183
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/arm_mount_link.obj"
+      ]
+    },
+    {
+      "link": "column_link",
+      "label": "\ud68c\uc804 \uae30\ub465",
+      "mass_kg": 4.0,
+      "com_in_base_m": [
+        0.0,
+        0.0,
+        0.58722433
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/column_link.obj"
+      ]
+    },
+    {
+      "link": "arm_rotating_base_link",
+      "label": "\uc717\ud314 \uc5f0\uacb0 \ubc1b\uce68",
+      "mass_kg": 1.0,
+      "com_in_base_m": [
+        0.0392273753996,
+        -8.14400927077e-10,
+        1.0650785891138
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/arm_rotating_base_link.obj"
+      ]
+    },
+    {
+      "link": "upper_arm_link",
+      "label": "\uc717\ud314",
+      "mass_kg": 4.0,
+      "com_in_base_m": [
+        0.1675386773365,
+        3.86641157046e-06,
+        1.270500061228
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/upper_arm_link.obj"
+      ]
+    },
+    {
+      "link": "forearm_link",
+      "label": "\uc544\ub798\ud314",
+      "mass_kg": 3.0,
+      "com_in_base_m": [
+        0.3253113011554,
+        0.158950793081,
+        1.478859910756
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/forearm_link.obj"
+      ]
+    },
+    {
+      "link": "wrist_link",
+      "label": "\uc190\ubaa9",
+      "mass_kg": 1.0,
+      "com_in_base_m": [
+        0.336584478496886,
+        0.4549999884894648,
+        1.068943047819
+      ],
+      "visual_sources": [
+        "versions/AX_1_v2/wrist_link.obj"
+      ]
+    },
+    {
+      "link": "gripper_base_link",
+      "label": "\uacf5\uad6c \uc5f0\uacb0\ubd80",
+      "mass_kg": 0.2,
+      "com_in_base_m": [
+        0.3364427,
+        0.455,
+        0.9185705500000001
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "epick_body",
+      "label": "\ub2e4\uc911 \ud761\ucc29\ud310 \u00b7 12\ucef5",
+      "mass_kg": 0.87086427304,
+      "com_in_base_m": [
+        0.3376583295093026,
+        0.45495459938084626,
+        0.8551439759584439
+      ],
+      "visual_sources": [
+        "tools/parcel_suction_head.stl"
+      ]
+    },
+    {
+      "link": "epick_suction_cup",
+      "label": "epick_suction_cup",
+      "mass_kg": 0.04,
+      "com_in_base_m": [
+        0.3364427,
+        0.455,
+        0.7793769400000001
+      ]
+    },
+    {
+      "link": "front_lidar_link",
+      "label": "\uc804\ubc29 LiDAR",
+      "mass_kg": 0.2,
+      "com_in_base_m": [
+        0.77,
+        0.0,
+        0.2
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "rear_lidar_link",
+      "label": "\ud6c4\ubc29 LiDAR",
+      "mass_kg": 0.2,
+      "com_in_base_m": [
+        -0.73,
+        0.0,
+        0.06
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "front_rgbd_link",
+      "label": "\uc804\ubc29 RGB-D \uce74\uba54\ub77c",
+      "mass_kg": 0.15,
+      "com_in_base_m": [
+        0.73,
+        -0.1,
+        0.2
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "front_rgb_link",
+      "label": "\uc804\ubc29 RGB \uce74\uba54\ub77c",
+      "mass_kg": 0.15,
+      "com_in_base_m": [
+        0.73,
+        0.1,
+        0.2
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "imu_link",
+      "label": "\uc790\uc138\u00b7\uac00\uc18d\ub3c4 \uc13c\uc11c",
+      "mass_kg": 0.05,
+      "com_in_base_m": [
+        0.0,
+        0.0,
+        -0.1
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "arm_rgbd_link",
+      "label": "\uc190\ubaa9 RGB-D \uce74\uba54\ub77c",
+      "mass_kg": 0.15,
+      "com_in_base_m": [
+        0.3364427,
+        0.585,
+        1.0125705500000002
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "epick_tof_link",
+      "label": "\ud761\ucc29\ud310 \uac70\ub9ac \uc13c\uc11c",
+      "mass_kg": 0.01,
+      "com_in_base_m": [
+        0.23144270000000003,
+        0.455,
+        0.79052694
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    },
+    {
+      "link": "arm_rgb_link",
+      "label": "\ud314 RGB \uce74\uba54\ub77c",
+      "mass_kg": 0.15,
+      "com_in_base_m": [
+        0.1644427,
+        0.142,
+        1.22257055
+      ],
+      "visual_sources": [
+        "\uae30\ubcf8 \ub3c4\ud615: URDF visual"
+      ]
+    }
+  ],
+  "movable_joints": [
+    {
+      "name": "front_left_wheel_joint",
+      "type": "continuous"
+    },
+    {
+      "name": "front_right_wheel_joint",
+      "type": "continuous"
+    },
+    {
+      "name": "rear_left_wheel_joint",
+      "type": "continuous"
+    },
+    {
+      "name": "rear_right_wheel_joint",
+      "type": "continuous"
+    },
+    {
+      "name": "column_yaw_joint",
+      "type": "revolute",
+      "limits": {
+        "effort": 10.0,
+        "lower": -3.14159,
+        "upper": 3.14159,
+        "velocity": 0.35
+      }
+    },
+    {
+      "name": "shoulder_joint",
+      "type": "revolute",
+      "limits": {
+        "effort": 100.0,
+        "lower": -1.5708,
+        "upper": 1.5708,
+        "velocity": 0.5
+      }
+    },
+    {
+      "name": "elbow_joint",
+      "type": "revolute",
+      "limits": {
+        "effort": 65.0,
+        "lower": -2.0,
+        "upper": 2.0,
+        "velocity": 0.5
+      }
+    },
+    {
+      "name": "wrist_joint",
+      "type": "revolute",
+      "limits": {
+        "effort": 25.0,
+        "lower": -1.57,
+        "upper": 1.57,
+        "velocity": 0.7
+      }
+    },
+    {
+      "name": "gripper_rotation_joint",
+      "type": "revolute",
+      "limits": {
+        "effort": 5.0,
+        "lower": -3.14159,
+        "upper": 3.14159,
+        "velocity": 0.7
+      }
+    }
+  ],
+  "sensors": [
+    {
+      "name": "front_lidar",
+      "type": "gpu_lidar",
+      "rate_hz": 10.0,
+      "topic": "/ax/robot_1/sensors/front_lidar/scan",
+      "range_m": [
+        0.12,
+        10.0
+      ],
+      "horizontal_samples": 360
+    },
+    {
+      "name": "rear_lidar",
+      "type": "gpu_lidar",
+      "rate_hz": 10.0,
+      "topic": "/ax/robot_1/sensors/rear_lidar/scan",
+      "range_m": [
+        0.12,
+        10.0
+      ],
+      "horizontal_samples": 360
+    },
+    {
+      "name": "front_rgbd",
+      "type": "rgbd_camera",
+      "rate_hz": 15.0,
+      "topic": "/ax/robot_1/sensors/front_rgbd",
+      "horizontal_fov_rad": 1.0471975511965976,
+      "image_size_px": [
+        640,
+        480
+      ],
+      "projection": "custom lens intrinsics"
+    },
+    {
+      "name": "front_rgb",
+      "type": "camera",
+      "rate_hz": 15.0,
+      "topic": "/ax/robot_1/sensors/front_rgb/image_raw",
+      "horizontal_fov_rad": 1.0471975511965976,
+      "image_size_px": [
+        640,
+        480
+      ],
+      "projection": "custom lens intrinsics"
+    },
+    {
+      "name": "imu",
+      "type": "imu",
+      "rate_hz": 100.0,
+      "topic": "/ax/robot_1/sensors/imu"
+    },
+    {
+      "name": "arm_rgbd",
+      "type": "rgbd_camera",
+      "rate_hz": 15.0,
+      "topic": "/ax/robot_1/sensors/arm_rgbd",
+      "horizontal_fov_rad": 1.0471975511965976,
+      "image_size_px": [
+        640,
+        480
+      ],
+      "projection": "custom lens intrinsics"
+    },
+    {
+      "name": "epick_tof",
+      "type": "gpu_lidar",
+      "rate_hz": 30.0,
+      "topic": "/ax/robot_1/sensors/epick_tof/scan",
+      "range_m": [
+        0.02,
+        0.4
+      ],
+      "horizontal_samples": 1
+    },
+    {
+      "name": "arm_rgb",
+      "type": "camera",
+      "rate_hz": 15.0,
+      "topic": "/ax/robot_1/sensors/arm_rgb/image_raw",
+      "horizontal_fov_rad": 1.0471975511965976,
+      "image_size_px": [
+        640,
+        480
+      ],
+      "projection": "custom lens intrinsics"
+    }
+  ]
+}

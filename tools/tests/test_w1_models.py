@@ -63,16 +63,16 @@ class Models(unittest.TestCase):
                         self.assertIn(joint_name, drive[side + '_wheel_names'])
                         self.assertNotIn(joint_name, drive[('right' if side == 'left' else 'left') + '_wheel_names'])
 
-    def test_unified_world_has_clear_drive_area_and_work_stations(self):
-        self.assertEqual([p.name for p in (PKG / 'worlds').glob('*.world')], ['ax_test.world'])
-        world = ET.parse(PKG / 'worlds/ax_test.world').getroot().find('world')
+    def test_only_current_warehouse_is_selectable_and_empty_fixture_is_generated(self):
+        self.assertEqual({p.relative_to(PKG / 'worlds').as_posix() for p in (PKG / 'worlds').rglob('*.world')},
+                         {'planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'})
+        world = ET.parse(PKG / 'worlds/planned/ax_warehouse.world').getroot().find('world')
         self.assertEqual(world.get('name'), 'ax_test')
+        self.assertEqual(sum(m.get('name').startswith('floor_transfer_corridor') for m in world.findall('model')), 3)
+        world = module(ROOT/'tools/empty_test_fixture.py', 'empty_fixture').empty_world().find('world')
         self.assertEqual({m.get('name') for m in world.findall('model')},
-                         {'ground_plane', 'station_src', 'station_dst', 'test_box'})
+                         {'ground_plane'})
         self.assertEqual(world.findtext('gravity'), '0 0 -9.80665')
-        for name in ('station_src', 'station_dst', 'test_box'):
-            entity = world.find(f"model[@name='{name}']")
-            self.assertGreaterEqual(float(entity.findtext('pose').split()[0]), 8)
         ground = world.find("model[@name='ground_plane']")
         self.assertEqual(ground.findtext('static'), 'true')
         self.assertEqual(ground.findtext('.//plane/size'), '30 30')
@@ -127,7 +127,7 @@ class Models(unittest.TestCase):
                 self.assertTrue(sensor.findtext('gz_frame_id').startswith(robot_id + '/'))
             # No model-local shared systems or alternative wheel driver.
             self.assertEqual(root.findall('gazebo/plugin'), [])
-        world = ET.parse(PKG / 'worlds/ax_test.world').getroot().find('world')
+        world = ET.parse(PKG / 'worlds/planned/ax_warehouse.world').getroot().find('world')
         names = [element.get('name') for element in world.findall('plugin')]
         self.assertEqual(len(names), len(set(names)))
         self.assertIn('gz::sim::systems::Sensors', names)

@@ -1,0 +1,45 @@
+# B2 비교용 선택 모드: RTAB-Map LiDAR·RGB-D 융합 지도 작성 초안(채택 전, 운영 기준은 slam_mapping.yaml의 slam_toolbox).
+# mapping_rtabmap.launch.py가 읽는다. 프레임·입력 토픽은 launch가 robot_id·scan 인자로 덮어쓴다.
+# 갱신 간격은 slam_toolbox(minimum_travel_distance 0.5 m, minimum_travel_heading 0.5 rad, minimum_time_interval 0.5 s)와 비슷하게 맞췄다.
+# 근거·제한: log/b2_custom_warehouse/20261111_201620/rgbd_features(이 월드는 카메라 특징이 부족한 위치가 많다).
+# 초안 1회 + 원인 확인용 단일 항목 변경까지만 허용한다. 결과에 맞춰 반복 조정하지 않는다.
+
+/**/rgbd_sync:
+  ros__parameters:
+    use_sim_time: true
+    # B1 처리본은 컬러·깊이·camera_info를 같은 stamp로 맞춰 낸다.
+    approx_sync: false
+    sync_queue_size: 30
+
+/**/rtabmap:
+  ros__parameters:
+    use_sim_time: true
+    map_frame_id: map
+    subscribe_depth: false
+    subscribe_rgb: false
+    subscribe_rgbd: true
+    subscribe_scan: true
+    # rgbd_image·scan·odom TF stamp가 서로 달라 근사 동기화한다.
+    approx_sync: true
+    sync_queue_size: 30
+    topic_queue_size: 10
+    wait_for_transform: 0.2
+    publish_tf: true
+
+    # RTAB-Map 내부 파라미터(문자열)
+    Reg/Strategy: "1"                    # 0 시각, 1 ICP(LiDAR), 2 시각+ICP
+    Reg/Force3DoF: "true"                # 평면 이동(x, y, yaw)만
+    RGBD/NeighborLinkRefining: "true"    # 이웃 노드 연결을 LiDAR ICP로 보정
+    RGBD/ProximityBySpace: "true"        # 가까운 노드끼리 LiDAR 근접 연결
+    RGBD/LinearUpdate: "0.5"             # slam_toolbox minimum_travel_distance와 같게
+    RGBD/AngularUpdate: "0.5"            # slam_toolbox minimum_travel_heading과 같게
+    Rtabmap/DetectionRate: "2"           # 최대 2 Hz(0.5 s 간격, slam_toolbox minimum_time_interval과 같게)
+    Mem/IncrementalMemory: "true"
+    Mem/InitWMWithAllNodes: "false"
+    Grid/Sensor: "0"                     # 점유 격자는 LiDAR로만
+    Grid/CellSize: "0.05"                # slam_toolbox resolution과 같게
+    Grid/RangeMax: "10.0"                # slam_toolbox max_laser_range와 같게
+    Icp/VoxelSize: "0.05"
+    Icp/MaxCorrespondenceDistance: "0.1"
+    Icp/PointToPlane: "false"            # 2D 스캔
+    Icp/Iterations: "30"

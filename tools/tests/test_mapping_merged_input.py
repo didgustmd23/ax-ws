@@ -91,6 +91,13 @@ class MappingLaunch(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             setup_actions("merged", localization=["/ax/robot_2/amcl"])
 
+    # RTAB-Map 선택 모드의 start_merge도 같은 병합 노드 생성 함수를 쓴다
+    def test_rtabmap_shares_merge_node(self):
+        rl = load("mapping_rtabmap_shared_under_test", PKG / "launch/mapping_rtabmap.launch.py")
+        node = rl.mapping_launch().scan_merge_node("/ax/robot_2", "robot_2")
+        self.assertEqual((node.node_package, node.node_executable), ("ax_localization", "scan_merge.py"))
+        self.assertIn("running_scan_merge", (PKG / "launch/mapping_rtabmap.launch.py").read_text())
+
 
 class SlamConfig(unittest.TestCase):
     # 기본 설정: 병합 토픽, expansion 끔. 나머지 정합 값은 비교 시험(S2)과 같아야 한다.

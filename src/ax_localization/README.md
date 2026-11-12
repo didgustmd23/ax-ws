@@ -33,6 +33,20 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 - **기록:** `session/`에 월드·경로 사본, 경로·월드·미커밋 diff 해시(`session.json`, `git_diff.patch`)를 남긴다. 시뮬레이션 전에 실제 launch가 읽는 설정(`slam_mapping.yaml`, 로봇별 제어기 — robot_1·3은 `ax1_controllers.yaml`, robot_2·4는 `ax2_controllers.yaml` —, `common_controllers.yaml`, `sensor_mounts.yaml`, `a1_validation.yaml`)을 launch와 같은 ament share 경로(현재 `AMENT_PREFIX_PATH` 순서, overlay 포함)에서 찾아 사본(`session/config/`)과 SHA-256(`session.json`의 `config_files`: 로봇·제어기 파일·출처)을 남기며, 탐색·복사·해시 중 하나라도 실패하면 시뮬레이션을 띄우지 않는다(exit 2).
 - **평가(`check_map_accuracy.py`):** 새 월드 회차의 메타정보는 `session.json`의 월드 경로·Gazebo 내부 이름·월드 해시와 회차 사본(월드·경로·설정)을 대조해 만든다. AWS 출처는 옛 AWS 형식 회차에만 붙는다. 설정 해시는 회차 기록만 쓰고 현재 파일로 채우지 않으며, 불일치·누락은 메타정보 문제로 남아 채택을 막는다. 부분 경로(`--waypoints`)는 단계별 결과를 보존하되 전체 `status`가 `incomplete`(종료 코드 1, `incomplete_reason`)다. 새 월드에서 `--adopt`는 `--map-dir`를 명시해야 한다(생략하면 거절).
 
+## RTAB-Map 융합 비교용 선택 모드 — 시험용, 채택 전
+
+운영 기준 지도 작성은 위 slam_toolbox(`mapping.launch.py`, 기본 병합 스캔)다. `start_merge:=true`는 같은 병합 노드 생성 함수와 중복 거절 규칙을 쓴다. 아래는 같은 기록으로 비교하기 위한 선택 모드이며 기본 동작을 바꾸지 않는다.
+
+```bash
+# 실행 중인 시뮬레이션·B1에 연결(slam_toolbox·AMCL이 같은 로봇에 떠 있으면 시작하지 않음)
+ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=front|merged] [start_merge:=true]
+```
+
+- **입력:** B1 처리본 `sensors/front_rgbd/processed/{image,depth_image,camera_info}` → `rgbd_sync` → `rtabmap`, LiDAR `sensors/front_lidar/scan_filtered`. `scan:=merged`는 `scripts/scan_merge.py`(시험용 앞·뒤 `scan_filtered` 병합, base_link 기준 720빔)의 출력을 쓴다.
+- **설정:** `config/rtabmap_mapping.yaml`(ICP 정합 `Reg/Strategy 1`, 3DoF, LiDAR 격자, 갱신 간격은 slam_toolbox와 비슷하게). `database:=`를 비우면 실행마다 새 임시 폴더 db를 만들고 그 db에만 시작 시 삭제(`-d`)를 건다. 경로를 주면 `-d`를 넘기지 않으며, 그 경로에 파일이 이미 있으면 지우거나 이어 쓰지 않도록 시작하지 않는다(새 경로만 허용).
+- **비교 결과(2026-11-11, 한 기록 재생, `log/b2_custom_warehouse/20261111_212314/compare/REPORT.md`):** 이 기록에서 slam_toolbox 원 설정은 통로 출구 정합 도약으로 위치 오차가 최대 1.40 m였다. 앞뒤 병합 스캔 slam_toolbox와 RTAB-Map은 도약 없이 0.07~0.10 m였다. 다만 시뮬레이션 바퀴 odom만으로도 0.095 m라 odom보다 낫다는 근거는 없다.
+- **제한:** 이 월드는 벽·바닥이 단색이라 카메라 특징이 부족한 위치가 많다(`20261111_201620/rgbd_features`, 통로 2 출구 매칭 0). 기록 bag의 카메라 프레임 절반가량이 누락됐다. 한 경로 한 기록만 비교했다. `ros2 run nav2_map_server map_saver_cli`로는 RTAB-Map 지도를 저장하지 못했고, `rtabmap-export --map`으로 db에서 꺼냈다. 채택·운영 지도·설계 변경 대상이 아니다.
+
 ## 위치 추정(AMCL) — 개발용
 
 - **현재 상태:** 채택한 운영 지도가 없어 개발용 지도로만 실행·검증했다. A1이 운영 모델·기준 월드를 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.

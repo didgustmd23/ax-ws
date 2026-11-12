@@ -20,7 +20,7 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
   - 동쪽 창고 어긋남(≈0.3 m), 통로 1 안 가짜 점유, SLAM 보정 도약 때문에 운영 지도로 쓰지 않는다.
   - 결과·해시·한계·재생성은 [두 창고 지도 안내](maps/ax_warehouse/README.md)에 있다.
 - **SLAM 입력(2026-11-12 채택):** 기본은 앞·뒤 B1 `scan_filtered`를 `scripts/scan_merge.py`가 base_link 기준 720빔으로 합친 `sensors/merged/scan_filtered`(`mapping.launch.py scan:=merged`, 병합 노드를 함께 띄움, 같은 namespace에 `scan_merge`가 있으면 거절)다. `slam_mapping.yaml`은 이 토픽과 `use_response_expansion: false`를 쓴다. 근거는 한 기록 재생 비교(`log/b2_custom_warehouse/20261111_212314/compare`)이며 두 스캔 사이 차체 이동은 보정하지 않는다. `scan:=filtered`(앞만)·`raw`는 비교용이다. 세션 기본 `--scan merged`이고, 주행 장애물 감시는 앞·뒤 원 `scan_filtered`를 그대로 쓴다. `session.json`에 `scan`·`scan_merge`(설치본 파일·해시), 주행 기록에 `slam_scan_input`, `map_info`의 `robot.sensor`에 `slam_input`·`scan_merge`가 남는다. 아래 2026-11-11 후보 지도는 앞 스캔만 쓴 이전 입력으로 만든 것이다. AMCL 입력은 바꾸지 않았다.
-- **실행:** `--world`와 같은 world를 적은 `--route`를 함께 준다. 시뮬레이션 전에 `mapping_drive.py --check-only`가 경로의 `world`(월드 파일 경로)·`gz_world`(Gazebo 내부 이름 `ax_test`)·`robot_id`를 대조해 다르면 exit 2로 거절한다. AWS 경로·`--light`·`--wheel-slip1`도 이 월드에서는 거절한다.
+- **실행:** `--world`와 같은 world를 적은 `--route`를 함께 준다. 시뮬레이션 전에 `mapping_drive.py --check-only`가 경로의 `world`(월드 파일 경로)·`gz_world`(Gazebo 내부 이름 `ax_test`)·`robot_id`를 대조해 다르면 exit 2로 거절한다. 지원 월드는 `ax_description/config/worlds.yaml` 목록(기준 질감 월드, 단색 보존 월드 `planned/ax_warehouse_plain.world`)이다. 두 월드는 같은 구조(`structure`)라 기준 월드용 경로 파일을 단색 월드에도 쓴다(`check_map_accuracy.py`의 경로 대조도 같다). AWS 경로·`--light`·`--wheel-slip1`도 이 월드에서는 거절한다.
 
   ```bash
   bash src/ax_localization/scripts/run_mapping_session.sh --world planned/ax_warehouse.world \

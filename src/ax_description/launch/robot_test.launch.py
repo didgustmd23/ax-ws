@@ -61,13 +61,12 @@ def bridges(robot_id, manipulator, tool='epick'):
 
 # robot_1~robot_4 출발 위치(world x, y, m). yaw는 0(+X)이다.
 DEFAULT_SPAWN_POSITIONS = [(0.0, 0.0), (2.5, -1.5), (-3.0, 0.0), (-3.0, -2.5)]
+# 선택 가능한 월드와 월드별 출발 위치는 config/worlds.yaml 한 곳에 둔다(도구들도 같은 파일을 읽는다).
+WORLD_CATALOG = yaml.safe_load((Path(__file__).resolve().parents[1] / 'config' / 'worlds.yaml').read_text(encoding='utf-8'))
+WORLD_CHOICES = list(WORLD_CATALOG['worlds'])
 # Per-world spawn overrides keep each robot clear of walls, racks and cargo.
-WORLD_SPAWN_POSITIONS = {
-    # 두 창고 월드의 출발 창고 내부 위치(m). 순서대로 robot_1~robot_4이며 통로 밖에서 시작한다.
-    'planned/ax_warehouse.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
-    # 단색 보존 월드는 기준(질감) 월드와 재질 외 구조가 같으므로 같은 출발 위치를 쓴다.
-    'planned/ax_warehouse_plain.world': [(-10.0, -2.4), (-6.8, 0.0), (-17.0, -2.4), (-13.0, -2.4)],
-}
+WORLD_SPAWN_POSITIONS = {name: [tuple(xy) for xy in entry['spawn_positions']]
+                         for name, entry in WORLD_CATALOG['worlds'].items()}
 # 큰 영상·점군 발행 노드에 줄 Fast DDS 프로필(config/fastdds_large_data.xml 주석 참고).
 DDS_PROFILE_ENV = 'FASTRTPS_DEFAULT_PROFILES_FILE'
 
@@ -173,8 +172,8 @@ def setup(context):
 # launch 인자와 실행 구성을 반환한다. 이 함수 호출만으로 즉시 로봇을 움직이지는 않는다.
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('world', default_value='planned/ax_warehouse.world',
-                              choices=['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world']),
+        DeclareLaunchArgument('world', default_value=WORLD_CATALOG['default'],
+                              choices=WORLD_CHOICES),
         DeclareLaunchArgument('test_fixture_world', default_value='',
                               description='Test-only generated SDF fixture; not a selectable map'),
         DeclareLaunchArgument('robots', default_value='2', choices=['1', '2', '4']),

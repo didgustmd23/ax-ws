@@ -7,14 +7,19 @@ import math
 import time
 from pathlib import Path
 import subprocess
+import sys
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState, LaserScan
 from controller_manager_msgs.srv import ListControllers
+# 같은 폴더의 월드 목록 모듈(worlds.yaml 읽기). 다른 위치에서 불러도 찾을 수 있게 경로를 넣는다.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import world_catalog  # noqa: E402
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', type=Path)
-parser.add_argument('--world', choices=['planned/ax_warehouse.world'], default='planned/ax_warehouse.world')
+# 선택 월드는 ax_description config/worlds.yaml 목록이다(기준 질감 월드 기본, 단색 보존 월드).
+parser.add_argument('--world', choices=world_catalog.choices(), default=world_catalog.default())
 args = parser.parse_args()
 rclpy.init()
 node = rclpy.create_node('ax_unified_runtime_check')
@@ -55,7 +60,7 @@ scene = subprocess.run(['gz', 'service', '-s', '/world/ax_test/scene/info',
     '--reqtype', 'gz.msgs.Empty', '--reptype', 'gz.msgs.Scene', '--timeout', '5000', '--req', ''],
     capture_output=True, text=True, check=True).stdout
 names = (('robot_1', 'robot_2', 'floor_source', 'floor_destination', 'corridor_2_wall_north')
-         if args.world == 'planned/ax_warehouse.world' else
+         if world_catalog.load()['worlds'][args.world]['structure'] == 'planned/ax_warehouse.world' else
          ('robot_1', 'robot_2', 'ground_plane'))
 entities = {name: f'name: "{name}"' in scene for name in names}
 passed = len(readings) == 6 and all(entities.values())

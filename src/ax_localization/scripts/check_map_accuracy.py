@@ -492,8 +492,9 @@ def world_record(run, session, drive):
 
     world["route_world"] = route_world
 
-    if route_world != name:
-        problems.append(f"route: 경로 world {route_world!r} ≠ 실행 월드 {name!r}")
+    # 재질만 다른 월드(같은 structure, config/worlds.yaml)는 같은 경로를 쓴다.
+    if not mt.same_world_structure(route_world, name):
+        problems.append(f"route: 경로 world {route_world!r} ≠ 실행 월드 {name!r}(구조가 다른 월드)")
 
     route_sha = session_copy_sha(run, session.get("route_copy") or "session/route.yaml")
 

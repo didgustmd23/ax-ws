@@ -16,6 +16,8 @@ import sys
 import tempfile
 import unittest
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 PLANNED = ROOT / 'src/ax_description/worlds/planned'
 LAUNCH = ROOT / 'src/ax_description/launch/robot_test.launch.py'
@@ -120,18 +122,19 @@ class TexturedWorld(unittest.TestCase):
         self.assertTrue(errors)
 
     # launch는 기준 월드(기본)와 단색 월드를 선택지로 받고 두 월드에 같은 출발 위치를 쓴다
+    # 값은 config/worlds.yaml 한 곳에서 읽는다(launch 소스에 목록을 두지 않음).
     def test_launch_lists_both_worlds(self):
         source = LAUNCH.read_text(encoding='utf-8')
-        spawn = re.search(r'WORLD_SPAWN_POSITIONS = \{(.*?)\n\}', source, flags=re.S).group(1)
-        positions = dict(re.findall(r"'([^']+\.world)': (\[[^\]]+\])", spawn))
+        catalog = yaml.safe_load((LAUNCH.parents[1] / 'config/worlds.yaml').read_text(encoding='utf-8'))
+        worlds = catalog['worlds']
 
         self.assertEqual(
-            positions['planned/ax_warehouse_plain.world'],
-            positions['planned/ax_warehouse.world'])
-
-        choices = "choices=['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world']"
-        self.assertIn(choices, source)
-        self.assertIn("DeclareLaunchArgument('world', default_value='planned/ax_warehouse.world'", source)
+            worlds['planned/ax_warehouse_plain.world']['spawn_positions'],
+            worlds['planned/ax_warehouse.world']['spawn_positions'])
+        self.assertEqual(list(worlds), ['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'])
+        self.assertEqual(catalog['default'], 'planned/ax_warehouse.world')
+        self.assertIn("default_value=WORLD_CATALOG['default']", source)
+        self.assertIn('choices=WORLD_CHOICES', source)
 
     # (선택) 질감 이미지를 v2_slim 설정으로 다시 만들면 저장된 34개 파일과 바이트가 같다
     @unittest.skipUnless(os.environ.get('AX_TEXTURE_REGEN') == '1',

@@ -58,7 +58,7 @@ import tf2_ros
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from map_tools import describe_model, se2, se2_params, transform_points, wrap_angle, yaw_from_quaternion  # noqa: E402
+from map_tools import describe_model, same_world_structure, se2, se2_params, transform_points, wrap_angle, yaw_from_quaternion  # noqa: E402
 import rotation_align  # noqa: E402
 
 # D-06 정지 판정 값을 odom 속도에 적용한다(odom 기준 정지 확인). 판정 소유는 A4이며 여기서는 시험 기록용으로 같은 값을 쓴다.
@@ -282,8 +282,9 @@ def route_world_problems(route, world=None, gz_world=None, robot_id=None):
     if route_world == "aws_warehouse.world":
         problems.append("AWS 월드는 삭제됐습니다. 현재 두 창고 월드에 맞춰 새로 검증한 --route를 지정하세요")
 
-    if world is not None and route_world != world:
-        problems.append(f"경로 world {route_world!r} ≠ 실행 월드 {world!r}")
+    # 재질만 다른 월드(같은 structure, config/worlds.yaml)는 같은 경로를 쓴다.
+    if world is not None and not same_world_structure(route_world, world):
+        problems.append(f"경로 world {route_world!r} ≠ 실행 월드 {world!r}(구조가 다른 월드)")
 
     if gz_world is not None and "gz_world" in route and route["gz_world"] != gz_world:
         problems.append(f"경로 gz_world {route['gz_world']!r} ≠ Gazebo 내부 이름 {gz_world!r}")

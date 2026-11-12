@@ -10,8 +10,13 @@ from pathlib import Path
 import shlex
 import signal
 import subprocess
+import sys
 import time
 import urllib.request
+
+# 같은 폴더의 월드 목록 모듈(worlds.yaml 읽기). 다른 위치에서 불러도 찾을 수 있게 경로를 넣는다.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import world_catalog  # noqa: E402
 
 
 # /proc에서 PID·부모 PID·시작 시각·실행 인자·환경을 읽는다. 종료된 프로세스는 None으로 처리한다.
@@ -161,7 +166,7 @@ def run(args):
             stop_processes(found['launch'] + found['keyboard'])
             found = discover(workspace)
         switched_world = False
-        selected_world = getattr(args, 'world', 'planned/ax_warehouse.world')
+        selected_world = getattr(args, 'world', world_catalog.default())
         launch_tool = args.tool
         if args.action == 'start' and getattr(args, 'switch_world', False):
             package_share = workspace / 'install/ax_description/share/ax_description'
@@ -170,7 +175,7 @@ def run(args):
                 raise RuntimeError('Selected world is not installed. Build ax_description in the Ubuntu workspace first')
             if found['launch']:
                 arguments = shlex.split(found['launch'][0].get('args', ''))
-                active_world = next((value.split(':=', 1)[1] for value in arguments if value.startswith('world:=')), 'planned/ax_warehouse.world')
+                active_world = next((value.split(':=', 1)[1] for value in arguments if value.startswith('world:=')), world_catalog.default())
                 active_tool = next((value.split(':=', 1)[1] for value in arguments if value.startswith('tool:=')), 'epick')
                 if active_world != selected_world or active_tool != launch_tool:
                     # 바로가기 시작은 설정된 기본 공구를 적용한다. 같은 월드라도
@@ -205,7 +210,7 @@ def run(args):
                     raise RuntimeError('Orphan Gazebo processes found; use AX Stop first')
                 found['launch'] = [spawn(workspace, logs, 'gazebo', ['ros2', 'launch', 'ax_control',
                     'simulation.launch.py', 'robots:=2', 'tool:=' + launch_tool,
-                    'world:=' + getattr(args, 'world', 'planned/ax_warehouse.world')], env)]
+                    'world:=' + getattr(args, 'world', world_catalog.default())], env)]
                 created.extend(found['launch'])
             if not remote_only:
                 if not reused:
@@ -274,7 +279,8 @@ def main():
     parser.add_argument('action', choices=['start', 'remote', 'stop', 'status'])
     parser.add_argument('--workspace', default='~/ax-play-ws')
     parser.add_argument('--tool', choices=['robotiq', 'epick'], default='epick')
-    parser.add_argument('--world', choices=['planned/ax_warehouse.world'], default='planned/ax_warehouse.world')
+    # 선택 월드는 ax_description config/worlds.yaml 목록(기준 질감 월드 기본, 단색 보존 월드)이다.
+    parser.add_argument('--world', choices=world_catalog.choices(), default=world_catalog.default())
     parser.add_argument('--switch-world', action='store_true', help='Switch the owned AX session if another world is active')
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()

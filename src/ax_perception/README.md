@@ -41,6 +41,8 @@ B1 전처리 연결은 별도 터미널에서 실행한다. 월드·제어기를
 ros2 launch ax_perception sensors.launch.py robot_ids:=robot_1,robot_2 tool:=epick
 ```
 
+B1 노드와 센서 브리지는 큰 영상·점군 누락을 막기 위해 `ax_description/config/fastdds_large_data.xml`을 `FASTRTPS_DEFAULT_PROFILES_FILE`로 받는다(launch가 비어 있을 때만 지정). B1을 `ros2 run`으로 띄우거나 bag을 재생할 때는 `export FASTRTPS_DEFAULT_PROFILES_FILE=$(ros2 pkg prefix ax_description)/share/ax_description/config/fastdds_large_data.xml`을 먼저 실행한다.
+
 ## 모델·센서 코드 검사
 
 B1 수신 누락·ToF TF 대기는 `CLOCK_BOOTTIME`으로 경과 시간을 잰다.

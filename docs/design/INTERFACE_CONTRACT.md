@@ -72,6 +72,8 @@
 | `EVENT` | reliable · volatile · keep_last 50 | 관측 사건·제안·결정·lease 메시지 |
 | `SENSOR` | best_effort · volatile · keep_last 5 | 센서 데이터(흡착 공구 ToF 등 표준 타입) |
 
+- 큰 영상·깊이·점군(약 1 MB 이상)을 `SENSOR`로 **발행**하는 노드는 프로젝트 Fast DDS 프로필 `ax_description/config/fastdds_large_data.xml`을 쓴다(`FASTRTPS_DEFAULT_PROFILES_FILE`). 현재 A1 `parameter_bridge`(robot_test.launch.py)·B1 `sensor_processing`(sensors.launch.py)은 launch가 비어 있을 때만 지정하며, `ros2 bag play` 등 launch 밖 발행자는 같은 파일을 export한다. 구독자는 기본 설정으로 받는다. 근거: 기본 공유 메모리 세그먼트(약 0.5 MB)에서 1.2 MB 영상 수신 48%, 프로필 적용 시 100%(2026-11-12 실측).
+
 ### 2.5 결과와 멱등성
 
 - Action 결과는 `ResultStatus.outcome`으로 `SUCCEEDED / FAILED / CANCELED / TIMED_OUT / UNCERTAIN`을 구분한다. `UNCERTAIN`과 채우지 않은 `UNSPECIFIED`는 성공으로 처리하지 않고 본설계 9.6절 수명주기로 보낸다.

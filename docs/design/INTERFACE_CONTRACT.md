@@ -224,6 +224,20 @@ A2(`ToolCommand`)와 A4(`ProtectedArmTrajectory`)의 명령 수락·진행 중 �
 - **Result:** `ResultStatus`, 보유 판정(`object_hold_state`, `ToolHoldState` 상수)·적재 상태, 시도 사용 기록, `need_reobservation_move`와 C의 관측 요구(`observation_reason`·`observation_target`). 재관측 위치는 D가 등록 지점 중에서 고른다.
 - 주행은 포함하지 않는다. A는 수락 전에 `execution_id`를 원장에 기록하고 같은 ID 재요청에는 기존 결과를 돌려준다.
 - `RETRACT_ARM`은 C의 조작 Goal 없이 A3가 직접 수행하는 로컬 작업이다. A3는 이 작업의 실행을 수락·기록한 뒤 `ProtectedArmTrajectory`를 `AUTH_A3_LOCAL_TASK`로 A4에 보낸다(5.2절 권한 종류).
+- **로컬 단계 이름:** `RobotTaskStatus.local_phase`와 Feedback `phase`는 같은 문자열을 쓴다. 공통 단계는 `VALIDATING`·`CANCELING`, 종료는 `SUCCEEDED`·`FAILED`·`CANCELED`·`UNCERTAIN`이다. 작업별 단계는 다음과 같다. 모의 서버는 같은 이름 앞에 `MOCK_`를 붙이며, D는 그 값을 실제 진행으로 쓰지 않는다.
+
+  | 작업 | 단계(순서) |
+  |---|---|
+  | `LOCK_HANDOFF` | `LOCKING` → `CONFIRMING_LOCK` |
+  | `UNLOCK_HANDOFF` | `CHECKING_UNLOCK` → `UNLOCKING` |
+  | `PICK_AND_STOW` | `PICKING` → `STOWING` → `RELEASING` |
+  | `UNLOAD_AND_PLACE` | `UNLOADING` → `PLACING` → `RELEASING` |
+  | `CONFIRM_LOAD` | `CHECKING_LOAD` |
+  | `RETRACT_ARM` | `RETRACTING` → `CONFIRMING_RETRACT` (`RETRACTING`은 이 작업에만 쓴다) |
+
+- **성공 판정:** A3는 하위 Action 결과만으로 `SUCCEEDED`를 내지 않는다. 조작 작업(`PICK_AND_STOW`·`UNLOAD_AND_PLACE`)은 C4 PLACE 결과가 성공이고 지정 물체의 `hold_state`가 `RELEASED`일 때, `RETRACT_ARM`은 실제 관절 상태(`joint_states`)가 후퇴 자세이고 팔이 정지(D-06)했을 때, 인계 잠금·해제는 자기 로봇의 실제 정지(D-06)와 자기 측 조건을 확인했을 때 성공이다. 하위 결과와 실제 상태가 다르거나 상태가 만료됐으면 `UNCERTAIN`으로 끝낸다.
+  `CONFIRM_LOAD`의 성공·실패 판정(EMPTY·LOST 결과 처리)은 미정이다(A3 단계 정의 Q-4·Q-11).
+- **취소:** A3는 C4 조작 중이면 `lease/revoke`와 `ManipulateObject` cancel을 함께 보내고, 후퇴 중이면 `ProtectedArmTrajectory`를 취소한다. 새 하위 명령은 보내지 않으며 흡착을 해제하지 않는다. 하위 Action 종료와 자기 로봇의 실제 정지(D-06)를 확인한 뒤에만 `CANCELED`로 끝내고, 확인하지 못하면 `UNCERTAIN`으로 끝낸다. 취소는 인계 잠금 해제가 아니다(본설계 9.3절).
 
 ### 5.2 `ManipulateObject` (A → C)
 
@@ -457,6 +471,8 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 - `AgentReasoningState`: D의 `RECORDED_ONLY` 결정을 받으면 `IDLE`로 돌아간다.
 - `snapshot_id`: D가 마지막 값을 원장에 저장해 재시작 후에도 이어 증가한다. 내용이 같은 재발행은 같은 ID다.
 - 인계 잠금 해제(`TRANSFER_UNLOCKED`): 적재는 적재 확인·흡착 해제·팔 후퇴 확인 후. 하역은 배치 확인·흡착 해제·팔 후퇴·운송 로봇 적재함 `EMPTY` 확인 후.
+- 인계 로컬 작업: D2는 `LOCK_HANDOFF`·`UNLOCK_HANDOFF`를 두 로봇의 A3에 각각 보낸다. 각 A3는 자기 로봇의 실제 정지와 자기 측 조건만 확인하고 상대 로봇은 확인하지 않는다. `transfer_state`는 D가 두 로봇의 결과로 정하며 A3는 바꾸지 않는다.
+- 적재·하역의 팔 후퇴: `PICK_AND_STOW`·`UNLOAD_AND_PLACE`는 흡착 해제 확인에서 끝나고 팔 후퇴를 포함하지 않는다. 흡착 해제 후 D2가 조작 로봇에 `RETRACT_ARM`을 별도로 보낸다(`AUTH_A3_LOCAL_TASK` 범위는 바꾸지 않음).
 
 ## 9. 구현 시 계약 시험 항목
 

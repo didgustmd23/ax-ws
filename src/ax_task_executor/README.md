@@ -140,7 +140,7 @@ ros2 topic echo /ax/robot_2/executor/status ax_interfaces/msg/RobotTaskStatus \
   --qos-reliability reliable --qos-durability transient_local
 ```
 
-`local_phase`는 시작 시 `MOCK_IDLE`, 실행 검사 시 `MOCK_VALIDATING`, 확인 중 `MOCK_CONFIRM_LOAD`,
+`local_phase`는 시작 시 `MOCK_IDLE`, 실행 검사 시 `MOCK_VALIDATING`, 확인 중 `MOCK_CHECKING_LOAD`,
 결과에 따라 `MOCK_SUCCEEDED`·`MOCK_FAILED`·`MOCK_UNCERTAIN`이며,
 취소는 `MOCK_CANCELING` → `MOCK_CANCELED`다.
 `execution`에는 처리 중이거나 마지막으로 처리한 Goal의 식별 정보가 들어간다.

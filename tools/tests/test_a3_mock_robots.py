@@ -181,8 +181,8 @@ class MockRobotTests(unittest.TestCase):
                         result = node.execute(goal)
                         self.assertEqual(
                             [call.args[0].phase for call in goal.publish_feedback.call_args_list],
-                            ['MOCK_VALIDATING', 'MOCK_CONFIRM_LOAD', phase])
-                        self.assertEqual(snapshots[-2].local_phase, 'MOCK_CONFIRM_LOAD')
+                            ['MOCK_VALIDATING', 'MOCK_CHECKING_LOAD', phase])
+                        self.assertEqual(snapshots[-2].local_phase, 'MOCK_CHECKING_LOAD')
                         self.assertEqual(snapshots[-1].local_phase, phase)
                         self.assertEqual(snapshots[-1].execution, request.execution)
                         self.assertEqual(snapshots[-1].last_result, result.status)
@@ -482,7 +482,7 @@ class MockExecutorRegressionTests(unittest.TestCase):
         self.assertEqual(replay.result.status.outcome, ResultStatus.SUCCEEDED)
         self.assertEqual(self.phases(snapshots), [
             ('replay-order', 'MOCK_VALIDATING'),
-            ('replay-order', 'MOCK_CONFIRM_LOAD'),
+            ('replay-order', 'MOCK_CHECKING_LOAD'),
             ('replay-order', 'MOCK_SUCCEEDED')])
         self.assertEqual(node.task_status.meta.revision, revision)
         self.assertEqual(displays, ['STOWED'])
@@ -510,7 +510,7 @@ class MockExecutorRegressionTests(unittest.TestCase):
         self.assertEqual(replay.status.outcome, ResultStatus.SUCCEEDED)
         replay_goal.succeed.assert_called_once()
         self.assertEqual(node.task_status.execution.execution_id, 'second-task')
-        self.assertEqual(node.task_status.local_phase, 'MOCK_CONFIRM_LOAD')
+        self.assertEqual(node.task_status.local_phase, 'MOCK_CHECKING_LOAD')
         self.assertEqual(node._active_execution_id, 'second-task')
 
         # 끝난 작업의 새 재요청은 다른 작업 처리 중에도 수락해 저장 결과만 돌려준다.

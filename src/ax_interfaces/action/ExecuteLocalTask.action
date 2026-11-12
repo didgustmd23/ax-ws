@@ -1,7 +1,7 @@
 # D → A. 역할별 로컬 작업(설계 7.1절). 주행은 포함하지 않으며 D가 Nav2로 직접 조정한다.
 uint8 UNSPECIFIED=0             # 채우지 않은 Goal은 거절한다
-uint8 LOCK_HANDOFF=1            # 인계 잠금(두 로봇 정지 확인)
-uint8 UNLOCK_HANDOFF=2          # 인계 잠금 해제
+uint8 LOCK_HANDOFF=1            # 인계 잠금 준비: 이 로봇의 실제 정지·자기 측 조건 확인(D2가 두 로봇에 각각 보냄, transfer_state는 D)
+uint8 UNLOCK_HANDOFF=2          # 인계 잠금 해제 준비: 이 로봇의 해제 조건 확인(D2가 두 로봇에 각각 보냄, transfer_state는 D)
 uint8 PICK_AND_STOW=3           # 집어서 운송 로봇에 적재
 uint8 UNLOAD_AND_PLACE=4        # 적재물을 내려 배치
 uint8 CONFIRM_LOAD=5            # 적재 상태 확인

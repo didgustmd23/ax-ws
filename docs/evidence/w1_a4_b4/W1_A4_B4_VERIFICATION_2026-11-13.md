@@ -105,3 +105,36 @@ ros2 launch ax_control simulation.launch.py \
 - 기존 colcon 로그: 보존됨. 위 경로를 참조한다.
 - B4/A4 단위 테스트 및 A3·Gazebo 런타임 시험: 원본 콘솔 출력 파일은 별도로 남아 있지 않음.
 - 따라서 이 문서에는 해당 시험의 관찰 결과만 기록하며, 원본 로그인 것처럼 재구성하지 않음.
+
+## origin/main 통합 후 재검증
+
+통합 내용:
+
+- `origin/feature/sy`에 제가 받지 않은 변경은 없었음
+- 최신 `origin/main`을 일반 merge로 `feature/sy`에 통합
+- 충돌 없음
+
+통합 후 실행한 검증:
+
+```bash
+colcon build --symlink-install \
+  --packages-select ax_safety ax_control ax_task_executor
+```
+
+결과: `ax_safety`, `ax_control`, `ax_task_executor` 3개 패키지 빌드 성공.
+`protected_arm_server.cpp`의 ROS 2 deprecated 경고 1건은 있었지만 빌드는 성공했다.
+
+```bash
+python3 tools/tests/test_a3_lease_check.py
+python3 tools/tests/test_a3_local_task_executor.py
+```
+
+- A3 lease check: 16개 테스트 통과
+- A3 local task executor: 9개 중 8개 통과, 1개 실패
+- 실패 내용: `test_lease_latency_under_action_load`에서 `p99_s=0.11641092099944217`로 기준 `0.1s` 초과
+- 서버 측 측정값은 `server_p99_s=0.09877652800059877`였음
+- 성능 기준이나 안전 조건은 완화하지 않았음
+
+전체 `--packages-up-to ax_control ax_safety ax_task_executor` 빌드는 `ax_interfaces`
+CMake 의존성 검사 단계가 `/mnt/d` 파일 시스템에서 진행 없이 정체되어 중단했다.
+이후 통합 영향 패키지 3개를 `--packages-select`로 별도 빌드해 성공을 확인했다.

@@ -149,12 +149,13 @@ class LeaseLedger:
             record_id TEXT NOT NULL, request_id TEXT NOT NULL, PRIMARY KEY (robot, command_id))""")
 
     # 확인 요청 하나를 직렬로 처리한다. decide(fields)는 형식 검사 뒤의 정책 판정이다
-    def check(self, fields, decide, valid_for_s):
+    # marks = (허용 사유 코드, 수락 기록 ID 접두어). 개발 정책은 (DEV_POLICY_ALLOW, devpolicy-)다
+    def check(self, fields, decide, valid_for_s, marks=(REASON_DEV_ALLOW, ACCEPT_RECORD_PREFIX)):
         with self.lock:
             self.db.execute('BEGIN IMMEDIATE')
 
             try:
-                result = self._check(fields, decide, valid_for_s)
+                result = self._check(fields, decide, valid_for_s, marks)
             except BaseException:
                 self.db.execute('ROLLBACK')
                 raise
@@ -164,7 +165,7 @@ class LeaseLedger:
             return result
 
     # 트랜잭션 안의 처리 본체
-    def _check(self, fields, decide, valid_for_s):
+    def _check(self, fields, decide, valid_for_s, marks):
         key = fingerprint(fields)
 
         # 1. 같은 request_id: 내용이 같으면 기존 응답, 다르면 DUPLICATE_REQUEST(기록하지 않음).
@@ -185,7 +186,7 @@ class LeaseLedger:
             result = response(False, REASON_DUPLICATE)
         else:
             reason = decide(fields)
-            result = self._decide(fields, reason, accepted, command, valid_for_s)
+            result = self._decide(fields, reason, accepted, command, valid_for_s, marks)
 
         self.db.execute('INSERT INTO checks VALUES (?, ?, ?, ?)',
                         (self.robot_id, fields['request_id'], key, json.dumps(result)))
@@ -193,7 +194,9 @@ class LeaseLedger:
         return result
 
     # 정책 판정 결과로 응답을 만들고, 새 ACCEPT 허용이면 수락 기록을 먼저 남긴다
-    def _decide(self, fields, reason, accepted, command, valid_for_s):
+    def _decide(self, fields, reason, accepted, command, valid_for_s, marks):
+        allow, prefix = marks
+
         if reason:
             return response(False, reason)
 
@@ -202,17 +205,17 @@ class LeaseLedger:
             if accepted is None:
                 return response(False, REASON_AUTHORITY_INVALID)
 
-            return response(True, REASON_DEV_ALLOW, '', valid_for_s)
+            return response(True, allow, '', valid_for_s)
 
         if accepted is not None:
-            return response(True, REASON_DEV_ALLOW, accepted[1], valid_for_s)
+            return response(True, allow, accepted[1], valid_for_s)
 
-        record = ACCEPT_RECORD_PREFIX + uuid.uuid4().hex
+        record = prefix + uuid.uuid4().hex
         self.db.execute(
             'INSERT INTO accepts VALUES (?, ?, ?, ?, ?)',
             (self.robot_id, fields['command_id'], command, record, fields['request_id']))
 
-        return response(True, REASON_DEV_ALLOW, record, valid_for_s)
+        return response(True, allow, record, valid_for_s)
 
     # 수락 기록 수를 센다(시험·진단용)
     def accept_count(self):
@@ -225,38 +228,55 @@ class LeaseLedger:
         self.db.close()
 
 
-class LeaseChecker:
-    """ROS 없이 쓸 수 있는 판정기. 형식 검사 → 개발 정책 → 원장 기록 순서로 처리한다."""
+class DevPolicyAuthority:
+    """lease 판정 자리의 개발 정책. 운영 판정은 같은 decide(fields, state) 인터페이스로 교체한다."""
 
-    # 정책·기한·원장을 검사해 준비한다
-    def __init__(self, robot_id, policy, deny_reason, valid_for_s, ledger):
-        if robot_id not in ROBOT_IDS:
-            raise ValueError('robot_id must be one of robot_1~robot_4')
-
+    # 정책 이름과 거절 사유를 검사해 준비한다
+    def __init__(self, policy, deny_reason):
         if policy not in POLICIES:
             raise ValueError('policy must be dev_allow or dev_deny')
 
         if deny_reason not in DENY_REASONS:
             raise ValueError('deny_reason must be one of ' + ', '.join(DENY_REASONS))
 
+        self.policy = policy
+        self.deny_reason = deny_reason
+        # 허용 응답 표시(계약 5.2절: 운영 A3는 빈 사유, 개발 정책만 아래 값)
+        self.marks = (REASON_DEV_ALLOW, ACCEPT_RECORD_PREFIX)
+
+    # 형식 검사를 통과한 요청의 거절 사유를 돌려준다(허용이면 빈 문자열). state는 보지 않는다
+    def decide(self, fields, state=None):
+        # 실제 lease 표·세대·활성 Goal·배정 판정 자리. 운영 판정 클래스는 state(ExecutorState)를 본다.
+        return '' if self.policy == 'dev_allow' else self.deny_reason
+
+
+class LeaseChecker:
+    """ROS 없이 쓸 수 있는 판정기. 형식 검사 → lease 판정(정책 객체) → 원장 기록 순서로 처리한다."""
+
+    # 정책·기한·원장을 검사해 준비한다. authority를 주면 policy·deny_reason 대신 그것을 쓴다
+    def __init__(self, robot_id, policy, deny_reason, valid_for_s, ledger, authority=None,
+                 state=None):
+        if robot_id not in ROBOT_IDS:
+            raise ValueError('robot_id must be one of robot_1~robot_4')
+
         if not 0.0 < float(valid_for_s) <= MAX_VALID_FOR_S:
             raise ValueError(f'valid_for_s must be in (0, {MAX_VALID_FOR_S}]')
 
+        self.authority = authority or DevPolicyAuthority(policy, deny_reason)
         self.robot_id = robot_id
-        self.policy = policy
-        self.deny_reason = deny_reason
+        self.policy = getattr(self.authority, 'policy', 'custom')
         self.valid_for_s = float(valid_for_s)
         self.ledger = ledger
+        self.state = state
 
-    # 형식 검사를 통과한 요청에 개발 정책을 적용해 거절 사유를 돌려준다(허용이면 빈 문자열)
+    # 형식 검사를 통과한 요청에 lease 판정을 적용해 거절 사유를 돌려준다(허용이면 빈 문자열)
     def decide(self, fields):
         reason = check_form(fields, self.robot_id)
 
         if reason:
             return reason
 
-        # 실제 lease·세대·활성 Goal·배정 판정 자리. 개발 정책이 대신한다.
-        return '' if self.policy == 'dev_allow' else self.deny_reason
+        return self.authority.decide(fields, self.state)
 
     # 요청 하나를 처리해 응답 사전을 돌려준다. 원장 오류면 기록 없이 거절한다
     def check(self, request):
@@ -267,7 +287,9 @@ class LeaseChecker:
             return response(False, REASON_AUTHORITY_INVALID)
 
         try:
-            return self.ledger.check(fields, self.decide, self.valid_for_s)
+            marks = getattr(self.authority, 'marks', ('', 'accept-'))
+
+            return self.ledger.check(fields, self.decide, self.valid_for_s, marks)
         except sqlite3.Error:
             return response(False, REASON_RECORD_FAILED)
 

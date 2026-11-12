@@ -276,6 +276,49 @@ A2의 lease 대기(0.5 s)를 넘기면 무응답 거절(안전 쪽)로 나타날
 "현재 실행 중 RETRACT_ARM" 대조, `valid_for_s`를 남은 lease 기한 이하로 줄이는 처리.
 `dev_allow` 허용은 **운영 권한이 아니다.** 이 서버를 통과해도 실제 lease가 유효하다는 뜻이 아니다.
 
+## 로컬 작업 실행기 한 프로세스 (local_task_executor)
+
+`local_task_executor`는 한 노드 안에 `ExecuteLocalTask` Action 서버(모의 실행기와 같은 로직)와
+`CheckCommandLease` 서비스(lease_check와 같은 개발 정책)를 함께 둔다(설계 11.1절).
+lease 판정은 여전히 개발 정책(`dev_deny` 기본)이며 운영 lease 판정이 아니다.
+
+```bash
+ros2 run ax_task_executor local_task_executor --ros-args -p robot_id:=robot_1 -p policy:=dev_allow
+```
+
+- 구조
+  - MultiThreadedExecutor(`threads`, 기본 4)가 콜백 그룹 3개를 돌린다.
+    - lease: Reentrant 그룹. 요청 직렬 처리(계약 5.2절)는 콜백 그룹이 아니라 원장 잠금 + SQLite `BEGIN IMMEDIATE`가 보장한다.
+    - Action: Reentrant 그룹(Goal 수락·취소·실행, 실행 대기 타이머).
+    - 상태: MutuallyExclusive 그룹(1 Hz 상태 재발행).
+  - 공유 상태 `ExecutorState`(현재 실행·진행 중 처리·취소 표시, 앞으로 C4 활성 Goal·lease 세대 자리)는 잠금 하나로 보호한다.
+  - 잠금 안에서는 SQLite 쓰기·ROS 호출·await를 하지 않는다. 한 스레드가 두 잠금을 함께 잡지 않는다(순서는 `local_task_executor.py` 머리말).
+  - lease 판정은 정책 객체 `DevPolicyAuthority`가 맡는다. 운영 판정은 같은 `decide(fields, state)` 인터페이스로 교체한다.
+  - 원장은 `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/`의 `executions.sqlite3`·`lease_checks.sqlite3`(분리)다.
+- 기존 실행 파일과의 관계
+  - `mock_executor`·`lease_check`는 호환용으로 그대로 둔다.
+  - **같은 로봇에 local_task_executor와 동시에 띄우지 않는다.**
+  - local_task_executor는 시작 때 같은 lease 서비스·Action 이름을 가진 다른 노드를 `name_check_s`(기본 1 s) 동안 찾고, 있으면 시작을 거절한다.
+  - 반대 방향(기존 실행 파일이 나중에 시작)은 감지하지 않는다.
+- 비교용 파라미터 `lease_mode`
+  - `reentrant`(기본)
+  - `mutex`: 같은 노드의 MutuallyExclusive 그룹
+  - `dedicated`: 전용 노드 + 단일 스레드 실행기
+  - WAL 이전 비교에서 mutex 4/6, dedicated 2/8 회차에 0.8~2.5 s 지연이 났고, reentrant는 0/8이었다.
+- 지연 측정(2026-11-12, `tools/tests/test_a3_local_task_executor.py`의 지연 시험 그대로)
+  - 조건: Action Goal이 계속 도는 동안 lease 1000회(클라이언트 4개), 새 command_id ACCEPT, WAL+FULL 기록.
+  - 기준(미리 고정): p99 < 0.1 s, max < 0.5 s, 무응답 0.
+
+| 부하 | 대상 | 기준 통과 | p50 | p99 최대 | max 최대 | loadavg |
+|---|---|---|---|---|---|---|
+| 낮음 | local_task_executor | 10/10 | 14.8 ms | 32 ms | 54 ms | 1.0~2.0 |
+| 낮음 | 기존 lease_check 단독(대조) | 10/10 | 6.5 ms | 20 ms | 39 ms | 1.4~2.0 |
+| 높음(자기 CPU 루프 2개) | local_task_executor | 10/10 | 14.6 ms | 34 ms | 48 ms | 1.7~3.6 |
+| 높음 | 기존 lease_check 단독(대조) | 9/10 | 6.5 ms | 20 ms | 1.06 s | 1.9~3.5 |
+
+  - 같은 시간대 번갈아 측정했다. 자료: `log/a3_local_executor_latency/20261112_233223`(작성 PC 기록, Git 제외).
+  - 표본이 작아 "통합이 지연을 없앤다"고 단정하지 않는다. local_task_executor는 Action 처리와 함께 돌아 p50이 두 배쯤 길다.
+
 ## A4·A2 개발자용 연결 안내
 
 A4(`ProtectedArmTrajectory`)·A2(`ToolCommand`)를 개발할 때 상대 A3로 `lease_check`를 띄운다.

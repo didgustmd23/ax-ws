@@ -65,7 +65,26 @@ python3 src/ax_localization/scripts/check_map_accuracy.py log/b2_mapping/<KST �
 
 `--criteria`가 없으면 `judgment: not_judged`다. 결과에는 `drive_status`·`trajectory_comparison`·`map_comparison` 세 상태, 지표, 지도 요약(`map`), 관측 범위(`coverage`)와 메타정보 문제(`metadata_problems`)가 따로 기록된다.
 
-**실패 시:** 결과 폴더의 `drive_result.json`(`status`, `error`, `stops`)과 `accuracy.json`에 실패 단계와 사유가 남는다. 이전 회차 지도나 이 폴더의 지도를 이번 회차의 새 지도처럼 대신 제공하지 않는다.
+**사람이 보며 구간별로 확인할 때(선택):**
+- `--route FILE`: 다른 경로 파일을 쓴다. 사본이 `session/route.yaml`에 남는다.
+- `--wait-before-drive`: SLAM 지도 수신 뒤 주행 직전에 터미널 Enter를 기다린다. `q`·EOF·입력 오류면 주행 없이 끝난다. 터미널이 아니면 시작 전에 실패한다.
+- `--gate-dir DIR`: 경로 파일의 dict 경유점에 `gate: true`를 붙이면 그 경유점이 관측 관문(P1, P2, … 순서)이 된다. 프로젝트 안전 관문 G1~G6과는 다른 이름이다.
+  - **진입:** 도착하면 기존 odom 기준 정지 확인을 한다. 확인하지 못하면 관문에 들어가지 않고 실패로 끝난다.
+  - **기록:** 정지 기록 JSON을 남긴다. 담는 항목은 odom·map→odom·앞뒤 scan의 stamp·age 또는 missing, 마지막 명령, 장애물 검사 사유, 최근 odom 대 실제 이동이다. 실제 자세는 평가 전용이고, 물리 걸림은 의심 표시만 한다.
+  - **대기 중 감시:** 0 속도를 계속 보내며 다음을 감시한다.
+    - 중단(Ctrl+C), 다른 cmd_vel 발행자
+    - 입력 만료: `input_timeout_s`를 넘으면 실패
+    - sim time 역행: 실패
+    - 정지 상실: 실패
+    - 대기 상한: 1800 s를 넘으면 실패
+  - **신호 파일:** 진행은 `<토큰>_<P번호>.continue`, 중단은 `<토큰>.abort`다. 토큰은 시작할 때 출력되고 `drive_result.json gate`에도 기록된다.
+    - 중단이 진행보다 우선이다.
+    - 관문에 들어올 때 이미 있던 파일(같은 inode·mtime)은 쓰지 않는다. 새로 만들거나 다시 `touch`한 파일만 신호다. 벽시계 비교를 쓰지 않아 시스템 시계 변경에 흔들리지 않는다.
+    - 진행 파일은 한 번 쓰면 소비된다.
+  - **재출발:** 직전에 입력 신선도, sim time 진행, 정지, 다음 명령의 외곽·회전 검사를 다시 한다. 통과하지 못하면 진행 파일이 있어도 출발하지 않고, 새 진행 파일을 기다린다.
+  - **바뀌지 않는 것:** 관문 대기는 경유점별 제한시간·진척 감시와 별개이고, 주행 실패 시간 기준은 바꾸지 않는다. `--gate-dir`가 없으면 `gate` 표시를 무시하고 기존처럼 연속 주행한다.
+
+**실패 시:** 결과 폴더의 `drive_result.json`(`status`, `error`, `stops`)과 `accuracy.json`에 실패 단계와 사유가 남는다. `--gate-dir`가 있으면 실패 시점 기록도 그 폴더에 남는다. 이전 회차 지도나 이 폴더의 지도를 이번 회차의 새 지도처럼 대신 제공하지 않는다.
 
 ## 채택 (운영 모델·기준 월드 확정 뒤)
 

@@ -560,13 +560,13 @@ class MapMetadata(unittest.TestCase):
     def make_run(self, folder, session, model):
         run = Path(folder) / 'run'
         run.mkdir()
+        (Path(folder) / 'session').mkdir(exist_ok=True)
         grid = room_grid()
         mt.write_map(run / 'slam_map.yaml', grid, mt.GridGeometry(0, 0, 0.05, grid.shape[1], grid.shape[0]))
         route = Path(folder) / 'route.yaml'
         route.write_text('x: 1\n', encoding='utf-8')
 
         if session is not None:
-            (Path(folder) / 'session').mkdir()
             (Path(folder) / 'session' / 'session.json').write_text(json.dumps(session), encoding='utf-8')
 
         drive = {'robot_id': 'robot_2', 'scan_input': 'scan_filtered', 'route': {'path': str(route), 'sha256': 'r'},
@@ -593,9 +593,22 @@ class MapMetadata(unittest.TestCase):
                  'robot_name': 'ax_2', 'wheel_contacts': {'w': {'mu1': 0.1}}, 'lidars': {'front_lidar': {'samples': 360}}}
 
         with tempfile.TemporaryDirectory() as folder:
+            # 실행 시점 설정 사본·해시 기록(run_mapping_session.sh session_record_configs와 같은 형식)
+            (Path(folder) / 'session' / 'config').mkdir(parents=True)
+            files = {}
+
+            for name in self.tool.required_config_names('robot_2'):
+                (Path(folder) / 'session' / 'config' / name).write_text(name)
+                files[name] = {'package': 'p', 'source': '/prefix/share/p/config/' + name, 'copy': 'session/config/' + name,
+                               'sha256': mt.file_sha256(Path(folder) / 'session' / 'config' / name)}
+
+            session['config_files'] = {'robot_id': 'robot_2', 'controller_file': 'ax2_controllers.yaml', 'files': files}
+
             metadata = self.tool.map_metadata(*self.make_run(folder, session, model))
+            slam_sha = mt.file_sha256(Path(folder) / 'session' / 'config' / 'slam_mapping.yaml')
 
         self.assertEqual(metadata['missing'], [])
+        self.assertEqual(metadata['slam']['config_sha256'], slam_sha)
         self.assertEqual(self.tool.metadata_problems(metadata), [])
         self.assertEqual((metadata['world']['world_file'], metadata['world']['world_sha256']), ('w.world', 'ab' * 32))
         self.assertEqual(metadata['robot']['model']['sha256'], 'd' * 64)
@@ -616,8 +629,11 @@ class MapMetadata(unittest.TestCase):
         self.assertIsNone(metadata['robot']['model'])
         self.assertEqual(metadata['wheel_friction'], {'condition': None, 'wheel_contacts': None, 'override_file': None, 'override_sha256': None})
         self.assertEqual(metadata['code'], {'git_commit': None, 'git_dirty': None})
-        self.assertEqual(len(metadata['missing']), 3)
+        # 실행 월드 해시·모델·session 누락에 더해 실행 시점 설정 기록 누락도 남는다(현재 파일로 채우지 않음)
+        self.assertEqual(len(metadata['missing']), 4)
         self.assertIn('model: 10 s 안에 t 미수신', metadata['missing'])
+        self.assertTrue(any(item.startswith('config_files:') for item in metadata['missing']))
+        self.assertIsNone(metadata['slam']['config_sha256'])
 
     def test_development_conditions_are_not_adoptable(self):
         if self.tool is None:
@@ -630,7 +646,9 @@ class MapMetadata(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             problems = self.tool.metadata_problems(self.tool.map_metadata(*self.make_run(folder, session, model)))
 
-        self.assertEqual(problems, ['월드 조건 light_collision은 개발용 임시 사본', '바퀴 조건 slip1=0.05은 개발용 임시 사본'])
+        # 설정 기록이 없는 옛 형식이므로 config_files 누락이 함께 남는다
+        self.assertEqual(problems[1:], ['월드 조건 light_collision은 개발용 임시 사본', '바퀴 조건 slip1=0.05은 개발용 임시 사본'])
+        self.assertTrue(problems[0].startswith('config_files:'))
 
     def test_adopt_records_reload_check(self):
         if self.tool is None:

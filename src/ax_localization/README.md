@@ -11,6 +11,28 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 
 설계 기준은 [상세설계 6.1절](../../docs/design/DETAILED_DESIGN.md#61-기준-지도-작성검증전달-b2)과 [공통 인터페이스 계약](../../docs/design/INTERFACE_CONTRACT.md) 2.2·4.2절이다.
 
+## 두 창고 월드 지도 작성 — 개발용, 후보 지도 1회(not_judged)
+
+- **경로:** `config/routes/ax_warehouse_center.yaml`(robot_2 무부하). 출발 world (-6.8, 0) → 서쪽 입구 앞 관문 P1(world x -5.4, 통로 밖) → 중앙 통로 직진 → 동쪽 출구 뒤 관문 P2(world x 5.6, 통로 밖). 통로 안 회전·경유점은 없다.
+- **전체 경로:** `config/routes/ax_warehouse_full.yaml`(20경유점, 회전 정렬 모드, 관문 P1~P6 = 세 통로의 입구·출구). 2026-11-11 실행 1회:
+  - 주행: completed. 보호·입력·진척 정지 0, 접촉 없음. 입구 관문 P1·P3·P5의 odom 정렬은 측면 ≤ 0.026 m, 방향 ≤ 0.00185 rad. 실제(평가 전용) 측면은 +0.008·−0.074·−0.047 m.
+  - 지도·pose graph 저장과 map_server·pose graph 재로딩을 확인했다.
+  - 동쪽 창고 어긋남(≈0.3 m), 통로 1 안 가짜 점유, SLAM 보정 도약 때문에 운영 지도로 쓰지 않는다.
+  - 결과·해시·한계·재생성은 [두 창고 지도 안내](maps/ax_warehouse/README.md)에 있다.
+- **SLAM 입력(2026-11-12 채택):** 기본은 앞·뒤 B1 `scan_filtered`를 `scripts/scan_merge.py`가 base_link 기준 720빔으로 합친 `sensors/merged/scan_filtered`(`mapping.launch.py scan:=merged`, 병합 노드를 함께 띄움, 같은 namespace에 `scan_merge`가 있으면 거절)다. `slam_mapping.yaml`은 이 토픽과 `use_response_expansion: false`를 쓴다. 근거는 한 기록 재생 비교(`log/b2_custom_warehouse/20261111_212314/compare`)이며 두 스캔 사이 차체 이동은 보정하지 않는다. `scan:=filtered`(앞만)·`raw`는 비교용이다. 세션 기본 `--scan merged`이고, 주행 장애물 감시는 앞·뒤 원 `scan_filtered`를 그대로 쓴다. `session.json`에 `scan`·`scan_merge`(설치본 파일·해시), 주행 기록에 `slam_scan_input`, `map_info`의 `robot.sensor`에 `slam_input`·`scan_merge`가 남는다. 아래 2026-11-11 후보 지도는 앞 스캔만 쓴 이전 입력으로 만든 것이다. AMCL 입력은 바꾸지 않았다.
+- **실행:** `--world`와 같은 world를 적은 `--route`를 함께 준다. 시뮬레이션 전에 `mapping_drive.py --check-only`가 경로의 `world`(월드 파일 경로)·`gz_world`(Gazebo 내부 이름 `ax_test`)·`robot_id`를 대조해 다르면 exit 2로 거절한다. AWS 경로·`--light`·`--wheel-slip1`도 이 월드에서는 거절한다.
+
+  ```bash
+  bash src/ax_localization/scripts/run_mapping_session.sh --world planned/ax_warehouse.world \
+    --route src/ax_localization/config/routes/ax_warehouse_center.yaml --gate-dir <관문 폴더> [--domain N]
+  ```
+
+- **회전 정렬 선택 모드(`rotation_align`, 기본 꺼짐):** 경로 YAML에 `rotation_align: {gain_per_s, omega_min_rad_s, stop_band_rad, final_tolerance_rad, max_realign, limit_sim_s, limit_wall_s}`가 있을 때만 켜진다(첫 적용값 0.5·0.005·0.002·0.002·3·60·300, C 조건 시험 실측). 경유점마다 정지 확인 → 제자리 회전(선속도 0, ω = sign·min(실행 상한, max(ω_min, k·|e|))) → 정지 뒤 재계산 → 최종 허용 안일 때만 각속도 0 직진, 직진 중 오차가 `heading_tolerance`를 넘고 남은 거리가 0.3 m보다 크면 정지·재정렬한다. 경유점마다 정렬 절차는 1 + `max_realign`회까지이며 정지 실패·시간 초과·횟수 초과는 실패로 끝난다(`scripts/rotation_align.py`, 기록 `drive_result.json`의 `rotation_align`·`command_phases`). 키가 없으면 기존 `waypoint_command` 주행이다. 관문 정렬 검사는 그대로이며 이 모드가 대신하지 않는다. 주의: YAML 값은 `1e-9` 같은 지수 표기(소수점 없음)를 문자열로 읽어 거절되므로 소수로 적는다. **최종 방향 정렬:** 모드가 켜져 있고 경유점에 `align`이 있으면(관문이 있거나 다음 구간이 있을 때, 관문 폴더 유무와 무관) 도착 뒤 정지 확인 → 입력·odom·측면 검사 → `align.heading_rad`로 같은 정렬 절차 1회 → 정지 뒤 방향(`final_tolerance`와 `max_heading` 모두)·측면 재검사 뒤에 관문/출발 검사로 넘어간다. 측면이 `max_lateral_m`를 넘거나 입력 문제·odom 비유한이면 회전하지 않고 `refused`로 남는다. `refused`는 관문 재출발·관문 없는 출발을 끝까지 막으며 입력 회복만으로 풀리지 않고 다시 회전하지도 않는다(새 실행 필요). 모드가 켜져 있으면 관문 도달·재출발·출발 검사의 방향 허용도 min(`final_tolerance`, `max_heading`)이다(정렬 뒤 대기 중 방향 변화 차단). 정지 확인 실패와 회전 중 실패(장애물·시계·중단·다른 발행자·재정렬 상한)는 실패다(기록 `final_align`). 경유점 끝 근처 재정렬로 P1 방향이 −0.108 rad 틀어지던 정적 재평가 실패(`20261111_120933/rotation_align_mode`)는 이 단계로 −0.0019 rad가 되었다(`20261111_123324/gate_final_align`, 정적 모의). 실제 주행에서는 서쪽 순회 뒤 P1 최종 정렬 `aligned`(odom 방향 0.0108 → 0.0019 rad, 실제 측면 +0.006 m)였다(`20261111_133235/rotation_align_real`). 전체 경로에서 모든 회전 정렬은 정지 뒤 오차 ±0.0018~0.0019 rad로 한계 0.002 가까이에서 끝났다(재정렬 0회, 방향 여유가 작음).
+- **입구 정렬:** 경유점의 `align`(기준선 방향·측면·방향 허용)이 있으면, 그 경유점에서 정지를 확인한 뒤 odom 정렬을 기록하고 허용 밖이면 다음 구간으로 출발하지 않는다(관문 폴더가 없어도 같다). P1은 측면 0.04 m·방향 0.02 rad이다.
+- **프로세스 정리:** 시뮬레이션·B1·SLAM·주행을 모두 `setsid` 그룹으로 띄우고 소유 표식(`AX_SESSION_OWNER`)으로 정리한다(`scripts/session_procs.sh`). 소유 판단은 표식으로만 하고, 세션 셸과 같은 SID이면서 셸의 실제 자손인 정리 보조 명령만 제외한다(같은 SID에 남은 고아도 정리). 준비 확인(`ros2 topic echo --once --no-daemon`)은 ROS CLI 데몬을 띄우지 않는다. Ctrl+C는 주행 그룹에 SIGINT를 전달해 정지 확인을 기다린 뒤 정리하며, 잔여 수·PID·`clean`을 `session/cleanup.json`에 남긴다(잔여가 있으면 `clean: false`).
+- **기록:** `session/`에 월드·경로 사본, 경로·월드·미커밋 diff 해시(`session.json`, `git_diff.patch`)를 남긴다. 시뮬레이션 전에 실제 launch가 읽는 설정(`slam_mapping.yaml`, 로봇별 제어기 — robot_1·3은 `ax1_controllers.yaml`, robot_2·4는 `ax2_controllers.yaml` —, `common_controllers.yaml`, `sensor_mounts.yaml`, `a1_validation.yaml`)을 launch와 같은 ament share 경로(현재 `AMENT_PREFIX_PATH` 순서, overlay 포함)에서 찾아 사본(`session/config/`)과 SHA-256(`session.json`의 `config_files`: 로봇·제어기 파일·출처)을 남기며, 탐색·복사·해시 중 하나라도 실패하면 시뮬레이션을 띄우지 않는다(exit 2).
+- **평가(`check_map_accuracy.py`):** 새 월드 회차의 메타정보는 `session.json`의 월드 경로·Gazebo 내부 이름·월드 해시와 회차 사본(월드·경로·설정)을 대조해 만든다. AWS 출처는 옛 AWS 형식 회차에만 붙는다. 설정 해시는 회차 기록만 쓰고 현재 파일로 채우지 않으며, 불일치·누락은 메타정보 문제로 남아 채택을 막는다. 부분 경로(`--waypoints`)는 단계별 결과를 보존하되 전체 `status`가 `incomplete`(종료 코드 1, `incomplete_reason`)다. 새 월드에서 `--adopt`는 `--map-dir`를 명시해야 한다(생략하면 거절).
+
 ## 위치 추정(AMCL) — 개발용
 
 - **현재 상태:** 채택한 운영 지도가 없어 개발용 지도로만 실행·검증했다. A1이 운영 모델·기준 월드를 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.

@@ -191,6 +191,7 @@
 - 통로 형상과 접근 구역은 B3가 지도 구성으로 관리한다. `APPROACHING`은 "통로 진입선 앞 접근 구역 안에서 통로 쪽을 향함"을 뜻한다. 접근 구역은 통로 입구에만 두고 일반 통행로와 겹치지 않게 구성한다(B3·D1). 접근 구역을 지나는 경로는 D1이 통로 진입으로 취급해 허가를 먼저 받는다.
 - 관측이 `APPROACHING`·`INSIDE`·`UNKNOWN`이거나 `position_valid=false`인 통로에 이 로봇의 활성 허가(`owner_robot_id`·`active_grant_id`)가 없으면, A4는 선속도를 0으로 막고 제자리 회전만 허용한다.
 - 관측 목록이 만료되면 모든 통로를 `UNKNOWN`으로 본다. 통로 상태 목록이 만료되면 활성 허가가 없다고 본다.
+- B3는 위치 신뢰도 DEGRADED일 때 불확실성(+여유)으로 넓힌 외곽이 그 통로·접근 구역과 겹치지 않는 통로만 `OUTSIDE`(`position_valid=true`)로, 나머지는 `UNKNOWN`으로 낸다. LOST·만료는 모든 통로 `UNKNOWN`.
 - D3는 해당 로봇의 관측이 `APPROACHING`·`INSIDE`·`UNKNOWN`인 동안 허가를 만료·철회하지 않는다. 재시작 복원으로 `BLOCKED_UNKNOWN`을 만들 때도 원장의 `owner_robot_id`·`active_grant_id`를 유지한다. 그래서 허가를 가진 로봇은 통로 밖으로 빠져나올 수 있다.
 - D는 대기 지점(`WAIT`)을 접근 구역 밖에 등록한다.
 

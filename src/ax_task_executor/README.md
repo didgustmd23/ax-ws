@@ -215,12 +215,98 @@ RobotTaskStatus 추가 검증은 같은 테스트 파일의
 추가하여 총 7개 테스트가 통과했다. 시뮬레이션 시계가 진행되지 않는 조건에서도
 주기 발행과 늦은 구독을 확인했다. Gazebo GUI 동시 표시는 별도 확인 대상이다.
 2026-11-12 Goal 단위 취소·재요청 비재발행·다른 작업 끼어들기·로봇 4대·계약 Action 경로·보존 원장(재시작 유지) 회귀 시험 6개를
-추가했다(`MockExecutorRegressionTests`). 수정 전 코드에서는 이 중 5개가 실패했다.
+추가했다(`MockExecutorRegressionTests`). 수정 전 코드에서는 이 중 5개가 실패했다. lease 서버는
+`tools/tests/test_a3_lease_check.py`(15개, A2 `suction_tool_node.check_lease` 왕복 포함)로 확인했다.
 Gazebo·실제 A2/A4 노드와의 실행 시험은 하지 않았다.
+
+## CheckCommandLease 서버 (개발 정책)
+
+`lease_check`는 계약 4.3·5.2절의 `/ax/<robot_id>/executor/lease/check_command`
+(`CheckCommandLease`) 서버다. A2 `suction_tool_node`·A4가 명령 수락 전에 호출한다.
+**실제 lease 판정은 없다.** 계약의 형식·권한·멱등·수락 기록 규칙만 구현하고,
+lease 판정 자리는 개발 정책 파라미터가 대신한다.
+
+```bash
+# 기본: dev_deny(형식이 맞아도 LEASE_EXPIRED로 거절, 안전 쪽)
+ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1
+# 개발 시험: 형식·권한 검사를 통과하면 허용
+ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1 -p policy:=dev_allow
+```
+
+| 파라미터 | 기본 | 뜻 |
+|---|---|---|
+| `robot_id` | `robot_2` | robot_1~robot_4. 요청의 `robot_id`가 다르면 거절 |
+| `policy` | `dev_deny` | `dev_allow`(검사 통과 시 허용) 또는 `dev_deny` |
+| `deny_reason` | `LEASE_EXPIRED` | `dev_deny`의 거절 사유. `LEASE_EXPIRED`·`LEASE_REVOKED`·`GOAL_MISMATCH`·`ASSIGNMENT_STALE`·`LEASE_RESYNC_UNCERTAIN` |
+| `valid_for_s` | 2.0 | 허용 응답의 유효 시간(s). 0 초과 10 이하만 받는다(개발용 상한) |
+| `lease_db` | 빈 값 → `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/lease_checks.sqlite3` | 확인 응답·수락 기록 SQLite(synchronous=FULL). 시작 로그에 경로 출력 |
+
+정책과 관계없이 항상 하는 검사:
+- `phase`·`command_source`·`authority`가 UNSPECIFIED이거나 `robot_id`가 다르면 거절한다.
+- 권한별 필드: C 조작은 `execution_id`·`goal_id`(소문자 16진수 32자)·`lease_generation`>0, `local_task_kind`=0.
+  A3 로컬은 `local_task_kind`=RETRACT_ARM, `goal_id` 빈 문자열, `lease_generation`=0, `SOURCE_A4_ARM`만.
+- `request_id`·`execution_id`·`command_id`는 계약 문자 집합, `command_digest`는 SHA-256 소문자 16진수여야 한다.
+- 형식·필드 오류는 모두 `AUTHORITY_INVALID`다(계약 D-13에서 요청 형식 오류를 포함하도록 정의).
+- 멱등:
+  - 같은 `request_id` 재전송은 기존 응답을 그대로 돌려준다(정책을 바꿔 재시작해도 같은 원장이면 같다).
+  - 같은 `request_id`인데 내용이 다르면 `DUPLICATE_REQUEST`다.
+  - 같은 `command_id`에 권한 필드·출처·digest가 다르면 `DUPLICATE_REQUEST`다.
+  - 같은 `command_id`의 새 `request_id` ACCEPT는 기존 수락 기록 ID를 재사용하고 새 기록을 만들지 않는다.
+  - `CONTINUE`는 그 `command_id`의 ACCEPT 수락 기록이 있을 때만 허용하며(없으면 `AUTHORITY_INVALID`) 새 기록을 만들지 않는다.
+- 허용이면 수락 기록을 원장에 먼저 쓰고 응답한다. 기록에 실패하면 `A3_RECORD_FAILED`로 거절한다.
+  이 코드는 계약 D-13의 `A3_RECORD_FAILED`다(요청자는 실행하지 않음).
+- 허용 응답은 `reason_code=DEV_POLICY_ALLOW`이고 수락 기록 ID가 `devpolicy-`로 시작한다. 개발 정책 결과임을 구분할 수 있다.
+
+lease 원장도 **계속 남는다.** 같은 `request_id`를 재사용하면 재시작·정책 변경 뒤에도 예전 응답이 돌아오고,
+같은 `command_id`는 예전 수락 기록을 재사용한다. 시험마다 새 ID를 쓰고, 새로 시작하려면 `-p lease_db:=` 로 다른 경로를 지정한다.
+
+구현하지 않은 것: lease 표·세대 발급·갱신·철회, 활성 `ManipulateObject` Goal과 `goal_id` 대조,
+배정 유효성(`tA + H`)·위임 예산 허용 목록, 재동기화(`LEASE_RESYNC_UNCERTAIN` 판정), A3 로컬 작업의
+"현재 실행 중 RETRACT_ARM" 대조, `valid_for_s`를 남은 lease 기한 이하로 줄이는 처리.
+`dev_allow` 허용은 **운영 권한이 아니다.** 이 서버를 통과해도 실제 lease가 유효하다는 뜻이 아니다.
+
+## A4·A2 개발자용 연결 안내
+
+A4(`ProtectedArmTrajectory`)·A2(`ToolCommand`)를 개발할 때 상대 A3로 `lease_check`를 띄운다.
+**개발 정책 서버이므로 응답은 운영 lease 판정이 아니다.** 허용을 받아도 실제 lease·세대·배정이 유효하다는 뜻은 아니다.
+
+```bash
+ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1 -p policy:=dev_allow   # 허용 경로 시험
+ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1                        # 기본 dev_deny: 거절 경로 시험
+```
+
+서비스는 `/ax/<robot_id>/executor/lease/check_command`(`ax_interfaces/srv/CheckCommandLease`)다. 요청 필드 예:
+
+| 필드 | C 조작 (`AUTH_C_MANIPULATION`, A2·A4) | A3 로컬 후퇴 (`AUTH_A3_LOCAL_TASK`, A4만) |
+|---|---|---|
+| `request_id` | 확인 요청마다 새 ID. 재전송은 같은 ID | 같음 |
+| `robot_id` | 서버의 `robot_id`와 같아야 함 | 같음 |
+| `execution_id` | 받은 `ManipulateObject` 실행 ID 그대로 | A3가 보낸 `ExecuteLocalTask` 실행 ID |
+| `goal_id` | 부모 `ManipulateObject` Goal UUID(소문자 16진수 32자) 그대로 | 빈 문자열 |
+| `lease_generation` | 받은 값 그대로(> 0) | 0 |
+| `local_task_kind` | 0 | `ExecuteLocalTask.Goal.RETRACT_ARM` |
+| `phase` | `ACCEPT`(새 명령) 또는 `CONTINUE`(진행 중) | 같음 |
+| `command_source` | `SOURCE_A2_TOOL` 또는 `SOURCE_A4_ARM` | `SOURCE_A4_ARM`만 |
+| `command_id` | 물리 명령 ID(`ToolCommand.request_id`·`ProtectedArmTrajectory.request_id`) | 같음 |
+| `command_digest` | 명령 인자의 SHA-256 소문자 16진수 64자 | 같음 |
+
+- digest를 만드는 방식은 클라이언트가 정한다. 같은 `command_id`에는 항상 같은 값을 보내야 한다.
+  예: A2 `suction_tool_node.command_digest`는 `robot_id|execution_id|goal_id|object_id|lease_generation|command`의 SHA-256이다.
+- 응답 해석
+  - `allowed=false`, 무응답, 기한 경과 중 하나라도 해당하면 명령을 실행하지 않는다.
+  - `reason_code`는 거절 사유다(`AUTHORITY_INVALID`·`DUPLICATE_REQUEST`·`LEASE_EXPIRED`·`A3_RECORD_FAILED` 등).
+    개발 정책 허용은 `DEV_POLICY_ALLOW`이고, 운영 A3 허용은 빈 문자열이다(계약 5.2절).
+  - `accept_record_id`는 ACCEPT 허용일 때만 있다. 개발 정책은 `devpolicy-`로 시작한다.
+  - `valid_for_s`: 허용 기한은 **요청을 처음 보낸 시각 `t_first`(CLOCK_BOOTTIME) + `valid_for_s`**다.
+    응답을 받은 시각부터 세지 않는다. 기한이 지나면 새 `request_id`로 다시 확인한다.
+  - `CONTINUE`는 그 `command_id`를 ACCEPT로 허용받은 뒤에만 허용된다.
+- 기록은 `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/lease_checks.sqlite3`에 계속 남는다.
+  예전 `request_id`·`command_id`를 다시 쓰면 예전 응답·수락 기록이 돌아온다.
+  시험마다 새 ID를 쓰고, 새로 시작하려면 `-p lease_db:=<다른 경로>`를 지정한다.
 
 ## 모의 통과와 운영 완료의 구분 · 다음 작업 (미구현·예정)
 
-이 패키지의 모의 실행기를 통과해도 운영 기능이 완료된 것은 아니다.
+이 패키지의 모의 실행기와 lease 서버를 통과해도 운영 기능이 완료된 것은 아니다.
 현재 모의 실행기는 `CONFIRM_LOAD`만 받고, 결과는 시험 입력(`mock_load`)이다.
 
 | 운영 작업 종류 | 현재 | 연결할 하위 대상(예정) |

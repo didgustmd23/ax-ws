@@ -239,7 +239,7 @@ ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1 -p policy:
 | `policy` | `dev_deny` | `dev_allow`(검사 통과 시 허용) 또는 `dev_deny` |
 | `deny_reason` | `LEASE_EXPIRED` | `dev_deny`의 거절 사유. `LEASE_EXPIRED`·`LEASE_REVOKED`·`GOAL_MISMATCH`·`ASSIGNMENT_STALE`·`LEASE_RESYNC_UNCERTAIN` |
 | `valid_for_s` | 2.0 | 허용 응답의 유효 시간(s). 0 초과 10 이하만 받는다(개발용 상한) |
-| `lease_db` | 빈 값 → `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/lease_checks.sqlite3` | 확인 응답·수락 기록 SQLite(synchronous=FULL). 시작 로그에 경로 출력 |
+| `lease_db` | 빈 값 → `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/lease_checks.sqlite3` | 확인 응답·수락 기록 SQLite(WAL 저널 + synchronous=FULL). 시작 로그에 경로 출력, WAL을 못 쓰는 파일 시스템이면 경고 |
 
 정책과 관계없이 항상 하는 검사:
 - `phase`·`command_source`·`authority`가 UNSPECIFIED이거나 `robot_id`가 다르면 거절한다.
@@ -264,6 +264,12 @@ lease 원장도 **계속 남는다.** 같은 `request_id`를 재사용하면 재
 요청 1~2개가 0.8~2.5 s 늦게 서버에 도착했다(서버 처리는 0.03 s 이하, 측정 당시 loadavg 1~2).
 A2의 lease 대기(0.5 s)를 넘기면 무응답 거절(안전 쪽)로 나타날 수 있다.
 원인은 rclpy/rmw 서비스 처리 쪽으로 추정하지만 확정하지 못했다. 측정 자료는 `log/a3_executor_latency/20261112_210838`(작성 PC 기록, Git 제외)이다.
+- 서버 언어와는 무관하다(C++ 서버도 같음). 서버 처리 시간이 길고 클라이언트가 여럿일 때 잦다.
+- 원장을 WAL 저널(synchronous=FULL 유지)로 바꾼 뒤 처리 시간 p50이 22.8 → 6.1 ms로 줄었다.
+  같은 시간대 비교에서 기한 초과 회차가 2/20 → 0/20이었다(표본이 작다).
+- 클라이언트가 같은 `request_id`를 짧은 간격으로 재전송하면 안 된다. 재전송이 일어난 13회 중 12회에서
+  서버가 같은 요청을 약 1만 6천 번 반복 수신해 다른 요청이 더 늦어졌다(rmw 중복 수신). 재전송이 먼저 응답받은 경우는 0건이었다.
+  자료: `log/lease_latency_compare/20261112_215030/REPORT.md`·`REPORT_R.md`(작성 PC 기록, Git 제외).
 
 구현하지 않은 것: lease 표·세대 발급·갱신·철회, 활성 `ManipulateObject` Goal과 `goal_id` 대조,
 배정 유효성(`tA + H`)·위임 예산 허용 목록, 재동기화(`LEASE_RESYNC_UNCERTAIN` 판정), A3 로컬 작업의

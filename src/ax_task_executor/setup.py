@@ -28,6 +28,7 @@ setup(
             'mock_executor = ax_task_executor.mock_executor:main',
             'gazebo_mock_display = ax_task_executor.gazebo_mock_display:main',
             'lease_check = ax_task_executor.lease_check:main',
+            'local_task_executor = ax_task_executor.local_task_executor:main',
         ],
     },
 )

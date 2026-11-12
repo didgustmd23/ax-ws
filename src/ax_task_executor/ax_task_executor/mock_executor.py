@@ -4,12 +4,14 @@ import math
 import os
 from pathlib import Path
 import sqlite3
+import threading
 import time
 from uuid import uuid4
 
 from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.msg import LoadState, ResultStatus, RobotTaskStatus
 from ax_task_executor.execution_store import ExecutionStore
+from ax_task_executor.executor_state import ExecutorState
 from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -55,9 +57,13 @@ def default_execution_db(robot_id):
 
 class MockExecutor(Node):
     # 로봇 ID·원장·상태 Topic·Action 서버를 준비한다
-    def __init__(self):
-        super().__init__('a3_mock_executor', parameter_overrides=[
+    # local_task_executor는 노드 이름·콜백 그룹·공유 상태를 넘겨 같은 로직을 한 프로세스에서 쓴다.
+    def __init__(self, node_name='a3_mock_executor', action_group=None, status_group=None,
+                 state=None):
+        super().__init__(node_name, parameter_overrides=[
             Parameter('use_sim_time', value=True)])
+        self.action_group = action_group
+        self.status_group = status_group
         self.declare_parameter('robot_id', 'robot_2')
         self.robot_id = self.get_parameter('robot_id').value
         if self.robot_id not in ROBOT_IDS:
@@ -66,12 +72,10 @@ class MockExecutor(Node):
         self.declare_parameter('mock_load', 'UNKNOWN')
         # 확인 대기 시간 동안 취소 요청을 받을 수 있다. 실제 센서 대기는 아니다.
         self.declare_parameter('mock_delay_s', 0.5)
-        self._active_execution_id = None
-        # execution_id → 실제로 처리 중인 Goal의 UUID 문자열과 완료 Future
-        self._owner_goal = {}
-        self._inflight = {}
-        # 취소를 받아들인 Goal UUID 문자열. 재요청 Goal 취소가 원래 작업을 멈추지 않게 Goal 단위로 둔다.
-        self._cancel_requested = set()
+        # 현재 실행·진행 중 처리·취소 표시(잠금 규칙은 executor_state.py 머리말)
+        self.state = state or ExecutorState()
+        # 상태 메시지 잠금. 메시지 계산·교체만 보호하고 발행은 잠금 밖에서 한다.
+        self._status_lock = threading.Lock()
         self.declare_parameter('execution_db', '')
         if not self.get_parameter('execution_db').value:
             self.set_parameters([
@@ -94,7 +98,8 @@ class MockExecutor(Node):
         # Heartbeats use steady time even while Gazebo sim time is paused.
         self.status_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.status_timer = self.create_timer(
-            1.0, self.publish_task_status, clock=self.status_clock)
+            1.0, self.publish_task_status, clock=self.status_clock,
+            callback_group=self.status_group)
         self.update_task_status('MOCK_IDLE')
         self.result_display = self.create_publisher(
             String, result_display_topic(self.robot_id),
@@ -106,6 +111,7 @@ class MockExecutor(Node):
             execute_callback=self.execute_action,
             goal_callback=self.accept_goal,
             cancel_callback=self.cancel_goal,
+            callback_group=self.action_group,
         )
         self.get_logger().info(
             'A3 모의 서버 준비 완료. 실제 로봇을 구동하지 않습니다.'
@@ -120,13 +126,16 @@ class MockExecutor(Node):
         if not execution_id or not request.object_id:
             self.get_logger().warning('execution_id와 object_id가 필요합니다.')
             return GoalResponse.REJECT
-        busy = self._active_execution_id not in (None, execution_id)
-        if busy and not self._has_result(execution_id):
+        # SQLite 조회는 상태 잠금 밖에서 하고, 처리 중 작업 표시 확인·선점만 잠금 안에서 한다.
+        has_result = self._has_result(execution_id)
+        busy, claimed = self.state.claim(execution_id, has_result)
+        if busy and not has_result:
             self.get_logger().warning('이 로봇이 다른 작업을 처리 중입니다.')
             return GoalResponse.REJECT
         delay = self.get_parameter('mock_delay_s').value
         if not isinstance(delay, (int, float)) or not math.isfinite(delay) or not 0 <= delay <= 30:
             self.get_logger().warning('mock_delay_s는 0~30초여야 합니다.')
+            self._unclaim(execution_id, claimed)
             return GoalResponse.REJECT
         data = message_to_ordereddict(request)
         # Contract: task revision may change on retransmission.
@@ -137,14 +146,24 @@ class MockExecutor(Node):
                 execution_id, fingerprint, self.get_parameter('mock_load').value.upper())
         except sqlite3.Error as error:
             self.get_logger().error(f'실행 기록 저장 실패: {error}')
+            self._unclaim(execution_id, claimed)
             return GoalResponse.REJECT
         if not accepted:
             self.get_logger().warning('같은 execution_id의 요청 내용이 다릅니다.')
+            self._unclaim(execution_id, claimed)
             return GoalResponse.REJECT
-        # 끝난 실행의 재요청은 현재 처리 중 작업 표시를 바꾸지 않는다.
-        if not busy and not self._has_result(execution_id):
-            self._active_execution_id = execution_id
+        # 끝난 실행의 재요청은 처리 중 작업 표시를 잡지 않았다(claim이 has_result면 잡지 않음).
         return GoalResponse.ACCEPT
+
+    # 수락하지 않기로 한 실행이 새로 잡은 처리 중 작업 표시를 되돌린다
+    def _unclaim(self, execution_id, claimed):
+        if claimed:
+            self.state.release(execution_id)
+
+    # 이전 시험 코드 호환: 현재 처리 중 실행 ID
+    @property
+    def _active_execution_id(self):
+        return self.state.active_execution_id
 
     # 저장된 최종 결과가 있는지 확인한다. 원장을 읽지 못하면 없다고 본다
     def _has_result(self, execution_id):
@@ -163,25 +182,25 @@ class MockExecutor(Node):
         except sqlite3.Error:
             return CancelResponse.REJECT
         # 재요청 Goal은 저장 결과를 기다릴 뿐이라 취소하지 않는다(원래 작업은 계속).
-        if self._owner_goal.get(execution_id) != goal_key:
+        if not self.state.request_cancel(execution_id, goal_key):
             self.get_logger().info('재요청 Goal 취소는 받지 않습니다. 원래 Goal을 취소하세요.')
             return CancelResponse.REJECT
-        self._cancel_requested.add(goal_key)
         return CancelResponse.ACCEPT
 
     async def execute_action(self, goal_handle):
-        """ROS 요청 경로: 기다리는 동안에도 상태 발행·취소 콜백을 처리한다."""
+        """ROS 요청 경로: 기다리는 동안에도 상태 발행·취소·lease 콜백을 처리한다."""
         execution_id = goal_handle.request.execution.execution_id
-        if execution_id in self._inflight or self._has_result(execution_id):
-            # 같은 실행 ID 재요청은 기존 처리가 끝나기를 기다린 뒤 저장 결과만 돌려준다.
-            # 상태 Topic·revision·결과 표시는 다시 발행하지 않는다.
-            if execution_id in self._inflight:
-                await self._inflight[execution_id]
-            return self._replay(goal_handle)
         goal_key = goal_key_of(goal_handle)
         done = Future()
-        self._inflight[execution_id] = done
-        self._owner_goal[execution_id] = goal_key
+        # 저장 결과가 있거나 다른 Goal이 처리 중이면 재요청이다.
+        # 기존 처리가 끝나기를 기다린 뒤 저장 결과만 돌려주고, 상태 Topic·revision·결과 표시는 다시 발행하지 않는다.
+        running = None if not self._has_result(execution_id) else done
+        if running is None:
+            running = self.state.begin(execution_id, goal_key, done)
+        if running is not None:
+            if running is not done:
+                await running
+            return self._replay(goal_handle)
         try:
             advance, invalid = self._begin_execution(goal_handle)
             if invalid is not None:
@@ -192,24 +211,21 @@ class MockExecutor(Node):
                 cached = None  # 아래 결과 저장 경로에서 오류를 UNCERTAIN으로 보고한다.
             if cached is None:
                 deadline = time.monotonic() + self.get_parameter('mock_delay_s').value
-                while time.monotonic() < deadline and goal_key not in self._cancel_requested:
-                    # sleep 대신 ROS 타이머를 기다려 취소·heartbeat 처리를 막지 않는다.
+                while time.monotonic() < deadline and not self.state.is_cancel_requested(goal_key):
+                    # sleep 대신 ROS 타이머를 기다려 실행기 스레드를 붙잡지 않는다.
+                    # 타이머는 Action 콜백 그룹에 두어 lease·상태 콜백과 경쟁하지 않게 한다.
                     wake = Future()
                     timer = self.create_timer(
                         0.05, lambda: wake.set_result(True) if not wake.done() else None,
-                        clock=self.status_clock)
+                        clock=self.status_clock, callback_group=self.action_group)
                     try:
                         await wake
                     finally:
                         self.destroy_timer(timer)
             return self._complete_execution(
-                goal_handle, advance, goal_key in self._cancel_requested)
+                goal_handle, advance, self.state.is_cancel_requested(goal_key))
         finally:
-            self._inflight.pop(execution_id, None)
-            self._owner_goal.pop(execution_id, None)
-            self._cancel_requested.discard(goal_key)
-            if self._active_execution_id == execution_id:
-                self._active_execution_id = None
+            self.state.finish(execution_id, goal_key)
             done.set_result(True)
 
     def execute(self, goal_handle):
@@ -224,8 +240,7 @@ class MockExecutor(Node):
 
             return self._complete_execution(goal_handle, advance)
         finally:
-            if self._active_execution_id == execution_id:
-                self._active_execution_id = None
+            self.state.release(execution_id)
 
     # 저장 결과로 이 Goal만 끝낸다. 상태 Topic·결과 표시·처리 중 작업 표시는 건드리지 않는다
     def _replay(self, goal_handle):
@@ -339,22 +354,27 @@ class MockExecutor(Node):
 
     def update_task_status(self, phase, execution=None, result=None):
         """Publish state changes; keep the last completed result while running."""
-        updated = deepcopy(self.task_status)
-        updated.local_phase = phase
-        updated.paused = False  # No pause/resume operation in the mock server.
-        if execution is not None:
-            updated.execution = deepcopy(execution)
-        if result is not None:
-            updated.last_result = deepcopy(result)
-        if updated != self.task_status:
+        # 메시지 계산·교체만 잠금 안에서 하고 발행은 잠금 밖에서 한다.
+        with self._status_lock:
+            updated = deepcopy(self.task_status)
+            updated.local_phase = phase
+            updated.paused = False  # No pause/resume operation in the mock server.
+            if execution is not None:
+                updated.execution = deepcopy(execution)
+            if result is not None:
+                updated.last_result = deepcopy(result)
+            if updated == self.task_status:
+                return
             updated.meta.revision += 1
             self.task_status = updated
-            self.publish_task_status()
+        self.publish_task_status()
 
     def publish_task_status(self):
         """Re-assess the in-memory mock state and refresh its ROS timestamp."""
-        self.task_status.meta.header.stamp = self.get_clock().now().to_msg()
-        self.task_status_publisher.publish(self.task_status)
+        with self._status_lock:
+            self.task_status.meta.header.stamp = self.get_clock().now().to_msg()
+            message = deepcopy(self.task_status)
+        self.task_status_publisher.publish(message)
 
     @staticmethod
     def make_result(value):

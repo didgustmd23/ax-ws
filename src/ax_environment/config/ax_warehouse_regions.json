@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "world": "planned/ax_warehouse.world",
+  "world_variants": [
+    "planned/ax_warehouse.world",
+    "planned/ax_warehouse_plain.world"
+  ],
+  "frame_id": "map",
+  "map_revision": 1,
+  "approved": false,
+  "reason": "DEVELOPMENT_ONLY; B3 개발용 좌표. 통로·접근·대기 경계와 로봇 외곽 팀 합의(B3/D1/D3/A4/D2) 전",
+  "source": "tools/generate_b3_regions.py",
+  "transform": {
+    "T_world_map": [
+      -6.8,
+      0.0,
+      0.0
+    ],
+    "rule": "map = world − (T_world_map.x, T_world_map.y), yaw 0",
+    "basis": "src/ax_localization/maps/ax_warehouse/README.md 채택 지도 revision 1 T_world_map 초기값(map 원점 = robot_2 출발 자세). 참조 지도 최적 정합(−6.822, +0.006, +0.0003 rad)과의 차 약 0.02 m는 반영하지 않음"
+  },
+  "approach_depth_m": 1.5,
+  "regions": [
+    {
+      "id": "corridor_1",
+      "kind": "corridor",
+      "bounds": [
+        2.6,
+        -5.921344,
+        11.0,
+        -4.121344
+      ],
+      "world_bounds": [
+        -4.2,
+        -5.921344,
+        4.2,
+        -4.121344
+      ],
+      "basis": "SDF corridor_1_wall_north/south 안쪽 면(y)과 wall_source/destination_door_section 바깥 면(x) 사이"
+    },
+    {
+      "id": "corridor_2",
+      "kind": "corridor",
+      "bounds": [
+        2.6,
+        -0.9,
+        11.0,
+        0.9
+      ],
+      "world_bounds": [
+        -4.2,
+        -0.9,
+        4.2,
+        0.9
+      ],
+      "basis": "SDF corridor_2_wall_north/south 안쪽 면(y)과 wall_source/destination_door_section 바깥 면(x) 사이"
+    },
+    {
+      "id": "corridor_3",
+      "kind": "corridor",
+      "bounds": [
+        2.6,
+        4.182072,
+        11.0,
+        5.982072
+      ],
+      "world_bounds": [
+        -4.2,
+        4.182072,
+        4.2,
+        5.982072
+      ],
+      "basis": "SDF corridor_3_wall_north/south 안쪽 면(y)과 wall_source/destination_door_section 바깥 면(x) 사이"
+    },
+    {
+      "id": "corridor_1_approach_west",
+      "kind": "approach",
+      "bounds": [
+        1.1,
+        -5.921344,
+        2.6,
+        -4.121344
+      ],
+      "world_bounds": [
+        -5.7,
+        -5.921344,
+        -4.2,
+        -4.121344
+      ],
+      "basis": "corridor_1 서쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_1",
+      "entry_heading_rad": 0.0
+    },
+    {
+      "id": "corridor_1_approach_east",
+      "kind": "approach",
+      "bounds": [
+        11.0,
+        -5.921344,
+        12.5,
+        -4.121344
+      ],
+      "world_bounds": [
+        4.2,
+        -5.921344,
+        5.7,
+        -4.121344
+      ],
+      "basis": "corridor_1 동쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_1",
+      "entry_heading_rad": 3.141593
+    },
+    {
+      "id": "corridor_2_approach_west",
+      "kind": "approach",
+      "bounds": [
+        1.1,
+        -0.9,
+        2.6,
+        0.9
+      ],
+      "world_bounds": [
+        -5.7,
+        -0.9,
+        -4.2,
+        0.9
+      ],
+      "basis": "corridor_2 서쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_2",
+      "entry_heading_rad": 0.0
+    },
+    {
+      "id": "corridor_2_approach_east",
+      "kind": "approach",
+      "bounds": [
+        11.0,
+        -0.9,
+        12.5,
+        0.9
+      ],
+      "world_bounds": [
+        4.2,
+        -0.9,
+        5.7,
+        0.9
+      ],
+      "basis": "corridor_2 동쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_2",
+      "entry_heading_rad": 3.141593
+    },
+    {
+      "id": "corridor_3_approach_west",
+      "kind": "approach",
+      "bounds": [
+        1.1,
+        4.182072,
+        2.6,
+        5.982072
+      ],
+      "world_bounds": [
+        -5.7,
+        4.182072,
+        -4.2,
+        5.982072
+      ],
+      "basis": "corridor_3 서쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_3",
+      "entry_heading_rad": 0.0
+    },
+    {
+      "id": "corridor_3_approach_east",
+      "kind": "approach",
+      "bounds": [
+        11.0,
+        4.182072,
+        12.5,
+        5.982072
+      ],
+      "world_bounds": [
+        4.2,
+        4.182072,
+        5.7,
+        5.982072
+      ],
+      "basis": "corridor_3 동쪽 입구 바깥, 통로 폭, 깊이 1.5 m(개발값: AX_1 이동 외곽 길이 수준)",
+      "corridor_id": "corridor_3",
+      "entry_heading_rad": 3.141593
+    },
+    {
+      "id": "station_src",
+      "kind": "workstation",
+      "bounds": [
+        -3.2,
+        -5.3,
+        0.8,
+        -2.3
+      ],
+      "world_bounds": [
+        -10.0,
+        -5.3,
+        -6.0,
+        -2.3
+      ],
+      "basis": "SDF source_pickup_zone 바닥 표시 상자(충돌 없음). 접근 조건·용량은 D2 확인 전"
+    },
+    {
+      "id": "station_dst",
+      "kind": "workstation",
+      "bounds": [
+        13.8,
+        -2.0,
+        17.8,
+        2.0
+      ],
+      "world_bounds": [
+        7.0,
+        -2.0,
+        11.0,
+        2.0
+      ],
+      "basis": "SDF destination_unload_zone 바닥 표시 상자(충돌 없음). 접근 조건·용량은 D2 확인 전"
+    },
+    {
+      "id": "wait_src",
+      "kind": "waiting",
+      "bounds": [
+        -2.2,
+        0.5,
+        -0.2,
+        2.5
+      ],
+      "world_bounds": [
+        -9.0,
+        0.5,
+        -7.0,
+        2.5
+      ],
+      "basis": "B3 개발 제안 빈 바닥. 접근 구역·통로·작업대·충돌 형상과 떨어짐(시험 확인). 안전 주차 승인 아님"
+    },
+    {
+      "id": "wait_dst",
+      "kind": "waiting",
+      "bounds": [
+        13.3,
+        2.5,
+        15.3,
+        4.5
+      ],
+      "world_bounds": [
+        6.5,
+        2.5,
+        8.5,
+        4.5
+      ],
+      "basis": "B3 개발 제안 빈 바닥. 접근 구역·통로·작업대·충돌 형상과 떨어짐(시험 확인). 안전 주차 승인 아님"
+    }
+  ]
+}

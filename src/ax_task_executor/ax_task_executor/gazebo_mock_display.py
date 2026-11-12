@@ -8,12 +8,16 @@ Only entities named a3_mock_indicator_* are created or removed.
 import subprocess
 import time
 
+from ax_task_executor.mock_executor import result_display_topic, ROBOT_IDS
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import String
 
+
+# 로봇별 표시등 x 위치(m). robot_1·robot_2는 이전 위치를 유지하고 0.6 m 상자가 겹치지 않게 1 m 간격으로 둔다.
+INDICATOR_X = {'robot_1': -1, 'robot_2': 0, 'robot_3': -2, 'robot_4': 1}
 
 COLORS = {
     'EMPTY': '1 0.05 0.05 1',
@@ -22,11 +26,19 @@ COLORS = {
 }
 
 
+# 로봇별 표시등 이름 접두어. robot_2는 이전 이름을 유지한다
+def indicator_prefix(robot_id):
+    if robot_id == 'robot_2':
+        return 'a3_mock_indicator_'
+
+    return f'a3_mock_indicator_{robot_id}_'
+
+
 def indicator_sdf(state, robot_id='robot_2'):
     """Make an indicator with no collision or effect on robot physics."""
     color = COLORS[state]
-    prefix = 'a3_mock_indicator_' if robot_id == 'robot_2' else 'a3_mock_indicator_robot_1_'
-    x = 0 if robot_id == 'robot_2' else -1
+    prefix = indicator_prefix(robot_id)
+    x = INDICATOR_X[robot_id]
     return (
         '<sdf version="1.6"><model name="' + prefix + state + '">'
         f'<static>true</static><pose>{x} -3 2 0 0 0</pose><link name="display">'
@@ -46,19 +58,16 @@ class MockDisplay(Node):
         super().__init__('a3_gazebo_mock_display')
         self.declare_parameter('robot_id', 'robot_2')
         self.robot_id = self.get_parameter('robot_id').value
-        if self.robot_id not in ('robot_1', 'robot_2'):
-            raise ValueError('robot_id must be robot_1 or robot_2')
-        self.indicator_prefix = (
-            'a3_mock_indicator_' if self.robot_id == 'robot_2'
-            else 'a3_mock_indicator_robot_1_')
+        if self.robot_id not in ROBOT_IDS:
+            raise ValueError('robot_id must be one of robot_1~robot_4')
+        self.indicator_prefix = indicator_prefix(self.robot_id)
         self.declare_parameter('world', 'ax_test')
         self.world = self.get_parameter('world').value
         self.pending = None
         self.shown = None
         self.retry_at = 0.0
         self.create_subscription(
-            String, ('/a3_mock/result_display' if self.robot_id == 'robot_2'
-                     else '/a3_mock/robot_1/result_display'), self.receive,
+            String, result_display_topic(self.robot_id), self.receive,
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.create_timer(1.0, self.update)
         self.get_logger().info(

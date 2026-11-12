@@ -57,7 +57,7 @@ ros2 run ax_task_executor mock_executor \
 같은 ROS 환경을 source한 후 요청한다.
 
 ```bash
-ros2 action send_goal /a3_mock/robot_2/execute_local_task \
+ros2 action send_goal /ax/robot_2/executor/execute_local_task \
   ax_interfaces/action/ExecuteLocalTask \
   "{task_kind: 5, object_id: 'test_box', execution: {execution_id: 'visual-empty-001', operation: 'CONFIRM_LOAD'}}" \
   --feedback
@@ -79,8 +79,13 @@ Gazebo 버전에 따라 우클릭 메뉴의 Move To 기능을 사용할 수 있�
 단조 시계로 기다린다. 대기 중에도 ROS 콜백을 처리하므로 상태 재발행과 취소가 동작한다.
 `-p mock_delay_s:=5.0`으로 관찰 시간을 늘릴 수 있다(허용 0~30초).
 
-- 한 로봇에서 다른 실행 ID의 작업이 진행 중이면 새 작업은 거절한다.
-- 같은 실행 ID·동일 요청은 기존 처리를 기다린 뒤 저장된 결과만 재사용한다.
+- 한 로봇에서 다른 실행 ID의 작업이 진행 중이면 새 작업은 거절한다. 단 이미 끝난 실행 ID의
+  재요청은 다른 작업 처리 중에도 받아 저장 결과만 돌려준다.
+- 같은 실행 ID·동일 요청(재요청 Goal)은 기존 처리를 기다린 뒤 저장된 결과만 재사용한다.
+  재요청 Goal은 상태 Topic(단계·revision)과 결과 표시를 다시 발행하지 않는다. 그래서 상태가
+  `MOCK_VALIDATING`으로 되돌아가거나, 다른 작업 처리 중에 이전 작업으로 바뀌지 않는다.
+- 취소는 Goal 단위다. 실제로 작업을 처리 중인 원래 Goal만 취소할 수 있고, 재요청 Goal의 취소
+  요청은 거절한다(원래 작업은 계속된다). 원래 Goal을 취소하면 Action 상태와 결과가 모두 CANCELED다.
 - 취소 시 `MOCK_CANCELING` → `MOCK_CANCELED`로 종료하고 CANCELED 결과를 SQLite에 저장한다.
 - 취소된 실행 ID의 재요청은 취소 결과를 반환한다. 다시 시험하려면 새 ID가 필요하다.
 - 취소 요청 중인 Action Goal은 CANCELED로 끝난다. 이미 완료된 취소 결과를 재조회하는
@@ -101,10 +106,12 @@ ActionClient.cancel_goal_async 경로로 수행한다.
 동일 ID로 물체·배정·작업 인자 등을 바꾸면 거절한다. 계약상 재전송 시 달라질 수 있는
 `execution.task_revision`은 비교에서 제외한다. 다른 결과를 시험하려면 새 실행 ID를 사용한다.
 
-기본 원장은 `${ROS_HOME:-~/.ros}/a3_mock/executions.sqlite3`이며 로봇 ID별로 기록이 분리된다.
-`--ros-args -p execution_db:=/절대/경로/executions.sqlite3`로 위치를 지정할 수 있다.
-재시작할 때 같은 경로를 유지해야 하며, 원장을 삭제하거나 다른 경로를 쓰면 이전 기록을
-복구할 수 없다. 원장을 쓰지 못하면 요청을 거절하고, 결과 저장 실패 시 성공을 반환하지 않는다.
+기본 원장은 로봇별 보존 경로 `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/executions.sqlite3`다(시작 로그에 경로 출력).
+**기록은 계속 남는다.** 재시작해도 같은 기본 경로를 쓰므로 이전에 수락한 실행·저장 결과가 그대로 유지된다.
+그래서 예전에 쓴 `execution_id`를 다시 보내면 새로 처리하지 않고 저장된 결과를 돌려준다(요청 내용이 다르면 거절).
+시험마다 새 `execution_id`를 쓰고, 기록 없이 새로 시작하려면
+`--ros-args -p execution_db:=/절대/경로/executions.sqlite3`로 다른 경로를 지정한다.
+원장 안 기록은 로봇 ID별로도 분리된다. 다른 경로를 쓰면 이전 기록은 그 원장에서 조회되지 않는다. 원장을 쓰지 못하면 요청을 거절하고, 결과 저장 실패 시 성공을 반환하지 않는다.
 운영용 배정 검증·lease·물리 작업 복구는 별도 구현 대상이다.
 
 ## 로봇별 RobotTaskStatus 발행
@@ -115,6 +122,11 @@ ActionClient.cancel_goal_async 경로로 수행한다.
 |---|---|
 | `robot_id:=robot_1` | `/ax/robot_1/executor/status` |
 | `robot_id:=robot_2` (기본) | `/ax/robot_2/executor/status` |
+| `robot_id:=robot_3`·`robot_4` | `/ax/robot_3/executor/status`·`/ax/robot_4/executor/status` |
+
+Action은 계약 경로 `/ax/<robot_id>/executor/execute_local_task`다(이전 `/a3_mock/<robot_id>/execute_local_task`에서 변경).
+상태는 계속 `valid=false`·`MOCK_ONLY`이고 결과 오류 코드는 `MOCK_*`이므로, 같은 경로라도
+소비자는 모의 결과임을 구분할 수 있다. 운영 A3와 같은 로봇에 동시에 띄우지 않는다.
 
 상태 변경 시 즉시 발행하고, 단조 시계 타이머로 1초마다 재발행한다.
 QoS는 reliable·transient_local·keep_last 1이다. 늦게 구독해도 마지막 상태를 받을 수 있다.
@@ -170,7 +182,7 @@ ros2 run ax_task_executor mock_executor --ros-args \
 
 ```bash
 # 요청 (추가 터미널)
-ros2 action send_goal /a3_mock/robot_1/execute_local_task \
+ros2 action send_goal /ax/robot_1/executor/execute_local_task \
   ax_interfaces/action/ExecuteLocalTask \
   "{task_kind: 5, object_id: 'test_box', execution: {execution_id: 'robot1-empty-001', operation: 'CONFIRM_LOAD'}}" \
   --feedback
@@ -178,6 +190,8 @@ ros2 action send_goal /a3_mock/robot_1/execute_local_task \
 
 로봇 1 결과는 `/a3_mock/robot_1/result_display`로 전달하며,
 표시등은 `a3_mock_indicator_robot_1_EMPTY`처럼 생성된다. 위치는 (-1, -3, 2) m다.
+로봇 3·4도 같은 방식이다(`/a3_mock/robot_3/result_display`, `a3_mock_indicator_robot_3_*`).
+표시 위치 x는 robot_3 −2 m, robot_4 1 m이며 0.6 m 상자가 겹치지 않는다.
 로봇 2의 기존 결과 Topic·표시등 이름·위치는 유지된다. 각 표시 노드는 자기 로봇의
 표시등만 제거하므로 두 결과가 서로 덮어쓰이지 않는다.
 로봇 1도 STOWED·EMPTY·UNKNOWN 시험 입력만 사용하며 실제 로봇 구동·적재 관측은 하지 않는다.
@@ -200,3 +214,22 @@ RobotTaskStatus 추가 검증은 같은 테스트 파일의
 차단 검증을 추가하여 6개, 이후 실제 Action 취소·진행 중 중복·다른 작업 차단 검증까지
 추가하여 총 7개 테스트가 통과했다. 시뮬레이션 시계가 진행되지 않는 조건에서도
 주기 발행과 늦은 구독을 확인했다. Gazebo GUI 동시 표시는 별도 확인 대상이다.
+2026-11-12 Goal 단위 취소·재요청 비재발행·다른 작업 끼어들기·로봇 4대·계약 Action 경로·보존 원장(재시작 유지) 회귀 시험 6개를
+추가했다(`MockExecutorRegressionTests`). 수정 전 코드에서는 이 중 5개가 실패했다.
+Gazebo·실제 A2/A4 노드와의 실행 시험은 하지 않았다.
+
+## 모의 통과와 운영 완료의 구분 · 다음 작업 (미구현·예정)
+
+이 패키지의 모의 실행기를 통과해도 운영 기능이 완료된 것은 아니다.
+현재 모의 실행기는 `CONFIRM_LOAD`만 받고, 결과는 시험 입력(`mock_load`)이다.
+
+| 운영 작업 종류 | 현재 | 연결할 하위 대상(예정) |
+|---|---|---|
+| `LOCK_HANDOFF`·`UNLOCK_HANDOFF` | 미구현(Goal 거절) | 인계 잠금 상태(`transfer_state`)·A4 차단 조건, D4 heartbeat |
+| `PICK_AND_STOW`·`UNLOAD_AND_PLACE` | 미구현(Goal 거절) | C4 `ManipulateObject`(`/ax/<robot_id>/manipulation/execute`) + lease 요청·발급·철회 Topic, 적재 확인 |
+| `RETRACT_ARM` | 미구현(Goal 거절) | A4 `ProtectedArmTrajectory`(`/ax/<robot_id>/arm/execute_trajectory`, `AUTH_A3_LOCAL_TASK`), `joint_states`로 완료 확인 |
+| `CONFIRM_LOAD` | 모의(시험 입력) | 실제 적재 판정(`load/state`) |
+| 배정 확인 | 미구현 | D4 `assignment_check/request·response` heartbeat |
+
+C4·A4·D4의 모의 상대(가짜 서버)도 아직 없다. 위 연결은 담당 계약 확인 뒤 진행한다.
+

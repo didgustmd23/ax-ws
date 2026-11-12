@@ -24,25 +24,61 @@ from rosidl_runtime_py.set_message import set_message_fields
 from std_msgs.msg import String
 
 
+# 모의 서버를 띄울 수 있는 로봇 ID(시험 구성 robot_1~robot_4)
+ROBOT_IDS = ('robot_1', 'robot_2', 'robot_3', 'robot_4')
+
+
+# 로봇별 모의 결과 표시 Topic. robot_2는 이전 경로를 유지한다.
+def result_display_topic(robot_id):
+    if robot_id == 'robot_2':
+        return '/a3_mock/result_display'
+
+    return f'/a3_mock/{robot_id}/result_display'
+
+
+# 계약 4.3절의 로컬 작업 Action 경로
+def execute_action_name(robot_id):
+    return f'/ax/{robot_id}/executor/execute_local_task'
+
+
+# 로컬 작업 실행기 기록 보존 폴더: ${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>
+def record_dir(robot_id):
+    ros_home = os.environ.get('ROS_HOME') or str(Path.home() / '.ros')
+
+    return Path(ros_home) / 'ax_task_executor' / robot_id
+
+
+# 지정하지 않으면 로봇별 보존 경로의 원장을 쓴다(재시작해도 이전 수락·결과가 남는다)
+def default_execution_db(robot_id):
+    return str(record_dir(robot_id) / 'executions.sqlite3')
+
+
 class MockExecutor(Node):
+    # 로봇 ID·원장·상태 Topic·Action 서버를 준비한다
     def __init__(self):
         super().__init__('a3_mock_executor', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.declare_parameter('robot_id', 'robot_2')
         self.robot_id = self.get_parameter('robot_id').value
-        if self.robot_id not in ('robot_1', 'robot_2'):
-            raise ValueError('robot_id must be robot_1 or robot_2')
+        if self.robot_id not in ROBOT_IDS:
+            raise ValueError('robot_id must be one of robot_1~robot_4')
         # 시험 입력일 뿐 실제 센서나 Gazebo 관측이 아니다.
         self.declare_parameter('mock_load', 'UNKNOWN')
         # 확인 대기 시간 동안 취소 요청을 받을 수 있다. 실제 센서 대기는 아니다.
         self.declare_parameter('mock_delay_s', 0.5)
         self._active_execution_id = None
+        # execution_id → 실제로 처리 중인 Goal의 UUID 문자열과 완료 Future
+        self._owner_goal = {}
         self._inflight = {}
+        # 취소를 받아들인 Goal UUID 문자열. 재요청 Goal 취소가 원래 작업을 멈추지 않게 Goal 단위로 둔다.
         self._cancel_requested = set()
-        default_store = Path(os.environ.get('ROS_HOME', str(Path.home() / '.ros')))
-        self.declare_parameter('execution_db', str(default_store / 'a3_mock/executions.sqlite3'))
+        self.declare_parameter('execution_db', '')
+        if not self.get_parameter('execution_db').value:
+            self.set_parameters([
+                Parameter('execution_db', value=default_execution_db(self.robot_id))])
         self.store = ExecutionStore(
             self.get_parameter('execution_db').value, self.robot_id)
+        self.get_logger().info(f"모의 실행 원장: {self.get_parameter('execution_db').value}")
         # Publish mock execution state on the contract Topic, explicitly invalid
         # for operational decisions. A new process always has a new session ID.
         self.task_status = RobotTaskStatus(robot_id=self.robot_id)
@@ -61,13 +97,12 @@ class MockExecutor(Node):
             1.0, self.publish_task_status, clock=self.status_clock)
         self.update_task_status('MOCK_IDLE')
         self.result_display = self.create_publisher(
-            String, ('/a3_mock/result_display' if self.robot_id == 'robot_2'
-                     else '/a3_mock/robot_1/result_display'),
+            String, result_display_topic(self.robot_id),
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.server = ActionServer(
             self,
             ExecuteLocalTask,
-            f'/a3_mock/{self.robot_id}/execute_local_task',
+            execute_action_name(self.robot_id),
             execute_callback=self.execute_action,
             goal_callback=self.accept_goal,
             cancel_callback=self.cancel_goal,
@@ -76,6 +111,7 @@ class MockExecutor(Node):
             'A3 모의 서버 준비 완료. 실제 로봇을 구동하지 않습니다.'
         )
 
+    # Goal 수락 여부를 정한다. 끝난 실행의 재요청은 다른 작업 처리 중에도 저장 결과 조회로 받는다
     def accept_goal(self, request):
         execution_id = request.execution.execution_id
         if request.task_kind != ExecuteLocalTask.Goal.CONFIRM_LOAD:
@@ -84,7 +120,8 @@ class MockExecutor(Node):
         if not execution_id or not request.object_id:
             self.get_logger().warning('execution_id와 object_id가 필요합니다.')
             return GoalResponse.REJECT
-        if self._active_execution_id not in (None, execution_id):
+        busy = self._active_execution_id not in (None, execution_id)
+        if busy and not self._has_result(execution_id):
             self.get_logger().warning('이 로봇이 다른 작업을 처리 중입니다.')
             return GoalResponse.REJECT
         delay = self.get_parameter('mock_delay_s').value
@@ -104,31 +141,47 @@ class MockExecutor(Node):
         if not accepted:
             self.get_logger().warning('같은 execution_id의 요청 내용이 다릅니다.')
             return GoalResponse.REJECT
-        self._active_execution_id = execution_id
+        # 끝난 실행의 재요청은 현재 처리 중 작업 표시를 바꾸지 않는다.
+        if not busy and not self._has_result(execution_id):
+            self._active_execution_id = execution_id
         return GoalResponse.ACCEPT
 
+    # 저장된 최종 결과가 있는지 확인한다. 원장을 읽지 못하면 없다고 본다
+    def _has_result(self, execution_id):
+        try:
+            return self.store.cached_result(execution_id) is not None
+        except sqlite3.Error:
+            return False
+
     def cancel_goal(self, goal_handle):
-        """완료 전 모의 작업만 취소한다. 물리 정지를 확인한 것으로 해석하지 않는다."""
+        """완료 전 모의 작업을 처리 중인 그 Goal만 취소한다. 물리 정지를 확인한 것으로 해석하지 않는다."""
         execution_id = goal_handle.request.execution.execution_id
+        goal_key = goal_key_of(goal_handle)
         try:
             if self.store.cached_result(execution_id) is not None:
                 return CancelResponse.REJECT
         except sqlite3.Error:
             return CancelResponse.REJECT
-        if execution_id != self._active_execution_id:
+        # 재요청 Goal은 저장 결과를 기다릴 뿐이라 취소하지 않는다(원래 작업은 계속).
+        if self._owner_goal.get(execution_id) != goal_key:
+            self.get_logger().info('재요청 Goal 취소는 받지 않습니다. 원래 Goal을 취소하세요.')
             return CancelResponse.REJECT
-        self._cancel_requested.add(execution_id)
+        self._cancel_requested.add(goal_key)
         return CancelResponse.ACCEPT
 
     async def execute_action(self, goal_handle):
         """ROS 요청 경로: 기다리는 동안에도 상태 발행·취소 콜백을 처리한다."""
         execution_id = goal_handle.request.execution.execution_id
-        if execution_id in self._inflight:
-            # 같은 실행 ID 재요청은 기존 계산이 끝나기를 기다리고 결과만 재사용한다.
-            await self._inflight[execution_id]
-            return self.execute(goal_handle)
+        if execution_id in self._inflight or self._has_result(execution_id):
+            # 같은 실행 ID 재요청은 기존 처리가 끝나기를 기다린 뒤 저장 결과만 돌려준다.
+            # 상태 Topic·revision·결과 표시는 다시 발행하지 않는다.
+            if execution_id in self._inflight:
+                await self._inflight[execution_id]
+            return self._replay(goal_handle)
+        goal_key = goal_key_of(goal_handle)
         done = Future()
         self._inflight[execution_id] = done
+        self._owner_goal[execution_id] = goal_key
         try:
             advance, invalid = self._begin_execution(goal_handle)
             if invalid is not None:
@@ -139,7 +192,7 @@ class MockExecutor(Node):
                 cached = None  # 아래 결과 저장 경로에서 오류를 UNCERTAIN으로 보고한다.
             if cached is None:
                 deadline = time.monotonic() + self.get_parameter('mock_delay_s').value
-                while time.monotonic() < deadline and execution_id not in self._cancel_requested:
+                while time.monotonic() < deadline and goal_key not in self._cancel_requested:
                     # sleep 대신 ROS 타이머를 기다려 취소·heartbeat 처리를 막지 않는다.
                     wake = Future()
                     timer = self.create_timer(
@@ -150,16 +203,20 @@ class MockExecutor(Node):
                     finally:
                         self.destroy_timer(timer)
             return self._complete_execution(
-                goal_handle, advance, execution_id in self._cancel_requested)
+                goal_handle, advance, goal_key in self._cancel_requested)
         finally:
             self._inflight.pop(execution_id, None)
-            self._cancel_requested.discard(execution_id)
+            self._owner_goal.pop(execution_id, None)
+            self._cancel_requested.discard(goal_key)
             if self._active_execution_id == execution_id:
                 self._active_execution_id = None
             done.set_result(True)
 
     def execute(self, goal_handle):
         """동기 결과 처리 경로. 실제 ROS Action은 execute_action을 통해 호출된다."""
+        execution_id = goal_handle.request.execution.execution_id
+        if self._has_result(execution_id):
+            return self._replay(goal_handle)
         try:
             advance, invalid = self._begin_execution(goal_handle)
             if invalid is not None:
@@ -167,8 +224,38 @@ class MockExecutor(Node):
 
             return self._complete_execution(goal_handle, advance)
         finally:
-            if self._active_execution_id == goal_handle.request.execution.execution_id:
+            if self._active_execution_id == execution_id:
                 self._active_execution_id = None
+
+    # 저장 결과로 이 Goal만 끝낸다. 상태 Topic·결과 표시·처리 중 작업 표시는 건드리지 않는다
+    def _replay(self, goal_handle):
+        execution_id = goal_handle.request.execution.execution_id
+        result = ExecuteLocalTask.Result()
+
+        try:
+            saved = self.store.cached_result(execution_id)
+        except sqlite3.Error as error:
+            saved = None
+            result.status.detail = str(error)
+
+        if saved is None:
+            # 원래 처리가 결과 없이 끝났다(저장 실패 등). 성공으로 보고하지 않는다.
+            result.status.outcome = ResultStatus.UNCERTAIN
+            result.status.error_code = 'MOCK_STORE_ERROR'
+            result.status.detail = result.status.detail or '저장된 결과가 없습니다.'
+            goal_handle.abort()
+            return result
+
+        set_message_fields(result, saved)
+
+        # 재요청 Goal은 취소 요청 중이 아니므로 CANCELED 결과도 abort로 끝낸다(README 참고).
+        if result.status.outcome == ResultStatus.SUCCEEDED:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
+
+        self.get_logger().info(f'[{self.robot_id}] {execution_id}: 저장 결과 재사용')
+        return result
 
     def _begin_execution(self, goal_handle):
         # 현재 Action 콜백에서 실제로 사용하는 단계 머신이다.
@@ -293,6 +380,16 @@ class MockExecutor(Node):
         self.server.destroy()
         self.store.close()
         return super().destroy_node()
+
+
+# Goal UUID를 문자열 키로 만든다. Mock 등 UUID가 없는 Goal은 객체 ID를 쓴다
+def goal_key_of(goal_handle):
+    uuid = getattr(getattr(goal_handle, 'goal_id', None), 'uuid', None)
+
+    try:
+        return bytes(uuid).hex()
+    except TypeError:
+        return f'object-{id(goal_handle)}'
 
 
 def main(args=None):

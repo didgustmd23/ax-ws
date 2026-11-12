@@ -1,0 +1,188 @@
+W1 A4·B4 설치 및 검증
+======================
+
+대상 환경: Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic
+실행 위치: WSL Ubuntu 터미널의 ax-ws 루트
+
+1. 설치 여부 확인
+------------------
+
+cd ~/ax_ws
+test -f /opt/ros/jazzy/setup.bash && echo "ROS 2 Jazzy: OK"
+command -v colcon && colcon --help >/dev/null && echo "colcon: OK"
+command -v cmake && command -v g++ && command -v python3 && command -v gz
+source /opt/ros/jazzy/setup.bash
+ros2 pkg prefix rclcpp
+ros2 pkg prefix ros_gz_sim
+
+작성 PC 확인값: Ubuntu 24.04, ROS 2 Jazzy, Gazebo 8.15.0, CMake 3.28.3,
+G++ 13.3.0, Python 3.12.3, colcon.
+
+이미 있는 항목은 다시 설치하지 않습니다. ROS 2 Jazzy 자체가 없으면 먼저
+Ubuntu 24.04용 ROS 2 Jazzy를 설치해야 합니다. 저장소의
+docs/guides/RUN_ON_ANOTHER_PC.md에 공식 설치 링크가 있습니다.
+
+2. 없는 의존성만 설치
+----------------------
+
+ROS 2 Jazzy가 설치된 상태에서 프로젝트 루트에서 실행합니다. 아래 명령은
+저장소의 tools/setup_jazzy.sh가 사용하는 실제 의존성 설치 절차입니다.
+
+cd ~/ax_ws
+source /opt/ros/jazzy/setup.bash
+sudo apt-get update
+sudo apt-get install -y python3-colcon-common-extensions python3-rosdep \
+  python3-numpy python3-scipy
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+  sudo rosdep init
+fi
+rosdep update
+rosdep install --from-paths src --ignore-src --rosdistro jazzy -r -y
+
+apt와 rosdep은 이미 설치된 의존성을 다시 설치하지 않습니다. ROS 2 자체나
+Gazebo를 이 파일에서 임의로 설치하지 않습니다. 먼저 1번 확인에서 없는
+항목만 확인하십시오.
+
+3. W1 패키지 빌드
+-----------------
+
+cd ~/ax_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-up-to ax_control ax_safety ax_task_executor
+source install/setup.bash
+
+A3 개발 서버를 사용하지 않으면 ax_task_executor는 빌드하지 않아도 됩니다.
+A2·Gazebo 연동을 하지 않고 W1 단위 테스트만 실행하면 ax_control도 빌드하지 않아도 됩니다.
+
+4. 단위 테스트
+--------------
+
+프로젝트 루트에서 실행합니다.
+
+python3 src/ax_safety/tools/tests/test_b4_risk_rules.py
+
+정상 결과: Ran 11 tests 및 OK.
+
+mkdir -p /tmp/ax_w1_test
+g++ -std=c++17 -Wall -Wextra -Wpedantic \
+  -I src/ax_safety/src/ax_safety/include \
+  src/ax_safety/tools/tests/test_a4_safety_gate.cpp \
+  -o /tmp/ax_w1_test/test_a4
+/tmp/ax_w1_test/test_a4
+
+정상 결과: 오류 없이 종료.
+
+5. A3 개발 서버와 A4 연결 시험
+-------------------------------
+
+터미널 2에서 A3 서버를 하나만 실행합니다. 같은 robot_id 서버를 중복 실행하지
+마십시오.
+
+cd ~/ax_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run ax_task_executor lease_check --ros-args \
+  -p robot_id:=robot_1 -p policy:=dev_deny \
+  -p lease_db:=/tmp/ax_w1_dev_deny.sqlite3
+
+dev_deny 정상 결과: A4가 LEASE_EXPIRED로 명령을 차단합니다.
+
+허용 경로는 위 서버를 Ctrl+C로 종료한 뒤 터미널 2에서 실행합니다.
+
+ros2 run ax_task_executor lease_check --ros-args \
+  -p robot_id:=robot_1 -p policy:=dev_allow \
+  -p lease_db:=/tmp/ax_w1_dev_allow.sqlite3
+
+dev_allow 정상 결과: A3 응답이 allowed=True,
+reason_code=DEV_POLICY_ALLOW, accept_record_id=devpolicy-*입니다.
+
+터미널 3에서 A4를 실행합니다.
+
+cd ~/ax_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run ax_safety a4_protected_arm_server --ros-args \
+  -p robot_id:=robot_1 \
+  -p enable_simulation_arm:=true \
+  -p arm_joint_names:="['joint1']" \
+  -p arm_position_min_rad:="[-2.0]" \
+  -p arm_position_max_rad:="[2.0]" \
+  -p arm_max_velocity_rad_s:="[2.0]" \
+  -p arm_max_acceleration_rad_s2:="[2.0]"
+
+A4는 최신·유효한 SafetyState와 ActuationState(arm_allowed=true)가 없으면
+명령을 전달하지 않습니다. 테스트용 상태 publisher 없이 허용되지 않는 것은
+정상입니다. A3 서비스 이름은
+/ax/robot_1/executor/lease/check_command입니다.
+
+이번에 실제 확인한 결과:
+
+* dev_deny → A4 LEASE_EXPIRED 차단
+* dev_allow → A3 허용 후 실제 Gazebo arm_controller 궤적 실행 성공
+* A3 미실행 → A4 A3_LEASE_SERVER_UNAVAILABLE 차단
+
+팔 시험은 A4가 요구하는 유효한 SafetyState와 ActuationState를 일회성 테스트
+publisher로 공급했습니다. 실제 B1~B3 센서 입력이 아닙니다.
+
+dev_allow는 개발 정책 서버이며 실제 lease 발급·세대·갱신·철회·배정 검증은
+구현되어 있지 않습니다. 운영 권한 검증 완료로 해석하지 마십시오.
+
+6. A2·Gazebo 실행
+------------------
+
+터미널 4에서 실행합니다.
+
+cd ~/ax_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 launch ax_control simulation.launch.py \
+  robot_ids:=robot_1 gui:=false sensors:=false tool:=epick
+
+A2와 A4/B4를 함께 띄우려면 명시적으로 safety:=true를 추가합니다.
+기본 safety:=false는 기존 A2 전용 실행을 유지합니다.
+
+ros2 launch ax_control simulation.launch.py \
+  robot_ids:=robot_1 gui:=false sensors:=false tool:=epick safety:=true
+
+tool:=none은 지원되지 않습니다. 허용 값은 epick, suction, primitive,
+robotiq, parallel_wide입니다.
+
+실행 후 확인:
+
+ros2 control list_controllers -c /ax/robot_1/controller_manager
+ros2 action list -t
+
+작성 PC에서는 A2 launch에 safety:=true를 사용해 B4, A4 주행 게이트,
+A4 팔 보호 서버와 Gazebo의 arm_controller, diff_drive_controller가 함께
+시작되는 것을 확인했습니다. A4 기본값은 안전 잠금 상태입니다.
+
+실제 팔 시험에서는 테스트 상태 publisher와 A3 개발 서버를 사용해
+ProtectedArmTrajectory → A4 → /ax/robot_1/arm_controller/follow_joint_trajectory
+경로를 확인했습니다. dev_deny는 LEASE_EXPIRED로 차단했고,
+dev_allow는 결과 SUCCEEDED로 실제 controller가 궤적을 실행했습니다.
+
+주행 시험에서는 테스트용 유효 SafetyState가 없는 A4 기본 잠금 상태에서
+/ax/robot_1/nav/cmd_vel에 0.5 m/s 명령을 넣었습니다. A4가 A2 경로에 0을
+출력했고 Gazebo odom은 3초 동안 최대 선속도 0, 위치 변화 0으로 정지했습니다.
+실제 B1~B3 센서와 D2/D3 permit을 공급한 허용 주행은 아직 시험하지 않았습니다.
+
+7. 오류 대응
+------------
+
+* Package 'ax_safety' not found: 빌드 후 같은 터미널에서 source install/setup.bash.
+* A3_LEASE_SERVER_UNAVAILABLE: A3 서버가 같은 robot_id로 실행 중인지 확인.
+* A3_LEASE_TIMEOUT: ROS domain, robot_id, A3 서버 로그 확인. timeout을 늘려 우회하지 않음.
+* A2_CONTROLLER_UNAVAILABLE: A2/Gazebo 실행 및 ros2 action list -t의 경로 확인.
+* LEASE_EXPIRED: dev_deny의 정상 결과이거나 lease 만료. 새 시험에는 새 lease_db 사용.
+* A4가 상태 입력 부족으로 차단: 유효한 SafetyState와 ActuationState가 필요함.
+* Gazebo protobuf 오류: WSL PATH에 Windows Anaconda 경로가 앞에 있으면 ROS 쉘에서
+  Anaconda 경로를 제외한 PATH로 빌드합니다. 이번 PC에서는 그 방식으로 ax_control
+  빌드가 성공했습니다.
+
+현재 검증 완료: WSL 환경 확인, ax_interfaces·ax_safety·ax_control 빌드, B4 11개
+테스트, A4 C++ 테스트, safety:=true 통합 launch, A3 dev_deny/dev_allow에 따른
+실제 Gazebo 팔 차단·실행, A4 주행 차단·정지.
+
+미검증·미구현: 운영 lease 권한 판정, 실제 B1~B3 센서와 B4의 전체 연동,
+D2/D3 permit 기반 허용 주행, 장시간 Gazebo 궤적, 실물 하드웨어. 작업 세부는
+src/ax_task_executor/README.md와 src/ax_control/README.md를 확인합니다.

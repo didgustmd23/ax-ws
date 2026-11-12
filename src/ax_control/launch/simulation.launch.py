@@ -10,7 +10,7 @@
 # - 공구(A2, epick·suction 팔 로봇만): 흡착 플러그인(모델에 포함), 공구 브리지, suction_tool_node
 #
 # 띄우지 않는 것
-# - A3 Task Executor, A4 게이트·보호 서버, Nav2
+# - A3 Task Executor, A4 게이트·보호 서버, Nav2 (safety:=true일 때 A4/B4 포함)
 # - A3·A4가 없으면 tool_command는 전부 거절된다. 정상 동작이다.
 #
 # 주의
@@ -44,6 +44,13 @@ PASS_THROUGH_ARGUMENTS = {
     "sensors": "true",
     "tool": "epick",
     "payload_mass": "0.0",
+    # 기본값 false로 기존 A2 전용 실행 방식을 보존한다.
+    "safety": "false",
+    "safety_enable_simulation_drive": "false",
+    "safety_enable_simulation_arm": "false",
+    "safety_operational_permits_verified": "false",
+    "safety_travel_envelope_verified": "false",
+    "safety_arm_operation_verified": "false",
 }
 
 
@@ -162,6 +169,24 @@ def launch_setup(context):
     # 로봇마다 제어기와 공구 노드
     for robot_id in selected_robot_ids(values["robots"], values["robot_ids"]):
         actions.extend(controller_spawners(robot_id))
+
+        # W1 안전 실행은 명시적으로 요청한 경우에만 로봇별로 붙인다.
+        # safety.launch.py의 허용 플래그 기본값(false)은 그대로 유지한다.
+        if values["safety"].lower() == "true":
+            actions.append(IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(str(
+                    Path(get_package_share_directory("ax_safety")) /
+                    "launch" / "safety.launch.py"
+                )),
+                launch_arguments={
+                    "robot_id": robot_id,
+                    "enable_simulation_drive": values["safety_enable_simulation_drive"],
+                    "enable_simulation_arm": values["safety_enable_simulation_arm"],
+                    "operational_permits_verified": values["safety_operational_permits_verified"],
+                    "travel_envelope_verified": values["safety_travel_envelope_verified"],
+                    "arm_operation_verified": values["safety_arm_operation_verified"],
+                }.items(),
+            ))
 
         if robot_id in MANIPULATORS and tool_attach:
             actions.extend(tool_nodes(robot_id))

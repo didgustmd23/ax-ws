@@ -224,6 +224,20 @@ A2(`ToolCommand`)와 A4(`ProtectedArmTrajectory`)의 명령 수락·진행 중 �
 - **Result:** `ResultStatus`, 보유 판정(`object_hold_state`, `ToolHoldState` 상수)·적재 상태, 시도 사용 기록, `need_reobservation_move`와 C의 관측 요구(`observation_reason`·`observation_target`). 재관측 위치는 D가 등록 지점 중에서 고른다.
 - 주행은 포함하지 않는다. A는 수락 전에 `execution_id`를 원장에 기록하고 같은 ID 재요청에는 기존 결과를 돌려준다.
 - `RETRACT_ARM`은 C의 조작 Goal 없이 A3가 직접 수행하는 로컬 작업이다. A3는 이 작업의 실행을 수락·기록한 뒤 `ProtectedArmTrajectory`를 `AUTH_A3_LOCAL_TASK`로 A4에 보낸다(5.2절 권한 종류).
+- **로컬 단계 이름:** `RobotTaskStatus.local_phase`와 Feedback `phase`는 같은 문자열을 쓴다. 공통 단계는 `VALIDATING`·`CANCELING`, 종료는 `SUCCEEDED`·`FAILED`·`CANCELED`·`UNCERTAIN`이다. 작업별 단계는 다음과 같다. 모의 서버는 같은 이름 앞에 `MOCK_`를 붙이며, D는 그 값을 실제 진행으로 쓰지 않는다.
+
+  | 작업 | 단계(순서) |
+  |---|---|
+  | `LOCK_HANDOFF` | `LOCKING` → `CONFIRMING_LOCK` |
+  | `UNLOCK_HANDOFF` | `CHECKING_UNLOCK` → `UNLOCKING` |
+  | `PICK_AND_STOW` | `PICKING` → `STOWING` → `RELEASING` |
+  | `UNLOAD_AND_PLACE` | `UNLOADING` → `PLACING` → `RELEASING` |
+  | `CONFIRM_LOAD` | `CHECKING_LOAD` |
+  | `RETRACT_ARM` | `RETRACTING` → `CONFIRMING_RETRACT` (`RETRACTING`은 이 작업에만 쓴다) |
+
+- **성공 판정:** A3는 하위 Action 결과만으로 `SUCCEEDED`를 내지 않는다. 조작 작업(`PICK_AND_STOW`·`UNLOAD_AND_PLACE`)은 C4 PLACE 결과가 성공이고 지정 물체의 `hold_state`가 `RELEASED`일 때, `RETRACT_ARM`은 실제 관절 상태(`joint_states`)가 후퇴 자세이고 팔이 정지(D-06)했을 때, 인계 잠금·해제는 자기 로봇의 실제 정지(D-06)와 자기 측 조건을 확인했을 때 성공이다. 하위 결과와 실제 상태가 다르거나 상태가 만료됐으면 `UNCERTAIN`으로 끝낸다.
+  `CONFIRM_LOAD`의 성공·실패 판정(EMPTY·LOST 결과 처리)은 미정이다(A3 단계 정의 Q-4·Q-11).
+- **취소:** A3는 C4 조작 중이면 `lease/revoke`와 `ManipulateObject` cancel을 함께 보내고, 후퇴 중이면 `ProtectedArmTrajectory`를 취소한다. 새 하위 명령은 보내지 않으며 흡착을 해제하지 않는다. 하위 Action 종료와 자기 로봇의 실제 정지(D-06)를 확인한 뒤에만 `CANCELED`로 끝내고, 확인하지 못하면 `UNCERTAIN`으로 끝낸다. 취소는 인계 잠금 해제가 아니다(본설계 9.3절).
 
 ### 5.2 `ManipulateObject` (A → C)
 
@@ -247,6 +261,7 @@ lease·명령 수락 규칙의 기준은 이 절이다. 다른 절은 이 절을
   누락·형식 오류(`goal_id`가 소문자 16진수 32자가 아님)·종료된 부모 Goal·이전 세대·다른 배정은 거절한다. `AUTH_A3_LOCAL_TASK`는 `RETRACT_ARM` 외의 로컬 작업에는 쓸 수 없어, 다른 로컬 작업이 이 경로로 팔을 움직이지 못한다. C의 조작 없이 하는 후퇴에 가짜 `ManipulateObject` Goal이나 임의 lease를 쓰지 않는다. 허용이면 A3는 **수락 기록을 먼저 남긴 뒤** 응답한다.
 - **허용 응답 표시:** 허용 응답의 `reason_code`는 운영 A3에서 빈 문자열이다. 개발 정책 서버만 `DEV_POLICY_ALLOW`를 넣고 `accept_record_id`에 `devpolicy-` 접두어를 붙인다.
 - **멱등:** 같은 `request_id`의 재전송은 기존 결과만 돌려주며 세대 증가·추가 수락 기록·물리 실행을 만들지 않는다. 같은 `request_id`나 같은 `command_id`에 인자(digest)가 다르면 거절한다(`DUPLICATE_REQUEST`). 기한이 지나 새 `request_id`로 다시 확인하더라도 `command_id`가 같으면 같은 물리 명령이다. A3는 기존 수락 기록을 재사용하고 새 기록을 만들지 않으며, A2·A4는 그 명령을 다시 실행하지 않는다.
+- **재전송 금지:** A2·A4는 무응답에 같은 `request_id`를 짧은 간격으로 재전송하지 않는다(rmw 중복 수신으로 서버 부하가 커진 사례, 2026-11-12 측정). 기한이 지나면 새 `request_id`로 다시 확인한다.
 - **실행 조건과 기한:** A2·A4는 `request_id`마다 **최초 송신 시각 `t_first`**(CLOCK_BOOTTIME)를 기록한다. 같은 요청을 재전송해도 `t_first`는 바꾸지 않는다. 허용 기한은 항상 `t_first + valid_for_s`이며, 응답 수신 시각이나 재전송 시각부터 권한을 늘리지 않는다. `allowed=false`, 무응답, 기한 경과 중 하나라도 해당하면 명령을 실행하지 않는다. 기한이 지났으면 캐시된 `allowed=true` 응답도 실행 권한으로 쓰지 않고, 새 `request_id`로 A3가 현재 권한을 다시 검사하게 한다. 프로세스 재시작 등으로 `t_first`를 잃으면 과거 응답을 재사용하지 않고 새 요청으로 확인한다. A3는 `valid_for_s`를 그 권한의 남은 기한(lease 또는 배정 확인 기한)보다 길게 주지 않는다.
 - **진행 중 확인:** 실행이 허용 기한보다 길면 A4는 lease 갱신 주기(D-07의 0.5 s)마다 `CONTINUE`로 다시 확인한다. `CONTINUE`는 새 수락 기록을 만들지 않는다. 거절·무응답으로 기한이 지나거나 `lease/revoke`를 받으면 A4는 진행 중 궤적을 검증된 방식으로 정지한다. 이 Service는 상위 명령 단위로 쓰며 관절 제어 주기마다 호출하지 않는다. `CONTINUE`는 그 `command_id`의 `ACCEPT` 수락 기록이 있을 때만 허용하고, 없으면 `AUTHORITY_INVALID`로 거절한다.
 - **`arm_allowed` 경로:** A2는 자기 로봇의 `safety/actuation_state`(A4)를 구독해 `arm_allowed`를 확인한다. 메시지가 무효·만료·미수신이면 허용으로 보지 않는다.
@@ -456,6 +471,8 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 - `AgentReasoningState`: D의 `RECORDED_ONLY` 결정을 받으면 `IDLE`로 돌아간다.
 - `snapshot_id`: D가 마지막 값을 원장에 저장해 재시작 후에도 이어 증가한다. 내용이 같은 재발행은 같은 ID다.
 - 인계 잠금 해제(`TRANSFER_UNLOCKED`): 적재는 적재 확인·흡착 해제·팔 후퇴 확인 후. 하역은 배치 확인·흡착 해제·팔 후퇴·운송 로봇 적재함 `EMPTY` 확인 후.
+- 인계 로컬 작업: D2는 `LOCK_HANDOFF`·`UNLOCK_HANDOFF`를 두 로봇의 A3에 각각 보낸다. 각 A3는 자기 로봇의 실제 정지와 자기 측 조건만 확인하고 상대 로봇은 확인하지 않는다. `transfer_state`는 D가 두 로봇의 결과로 정하며 A3는 바꾸지 않는다.
+- 적재·하역의 팔 후퇴: `PICK_AND_STOW`·`UNLOAD_AND_PLACE`는 흡착 해제 확인에서 끝나고 팔 후퇴를 포함하지 않는다. 흡착 해제 후 D2가 조작 로봇에 `RETRACT_ARM`을 별도로 보낸다(`AUTH_A3_LOCAL_TASK` 범위는 바꾸지 않음).
 
 ## 9. 구현 시 계약 시험 항목
 

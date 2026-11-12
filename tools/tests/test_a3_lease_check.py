@@ -239,6 +239,12 @@ class LeaseCheckerTests(unittest.TestCase):
         # 같은 request_id 재전송은 정책이 바뀌어도 기존 응답이다.
         self.assertEqual(again, first)
 
+    # 원장은 WAL 저널 + synchronous=FULL로 열린다
+    def test_ledger_uses_wal_with_full_sync(self):
+        self.assertEqual(self.ledger.journal_mode, 'wal')
+        self.assertEqual(self.ledger.db.execute('PRAGMA journal_mode').fetchone()[0], 'wal')
+        self.assertEqual(self.ledger.db.execute('PRAGMA synchronous').fetchone()[0], 2)
+
     # 설정 검사: 로봇 4대 허용, 정책·사유·valid_for_s 상한
     def test_configuration_bounds(self):
         for robot in ('robot_1', 'robot_2', 'robot_3', 'robot_4'):

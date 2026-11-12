@@ -1,29 +1,27 @@
+from copy import deepcopy
 import json
+import math
 import os
 from pathlib import Path
 import sqlite3
-import math
 import time
-from copy import deepcopy
 from uuid import uuid4
 
 from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.msg import LoadState, ResultStatus, RobotTaskStatus
+from ax_task_executor.execution_store import ExecutionStore
+from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
 import rclpy
-from rclpy.clock import Clock, ClockType
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.task import Future
-
 from rosidl_runtime_py.convert import message_to_ordereddict
 from rosidl_runtime_py.set_message import set_message_fields
 from std_msgs.msg import String
-
-from ax_task_executor.execution_store import ExecutionStore
-from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
 
 
 class MockExecutor(Node):
@@ -164,7 +162,10 @@ class MockExecutor(Node):
         """동기 결과 처리 경로. 실제 ROS Action은 execute_action을 통해 호출된다."""
         try:
             advance, invalid = self._begin_execution(goal_handle)
-            return invalid if invalid is not None else self._complete_execution(goal_handle, advance)
+            if invalid is not None:
+                return invalid
+
+            return self._complete_execution(goal_handle, advance)
         finally:
             if self._active_execution_id == goal_handle.request.execution.execution_id:
                 self._active_execution_id = None

@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ament_copyright.main import main
+from pathlib import Path
+
+from ament_pep257.main import main
 import pytest
 
+# 검사 범위: 이 파일 위치 기준 저장소 루트의 src/ax_task_executor.
+# 옮기기 전 패키지 폴더에서 돌던 범위와 같은 패키지 코드다.
+PACKAGE = Path(__file__).resolve().parents[2] / 'src' / 'ax_task_executor'
 
-# Remove the `skip` decorator once the source file(s) have a copyright header
-@pytest.mark.skip(reason='No copyright header has been placed in the generated source file.')
-@pytest.mark.copyright
+
+# ax_task_executor 패키지 코드의 docstring이 pep257 규칙을 따르는지 확인한다.
 @pytest.mark.linter
-def test_copyright():
-    rc = main(argv=['.', 'test'])
-    assert rc == 0, 'Found errors'
+@pytest.mark.pep257
+def test_pep257():
+    rc = main(argv=[str(PACKAGE)])
+    assert rc == 0, 'Found code style errors / warnings'

@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
 from ament_flake8.main import main_with_errors
 import pytest
 
+# 검사 범위: 이 파일 위치 기준 저장소 루트의 src/ax_task_executor.
+# 옮기기 전 패키지 폴더에서 돌던 범위와 같은 패키지 코드다.
+PACKAGE = Path(__file__).resolve().parents[2] / 'src' / 'ax_task_executor'
 
+
+# ax_task_executor 패키지 코드에 flake8 위반이 없는지 확인한다.
 @pytest.mark.flake8
 @pytest.mark.linter
 def test_flake8():
-    rc, errors = main_with_errors(argv=[])
+    rc, errors = main_with_errors(argv=[str(PACKAGE)])
     assert rc == 0, \
         'Found %d code style errors / warnings:\n' % len(errors) + \
         '\n'.join(errors)

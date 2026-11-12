@@ -3,7 +3,7 @@
 <package format="3">
   <name>ax_localization</name>
   <version>0.1.0</version>
-  <description>AX B2 위치 추정·TF: slam_toolbox 지도 작성 설정·launch, 개발용 지도 작성 주행, 참조 지도 비교, 공통 map_server·로봇별 AMCL 위치 추정 설정·launch</description>
+  <description>AX B2 위치 추정·TF: slam_toolbox 지도 작성 설정·launch, 개발용 지도 작성 주행, 참조 지도 비교, 공통 map_server·로봇별 AMCL 위치 추정 설정·launch, RTAB-Map 융합 비교용 선택 모드(mapping_rtabmap.launch.py)</description>
   <maintainer email="didgustmd23@gmail.com">AX Team</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -13,6 +13,9 @@
   <exec_depend>lifecycle_msgs</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
+  <!-- RTAB-Map 융합 비교용 선택 모드(mapping_rtabmap.launch.py)가 실행하는 rgbd_sync·rtabmap 노드 -->
+  <exec_depend>rtabmap_slam</exec_depend>
+  <exec_depend>rtabmap_sync</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>std_srvs</exec_depend>

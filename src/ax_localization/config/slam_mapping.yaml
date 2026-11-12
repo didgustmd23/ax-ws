@@ -22,7 +22,9 @@
     odom_frame: robot_2/odom
     map_frame: map
     base_frame: robot_2/base_link
-    scan_topic: /ax/robot_2/sensors/front_lidar/scan_filtered
+    # 2026-11-12 채택(S2): 앞·뒤 B1 scan_filtered를 scan_merge.py가 합친 병합 스캔. mapping.launch.py가 robot_id·scan 인자로 덮어쓴다.
+    # 근거: log/b2_custom_warehouse/20261111_212314/compare(한 기록 재생, 앞 스캔만이면 통로 출구 정합 도약).
+    scan_topic: /ax/robot_2/sensors/merged/scan_filtered
     use_map_saver: true
     mode: mapping #localization
 
@@ -83,6 +85,8 @@
     coarse_angle_resolution: 0.0349        
     minimum_angle_penalty: 0.9
     minimum_distance_penalty: 0.5
-    use_response_expansion: true
+    # 2026-11-12 채택(S2와 함께): 응답 0일 때 각도 탐색 확장(최대 80°)이 1.41 rad 도약을 만든 회차가 있어 끈다
+    # (log/b2_custom_warehouse/20261111_154116/slam_jump_diag 재생 A/B). 이 한 줄만으로 출구 정합 오차는 줄지 않았다.
+    use_response_expansion: false
     min_pass_through: 2
     occupancy_threshold: 0.1

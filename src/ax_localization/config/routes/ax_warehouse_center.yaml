@@ -1,0 +1,68 @@
+# B2 지도 작성 첫 구간 시험 경로(두 창고 월드, robot_2 무부하). 개발용 시험 경로이며 운영 주행 경로가 아니다.
+# 출발 → 서쪽 입구 앞 관문(P1, 정렬 확인) → 중앙 통로(corridor_2) 직진 → 동쪽 출구 뒤 관문(P2).
+# 통로 안에서는 제자리 회전하지 않는다(회전 원 1.004 m > 통로 반폭 0.9 m). 통로 안에는 경유점을 두지 않는다.
+#
+# 좌표: 경유점은 robot_2/odom 기준(m)이다. odom 원점은 제어기가 시작한 순간의 차체 자세이며,
+# launch 출발 위치 world (-6.8, 0), yaw 0(robot_test.launch.py WORLD_SPAWN_POSITIONS)이면 odom = world - (-6.8, 0)이다.
+# 실제 시작 오차는 실행 기록(drive_result.json·recording.npz)에서 따로 확인한다. world 값은 설계 참고값이며
+# 주행·SLAM 입력이 아니다.
+#
+# 설계 근거(2026-11-11, log/b2_custom_warehouse/20261111_072214/step1, …/20261111_072906/step2, 3단계 정적 검사):
+# - 중앙 통로 내부 y -0.9~0.9 m, x -4.2~4.2 m(collision 기준). 문 벽 x -4.2~-4.0 / 4.0~4.2.
+# - P1 world x -5.4: 정지 허용 0.15 m를 더해도 차체 앞(0.67 m)이 x -4.58 ≤ -4.2(통로 밖 0.38 m).
+#   회전 원(1.004 m)이 문 모서리(-4.2, ±0.9)에서 1.29 m 이상 떨어진다.
+# - P2 world x 5.6: 정지 허용 0.15 m를 빼도 차체 뒤(0.63 m)가 x 4.82 ≥ 4.2(통로 밖 0.62 m).
+# - 정렬 허용(P1): odom 측면 0.04 m·방향 0.02 rad. 명목 좌우 여유 0.12 m(통로 반폭 0.9 − 반폭 0.53 − margin 0.25)에서
+#   측면 0.04 m와 전방 보호창 끝(차체 앞 1.08 m)의 방향 투영 0.02 × 1.08 ≈ 0.022 m를 빼면 실제 표류 몫 약 0.058 m가 남는다.
+#   2단계 짧은 시험의 방향 차이 0.00076 rad·회전 뒤 측면 6.1 mm는 참고값이며 이 여유의 근거로 일반화하지 않는다.
+# - 정적 장애물·낮은 상자·선반판은 월드 collision으로 대조했다(앞 LiDAR 평면 밖이라 주행 중 감지되지 않는 물체 포함).
+world: planned/ax_warehouse.world
+gz_world: ax_test
+robot_id: robot_2
+frame: robot_2/odom
+start_world_reference: [-6.8, 0.0, 0.0]   # 설계 참고(x, y, yaw). 주행 입력으로 쓰지 않는다.
+
+# 주행 상한. 실행 중인 diff_drive_controller 제한과 비교해 작은 값을 쓴다.
+limits:
+  linear_m_s: 0.3
+  angular_rad_s: 0.3
+
+# 경유점 도달·방향 판단
+goal_tolerance_m: 0.15
+heading_tolerance_rad: 0.12        # 이보다 크게 틀어지면 제자리 회전 먼저(통로 안에서는 회전 원 검사로 정지)
+
+# AX_2 외곽(a1_validation.yaml mobility.robot_2, 적재물 미포함)
+footprint:
+  front_m: 0.67
+  rear_m: 0.63
+  half_width_m: 0.53
+
+# 장애물 정지 거리 = 속도²/(2·감속) + 속도·처리 지연 + 여유
+safety:
+  processing_latency_s: 0.3
+  margin_m: 0.25
+  rotation_margin_m: 0.15          # 제자리 회전 시 외곽 원 바깥 여유
+
+# 입력 만료(aws_warehouse.yaml과 같은 개발 값)
+inputs:
+  scan_max_age_s: 0.5
+  odom_max_age_s: 0.3
+  tf_receive_max_age_boottime_s: 4.0
+  slam_progress_distance_m: 1.0
+  slam_progress_heading_rad: 1.0
+  input_timeout_s: 10.0
+
+# 경유점별 진척 감시: 제한시간 = 거리/상한 × time_factor + time_margin_s
+progress:
+  time_factor: 3.0
+  time_margin_s: 30.0
+  stall_window_s: 15.0
+  stall_min_improvement: 0.05
+
+# 루프 없음: 한 방향 통과 구간 시험이다(loop_waypoint 없음 → 루프 근거는 odom 출발점 기준 기록만 남는다).
+waypoints:
+  - xy: [1.4, 0.0]                 # world (-5.4, 0): 서쪽 입구 앞 관문 P1(통로 밖)
+    gate: true
+    align: {heading_rad: 0.0, max_lateral_m: 0.04, max_heading_rad: 0.02}
+  - xy: [12.4, 0.0]                # world (5.6, 0): 동쪽 출구 뒤 관문 P2(통로 밖)
+    gate: true

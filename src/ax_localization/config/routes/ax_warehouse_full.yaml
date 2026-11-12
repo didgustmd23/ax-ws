@@ -1,0 +1,97 @@
+# B2 두 창고·세 통로 전체 지도 작성 경로(robot_2 무부하, 회전 정렬 모드). 개발 후보 지도 1회 생성에 쓴 경로다.
+# 근거: 정적 초안 log/b2_custom_warehouse/20261111_090328/full_route(초안 053420e0…)에 회전 정렬 모드를 켠 실행 사본
+# (SHA-256 704b7241…, 20261111_143013/full_map 회차)과 경로 값이 같다(머리말 주석만 다름). 운영 채택 전이다.
+#
+# 좌표: 경유점은 robot_2/odom(m). 출발 world (-6.8, 0), yaw 0이면 odom = world - (-6.8, 0). 주석의 world 값은 설계 참고값이다.
+# 순서(world):
+#   A 서쪽 창고 고리: 출발 S(-6.8,0) → A1(-5.4,0) → A2(-5.4,-6.6) 동쪽 열 남하 → A3(-20,-6.6) 남쪽 우회로 서진
+#       → A4(-20,0) 서쪽 열 북상 → P1(-5.4,0) 중앙 띠 동진(출발 S를 다시 지남: 첫 루프 폐쇄 후보)
+#   B 중앙 통로(corridor_2) 서→동: P1(관문·정렬) → P2(5.6,0)(관문)   [4단계에서 검증된 구간과 같은 좌표]
+#   C 동쪽 창고 고리: E1(20,0) → E2(20,3.5) → E3(8,3.5) → E4(8,-3.5)(P2→E1 선을 x=8에서 다시 지남) → E5(11.4,-3.5)
+#       → T1(11.4,-5.171) 남하(도달 오차 보정, 아래) → G1E(5.6,-5.021)(관문·정렬, 서쪽 향함)
+#   D 남쪽 통로(corridor_1) 동→서: G1E → G1W(-5.4,-5.021)(관문, 통로 밖)
+#   E 서쪽 재방문·북쪽 통로 접근: N1(-5.4,3.0) 북상(출발·P1 부근 다시 지남) → W6(-8.4,3.0) 서진(선반 사이 길을 정면 관측)
+#       → T3(-8.4,5.232) 북상(도달 오차 보정) → G3W(-5.4,5.082)(관문·정렬)
+#   F 북쪽 통로(corridor_3) 서→동: G3W → G3E(5.6,5.082)(관문) → F1(9,0) 동쪽 창고 재방문(P2→E1 선, 하역 구역)
+#
+# 통로 안에는 경유점·회전이 없다. 모든 통로 입구 관문은 통로 축과 같은 직선으로 2.85 m 이상 접근한 뒤 멈춘다.
+# 도달 오차 보정(T1·T3): 직각으로 접근한 뒤 통로 축 방향으로 돌아야 하는 지점은, 제어기가 목표 0.13~0.15 m 앞에서
+# 멈추는 특성(goal_tolerance 0.15 m, 4단계 실측 0.132~0.147 m)에 맞춰 축에서 접근 방향으로 0.15 m 더 간 위치에 둔다.
+# 실제 정지가 이와 다르면 다음 입구 관문의 정렬 검사(측면 0.04 m·방향 0.02 rad)에서 출발을 거부한다(통로 밖 정지).
+# 선반 사이 길(서쪽 y 2.2~4.0)·서쪽 북쪽 우회로·서쪽 열(x -22~-20.4)·동쪽 선반 북/남 띠는 서쪽 끝이 막혀 회전·통과할 수
+# 없으므로 주행하지 않고 LiDAR(10 m)로 관측한다(관측 여부는 실행 뒤 산출, 정적 가시 범위는 route_full_check.png).
+world: planned/ax_warehouse.world
+gz_world: ax_test
+robot_id: robot_2
+frame: robot_2/odom
+start_world_reference: [-6.8, 0.0, 0.0]
+
+limits:
+  linear_m_s: 0.3
+  angular_rad_s: 0.3
+
+goal_tolerance_m: 0.15
+heading_tolerance_rad: 0.12
+
+footprint:
+  front_m: 0.67
+  rear_m: 0.63
+  half_width_m: 0.53
+
+safety:
+  processing_latency_s: 0.3
+  margin_m: 0.25
+  rotation_margin_m: 0.15
+
+inputs:
+  scan_max_age_s: 0.5
+  odom_max_age_s: 0.3
+  tf_receive_max_age_boottime_s: 4.0
+  slam_progress_distance_m: 1.0
+  slam_progress_heading_rad: 1.0
+  input_timeout_s: 10.0
+
+progress:
+  time_factor: 3.0
+  time_margin_s: 30.0
+  stall_window_s: 15.0
+  stall_min_improvement: 0.05
+
+# 루프 기준점: 경유점 5(P1, world (-5.4, 0)). 경로 끝 F1은 동쪽 창고라 odom 복귀 거리는 기록용이다.
+loop_waypoint: 5
+return_tolerance_m: 0.3
+
+
+# 회전 정렬 선택 모드(rotation_align.py). stop_band 0.0015는 미검증 제안이라 쓰지 않는다.
+rotation_align: {gain_per_s: 0.5, omega_min_rad_s: 0.005, stop_band_rad: 0.002, final_tolerance_rad: 0.002, max_realign: 3, limit_sim_s: 60.0, limit_wall_s: 300.0}
+
+waypoints:
+  - [1.4, 0.0]                     # 1 A1  world (-5.4, 0)
+  - [1.4, -6.6]                    # 2 A2  world (-5.4, -6.6)
+  - [-13.2, -6.6]                  # 3 A3  world (-20.0, -6.6)
+  - [-13.2, 0.0]                   # 4 A4  world (-20.0, 0)
+  - xy: [1.4, 0.0]                 # 5 P1  world (-5.4, 0): corridor_2 서쪽 입구 앞
+    gate: true
+    align: {heading_rad: 0.0, max_lateral_m: 0.04, max_heading_rad: 0.02}
+  - xy: [12.4, 0.0]                # 6 P2  world (5.6, 0): corridor_2 동쪽 출구 뒤
+    gate: true
+  - [26.8, 0.0]                    # 7 E1  world (20.0, 0)
+  - [26.8, 3.5]                    # 8 E2  world (20.0, 3.5)
+  - [14.8, 3.5]                    # 9 E3  world (8.0, 3.5)
+  - [14.8, -3.5]                   # 10 E4 world (8.0, -3.5)
+  - [18.2, -3.5]                   # 11 E5 world (11.4, -3.5)
+  - [18.2, -5.171]                 # 12 T1 world (11.4, -5.171): 도달 오차 보정(정지 ≈ y -5.021)
+  - xy: [12.4, -5.021]             # 13 G1E world (5.6, -5.021): corridor_1 동쪽 입구 앞(서쪽 향함)
+    gate: true
+    align: {heading_rad: 3.141592653589793, max_lateral_m: 0.04, max_heading_rad: 0.02}
+  - xy: [1.4, -5.021]              # 14 G1W world (-5.4, -5.021): corridor_1 서쪽 출구 뒤
+    gate: true
+  - [1.4, 3.0]                     # 15 N1 world (-5.4, 3.0)
+  - [-1.6, 3.0]                    # 16 W6 world (-8.4, 3.0)
+  - [-1.6, 5.232]                  # 17 T3 world (-8.4, 5.232): 도달 오차 보정(정지 ≈ y 5.082)
+  - xy: [1.4, 5.082]               # 18 G3W world (-5.4, 5.082): corridor_3 서쪽 입구 앞
+    gate: true
+    align: {heading_rad: 0.0, max_lateral_m: 0.04, max_heading_rad: 0.02}
+  - xy: [12.4, 5.082]              # 19 G3E world (5.6, 5.082): corridor_3 동쪽 출구 뒤
+    gate: true
+  - [15.8, 0.0]                    # 20 F1 world (9.0, 0): 동쪽 창고 재방문(하역 구역)

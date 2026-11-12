@@ -366,6 +366,11 @@ B2는 기준 월드에 맞는 점유 지도를 만들고 검증해 팀원이 쓸
 보여줄 수 있도록 재생성 순서도 함께 둔다. 도구는 `src/ax_localization`(slam_toolbox 지도 작성,
 `mapping_drive.py`, `check_map_accuracy.py`, `run_mapping_session.sh`)이다.
 
+**지도 작성 입력** — slam_toolbox 입력은 B1 처리본 앞·뒤 `scan_filtered` 두 개를 B2 병합 노드(`scan_merge.py`)가
+`base_link` 기준 한 스캔으로 합친 `sensors/merged/scan_filtered`다(2026-11-12 채택). 두 스캔 사이의 차체 이동은
+보정하지 않는다. 지도 작성 주행의 장애물 감시는 병합 스캔이 아니라 앞·뒤 원 스캔을 쓴다. 앞 스캔만 쓰는 입력은 비교용으로
+남긴다. 위치 추정(6.2) 입력은 이 결정과 별개다.
+
 **산출물** — 채택 위치 `src/ax_localization/maps/<월드 이름>/`
 
 | 파일 | 내용 |

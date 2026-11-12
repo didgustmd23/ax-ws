@@ -1,0 +1,27 @@
+# ax_warehouse 지도 채택 판정 기준 — 개발용(2026-11-12 사용자 승인). 운영·실물 기준이 아니다.
+# 시뮬레이션 바퀴 odom이 매우 정확한 조건(odom 단독 위치 최대 약 0.095 m)에서 정한 값이며, 실물·마찰 변경 시 다시 정한다.
+#
+# 사용: python3 src/ax_localization/scripts/check_map_accuracy.py <run 폴더> --criteria <이 파일> [--adopt --map-dir <폴더>]
+# check_map_accuracy.py judge()는 아래 지도 형상 4개 키만 읽어 PASS/FAIL을 낸다(키가 없으면 오류).
+# --adopt는 judgment PASS를 확인하지 않으므로, 채택 전에 --adopt 없이 실행해 PASS를 먼저 확인한다.
+
+# 참조 점유(실제 자세로 누적한 앞 LiDAR 격자) 중 SLAM 지도가 ±1셀 안에서 같이 점유로 표시한 비율의 하한.
+min_obstacle_detection_ratio: 0.95
+# SLAM 점유 중 참조 점유와 ±1셀 안에서 맞는 비율의 하한. 참조가 앞 LiDAR만 쓰므로 병합(앞+뒤) 지도에서는 낮게 나올 수 있다.
+min_reverse_match_ratio: 0.80
+# 참조 점유에서 가장 가까운 SLAM 점유까지 거리의 95번째 백분위 상한(m).
+max_wall_error_p95_m: 0.10
+# 참조·SLAM이 함께 관측한 비교 가능 면적 하한(m²).
+min_comparable_area_m2: 500
+
+# 아래 항목은 check_map_accuracy.py가 판정하지 않는다. 채택 전에 별도 검사로 확인하고 결과를 README·보고에 남긴다.
+supplementary_checks_not_judged_by_tool:
+  drive: "drive_result status completed, saved_map_usable true, 저장 전 odom 기준 정지 확인"
+  max_large_jumps: 0            # 같은 odom 기준 차체 추정 변화 >0.1 m 또는 >0.05 rad
+  max_slam_position_error_m: 0.15
+  max_slam_yaw_error_rad: 0.02
+  max_false_cells_gt_0_30m: 0   # 전체 큰 오표시 셀
+  max_corridor_false_cells_gt_0_15m_sum: 20   # 통로 1~3 합
+  max_east_west_offset_m: 0.05  # 동−서 창고 차 |dx|, |dy|
+  max_gate_distance_error_m: 0.10  # 관문 간 map−실제 거리 |오차|
+  reload: "map_server 셀 불일치 0, slam_toolbox deserialize_map 성공"

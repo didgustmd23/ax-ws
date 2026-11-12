@@ -4,7 +4,8 @@
 #   지도 작성 주행(mapping_drive.py) → 정확도 비교(check_map_accuracy.py)를 실행하고 자기 프로세스만 정리한다.
 #
 # 사용: bash src/ax_localization/scripts/run_mapping_session.sh [옵션]
-#   --world FILE     실행 월드(ax_description worlds 기준). 현재 지원: planned/ax_warehouse.world(Gazebo 내부 이름 ax_test).
+#   --world FILE     실행 월드(ax_description worlds 기준). 지원 목록은 ax_description/config/worlds.yaml
+#                    (planned/ax_warehouse.world 기준 질감, planned/ax_warehouse_plain.world 단색 보존, Gazebo 내부 이름 ax_test).
 #                    이 옵션과 같은 world를 적은 --route가 함께 필요하다. 없으면 삭제된 AWS 월드 시험기로 보고 거절한다
 #   --light          AWS 메시 충돌을 단순화한 임시 사본으로 실행(시각 메시·LiDAR 형상은 같고 물리 충돌만 다름, 검증용 조건)
 #   --gui            Gazebo 화면을 띄운다(기본 headless)
@@ -79,9 +80,12 @@ fi
 
 # 지원 월드와 그 월드에서 검증하지 않은 옵션을 시뮬레이션 전에 거절한다.
 if [ -n "$WORLD" ]; then
-  case "$WORLD" in
-    planned/ax_warehouse.world) ;;
-    *) echo "지원하지 않는 --world: $WORLD (지원: planned/ax_warehouse.world)" >&2; exit 2 ;;
+  # 지원 월드는 ax_description config/worlds.yaml 목록이다(기준 질감 월드, 단색 보존 월드).
+  SUPPORTED_WORLDS="$(python3 -c 'import sys, yaml; print(" ".join(yaml.safe_load(open(sys.argv[1]))["worlds"]))' \
+    "$WS/src/ax_description/config/worlds.yaml")" || { echo "월드 목록(worlds.yaml)을 읽지 못함" >&2; exit 2; }
+  case " $SUPPORTED_WORLDS " in
+    *" $WORLD "*) ;;
+    *) echo "지원하지 않는 --world: $WORLD (지원: $SUPPORTED_WORLDS)" >&2; exit 2 ;;
   esac
 
   [ -n "$ROUTE" ] || { echo "--world $WORLD에는 같은 world를 적은 --route가 필요함(기본 AWS 경로 사용 불가)" >&2; exit 2; }

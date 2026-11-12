@@ -26,6 +26,27 @@ PGM_FREE = 254
 PGM_UNKNOWN = 205
 
 
+# ax_description의 실행 월드 목록(config/worlds.yaml)을 읽는다. 저장소 소스가 있으면 그것을, 없으면 설치본을 쓴다
+def world_catalog():
+    source = Path(__file__).resolve().parents[2] / "ax_description" / "config" / "worlds.yaml"
+
+    if not source.is_file():
+        from ament_index_python.packages import get_package_share_directory
+        source = Path(get_package_share_directory("ax_description")) / "config" / "worlds.yaml"
+
+    return yaml.safe_load(source.read_text(encoding="utf-8"))
+
+
+# 두 월드가 같은 구조 묶음이면 True(재질만 다른 판). 목록에 없는 이름은 같은 이름일 때만 True
+def same_world_structure(a, b, catalog=None):
+    if a == b:
+        return True
+
+    worlds = (catalog or world_catalog())["worlds"]
+
+    return a in worlds and b in worlds and worlds[a]["structure"] == worlds[b]["structure"]
+
+
 # 각도를 [-pi, pi)로 감는다.
 def wrap_angle(angle):
     return (angle + math.pi) % (2.0 * math.pi) - math.pi

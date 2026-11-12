@@ -4,7 +4,7 @@
 - **AMCL(6단계) 회귀:** 2026-11-12 robot_2 단독 정지·짧은 이동 구간에서 위치 오차 최대 0.036 m였다([AMCL 회귀](#amcl-회귀-2026-11-12) 절). 판정 기준이 없어 not_judged다. 두 로봇·전체 경로는 확인하지 않았다.
 - **원 회차:** `log/b2_mapping/20261112_083635/`(Git 제외).
   - robot_2 무부하, SLAM 입력은 B1 앞·뒤 `scan_filtered` 병합 스캔(S2, `slam_mapping.yaml` `4cd2c5bf…`, `scan_merge.py` `bb7754ce…`), slam_toolbox async, 경로 사본 `704b7241…`, 20경유점 completed.
-  - 평가와 채택은 같은 바이트의 복사본 `log/b2_map_adopt/20261112_111033/copy/`에서 했다(62개 파일 해시 일치). 그래서 `map_info.yaml`의 `verification.result`는 복사본 경로를 가리킨다.
+  - 평가와 채택은 같은 바이트의 복사본 `log/b2_map_adopt/20261112_111033/copy/`에서 했다(62개 파일 해시 일치). 2026-11-13 경로 표기 정리로 `map_info.yaml`을 같은 바이트의 새 복사본 `log/b2_map_info_portable/20261113_004431/copy/`에서 다시 만들었으므로 `verification.result`는 그 복사본을 가리킨다(지도·pose graph 해시·revision·판정·지표는 같다).
   - 원 회차 평가 보고: `log/b2_custom_warehouse/20261112_074010/merged_default/REPORT.md`(2회차 d106).
 
 ## 파일
@@ -14,7 +14,7 @@
 | `map.pgm` | `e62cac44131c7199d123a999bda8fcb161973ab302f8b15dde1d1eea39bbaa31` | 원 회차 `run/slam_map.pgm`과 바이트 동일 |
 | `pose_graph.posegraph` | `6e024528eb0235799938cf81507ad7e0dbf51f2f7c04f3192b8df54879f3d764` | 원 세션 경로·해시에 보존, Git 제외(`log/b2_mapping/20261112_083635/run/`, map_info.yaml은 생성 파일이라 원 기록 유지). slam_toolbox 이어 작성·재로딩용 |
 | `pose_graph.data` | `10015da39277115a54faf262f9cb1f9ecb077db22390d2a69704ff4fea43d597` | 〃 |
-| `map_info.yaml` | `e19d21dacd5d9277bc56710f323425e0f4c6b4bb0b30923ecb9e17736157ddce` | revision·월드·모델·센서·마찰·설정·병합 노드 해시, 판정·지표 |
+| `map_info.yaml` | `014ca4844ee58ed074f093c9d8753481060c344c8411dbfdc8e0c22b6e907c8a` | revision·월드·모델·센서·마찰·설정·병합 노드 해시, 판정·지표 |
 | `applicable_worlds.yaml` | (손 관리 파일, 해시 생략) | 이 지도를 적용할 월드·해시·근거. 생성 파일 아님 |
 
 pose graph 두 파일은 용량(약 13 MB) 때문에 저장소에 넣지 않는다(2026-11-12 사용자 결정). `map_info.yaml`의 `pose_graph.files`·`files` 해시는 채택 당시 이 폴더에 둔 파일 기준이며, 원 회차 파일과 같다. 이어 작성·재로딩이 필요하면 원 회차 파일을 해시로 확인한 뒤 쓴다.
@@ -113,7 +113,7 @@ pose graph 두 파일은 용량(약 13 MB) 때문에 저장소에 넣지 않는�
 - **회차 간 편차:** 같은 설정의 1회차(d105)는 위치 최대 0.222 m, 통로 오표시 40/48/96셀로 이 회차보다 크게 나빴다. 원인은 확인하지 못했다. 이 지도는 좋은 쪽 회차이며, 재생성하면 같은 품질을 보장하지 않는다.
 - **시뮬레이션 조건:** 바퀴 odom이 매우 정확하다(odom 단독 위치 최대 0.095 m). 실물 odom 오차나 마찰 변경 조건에서의 지도 품질은 알 수 없다.
 - **질감 월드:** 질감 사본 월드(재질만 다름)를 나중에 기준 월드로 채택해도 LiDAR 스캔이 같음을 확인했으므로(차이 0 m) 지도 내용은 유효하다. 다만 `map_info.yaml`의 월드 해시와 `map_revision`은 갱신해야 한다.
-- **메타정보 경로:** `map_info.yaml`의 설정·병합 노드·경로 `source`·`file`은 작성 PC의 절대 경로다. 대조에는 해시를 쓴다.
+- **메타정보 경로:** `map_info.yaml`의 설정·병합 노드·경로 `source`·`file`은 작업공간 기준 상대 경로다(작업공간 밖이면 `~/` 기준, `check_map_accuracy.py`의 `portable_path`). 대조에는 해시를 쓴다.
 
 ## 이력
 - 2026-11-11 후보(채택 안 함): `log/b2_mapping/20261111_143110/`. 앞 `scan_filtered`만 썼고, 동−서 창고 (+0.17, −0.27) m 어긋남, 통로 1 가짜 점유 88셀, 큰 오표시 462셀, 위치 최대 0.47 m라 쓰지 않았다. 평가: `log/b2_custom_warehouse/20261111_143013/full_map/`.

@@ -144,6 +144,15 @@ class NewWorldMetadata(unittest.TestCase):
                 problems = cma.metadata_problems(cma.map_metadata(*make_run(folder, **options)))
                 self.assertTrue(problems, label)
 
+    # 단색 보존 월드 회차: 기준 월드용 경로(같은 구조, config/worlds.yaml)는 경로 world 문제로 보지 않는다
+    def test_plain_world_with_reference_route(self):
+        plain = "planned/ax_warehouse_plain.world"
+        metadata = cma.map_metadata(*make_run(self.folder, world=plain, route_world=NEW_WORLD, drive_world=plain))
+
+        self.assertEqual(metadata["world"]["launch_name"], plain)
+        self.assertEqual(metadata["world"]["route_world"], NEW_WORLD)
+        self.assertEqual(cma.metadata_problems(metadata), [])
+
     # [재현] 설정 해시는 회차 기록·사본만 쓴다. 기록이 없거나 사본이 다르면 현재 파일 해시로 채우지 않는다
     def test_config_hashes_from_session_only(self):
         run, drive, accuracy, slam_yaml = make_run(self.folder)

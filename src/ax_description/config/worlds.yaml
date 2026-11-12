@@ -1,0 +1,15 @@
+# 선택 가능한 실행 월드 목록. robot_test.launch.py와 도구(desktop_session·verify_unified_runtime·
+# B2 mapping_drive·check_map_accuracy·run_mapping_session)가 이 파일 하나를 읽는다.
+# - spawn_positions: robot_1~robot_4 출발 위치(world x, y, m), yaw 0. 통로 밖 출발 창고 안이다.
+# - structure: 구조(geometry·collision·pose)가 같은 월드 묶음 이름. 같은 묶음이면 경로 파일·지도를 같이 쓸 수 있다.
+#   단색 보존 월드는 기준(질감) 월드의 재질만 다른 판이다(tools/make_textured_world.py --check).
+default: planned/ax_warehouse.world
+worlds:
+  planned/ax_warehouse.world:
+    gz_world: ax_test
+    structure: planned/ax_warehouse.world
+    spawn_positions: [[-10.0, -2.4], [-6.8, 0.0], [-17.0, -2.4], [-13.0, -2.4]]
+  planned/ax_warehouse_plain.world:
+    gz_world: ax_test
+    structure: planned/ax_warehouse.world
+    spawn_positions: [[-10.0, -2.4], [-6.8, 0.0], [-17.0, -2.4], [-13.0, -2.4]]

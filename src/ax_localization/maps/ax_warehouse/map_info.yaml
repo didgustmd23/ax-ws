@@ -1,5 +1,5 @@
 # B2 지도 메타데이터. 지도가 바뀌면 map_revision이 오르며 등록 지점·재고 좌표는 revision을 대조해 재검증한다.
-created: '2026-11-12T11:24:29+09:00'
+created: '2026-11-13T00:44:52+09:00'
 map:
   frame: map
   origin:
@@ -58,7 +58,7 @@ robot:
     input: scan_filtered
     slam_input: merged
     scan_merge:
-      file: /home/yhs/ax_ws/install/ax_localization/lib/ax_localization/scan_merge.py
+      file: install/ax_localization/lib/ax_localization/scan_merge.py
       sha256: bb7754ce677a1bf60462a8bb3c690a9b5ec83bcb9ba2fd675faa0f08de178ed9
     frame: robot_2/front_lidar_link
     mount_base_link:
@@ -120,48 +120,48 @@ code:
   git_dirty: true
 slam:
   package: slam_toolbox (async, mapping)
-  config: /home/yhs/ax_ws/install/ax_localization/share/ax_localization/config/slam_mapping.yaml
+  config: install/ax_localization/share/ax_localization/config/slam_mapping.yaml
   config_copy: session/config/slam_mapping.yaml
   config_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
   resolution_m: 0.05
 config_files:
   slam_mapping.yaml:
     package: ax_localization
-    source: /home/yhs/ax_ws/install/ax_localization/share/ax_localization/config/slam_mapping.yaml
+    source: install/ax_localization/share/ax_localization/config/slam_mapping.yaml
     copy: session/config/slam_mapping.yaml
     recorded_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
     copy_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
     copy_matches: true
   ax2_controllers.yaml:
     package: ax_control
-    source: /home/yhs/ax_ws/install/ax_control/share/ax_control/config/ax2_controllers.yaml
+    source: install/ax_control/share/ax_control/config/ax2_controllers.yaml
     copy: session/config/ax2_controllers.yaml
     recorded_sha256: 9806b8d99a34614e54ed3eaa841f7e17db8fe70b4ad082f3c9b5fd3ef3b8bac7
     copy_sha256: 9806b8d99a34614e54ed3eaa841f7e17db8fe70b4ad082f3c9b5fd3ef3b8bac7
     copy_matches: true
   common_controllers.yaml:
     package: ax_control
-    source: /home/yhs/ax_ws/install/ax_control/share/ax_control/config/common_controllers.yaml
+    source: install/ax_control/share/ax_control/config/common_controllers.yaml
     copy: session/config/common_controllers.yaml
     recorded_sha256: 2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc
     copy_sha256: 2c91f4afba1c75b20dba2153ab5d15438946949ddf762a36f9546a2b4b2612fc
     copy_matches: true
   sensor_mounts.yaml:
     package: ax_description
-    source: /home/yhs/ax_ws/install/ax_description/share/ax_description/config/sensor_mounts.yaml
+    source: install/ax_description/share/ax_description/config/sensor_mounts.yaml
     copy: session/config/sensor_mounts.yaml
     recorded_sha256: be3508a486d0f0230a5ea6f7a927845aa5320877ebc3a1a57ca99f09f5af2821
     copy_sha256: be3508a486d0f0230a5ea6f7a927845aa5320877ebc3a1a57ca99f09f5af2821
     copy_matches: true
   a1_validation.yaml:
     package: ax_description
-    source: /home/yhs/ax_ws/install/ax_description/share/ax_description/config/a1_validation.yaml
+    source: install/ax_description/share/ax_description/config/a1_validation.yaml
     copy: session/config/a1_validation.yaml
     recorded_sha256: 83c781a62c821cc4d01ac087892fe5f74791a5ff7cc110be42cdba97c3bf3c6b
     copy_sha256: 83c781a62c821cc4d01ac087892fe5f74791a5ff7cc110be42cdba97c3bf3c6b
     copy_matches: true
 route:
-  file: /home/yhs/ax_ws/log/b2_custom_warehouse/20261112_074010/merged_default/routes/route_full_rotation_align.yaml
+  file: log/b2_custom_warehouse/20261112_074010/merged_default/routes/route_full_rotation_align.yaml
   sha256: 704b72412e2a8b4f666aedbcc34b0f0d8b8a83cf0b5bdc2bda39db286051375c
 pose_graph:
   files:
@@ -203,8 +203,8 @@ verification:
       reference_only_area_m2: 29.967500000000005
       compared_only_area_m2: 3.8400000000000007
       unobserved_by_both_area_m2: 1468.3700000000003
-  result: log/b2_map_adopt/20261112_111033/copy/run/accuracy.json
-  drive_result: log/b2_map_adopt/20261112_111033/copy/run/drive_result.json
+  result: log/b2_map_info_portable/20261113_004431/copy/run/accuracy.json
+  drive_result: log/b2_map_info_portable/20261113_004431/copy/run/drive_result.json
 T_world_map:
   use: 검증 전용. 운영 위치 추정·주행에 쓰지 않는다
   initial:

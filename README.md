@@ -47,10 +47,12 @@ ros2 launch ax_control simulation.launch.py
 
 ### 통합 시험 월드와 다른 PC 실행
 
-실행 월드는 현재 만든 창고 맵 `planned/ax_warehouse.world` 하나다. 빈 월드는 삭제했다.
+실행 월드는 현재 만든 창고 맵 `planned/ax_warehouse.world`(기준, 질감)와 같은 구조의 단색 보존본 `planned/ax_warehouse_plain.world`다.
+선택 목록·출발 위치는 `src/ax_description/config/worlds.yaml` 한 곳에 있다. 빈 월드는 삭제했다.
 `planned/ax_warehouse.world`는 44×16m의 두 창고, 폭 1.8m 연결 통로 3개,
 출발 선반 6개·도착 선반 4개·크기별 동적 상자 143개를 포함한다. AWS 월드는 제거했다.
 선택 실행: `ros2 launch ax_control simulation.launch.py world:=planned/ax_warehouse.world`.
+단색 보존본: `world:=planned/ax_warehouse_plain.world`(바탕화면 도구는 `tools/desktop_session.py --world`).
 기본 실행과 월드 선택 메뉴는 모두 현재 창고를 연다. 주행 시험의 빈 바닥은 테스트 때만 임시 생성한다.
 모델별 스펙: [AX_1](docs/guides/AX_1_SPEC.md) · [AX_2](docs/guides/AX_2_SPEC.md).
 부품 명칭과 최신 형상은 [부품 미리보기](src/ax_description/meshes/README.md)를 따른다.

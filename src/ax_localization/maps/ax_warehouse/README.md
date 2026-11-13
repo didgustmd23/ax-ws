@@ -136,11 +136,11 @@ python3 src/ax_localization/scripts/check_map_accuracy.py <평가 폴더>/run \
   --adopt --map-dir src/ax_localization/maps/ax_warehouse
 ```
 - `--adopt`는 pose graph 두 파일도 이 폴더에 복사한다. 커밋 전에 원 회차와 해시를 대조하고 이 폴더에서 빼 둔다(Git 제외).
-- `--adopt`는 judgment PASS를 확인하지 않고 주행·정지·메타정보만 본다. 그래서 반드시 판정을 먼저 확인한다(도구 보완은 남은 일).
+- `--adopt`는 judgment가 PASS일 때만 채택한다(2026-11-13, `8f19e83`). FAIL·not_judged면 이 폴더를 바꾸지 않고 종료 코드 1로 끝난다. 별도 검사 항목은 도구가 판정하지 않으므로 채택 전에 따로 확인한다.
 - `config/routes/ax_warehouse_full.yaml`은 실행 사본(`704b7241…`)과 경로 값이 같고 머리말 주석만 다르다. 구역별·통로·재로딩 평가 스크립트는 평가 회차의 `harness/`에 있다.
 
 ## 남은 일
 - AMCL 남은 확인: 두 로봇 동시, 도약을 일으키는 재위치, 전체 경로 관측 높이 차 영향, 정확도 판정 기준.
 - AMCL 재설정 때 마지막 저장 자세와 실제 위치 차이가 OK 상태로 남는 경로(아래 회차 2)를 B2 후속 과제로 다룬다.
-- `check_map_accuracy.py --adopt`가 judgment PASS를 확인하도록 보완하고, 별도 검사 항목을 도구 판정에 넣을지 결정한다.
+- 별도 검사 항목(도약·통로 오표시·동서 차·관문·재로딩)을 `check_map_accuracy.py` 판정에 넣을지 결정한다. `--adopt`의 PASS 확인은 2026-11-13에 반영했다.
 - 팀 전달(D1 Nav2·B3 등 지도 소비자): revision 1과 위 한계.

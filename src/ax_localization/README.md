@@ -11,8 +11,9 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 
 설계 기준은 [상세설계 6.1절](../../docs/design/DETAILED_DESIGN.md#61-기준-지도-작성검증전달-b2)과 [공통 인터페이스 계약](../../docs/design/INTERFACE_CONTRACT.md) 2.2·4.2절이다.
 
-## 두 창고 월드 지도 작성 — 개발용, 후보 지도 1회(not_judged)
+## 두 창고 월드 지도 작성 — 개발용, revision 1 채택(2026-11-12, 개발용 기준 PASS)
 
+- **채택 지도:** `maps/ax_warehouse/map.yaml` revision 1(`judgment: PASS`, 개발용 기준 `acceptance_criteria_dev.yaml`, 운영·실물 기준 아님). 앞·뒤 병합 스캔 2026-11-12 회차로 만들었다. 판정 값·한계·AMCL 회귀는 [두 창고 지도 안내](maps/ax_warehouse/README.md)에 있다. 아래 2026-11-11 실행은 채택하지 않은 이전 후보 기록이다.
 - **경로:** `config/routes/ax_warehouse_center.yaml`(robot_2 무부하). 출발 world (-6.8, 0) → 서쪽 입구 앞 관문 P1(world x -5.4, 통로 밖) → 중앙 통로 직진 → 동쪽 출구 뒤 관문 P2(world x 5.6, 통로 밖). 통로 안 회전·경유점은 없다.
 - **전체 경로:** `config/routes/ax_warehouse_full.yaml`(20경유점, 회전 정렬 모드, 관문 P1~P6 = 세 통로의 입구·출구). 2026-11-11 실행 1회:
   - 주행: completed. 보호·입력·진척 정지 0, 접촉 없음. 입구 관문 P1·P3·P5의 odom 정렬은 측면 ≤ 0.026 m, 방향 ≤ 0.00185 rad. 실제(평가 전용) 측면은 +0.008·−0.074·−0.047 m.
@@ -49,7 +50,7 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 
 ## 위치 추정(AMCL) — 개발용
 
-- **현재 상태:** 채택한 운영 지도가 없어 개발용 지도로만 실행·검증했다. A1이 운영 모델·기준 월드를 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.
+- **현재 상태:** 운영 지도는 없다. 현재 지도는 두 창고 기준 월드의 채택 지도 revision 1(`maps/ax_warehouse`, 개발용 기준 PASS)이다. 이 지도로 한 AMCL 회귀는 robot_2 단독이며 지도 안내에 있다. 아래 2026-11-08·11-09 결과는 과거 단순화 월드·AWS 개발용 지도(미채택) 조건이다. A1이 운영 모델을 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.
 - **정확도 판정:** 기준이 미확정이므로 수치만 기록하고 판정은 `not_judged`다.
 - **구현 범위:** 공통 지도 서버·로봇별 AMCL, 위치 신뢰성 발행(`LocalizationHealth`), 고정 출발 위치 최초 초기화, 같은 세션의 마지막 신뢰 위치 기반 제한 재위치(`localization/reinitialize`).
 - **범위 밖:** 전역 재위치, 표식 인식, 복구 이동, 예비 로봇 배정, 안전 해제, Nav2 연결, 운영 지도 채택, 위치 이상 탐지(Isolation Forest, `anomaly_model_available=false`).
@@ -67,7 +68,7 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 | TF | `<robot_id>/odom → <robot_id>/base_link` | TF 기본 | A2 `diff_drive_controller` |
 | 위치 신뢰성 | `/ax/<robot_id>/localization/health` · `ax_interfaces/LocalizationHealth` | STATE(reliable · transient_local · 1) · 5 Hz 재발행 | `/ax/<robot_id>/localization_supervisor` |
 | 재위치 요청 | `/ax/<robot_id>/localization/reinitialize` · `std_srvs/Trigger` | Service | D → 감독 노드 |
-| 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` | STATE | A4(현재는 시험 스텁) |
+| 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` | STATE | A4 `a4_safety_gate`. 재위치 접수는 시험 스텁으로만 확인했고, 실제 A4 연결(2026-11-14)에서는 접수되지 않았다 |
 
 - AMCL TF의 stamp는 처리한 스캔 시각에 `transform_tolerance`(1.0 s)를 더한 값이다(Nav2 동작).
 - `/map`은 [공통 인터페이스 계약 4.2절](../../docs/design/INTERFACE_CONTRACT.md#42-로봇-안전위치-ab)에 등록돼 있다(K0, 2026-11-08 승인). 지도 작성 중 slam_toolbox가 내는 `/ax/<robot_id>/map`은 저장 도구용이며 위치 추정에 쓰지 않는다.
@@ -81,7 +82,26 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 source install/setup.bash
 export ROS_DOMAIN_ID=<번호> GZ_PARTITION=<이름> ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
-# 1. 시뮬레이션(A1·A2)과 B1 LiDAR 전처리
+# 1. 시뮬레이션(A1·A2)과 B1 LiDAR 전처리(기본 월드 planned/ax_warehouse.world)
+ros2 launch ax_control simulation.launch.py robot_ids:=robot_2 gui:=false
+ros2 launch ax_perception sensors.launch.py robot_ids:=robot_2
+
+# 2. 위치 추정: 채택 지도 revision 1. map 원점 = robot_2 출발 자세라 initial pose는 (0, 0, 0)
+ros2 launch ax_localization localization.launch.py \
+    map:="$PWD/src/ax_localization/maps/ax_warehouse/map.yaml" robot_ids:=robot_2 \
+    initial_poses:="robot_2=0,0,0"
+
+# 3. 확인
+ros2 lifecycle get /map_server
+ros2 lifecycle get /ax/robot_2/amcl
+ros2 topic echo /ax/robot_2/localization/health --qos-durability transient_local --qos-reliability reliable
+```
+
+- 위 예시는 [지도 안내의 AMCL 회귀](maps/ax_warehouse/README.md#amcl-회귀-2026-11-12) 조건(robot_2 단독, 지도 절대 경로, initial pose 0,0,0)이다. robot_1의 출발 자세 파일·두 로봇 동시 실행은 이 지도에서 확인하지 않았다.
+- 아래는 과거 AWS 월드·개발용 지도(`20261109_085358`, 미채택) 조건의 기록이다. 현재 창고에는 적용할 수 없다.
+
+```bash
+# (과거 기록) AWS 월드
 ros2 launch ax_control simulation.launch.py world:=aws_warehouse.world robot_ids:=robot_1,robot_2 gui:=false
 ros2 launch ax_perception sensors.launch.py robot_ids:=robot_1,robot_2
 
@@ -351,9 +371,9 @@ python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_healt
 
 ### 개발용 지도 제한
 
-- **현재 시험 지도:** `log/b2_mapping/20261109_085358/run/slam_map.yaml`(Git 제외, 미채택).
-  - 원본 월드·S005 반영 개발 모델(바퀴 `slip1 0.05`)·robot_2 선반 포함 외곽 경로로 만들었다. 정확도는 `not_judged`이며 운영 지도로 채택하지 않았다([지도 안내](maps/aws_warehouse/README.md)).
+- **현재 지도:** `maps/ax_warehouse/map.yaml` revision 1(두 창고 기준 월드, 2026-11-12 개발용 기준 PASS로 채택, [두 창고 지도 안내](maps/ax_warehouse/README.md)). 위치 추정 정확도는 판정 기준이 없어 `not_judged`다.
   - launch는 `map_info.yaml` 채택 기록이 없는 지도를 "개발용 지도"로 표시한다.
+- **과거 AWS 시험 지도(기록):** `log/b2_mapping/20261109_085358/run/slam_map.yaml`(Git 제외, 미채택). 원본 AWS 월드·S005 반영 개발 모델(바퀴 `slip1 0.05`)·robot_2 선반 포함 외곽 경로로 만들었고 정확도는 `not_judged`다([AWS 지도 안내](maps/aws_warehouse/README.md)). 현재 창고에 적용할 수 없으며, 아래 2026-11-09 결과와 AWS 실행 예시·`aws_warehouse_dev.yaml`은 이 지도 조건이다.
 - **이전 시험 지도:** `log/b2_mapping/20261108_131510`은 단순화 월드(`light_collision`)·바퀴 임시 사본에서 만든 개발용 결과다([S005 자료](../../docs/evidence/wheel_slip/)). 아래 2026-11-08 결과는 그 지도·단순화 월드·이전 출발 위치 조건이다.
 - **보장 범위:** 지도는 앞 LiDAR 높이의 관측만 담는다. 미관측 영역과 다른 높이의 장애물은 위치 추정 근거가 되지 않는다.
 

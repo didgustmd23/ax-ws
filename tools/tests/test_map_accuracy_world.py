@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -261,8 +262,10 @@ class SessionConfigRecord(unittest.TestCase):
         session = self.folder / name
         session.mkdir()
         env = dict(__import__("os").environ, AMENT_PREFIX_PATH=":".join(str(p) for p in prefixes))
-        result = subprocess.run(["bash", "-c", f"source {PROCS}; session_record_configs {session} {robot}"],
-                                capture_output=True, text=True, timeout=60, env=env)
+        # 경로에 공백이 있어도 깨지지 않게 인용하고, source 실패는 97로 드러낸다
+        script = (f"source {shlex.quote(str(PROCS))} || exit 97; "
+                  f"session_record_configs {shlex.quote(str(session))} {shlex.quote(robot)}")
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=60, env=env)
         path = session / "config_files.json"
         return result.returncode, (json.loads(path.read_text()) if path.is_file() else None), session
 

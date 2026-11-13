@@ -1,0 +1,155 @@
+[
+  {
+    "source": "src/ax_safety/src/ax_safety/ax_safety/__init__.py",
+    "target": "src/ax_safety/ax_safety/__init__.py",
+    "sha256_normalized": "acab09c468428016b7f3edf48f391b779b03a694ed82c5dbe6025086e82a0099",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "acab09c468428016b7f3edf48f391b779b03a694ed82c5dbe6025086e82a0099"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/ax_safety/b4/__init__.py",
+    "target": "src/ax_safety/ax_safety/b4/__init__.py",
+    "sha256_normalized": "ba7439d6ca00b0266cf5dba84ae3b78cc987317f92852f48688ed5c715bdfd22",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "ba7439d6ca00b0266cf5dba84ae3b78cc987317f92852f48688ed5c715bdfd22"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/ax_safety/b4/b4_risk_node.py",
+    "target": "src/ax_safety/ax_safety/b4/b4_risk_node.py",
+    "sha256_normalized": "a72bf6679525cceace1886fc46fba6d7e4afee99f72e6b03899f8aba9cfb3b76",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": false,
+    "target_sha256_normalized": "83164f4b40e73ecbede6d600dbd8e3ad5f3f6041173e48c1b1d3e5e57df50a3f"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/ax_safety/b4/risk_rules.py",
+    "target": "src/ax_safety/ax_safety/b4/risk_rules.py",
+    "sha256_normalized": "6f5684fc48f84479ae6fc5b5d508c0c53a8a9a1b1265f3c673f42f6f820b9321",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "6f5684fc48f84479ae6fc5b5d508c0c53a8a9a1b1265f3c673f42f6f820b9321"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/CMakeLists.txt",
+    "target": "src/ax_safety/CMakeLists.txt",
+    "sha256_normalized": "6eb1f2782b7fcaf15767b921fa0d2e9a4a8b121d6315797795e5c0a0ebea01c8",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "6eb1f2782b7fcaf15767b921fa0d2e9a4a8b121d6315797795e5c0a0ebea01c8"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/config/safety_limits.yaml",
+    "target": "src/ax_safety/config/safety_limits.yaml",
+    "sha256_normalized": "d81b1e66bee24d2b8bf0dc0a5376f78fefcd08e43d7135c6b9f35ba2b2cd1026",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "d81b1e66bee24d2b8bf0dc0a5376f78fefcd08e43d7135c6b9f35ba2b2cd1026"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/include/ax_safety/a4/protected_arm_server.hpp",
+    "target": "src/ax_safety/include/ax_safety/a4/protected_arm_server.hpp",
+    "sha256_normalized": "82e38635097a34ec530c716067cd75e2ba225fdcf442632aa088ae3d3c6517a9",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "82e38635097a34ec530c716067cd75e2ba225fdcf442632aa088ae3d3c6517a9"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/include/ax_safety/a4/safety_gate.hpp",
+    "target": "src/ax_safety/include/ax_safety/a4/safety_gate.hpp",
+    "sha256_normalized": "90eeeb28229668f7972840fbda60b3d8ada9c3bda91a52259e8fc9b7086d4090",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "90eeeb28229668f7972840fbda60b3d8ada9c3bda91a52259e8fc9b7086d4090"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/launch/safety.launch.py",
+    "target": "src/ax_safety/launch/safety.launch.py",
+    "sha256_normalized": "2a88c502c37c4a34ddbae6a502486067f7ea927de896a098096223b3539e362a",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "2a88c502c37c4a34ddbae6a502486067f7ea927de896a098096223b3539e362a"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/package.xml",
+    "target": "src/ax_safety/package.xml",
+    "sha256_normalized": "568e280e528f5724dd6cecaa94694c02e63831bf670d809298c20d1758b0f8b3",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "568e280e528f5724dd6cecaa94694c02e63831bf670d809298c20d1758b0f8b3"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/src/a4/protected_arm_server.cpp",
+    "target": "src/ax_safety/src/a4/protected_arm_server.cpp",
+    "sha256_normalized": "2b283c88cf270bf7bf8c56c57a6b7b6ccaed49d5ab531d45755819767f107d8d",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": false,
+    "target_sha256_normalized": "e76579fa3f11fc6ef376888437c8045d72a33ef07c925dcfbbe23812fedc2b61"
+  },
+  {
+    "source": "src/ax_safety/src/ax_safety/src/a4/safety_gate.cpp",
+    "target": "src/ax_safety/src/a4/safety_gate.cpp",
+    "sha256_normalized": "6875efe37cbf732cc0da56b5ebf40357616ec5a98b7259b1d8b1052d84264351",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "6875efe37cbf732cc0da56b5ebf40357616ec5a98b7259b1d8b1052d84264351"
+  },
+  {
+    "source": "src/ax_safety/tools/tests/test_a4_safety_gate.cpp",
+    "target": "tools/tests/test_a4_safety_gate.cpp",
+    "sha256_normalized": "38824b244a6b13dd79481ac2f11295c9d1b397598e76fec9dd8a86493bc7926e",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": false,
+    "target_sha256_normalized": "8cd0b48b29413b8ca7bf4aa8fe6d4f98c6de2ff1dce0ac48bcde12c22d4677c0"
+  },
+  {
+    "source": "src/ax_safety/tools/tests/test_b4_risk_rules.py",
+    "target": "tools/tests/test_b4_risk_rules.py",
+    "sha256_normalized": "ce0ffb46656fffb01ae15e4fc5f6b58e876a6d9902bba65cf3150ecf13ba39b1",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "ce0ffb46656fffb01ae15e4fc5f6b58e876a6d9902bba65cf3150ecf13ba39b1"
+  },
+  {
+    "source": "src/ax_safety/tools/tests/mock_check_command_lease.py",
+    "target": "tools/tests/mock_check_command_lease.py",
+    "sha256_normalized": "a1cffb1adcd172ce40ca5c3a41f2e5d5a20cb2a5c6aacd986ced7ed9f5df33ee",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": true,
+    "target_sha256_normalized": "a1cffb1adcd172ce40ca5c3a41f2e5d5a20cb2a5c6aacd986ced7ed9f5df33ee"
+  },
+  {
+    "source": "src/ax_safety/README_W1_A4_B4_폴더구분_적용가이드.md",
+    "target": "src/ax_safety/README.md",
+    "sha256_normalized": "61cacdccab4a58299318b9a21bfecb0b977871d3a222d1a5a5d2a1c54c0f5301",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": false,
+    "target_sha256_normalized": "ff68115f50bd038f735b2470714d6f29f8356567d4003bc399009eaa8066f13c"
+  },
+  {
+    "source": "W1_A4_B4_SETUP.txt",
+    "target": "docs/guides/W1_A4_B4_SETUP.txt",
+    "sha256_normalized": "2c5e70293993e3b0efbc66eea5329e16e0ea40a6112858cfadf65e4c8c2edc35",
+    "source_absent": true,
+    "target_present": true,
+    "content_preserved": false,
+    "target_sha256_normalized": "fed804ec4a9907d0d90c8fe58b3c4a1dd6d8001c1e80e66517026afe912dba96"
+  }
+]

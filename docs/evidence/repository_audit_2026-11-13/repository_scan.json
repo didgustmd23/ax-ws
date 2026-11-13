@@ -1,0 +1,160 @@
+{
+  "passed": true,
+  "file_count": 734,
+  "ros_package_count": 13,
+  "yaml_checked": true,
+  "errors": [],
+  "historical_evidence_parse_errors": [
+    {
+      "kind": "parse_error",
+      "file": "docs/evidence/wheel_slip/attachments/drive_candidate/plan.yaml",
+      "error": "expected '<document start>', but found '<block mapping start>'\n  in \"<unicode string>\", line 9, column 1:\n    controller_limits:   # common_co ... \n    ^"
+    },
+    {
+      "kind": "parse_error",
+      "file": "docs/evidence/wheel_slip/attachments/robot1/plan.yaml",
+      "error": "mapping values are not allowed here\n  in \"<unicode string>\", line 31, column 36:\n      straight: ±0.3 m/s 3 s 각 2회, stop: 직진 0.67 m/s 4 s·회전 0.5 rad/s 6 ... \n                                       ^"
+    }
+  ],
+  "historical_or_upstream_missing_links": [
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/small_warehouse_gazebo.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_buckets.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_boxes.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_desk.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_warehouse_ground_paint.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_trashcan.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_ceiling_lamp.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_lift.png"
+    },
+    {
+      "kind": "missing_local_link",
+      "file": "world_assets/aws_small_warehouse/upstream/README.md",
+      "target": "docs/images/models_shelves.png"
+    }
+  ],
+  "duplicate_groups": [
+    {
+      "bytes": 1520,
+      "sha256": "246a8da4d4283311e311ab788721e5af53c1077c4c42d64102034368d8c9e67d",
+      "files": [
+        "docs/evidence/w2/sensor_faults.json",
+        "docs/evidence/w2_complete_2026-11-13/sensor_faults.json",
+        "docs/evidence/w2_recheck_2026-11-13/sensor_faults.json"
+      ],
+      "category": "evidence_history"
+    },
+    {
+      "bytes": 56725,
+      "sha256": "93db217267a0446a08e15a93ba08813c331a11ae664a2bebd6fed5b71a1afe98",
+      "files": [
+        "docs/evidence/wheel_slip/attachments/b2_final_run/accuracy.json",
+        "docs/evidence/wheel_slip/attachments/b2_runs/20261108_131510/accuracy_original.json"
+      ],
+      "category": "evidence_history"
+    },
+    {
+      "bytes": 6732,
+      "sha256": "ace1d52c53faf6770f1ff5c49053e7d7d43c757359aa7196c9f04e1cc842b31a",
+      "files": [
+        "docs/evidence/wheel_slip/attachments/b2_final_run/drive_result.json",
+        "docs/evidence/wheel_slip/attachments/b2_runs/20261108_131510/drive_result.json"
+      ],
+      "category": "evidence_history"
+    },
+    {
+      "bytes": 403,
+      "sha256": "86b2731cc262d173743225b58b209a43569f8e1677cf14fc6a35309efdf637c4",
+      "files": [
+        "docs/evidence/wheel_slip/attachments/b2_final_run/session.json",
+        "docs/evidence/wheel_slip/attachments/b2_runs/20261108_131510/session.json"
+      ],
+      "category": "evidence_history"
+    },
+    {
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+      "files": [
+        "src/ax_description/LICENSE",
+        "src/ax_interfaces/LICENSE"
+      ],
+      "category": "license_copies"
+    },
+    {
+      "bytes": 1112,
+      "sha256": "75f59434de6cc2d42bfc38c99ece3b1afde1a17c7d74a491665b791cc72afd02",
+      "files": [
+        "src/ax_description/meshes/AX_1.mtl",
+        "src/ax_description/meshes/parts/AX_1/AX_1.mtl",
+        "src/ax_description/meshes/versions/AX_1_v2/AX_1.mtl"
+      ],
+      "category": "model_or_upstream_assets"
+    },
+    {
+      "bytes": 2982,
+      "sha256": "2c510083f3ed46ed8bdac42a4f8afcfd1450673ad4fc01d32585e5d0c8e900d5",
+      "files": [
+        "src/ax_description/meshes/AX_2.mtl",
+        "src/ax_description/meshes/parts/AX_2/AX_2.mtl"
+      ],
+      "category": "model_or_upstream_assets"
+    },
+    {
+      "bytes": 1923,
+      "sha256": "41d04fb76cb7e8fb99da5cddbf01ae8055059376848613920e63370b4a5884fc",
+      "files": [
+        "src/ax_description/meshes/AX_Box.mtl",
+        "src/ax_description/meshes/parts/boxes/AX_Box.mtl"
+      ],
+      "category": "model_or_upstream_assets"
+    },
+    {
+      "bytes": 264,
+      "sha256": "1567195c431f2120301452c5ceaff5905c2b3082b6ebe97a1cd5c7e7d5cb7497",
+      "files": [
+        "src/ax_description/meshes/parts/AX_1/ax_column_colors.mtl",
+        "src/ax_description/meshes/versions/AX_1_v2/ax_column_colors.mtl"
+      ],
+      "category": "model_or_upstream_assets"
+    },
+    {
+      "bytes": 5599,
+      "sha256": "c2e190acabcd3a0d77accf04a383f89e46cea88a5299df22c961da175ed63844",
+      "files": [
+        "src/ax_description/meshes/parts/AX_1/column_split_manifest.json",
+        "src/ax_description/meshes/versions/AX_1_v2/column_split_manifest.json"
+      ],
+      "category": "model_or_upstream_assets"
+    }
+  ]
+}

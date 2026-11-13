@@ -1,0 +1,248 @@
+{
+  "passed": true,
+  "pose": "reach_left",
+  "scope": "Rendered visibility at frozen configured geometry; no arm motion.",
+  "distance_tolerance_m": 0.02,
+  "scene_settle_sim_s": 1.0,
+  "cases": [
+    {
+      "region": "center",
+      "pixel_uv": [
+        320,
+        240
+      ],
+      "target_depth_m": 0.1,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 1.849,
+          "measured_depth_m": 0.09999993443489075,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 1.915,
+          "measured_depth_m": 0.09999993443489075,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 1.9809999999999999,
+          "measured_depth_m": 0.09999993443489075,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "center",
+      "pixel_uv": [
+        320,
+        240
+      ],
+      "target_depth_m": 0.15,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 3.037,
+          "measured_depth_m": 0.15000003576278687,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 3.103,
+          "measured_depth_m": 0.15000003576278687,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 3.169,
+          "measured_depth_m": 0.15000003576278687,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "center",
+      "pixel_uv": [
+        320,
+        240
+      ],
+      "target_depth_m": 0.25,
+      "target_visible": false,
+      "samples": [
+        {
+          "stamp_s": 4.225,
+          "measured_depth_m": 0.19626007974147797,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 4.291,
+          "measured_depth_m": 0.19626007974147797,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 4.357,
+          "measured_depth_m": 0.19626007974147797,
+          "target_visible": false
+        }
+      ]
+    },
+    {
+      "region": "left",
+      "pixel_uv": [
+        192,
+        240
+      ],
+      "target_depth_m": 0.1,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 5.413,
+          "measured_depth_m": 0.09999991953372955,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 5.479,
+          "measured_depth_m": 0.09999991953372955,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 5.545,
+          "measured_depth_m": 0.09999991953372955,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "left",
+      "pixel_uv": [
+        192,
+        240
+      ],
+      "target_depth_m": 0.15,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 6.601,
+          "measured_depth_m": 0.15000005066394806,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 6.667,
+          "measured_depth_m": 0.15000005066394806,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 6.733,
+          "measured_depth_m": 0.15000005066394806,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "left",
+      "pixel_uv": [
+        192,
+        240
+      ],
+      "target_depth_m": 0.25,
+      "target_visible": false,
+      "samples": [
+        {
+          "stamp_s": 7.789,
+          "measured_depth_m": 0.21311508119106293,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 7.855,
+          "measured_depth_m": 0.21311508119106293,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 7.921,
+          "measured_depth_m": 0.21311508119106293,
+          "target_visible": false
+        }
+      ]
+    },
+    {
+      "region": "right",
+      "pixel_uv": [
+        448,
+        240
+      ],
+      "target_depth_m": 0.1,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 8.977,
+          "measured_depth_m": 0.09999992698431015,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 9.043,
+          "measured_depth_m": 0.09999992698431015,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 9.109,
+          "measured_depth_m": 0.09999992698431015,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "right",
+      "pixel_uv": [
+        448,
+        240
+      ],
+      "target_depth_m": 0.15,
+      "target_visible": true,
+      "samples": [
+        {
+          "stamp_s": 10.165,
+          "measured_depth_m": 0.15000002086162567,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 10.231,
+          "measured_depth_m": 0.15000002086162567,
+          "target_visible": true
+        },
+        {
+          "stamp_s": 10.297,
+          "measured_depth_m": 0.15000002086162567,
+          "target_visible": true
+        }
+      ]
+    },
+    {
+      "region": "right",
+      "pixel_uv": [
+        448,
+        240
+      ],
+      "target_depth_m": 0.25,
+      "target_visible": false,
+      "samples": [
+        {
+          "stamp_s": 11.353,
+          "measured_depth_m": 0.17909397184848785,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 11.419,
+          "measured_depth_m": 0.17909397184848785,
+          "target_visible": false
+        },
+        {
+          "stamp_s": 11.485,
+          "measured_depth_m": 0.17909397184848785,
+          "target_visible": false
+        }
+      ]
+    }
+  ],
+  "rgb_reference_image": "visibility_reach_left_arm_rgb.png",
+  "fixture_control_passed": true,
+  "survey_completed": true,
+  "visible_conditions": 6,
+  "occluded_or_unobserved_conditions": 3
+}

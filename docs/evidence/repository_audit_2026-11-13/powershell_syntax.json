@@ -1,0 +1,14 @@
+[
+  {
+    "path": "remote_controller\\recover.ps1",
+    "errors": []
+  },
+  {
+    "path": "remote_controller\\install-shortcuts.ps1",
+    "errors": []
+  },
+  {
+    "path": "remote_controller\\ax-launch.ps1",
+    "errors": []
+  }
+]

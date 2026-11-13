@@ -1,4 +1,4 @@
-// g++ -std=c++17 -I src/ax_safety/src/ax_safety/include src/ax_safety/tools/tests/test_a4_safety_gate.cpp -o /tmp/a4_gate_test && /tmp/a4_gate_test
+// g++ -std=c++17 -I src/ax_safety/include tools/tests/test_a4_safety_gate.cpp -o /tmp/a4_gate_test && /tmp/a4_gate_test
 #include "ax_safety/a4/safety_gate.hpp"
 #include <cassert>
 #include <limits>

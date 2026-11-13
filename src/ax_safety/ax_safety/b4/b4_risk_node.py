@@ -10,6 +10,7 @@ import time
 import uuid
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from sensor_msgs.msg import LaserScan, Range
@@ -186,6 +187,7 @@ class B4RiskNode(Node):
                      and self.localization.state == LocalizationHealth.OK)
         corridor_valid = (self.corridor is not None and self.corridor.robot_id == self.robot_id
                           and self.meta_ok(self.corridor, self.corridor_ttl)
+                          and bool(self.corridor.observations)
                           and all(self.meta_ok(obs, self.corridor_ttl)
                                   and obs.robot_id == self.robot_id and obs.position_valid
                                   and obs.observation != obs.UNKNOWN for obs in self.corridor.observations))
@@ -229,9 +231,12 @@ def main(args=None):
     node = B4RiskNode()
     try:
         rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

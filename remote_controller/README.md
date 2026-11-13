@@ -18,7 +18,7 @@ Git 다운로드만으로 바로가기가 자동 생성되지는 않습니다. �
 
 ## 처음 받는 사람
 
-1. 저장소의 `su` 브랜치를 Windows의 로컬 폴더에 내려받습니다.
+1. 저장소의 `main` 브랜치를 Windows의 로컬 폴더에 내려받습니다.
 2. Ubuntu 24.04 WSL2, ROS 2 Jazzy와 Ubuntu 작업공간을 준비하고 최초 빌드를 완료합니다.
    [다른 PC 설치·빌드 안내](../docs/guides/RUN_ON_ANOTHER_PC.md)를 따르세요.
 3. 이 폴더의 **`install.cmd`**를 더블클릭합니다.

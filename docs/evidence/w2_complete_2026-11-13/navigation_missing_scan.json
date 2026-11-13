@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "scope": "MOCK inputs; planning only, no driving goals, physical motion, B2/A4 integration or G1 judgment",
+  "scenario": "missing_scan",
+  "robots": {
+    "robot_1": {
+      "states": {
+        "controller_server": "active",
+        "planner_server": "active",
+        "bt_navigator": "active"
+      },
+      "global_base_frame": "robot_1/base_link",
+      "footprint": "[[-0.78, -0.42], [0.82, -0.42], [0.82, 0.42], [-0.78, 0.42]]",
+      "map_topic": "/map"
+    }
+  },
+  "checks": {
+    "missing_scan": {
+      "result_received": true,
+      "status": 6,
+      "pose_count": 0,
+      "scope": "No successful path on never-received scans; no driving action."
+    }
+  }
+}

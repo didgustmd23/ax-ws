@@ -1,0 +1,23 @@
+{
+  "passed": false,
+  "scope": "MOCK inputs; planning only, no driving goals, physical motion, B2/A4 integration or G1 judgment",
+  "scenario": "missing_map",
+  "robots": {},
+  "checks": {
+    "startup_with_missing_input": {
+      "observed_wall_s": 8,
+      "startup_completed": true,
+      "startup_success": true,
+      "visible_nodes": [
+        "bt_navigator",
+        "bt_navigator_navigate_to_pose_rclcpp_node",
+        "controller_server",
+        "lifecycle_manager_navigation",
+        "planner_server",
+        "transform_listener_impl_59ee9a48a140",
+        "transform_listener_impl_63c5c50e7ca0"
+      ],
+      "scope": "Startup must not complete without required input; no motion goals submitted."
+    }
+  }
+}

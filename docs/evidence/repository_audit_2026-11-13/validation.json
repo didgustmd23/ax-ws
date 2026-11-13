@@ -1,0 +1,47 @@
+{
+  "baseline_commit": "48a0ea6",
+  "date_kst": "2026-11-13",
+  "moved_files": 17,
+  "ros_packages": 13,
+  "all_package_build": "passed",
+  "a4_cpp_unit": "passed",
+  "first_pytest_run": {
+    "tests": 689,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 2,
+    "passed": 686,
+    "failure_cases": [
+      {
+        "name": "test_conditions",
+        "class": "tools.tests.test_b2_health_raw.RawLogFormat",
+        "message": "AssertionError: unexpectedly None"
+      }
+    ]
+  },
+  "git_context_recheck": {
+    "passed": true,
+    "case": "test_b2_health_raw.py::RawLogFormat::test_conditions",
+    "reason": "Source copy lacks .git; rechecked in original Git workspace."
+  },
+  "b4_before_fix": {
+    "failed": 1,
+    "passed": 3,
+    "case": "empty corridor list was CLEAR"
+  },
+  "b4_after_fix": {
+    "passed": 24
+  },
+  "startup_shutdown_smoke": {
+    "passed": true,
+    "domain": 97,
+    "nodes_started": 3,
+    "launch_exit_code": 0
+  },
+  "active_scan_passed": true,
+  "historical_yaml_parse_errors": 2,
+  "historical_shell_placeholder_failures": 1,
+  "upstream_missing_image_links": 9,
+  "duplicate_groups": 10,
+  "unexpected_identical_source_groups": 0
+}

@@ -1,0 +1,362 @@
+{
+  "passed": true,
+  "scope": "B1 input/output integrity and measured stream quality",
+  "robot_id": "robot_1",
+  "performance_judgment": "not_judged",
+  "performance_note": "No approved rate/loss threshold; observer stamp gaps are not proof of transport loss.",
+  "sim_duration_s": 15.0,
+  "wall_duration_s": 26.47855658700007,
+  "streams": {
+    "front_rgb/image_raw": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgb_optical_frame"
+      ]
+    },
+    "front_rgb/processed/image_raw": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgb_optical_frame"
+      ]
+    },
+    "arm_rgb/image_raw": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgb_optical_frame"
+      ]
+    },
+    "arm_rgb/processed/image_raw": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgb_optical_frame"
+      ]
+    },
+    "front_rgbd/image": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgbd_optical_frame"
+      ]
+    },
+    "front_rgbd/depth_image": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgbd_optical_frame"
+      ]
+    },
+    "front_rgbd/camera_info": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgbd_optical_frame"
+      ]
+    },
+    "front_rgbd/processed/points": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/front_rgbd_optical_frame"
+      ]
+    },
+    "arm_rgbd/image": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgbd_optical_frame"
+      ]
+    },
+    "arm_rgbd/depth_image": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgbd_optical_frame"
+      ]
+    },
+    "arm_rgbd/camera_info": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgbd_optical_frame"
+      ]
+    },
+    "arm_rgbd/processed/points": {
+      "received": 227,
+      "unique_stamps": 227,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 15,
+      "sim_rate_hz": 15.15151515151515,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.066,
+      "p95_gap_sim_s": 0.066,
+      "frames": [
+        "robot_1/arm_rgbd_optical_frame"
+      ]
+    },
+    "front_lidar/scan": {
+      "received": 150,
+      "unique_stamps": 150,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 10,
+      "sim_rate_hz": 10.0,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.1,
+      "p95_gap_sim_s": 0.1,
+      "frames": [
+        "robot_1/front_lidar_link"
+      ]
+    },
+    "front_lidar/scan_filtered": {
+      "received": 150,
+      "unique_stamps": 150,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 10,
+      "sim_rate_hz": 10.0,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.1,
+      "p95_gap_sim_s": 0.1,
+      "frames": [
+        "robot_1/front_lidar_link"
+      ]
+    },
+    "rear_lidar/scan": {
+      "received": 150,
+      "unique_stamps": 150,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 10,
+      "sim_rate_hz": 10.0,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.1,
+      "p95_gap_sim_s": 0.1,
+      "frames": [
+        "robot_1/rear_lidar_link"
+      ]
+    },
+    "rear_lidar/scan_filtered": {
+      "received": 150,
+      "unique_stamps": 150,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 10,
+      "sim_rate_hz": 10.0,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.1,
+      "p95_gap_sim_s": 0.1,
+      "frames": [
+        "robot_1/rear_lidar_link"
+      ]
+    },
+    "imu": {
+      "received": 1500,
+      "unique_stamps": 1500,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 100,
+      "sim_rate_hz": 100.0,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.01,
+      "p95_gap_sim_s": 0.01,
+      "frames": [
+        "robot_1/imu_link"
+      ]
+    },
+    "tool_tof/raw": {
+      "received": 454,
+      "unique_stamps": 454,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 30,
+      "sim_rate_hz": 30.303030303030305,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.034,
+      "p95_gap_sim_s": 0.034,
+      "frames": [
+        "robot_1/tool_tof_link"
+      ]
+    },
+    "tool_tof": {
+      "received": 454,
+      "unique_stamps": 454,
+      "duplicates": 0,
+      "reversed": 0,
+      "expected_hz": 30,
+      "sim_rate_hz": 30.303030303030305,
+      "rate_deficit_fraction": 0.0,
+      "max_gap_sim_s": 0.034,
+      "p95_gap_sim_s": 0.034,
+      "frames": [
+        "robot_1/tool_tof_link"
+      ]
+    }
+  },
+  "input_output_pairs": {
+    "front_rgb/processed/image_raw": {
+      "input_observed": 227,
+      "output_observed": 227,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "arm_rgb/processed/image_raw": {
+      "input_observed": 227,
+      "output_observed": 227,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "tool_tof": {
+      "input_observed": 454,
+      "output_observed": 454,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "front_lidar/scan_filtered": {
+      "input_observed": 150,
+      "output_observed": 150,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "rear_lidar/scan_filtered": {
+      "input_observed": 150,
+      "output_observed": 150,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "front_rgbd/processed/points": {
+      "input_observed": 227,
+      "output_observed": 227,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    },
+    "arm_rgbd/processed/points": {
+      "input_observed": 227,
+      "output_observed": 227,
+      "input_without_observed_output": 0,
+      "output_without_observed_input": 0,
+      "note": "Independent subscriptions; unmatched observations can include observer loss."
+    }
+  },
+  "synchronization": {
+    "front_rgbd": {
+      "matched_comparisons": 454,
+      "max_nearest_skew_s": 0.0,
+      "p95_nearest_skew_s": 0.0,
+      "over_30ms": 0
+    },
+    "arm_rgbd": {
+      "matched_comparisons": 454,
+      "max_nearest_skew_s": 0.0,
+      "p95_nearest_skew_s": 0.0,
+      "over_30ms": 0
+    }
+  },
+  "imu_static_observation": {
+    "finite_samples": 1527,
+    "nonfinite_samples": 0,
+    "mean_angular_velocity_rad_s": [
+      -5.28015141196639e-10,
+      -1.2372638224442831e-11,
+      1.5993853334152976e-08
+    ],
+    "mean_linear_acceleration_m_s2": [
+      -0.00034211122116947876,
+      -0.0007595443563261758,
+      9.806649997984776
+    ],
+    "std_linear_acceleration_m_s2": [
+      0.012701734043613947,
+      0.015634627949437926,
+      1.7458752814542935e-08
+    ],
+    "scope": "Stationary simulation observation; not hardware noise/bias calibration."
+  }
+}

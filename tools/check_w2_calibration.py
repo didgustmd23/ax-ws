@@ -24,6 +24,17 @@ from scipy.spatial.transform import Rotation
 from ament_index_python.packages import get_package_share_directory
 
 
+def finite_result(value):
+    """Keep failed non-finite observations as null instead of losing the whole report."""
+    if isinstance(value, dict):
+        return {key: finite_result(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [finite_result(item) for item in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--robot-id', choices=['robot_1', 'robot_2'], default='robot_2')
@@ -65,7 +76,7 @@ def main():
             '--req', f'name: "{name}" type: MODEL'], capture_output=True, timeout=8, check=True)
     active = None
     result = {'passed': False, 'robot_id': robot, 'scope': 'ideal front sensor geometry only',
-              'distance_tolerance_m': .015, 'cases': records}
+              'distance_tolerance_m': .015, 'scene_settle_sim_s': 1.0, 'cases': records}
     try:
         wait_for(lambda: robot in poses and len(latest) == 5)
         for distance in (1., 2.):
@@ -88,7 +99,7 @@ def main():
                 '-z', str(center[2]), '-Y', str(yaw)], capture_output=True, timeout=20, check=True)
             # Ignore pre-fixture frames and let rendering catch up in sim time.
             start_stamp = latest['depth'].header.stamp
-            after = start_stamp.sec + start_stamp.nanosec * 1e-9 + .5
+            after = start_stamp.sec + start_stamp.nanosec * 1e-9 + result['scene_settle_sim_s']
             samples, seen = [], set()
             def collect():
                 depth, rgb, info, cloud, scan = [latest[k] for k in ('depth', 'rgb', 'info', 'cloud', 'scan')]
@@ -154,6 +165,7 @@ def main():
         if active:
             remove(active)
         args.output.parent.mkdir(parents=True, exist_ok=True)
+        result = finite_result(result)
         args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False)+'\n', encoding='utf-8')
         node.destroy_node()
         rclpy.shutdown()

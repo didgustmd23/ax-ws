@@ -16,7 +16,7 @@ from sensor_msgs.msg import Range
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src/ax_environment'))
-sys.path.insert(0, str(ROOT / 'src/ax_safety/src/ax_safety'))
+sys.path.insert(0, str(ROOT / 'src/ax_safety'))
 from ax_environment.corridor_observer import CorridorObserver, STATE_QOS  # noqa: E402
 from ax_safety.b4.b4_risk_node import B4RiskNode  # noqa: E402
 

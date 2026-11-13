@@ -1,0 +1,1084 @@
+{
+  "region_file": "src/ax_environment/config/ax_warehouse_regions.json",
+  "approved": false,
+  "static_passed": true,
+  "ready_for_approval": false,
+  "checks": [
+    {
+      "name": "generated_regions_match_sdf",
+      "passed": true
+    },
+    {
+      "name": "map_frame_revision",
+      "passed": true
+    },
+    {
+      "name": "map_hash:map.yaml",
+      "passed": true
+    },
+    {
+      "name": "map_hash:map.pgm",
+      "passed": true
+    },
+    {
+      "name": "reference_transform_matches_map_metadata",
+      "passed": true
+    },
+    {
+      "name": "world_hash:planned/ax_warehouse_plain.world",
+      "passed": true
+    },
+    {
+      "name": "world_hash:planned/ax_warehouse.world",
+      "passed": true
+    }
+  ],
+  "outlines": {
+    "AX_1": {
+      "bounds": [
+        -0.78,
+        -0.42,
+        0.82,
+        0.613364
+      ],
+      "basis": "ax1_spec.json visual_bounds_base_m ∪ a1_validation.yaml mobility.robot_1.footprint_xy_m + 여유 0.0 m"
+    },
+    "AX_2": {
+      "bounds": [
+        -0.63,
+        -0.53,
+        0.67,
+        0.53
+      ],
+      "basis": "ax2_spec.json visual_bounds_base_m ∪ a1_validation.yaml mobility.robot_2.footprint_xy_m ∪ cargo_bounds_xy_m + 여유 0.0 m"
+    }
+  },
+  "boundary_cases": [
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.7199999999999998,
+        -5.021344,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.7600000000000002,
+        -5.021344,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.7800000000000002,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.8000000000000003,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.76,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.799999999999999,
+        -5.021344,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.32,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.84,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.82,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.8,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.84,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.8,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.7199999999999998,
+        0.0,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.7600000000000002,
+        0.0,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.7800000000000002,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.8000000000000003,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.76,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.799999999999999,
+        0.0,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.32,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.84,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.82,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.8,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.84,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.8,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.7199999999999998,
+        5.082072,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.7600000000000002,
+        5.082072,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.7800000000000002,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.8000000000000003,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.76,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.799999999999999,
+        5.082072,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.32,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.84,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.82,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.8,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.84,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_1",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.8,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.5699999999999998,
+        -5.021344,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.9100000000000001,
+        -5.021344,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.9300000000000002,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.9500000000000002,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.610000000000001,
+        -5.021344,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.65,
+        -5.021344,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.17,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.69,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.67,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.65,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.9900000000000002,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_1",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.9500000000000002,
+        -5.021344,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.5699999999999998,
+        0.0,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.9100000000000001,
+        0.0,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.9300000000000002,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.9500000000000002,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.610000000000001,
+        0.0,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.65,
+        0.0,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.17,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.69,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.67,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.65,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.9900000000000002,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_2",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.9500000000000002,
+        0.0,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "outside",
+      "pose": [
+        -0.5699999999999998,
+        5.082072,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "approach",
+      "pose": [
+        1.9100000000000001,
+        5.082072,
+        0.0
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "entry_contact",
+      "pose": [
+        1.9300000000000002,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "entered",
+      "pose": [
+        1.9500000000000002,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "exit_overlap",
+      "pose": [
+        11.610000000000001,
+        5.082072,
+        0.0
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "west",
+      "phase": "full_exit",
+      "pose": [
+        11.65,
+        5.082072,
+        0.0
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "outside",
+      "pose": [
+        14.17,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "approach",
+      "pose": [
+        11.69,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "APPROACHING",
+      "actual": "APPROACHING",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "entry_contact",
+      "pose": [
+        11.67,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "entered",
+      "pose": [
+        11.65,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "exit_overlap",
+      "pose": [
+        1.9900000000000002,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "INSIDE",
+      "actual": "INSIDE",
+      "passed": true
+    },
+    {
+      "model": "AX_2",
+      "corridor": "corridor_3",
+      "side": "east",
+      "phase": "full_exit",
+      "pose": [
+        1.9500000000000002,
+        5.082072,
+        3.141592653589793
+      ],
+      "expected": "OUTSIDE",
+      "actual": "OUTSIDE",
+      "passed": true
+    }
+  ],
+  "configured_world_map_transform": {
+    "T_world_map": [
+      -6.8,
+      0.0,
+      0.0
+    ],
+    "rule": "map = world − (T_world_map.x, T_world_map.y), yaw 0",
+    "basis": "src/ax_localization/maps/ax_warehouse/README.md 채택 지도 revision 1 T_world_map 초기값(map 원점 = robot_2 출발 자세). 참조 지도 최적 정합(−6.822, +0.006, +0.0003 rad)과의 차 약 0.02 m는 반영하지 않음"
+  },
+  "transform_usage": "검증 전용. 운영 위치 추정·주행에 쓰지 않는다",
+  "pending": [
+    "B2: 실제 채택 지도 해시·map_revision·world-map 정합과 잔여 오차 확인",
+    "B2/B3: 같은 ROS 시계의 실제 map→odom→base TF 연속성·지연·위치 신뢰성 검증",
+    "A1/A2/A4: 실제 접힌 팔·적재물 외곽 및 오차 여유 확인",
+    "B3/D1/D3/A4: 두 로봇·양방향 진입/완전 이탈 실제 관측과 경계·대기 지점 합의",
+    "D2: 작업대·등록 지점 ID와 용량·접근 조건 확인"
+  ],
+  "limitations": "정적 형상 계산만 검증. T_world_map 초기값은 B2 문서상 검증 전용이며 운영 좌표 정합 근거로 사용할 수 없음. 실제 지도 픽셀 정합·TF·센서·주행을 검증하지 않음. 관절 임의 자세·돌출 적재물·운영 불확실성 여유를 보장하지 않음."
+}

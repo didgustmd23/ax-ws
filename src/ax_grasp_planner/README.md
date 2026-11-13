@@ -40,13 +40,24 @@ selected = select_candidate(plan, now_s,
 각 후보의 tool_target·rule_score·success_probability·reachable/collision_free를 게시한다.
 접근/이탈 pose는 내부 Candidate에 있으며 공통 메시지에 필드를 임의 추가하지 않았다.
 동일 관측 재게시로 벽시계 기한을 늘리지 않고, 오래된 후보는 무효 상태로 게시한다.
+만료 후보는 새 후보 접수 전과 주기 발행 후에 활성 저장 공간에서 회수하므로, 8개가 모두
+만료됐을 때 9번째 물체도 접수할 수 있다. 주기 발행에서는 만료 사유를 한 번 게시한 뒤
+다음 전체 목록에서 제거한다. 소비자는 과거 목록과 합치지 말고 최신 전체 목록으로 교체해야 한다.
+회수해도 물체별 장면 버전·제약 버전·관측 시각과 내용 지문은 노드 세션 동안 임시 SQLite에
+보존한다. 따라서 옛 버전은 거절하며 같은 결과를 재수신해도 만료 후보가 부활하지 않는다.
+같은 버전·시각에 다른 내용이 오면 거절한다. 새 관측 결과는 정상 접수한다.
+이력은 후보 본문을 저장하지 않고 SQLite 캐시를 제한해 메모리 증가를 줄이며, 노드 종료 시
+임시 원장을 닫는다. 재시작하면 새 게시 세션으로 이력이 초기화되므로 세션 변경을 함께 처리해야 한다.
 같은 물체의 기존 후보보다 장면 버전·제약 버전·관측 시각 중 하나라도 이전이면
 `publish_plan`은 `ValueError`로 거절하고 기존 후보를 유지한다. 비교와 저장은 잠금으로 묶어
 동시에 도착한 결과도 같은 기준을 적용한다. 버전 이력은 노드 실행 중 물체별로 관리한다.
 
 ```bash
-ros2 run ax_grasp_planner candidate_publisher --ros-args -p robot_id:=robot_1 -p use_sim_time:=true
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash  # 작업공간에서 colcon build 후 실행
+ros2 launch ax_grasp_planner candidate_publisher.launch.py robot_id:=robot_1 use_sim_time:=true
 python3 tools/tests/test_c3_grasp_planner.py
+python3 -m pytest tools/tests/test_c3_expiry_storage.py -q
 python3 tools/tests/test_w3_contracts_ros.py
 ```
 
@@ -54,3 +65,6 @@ python3 tools/tests/test_w3_contracts_ros.py
 발명하지 않았다. 노드를 단독 실행하면 NO_VALID_CANDIDATES이며 가짜 좌표를 생성하지 않는다.
 시험의 도달·충돌 검증기는 모의 함수다. 실제 IK·MoveIt·Gazebo 집기 성공을 검증한 것이 아니다.
 손가락 집게 전략, XGBoost 학습·확률 보정, 실제 장애물 지도 연계는 이번 규칙 기반 흡착 범위 밖이다.
+Gazebo에서는 `/clock`과 `use_sim_time:=true`를 함께 사용한다. 실제 시계를 쓰려면 입력 노드와
+함께 `use_sim_time:=false`로 설정한다. launch는 C2 입력이나 IK·충돌 검증기를 생성하지 않는다.
+사유 코드 9종의 뜻과 D-13 추가 제안은 [계약 인계 문서](../../docs/guides/C3_D3_CONTRACT_HANDOFF.md)에 정리했다.

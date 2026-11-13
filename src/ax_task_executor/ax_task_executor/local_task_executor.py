@@ -47,6 +47,7 @@ LEASE_MODES = ('reentrant', 'mutex', 'dedicated')
 
 # 로봇의 lease 확인 서비스 경로(계약 4.3절)
 def lease_service_name(robot_id):
+    # 역할: 로봇별 명령 권한 확인 서비스 경로를 만듭니다.
     return f'/ax/{robot_id}/executor/lease/check_command'
 
 
@@ -55,6 +56,7 @@ class LocalTaskExecutor(MockExecutor):
 
     # 콜백 그룹·공유 상태·lease 원장을 준비하고 같은 이름의 다른 서버가 있으면 거절한다
     def __init__(self):
+        # 역할: 설정과 내부 상태를 준비합니다.
         state = ExecutorState()
         super().__init__(NODE_NAME, action_group=ReentrantCallbackGroup(),
                          status_group=MutuallyExclusiveCallbackGroup(), state=state)
@@ -108,7 +110,8 @@ class LocalTaskExecutor(MockExecutor):
         if policy == 'operational':
             # D4 소스는 수정하지 않고 공통 계약의 요청·응답 Topic으로만 연결합니다.
             from rclpy.qos import QoSProfile, ReliabilityPolicy
-            event_qos = QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)
+            event_qos = QoSProfile(depth=50, reliability=ReliabilityPolicy.RELIABLE)
+            # 배정 확인 토픽은 계약 EVENT의 depth 50입니다. 서비스 큐 크기와 별개입니다.
             prefix = f'/ax/{self.robot_id}/executor/assignment_check'
             self.assignment_requests = self.create_publisher(
                 AssignmentCheckRequest, prefix + '/request', event_qos)
@@ -119,7 +122,9 @@ class LocalTaskExecutor(MockExecutor):
                 self.authority, self.request_assignment_check)
             self.assignment_clock = Clock(clock_type=ClockType.STEADY_TIME)
             self.assignment_timer = self.create_timer(
-                0.1, self.assignment_monitor.tick, clock=self.assignment_clock,
+                # 첫 확인뿐 아니라 이후 모든 주기 확인에도 예외 보호를 적용합니다.
+                0.1, lambda: self.assignment_monitor.timer_tick(self.get_logger().error),
+                clock=self.assignment_clock,
                 callback_group=MutuallyExclusiveCallbackGroup())
 
         others = self.duplicate_servers(self.get_parameter('name_check_s').value)
@@ -135,14 +140,7 @@ class LocalTaskExecutor(MockExecutor):
             'dev_allow/dev_deny는 개발 시험 전용입니다.')
 
     def request_assignment_check(self, execution):
-        """
-        Request D4 confirmation for a recorded real task.
-
-        This method does not authorize the mock CONFIRM_LOAD action. The real
-        dispatcher must periodically request checks, register accepted C4 goal
-        UUIDs via authority.activate_goal, and install A3-issued leases via
-        authority.set_lease. No command request can register its own authority.
-        """
+        """상위 배정 확인 요청을 기록한 뒤 계약 토픽으로 보냅니다."""
         import uuid
 
         if not isinstance(self.authority, RuntimeAuthority):
@@ -159,14 +157,14 @@ class LocalTaskExecutor(MockExecutor):
         return request.request_id
 
     def start_task_authority(self, execution):
-        """Track a real recorded local task; mock actions never call this API."""
+        """실제 작업의 배정 확인과 권한 추적을 시작합니다."""
         # 실제 dispatcher의 시작 입구입니다. 함수가 있다고 현재 모의 Action과 연결된 것은 아닙니다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
         self.assignment_monitor.start(execution)
 
     def stop_task_authority(self, execution_id):
-        """Invalidate authority on task cancellation/completion before cleanup."""
+        """현재 실제 작업의 배정 확인 추적을 종료합니다."""
         # 배정 재확인 중단과 권한 해제만 담당합니다. 물리 취소·정지 확인을 대신하지 않습니다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
@@ -174,10 +172,12 @@ class LocalTaskExecutor(MockExecutor):
 
     # 실행기 스레드 수
     def thread_count(self):
+        # 역할: 실행기 모드에 필요한 스레드 수를 반환합니다.
         return int(self.get_parameter('threads').value)
 
     # lease 전용 노드를 전용 단일 스레드 실행기로 돌린다(dedicated 모드에서만)
     def start_lease_thread(self):
+        # 역할: 분리 모드에서 명령 확인 전용 실행기 스레드를 시작합니다.
         if self.lease_node is None or self._lease_thread is not None:
             return
 
@@ -189,6 +189,7 @@ class LocalTaskExecutor(MockExecutor):
 
     # lease 전용 실행기 스레드를 멈춘다
     def stop_lease_thread(self):
+        # 역할: 명령 확인 전용 실행기를 멈추고 스레드를 정리합니다.
         if self._lease_executor is None:
             return
 
@@ -199,6 +200,7 @@ class LocalTaskExecutor(MockExecutor):
 
     # 자기(와 lease 전용 노드) 말고 같은 lease 서비스나 Action 서비스를 내는 노드를 wait_s 동안 찾는다
     def duplicate_servers(self, wait_s):
+        # 역할: 같은 로봇의 실행 서버가 중복되어 있는지 탐색합니다.
         names = {lease_service_name(self.robot_id),
                  execute_action_name(self.robot_id) + '/_action/send_goal'}
         mine = {(self.get_name(), self.get_namespace()), (LEASE_NODE_NAME, '/')}
@@ -227,6 +229,7 @@ class LocalTaskExecutor(MockExecutor):
     # lease 요청을 판정기에 넘기고 응답을 채운다(lease 콜백 그룹, 직렬)
     def on_check(self, request, reply):
         # 승연님 A4·양현승님 A2의 명령 확인에 답합니다. 요청자가 자기 권한을 등록하지 못하게 합니다.
+        # 역할: 명령 확인 요청을 판정하고 서비스 응답 필드를 채웁니다.
         result = self.checker.check(request)
 
         reply.allowed = result['allowed']
@@ -238,6 +241,7 @@ class LocalTaskExecutor(MockExecutor):
 
     # lease 원장을 닫고 모의 실행기 정리를 이어 한다
     def destroy_node(self):
+        # 역할: 노드가 소유한 원장을 닫고 상위 노드를 정리합니다.
         if isinstance(getattr(self, 'authority', None), RuntimeAuthority):
             self.authority.invalidate_assignment()
         if hasattr(self, 'assignment_timer'):
@@ -258,6 +262,7 @@ class LocalTaskExecutor(MockExecutor):
 
 
 def main(args=None):
+    # 역할: 실행 인자를 받아 노드를 시작하고 종료 시 자원을 정리합니다.
     rclpy.init(args=args)
     node = LocalTaskExecutor()
     executor = MultiThreadedExecutor(num_threads=node.thread_count())

@@ -1,4 +1,4 @@
-"""C3 suction-surface candidate generation; never claims heuristic IK success."""
+"""관측 표면에서 흡착 후보를 만들며 실제 도달성과 충돌 검증을 요구합니다."""
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -8,7 +8,7 @@ import math
 @dataclass(frozen=True)
 class Pose:
     position: tuple
-    orientation: tuple  # x, y, z, w; TCP +Z points along approach toward the surface
+    orientation: tuple  # x, y, z, w 순서이며 TCP +Z는 표면으로 접근하는 방향입니다.
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,8 @@ class Surface:
     stamp_s: float
     frame_id: str
     center: tuple
-    normal: tuple       # outward normal
-    tangent: tuple      # observed in-plane width direction
+    normal: tuple       # 표면 바깥 방향 법선입니다.
+    tangent: tuple      # 관측한 표면 평면 안의 폭 방향입니다.
     width_m: float
     depth_m: float
     confidence: float
@@ -74,18 +74,22 @@ class Plan:
 
     @property
     def valid(self):
+        # 역할: 후보가 존재하고 무효 사유가 없는지 확인합니다.
         return bool(self.candidates) and not self.reason
 
 
 def dot(a, b):
+    # 역할: 두 벡터의 내적을 계산합니다.
     return sum(x * y for x, y in zip(a, b))
 
 
 def cross(a, b):
+    # 역할: 두 벡터의 외적을 계산합니다.
     return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
 
 
 def unit(vector):
+    # 역할: 유한한 비영벡터를 길이 1인 방향 벡터로 만듭니다.
     if len(vector) != 3 or not all(math.isfinite(value) for value in vector):
         raise ValueError('finite 3D vector required')
     length = math.sqrt(dot(vector, vector))
@@ -95,7 +99,7 @@ def unit(vector):
 
 
 def quaternion(x, y, z):
-    """Convert a right-handed orthonormal TCP basis to a normalized quaternion."""
+    """직교하는 공구 축을 정규화한 회전 사원수로 변환합니다."""
     matrix = [[x[i], y[i], z[i]] for i in range(3)]
     trace = sum(matrix[i][i] for i in range(3))
     if trace > 0:
@@ -118,12 +122,13 @@ def quaternion(x, y, z):
 
 
 def identifier(prefix, value):
+    # 역할: 동일한 입력에서 동일한 해시 식별자를 만듭니다.
     payload = json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False)
     return prefix + hashlib.sha256(payload.encode()).hexdigest()[:24]
 
 
 def checked(candidate, reachability, collision):
-    """Require explicit True for every pose and the entire approach/exit path."""
+    """세 자세의 실제 도달성과 전체 경로 충돌 검사를 모두 확인합니다."""
     # 실제 IK와 전체 경로 충돌 검증기가 모두 True를 줘야 합니다. 검증기 없음·예외는 통과가 아닙니다.
     if reachability is None or collision is None:
         return False
@@ -137,9 +142,12 @@ def checked(candidate, reachability, collision):
 
 
 def plan_candidates(surface, constraints, now_s, *, reachability=None, collision=None):
-    """Create deterministic top-surface suction candidates from C2 observations."""
+    """관측 표면과 공구 조건에서 검증된 흡착 후보와 기본 순위를 만듭니다."""
     # 관측·공구 조건 → 후보 생성 → 도달·충돌 필터 → 규칙 점수 순으로 계산합니다.
+    # C3 사유 코드는 공통 계약 추가 제안입니다. 재관측·전략 전환·작업 종료를 여기서 대신 결정하지 않습니다.
+    # 조건이 여러 개 틀려도 아래 검사 순서의 첫 사유만 반환합니다. 모든 오류를 모은 목록은 아닙니다.
     def invalid(reason):
+        # 역할: 입력 식별자와 무효 사유를 보존한 빈 후보 결과를 만듭니다.
         return Plan(surface.robot_id, surface.object_id, surface.scene_revision,
                     constraints.version, surface.frame_id, surface.stamp_s,
                     constraints.candidate_ttl_s, '', (), reason)
@@ -168,6 +176,7 @@ def plan_candidates(surface, constraints, now_s, *, reachability=None, collision
             or not 0 <= surface.flatness_error_m <= constraints.max_flatness_error_m):
         return invalid('TOOL_CONDITIONS_NOT_MET')
     if reachability is None or collision is None:
+        # C-07: 검증기 미제공과, 제공된 검증기가 후보를 불가능하다고 판정한 경우를 구분합니다.
         return invalid('VALIDATORS_UNAVAILABLE')
     try:
         normal = unit(surface.normal)
@@ -207,6 +216,7 @@ def plan_candidates(surface, constraints, now_s, *, reachability=None, collision
     result.sort(key=lambda candidate: (-candidate.rule_score, candidate.candidate_id))
     # 학습 모델이 없으므로 성공 확률은 -1입니다. 같은 점수는 후보 ID로 정렬해 결과를 일정하게 합니다.
     if not result:
+        # C-02: 검증 실패·예외로 후보가 전부 제거돼도 좌표를 만들어 실행 가능하다고 하지 않습니다.
         return invalid('NO_VALID_CANDIDATES')
     set_id = identifier(
         'cset-', [asdict(surface), asdict(constraints), [asdict(c) for c in result]])
@@ -217,7 +227,7 @@ def plan_candidates(surface, constraints, now_s, *, reachability=None, collision
 
 def select_candidate(plan, now_s, *, scene_revision, constraint_version,
                      reachability, collision, preference=None):
-    """Recheck candidates at execution boundary; a stale preference is only ignored."""
+    """현재 버전과 기한을 확인하고 재검증을 통과한 후보를 선택합니다."""
     # 실행 직전에 현재 장면·제약 버전·기한을 다시 확인합니다. 예전 후보를 그대로 신뢰하지 않습니다.
     if (not plan.valid or scene_revision != plan.scene_revision
             or constraint_version != plan.constraint_version or not math.isfinite(now_s)

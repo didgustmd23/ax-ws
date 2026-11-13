@@ -8,6 +8,12 @@ import sqlite3
 import tempfile
 import time
 import unittest
+
+# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
+import sys as _domain_sys
+from pathlib import Path as _DomainPath
+_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
+from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import patch
 
 import rclpy
@@ -38,6 +44,9 @@ class W3RosTests(unittest.TestCase):
                          '-p', f'regions_file:={config}', '-p', f'database:={self.folder.name}/ledger.db'])
         self.addCleanup(rclpy.shutdown)
         self.manager = CorridorNode()
+        # 기존 정책을 가정한 시험 사본만 활성화합니다. 실제 노드 기본값은 정책 미합의 보류입니다.
+        self.manager.manager.grant_policy_approved = True
+        # 이 설정은 시험 객체에만 적용되며 운영 launch의 기본 보류 상태를 바꾸지 않습니다.
         self.candidates = CandidatePublisher()
         self.peer = Node('w3_test_peers')
         self.executor = SingleThreadedExecutor()

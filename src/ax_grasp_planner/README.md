@@ -45,7 +45,9 @@ selected = select_candidate(plan, now_s,
 동시에 도착한 결과도 같은 기준을 적용한다. 버전 이력은 노드 실행 중 물체별로 관리한다.
 
 ```bash
-ros2 run ax_grasp_planner candidate_publisher --ros-args -p robot_id:=robot_1 -p use_sim_time:=true
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash  # 작업공간에서 colcon build 후 실행
+ros2 launch ax_grasp_planner candidate_publisher.launch.py robot_id:=robot_1 use_sim_time:=true
 python3 tools/tests/test_c3_grasp_planner.py
 python3 tools/tests/test_w3_contracts_ros.py
 ```
@@ -54,3 +56,6 @@ python3 tools/tests/test_w3_contracts_ros.py
 발명하지 않았다. 노드를 단독 실행하면 NO_VALID_CANDIDATES이며 가짜 좌표를 생성하지 않는다.
 시험의 도달·충돌 검증기는 모의 함수다. 실제 IK·MoveIt·Gazebo 집기 성공을 검증한 것이 아니다.
 손가락 집게 전략, XGBoost 학습·확률 보정, 실제 장애물 지도 연계는 이번 규칙 기반 흡착 범위 밖이다.
+Gazebo에서는 `/clock`과 `use_sim_time:=true`를 함께 사용한다. 실제 시계를 쓰려면 입력 노드와
+함께 `use_sim_time:=false`로 설정한다. launch는 C2 입력이나 IK·충돌 검증기를 생성하지 않는다.
+사유 코드 9종의 뜻과 D-13 추가 제안은 [계약 인계 문서](../../docs/guides/C3_D3_CONTRACT_HANDOFF.md)에 정리했다.

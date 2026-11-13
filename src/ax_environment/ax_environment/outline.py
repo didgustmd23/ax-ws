@@ -18,12 +18,14 @@ MODELS = {'AX_1': ('ax1_spec.json', 'robot_1'), 'AX_2': ('ax2_spec.json', 'robot
 
 # 사각형 여러 개의 합집합 포위 사각형 [xmin, ymin, xmax, ymax]
 def union(boxes):
+    # 역할: 여러 사각형을 모두 포함하는 경계 사각형을 계산합니다.
     return [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
 
 
 # 모델 외곽을 계산해 (경계, 근거 문자열)을 돌려준다. config_dir는 ax_description의 config 폴더다.
 def model_outline(model, config_dir, margin_m=0.0):
     # 로봇 번호 대신 AX_1/AX_2 모델을 명시합니다. 정해진 팔 자세·적재 범위 가정 안의 외곽입니다.
+    # 역할: 모델의 검증 설정에서 로봇 외곽과 근거를 구합니다.
     if model not in MODELS:
         raise ValueError(f'알 수 없는 로봇 모델: {model!r} (AX_1 또는 AX_2)')
     if not math.isfinite(margin_m) or margin_m < 0:

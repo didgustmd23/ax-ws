@@ -174,12 +174,14 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
 - **정지 중 AMCL 특성 반영:** AMCL은 정지 중 추정을 새로 내지 않는다. 그래서 갱신 정체(`ESTIMATE_STALE`)는 시간이 아니라 마지막 추정 뒤 odom 이동량(0.5 m·0.4 rad)으로 판단한다. 기준 odom은 추정을 받을 때의 odom이다. 추정이 odom보다 먼저 왔으면 그 뒤 처음 받은 유효한(끊김 없는) odom을 기준으로 삼고, 다음 추정 전까지 바꾸지 않는다. 기준·현재 자세 중 하나라도 비유한 값이면 이동량을 알 수 없으므로 `ESTIMATE_STALE`로 본다.
 - **공분산 반올림 경계:** 판단에 쓰는 대각 분산(xx·yy m², yaw rad²)이 −1e-12 이상 0 미만이면 반올림 오차로 보고 판정 내부에서만 0으로 쓴다(`ROUNDOFF_VARIANCE`). `initial_poses`(AMCL `set_initial_pose`)는 초기 공분산 0으로 필터를 시작해 yaw 분산이 −1.09e-13처럼 나온다(Jazzy pf 통계 계산의 반올림으로 본다. 입자 2000개 기준 설명용 오차 규모 추정은 약 1e-12 이하이며, 설치본 동일 커밋·모든 연산 오차를 증명한 엄밀 상한은 아니다). −1e-12 미만인 음수·비유한 값·길이 오류는 계속 `ESTIMATE_INVALID`다. 원시 메시지는 바꾸지 않고, 진단(`covariance_roundoff`)에 0으로 본 항목·원래 값·경계를 남긴다. 작거나 0인 공분산은 정확도·회복 근거가 아니며 도약 latch·초기화 확인·신뢰 기록·재위치 조건은 그대로 적용된다. 선형 분산의 상쇄 오차는 위치 값이 클수록 커질 수 있다. 원점에서 먼 위치라도 오차가 경계 안이면 0으로 보고, **오차가 −1e-12를 넘어선(−1e-12 미만) 표본만** 미지원으로 두어 무효(`ESTIMATE_INVALID`)로 거절한다(경계 확대·위치 비례 경계 없음).
 - **`OK`의 한계:** `OK`는 정확도 검증이 아니다. 공분산은 상한 검사에만 쓰고 정확도를 확정하지 않는다. 정확도는 평가 도구로 따로 보며 판정은 `not_judged`다.
+- **공분산 붕괴(`COVARIANCE_COLLAPSED`):** 위치 std < `health.position_std_min_m`(0.005 m) 또는 방향 std < `yaw_std_min_rad`(0.005 rad)이면 `OK`가 아니라 `DEGRADED`다. Jazzy AMCL은 `initial_poses`(`set_initial_pose`)와 lifecycle 재활성 때 공분산 0으로 필터를 시작하고, 정지 중에는 운동 잡음이 0이라 무이동 갱신으로도 산포가 생기지 않는다(근거: `log/b2_amcl_restart/20261113_073413/REPORT.md`, 정상 갱신 최솟값 0.029 m·0.025 rad).
 - **odom 이상:** odom 비유한 값과 연속성 상실(시각 역행·속도로 설명되지 않는 도약)은 판정에 바로 `LOST`로 들어간다. 끊김 뒤에는 AMCL 새 추정이 3개 쌓이기 전까지 `OK`가 되지 않고, 마지막 신뢰 위치도 지운다. **이번 범위에서 자동 복구 경로 없음.** 정지 상태에서는 `LOST`가 유지되고 재위치는 거절된다(`REJECTED_ODOM_DISCONTINUOUS`).
 - **입력 stamp:** `amcl_pose`·`map → odom` TF는 앞 stamp보다 늦은 것만 받아들인다. 같은 stamp는 값이 같으면 중복, 다르면 충돌로 나눈다. 받아들이지 않은 입력은 AMCL 갱신 수, odom 끊김 뒤 회복 수, 재위치 회복 수에 넣지 않고, 오래된 TF가 최신 추정을 덮지 않는다. 충돌이면 처음 값을 유지하고, 그 입력의 다음 새 값이 올 때까지 마지막 신뢰 위치를 갱신하지 않는다. 판정은 감독 진단의 `input` 줄에 남는다.
 - **추정 도약(`ESTIMATE_DISCONTINUOUS`):** 직전 비교 기준 `map → odom`과 새 추정을 **같은 odom 자세**(추정 시각 ±0.1 s의 가장 가까운 odom 표본)에서 비교한다. `map → odom` 평행이동 크기로 대신하지 않는다.
   - 기준: 0.3 m·0.3 rad(`estimate_jump`, 재위치 `consistency`와 별도 키). 단일 회차 정상 갱신 최대 0.027 m·0.032 rad와 lifecycle 재설정 도약 5.94 m·1.59 rad에서 정한 **개발 출발값**이며 운영 확정값이 아니다.
   - 비교 대상: TF와 `amcl_pose` 둘 다. `amcl_pose`가 TF보다 먼저 와도 기준과 그 시각 odom으로 비교한다.
   - 비교 기준: 마지막으로 검증한 `map → odom`이다. TF 공백 동안에도 유지하며 마지막 신뢰 위치가 없어도 감시한다. 최초 TF는 비교 기준일 뿐 초기화가 맞다는 근거가 아니다.
+  - AMCL 재시작도 같은 latch다: lifecycle 전이 사건(`amcl/transition_event`)에서 active를 떠나는 전이, 또는 산포 있는 추정을 받은 뒤 다시 공분산 붕괴 추정이 오면(프로세스 재시작 포함) 차이와 관계없이 고정한다. AMCL은 재시작 때 `initial_pose.*`를 마지막 필터 갱신 자세로 덮어쓰고 공분산 0으로 다시 시작하므로(nav2_amcl 1.3.13 `on_cleanup`·`on_activate`) 의도된 변경이 아니다. 회복은 아래 재위치(신뢰 기록 + odom)로 한다.
   - 도약이면 `LOST`·`ESTIMATE_DISCONTINUOUS`로 고정(latch)하고 마지막 신뢰 위치를 덮어쓰지 않는다. 공분산이 작아도, 시간이 지나도, 같은 추정이 다시 와도 풀리지 않는다. **해제는 허용된 재위치가 성공했을 때만**이며(아래 재위치), 그때 비교 기준을 검증된 새 추정으로 바꾼다.
   - 근거 부족: 추정 시각의 odom 표본이 없거나 0.1 s보다 멀면 도약 여부를 확정하지 않는다. 비교 기준을 유지하고 `DEGRADED`(`ODOM_STALE`)로 내며 마지막 신뢰 위치를 갱신하지 않는다. 판정마다 다시 비교한다.
   - 감독 노드가 보낸 초기 위치(`START_POSE`)·재위치 후보(`REINIT`)는 송신 뒤 stamp의 새 추정이 후보와 0.5 m·0.3 rad 안이면 한 번만 허용한다(sim 15 s·벽시계 60 s 제한, 시계 무효면 닫음). 그 밖의 도약은 이 기간에도 latch한다. 외부 `initialpose`는 허용 근거가 아니다.
@@ -203,7 +205,7 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
   - 송신 뒤 새 추정이 출발 위치와 맞아야 초기화를 확인한 것으로 보고, 그 뒤에만 마지막 신뢰 위치를 기록한다(아래 방식별 표).
   - 실행 중 위치를 잃어도 다시 보내지 않는다.
 - **값의 출처:** 출발 위치는 launch 출발 좌표와 지도 원점으로 정한 값이다. Gazebo 실제 자세는 읽지 않으며 평가에만 쓴다.
-- **`initial_poses`:** AMCL 매개변수로 넣는 수동 시험용이다. 감독 노드는 `initialpose`를 보내지 않는다. launch가 검사한 같은 pose를 감독 노드에 최초 초기화 확인 후보(`expected_initial_*`)로만 넘긴다.
+- **`initial_poses`:** AMCL 매개변수로 넣는 수동 시험용이다. launch가 검사한 같은 pose를 감독 노드에 최초 초기화 확인 후보(`expected_initial_*`)로 넘긴다. AMCL이 이 pose를 공분산 0으로 시작하므로, 감독 노드는 후보가 확인되고 공분산이 붕괴해 있으면 현재 자세를 `initial_spread` 표준편차(0.10 m·0.10 rad)로 이 세션에서 한 번 `initialpose`로 보내고(`INITIAL_SPREAD`), `OK`·새 추정 3개가 될 때까지(최대 15 s) 0.5 s마다 `request_nomotion_update`를 부른다. 그 전에는 `DEGRADED`(`COVARIANCE_COLLAPSED`)다.
 
 **초기화 방식별 최초 확인** (확인 전에는 마지막 신뢰 위치를 기록하지 않는다. 도약 감시는 모든 방식에서 한다)
 

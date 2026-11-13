@@ -608,13 +608,20 @@ class LaunchInitialPose(unittest.TestCase):
         self.assertIsNotNone(result['closed_sim'])
         self.assertEqual([t for t in result['nomotion_sims'] if t > result['closed_sim']], [])
 
-    # [공분산 반올림] 무이동 갱신 새 추정이 실제 smoke 공분산(yaw −1.09e-13)이어도 판정·확인이 진행돼 신뢰 기록이
-    # 생기고, 진단에 정규화 대상·원래 값·경계가 남는다. initialpose 송신 없음.
+    # [공분산 반올림·붕괴] 무이동 갱신 새 추정이 실제 smoke 공분산(yaw −1.09e-13)이어도 판정·확인이 진행되고,
+    # 진단에 정규화 대상·원래 값·경계가 남는다. 공분산 0은 OK가 아니므로(COVARIANCE_COLLAPSED) 감독 노드가 확인된
+    # 자세를 initial_spread 표준편차로 한 번 보내고(INITIAL_SPREAD), 그 뒤 산포 있는 추정으로 OK·신뢰 기록이 생긴다.
     def test_roundoff_covariance_estimate(self):
         result = self.run_supervisor(amcl_mode='roundoff')
 
         self.assertTrue(result['stored'], result['log'])
-        self.assertEqual(result['initialposes'], [])
+        self.assertEqual(len(result['initialposes']), 1, result['log'])
+        self.assertIn(('INTENT', 'INITIAL_SPREAD'), result['events'])
+        collapsed = [row for row in result['ticks'] if 'COVARIANCE_COLLAPSED' in row['reason']]
+        self.assertTrue(collapsed)
+        self.assertFalse(any(row['trust_stored'] for row in collapsed))
+        # 최초 초기화의 공분산 0은 AMCL 재시작이 아니다(감독 노드 시작 전 추정은 세지 않음): 재시작 latch 없음.
+        self.assertFalse(any('ESTIMATE_DISCONTINUOUS' in row['reason'] for row in result['ticks']))
         roundoff = [row['covariance_roundoff'] for row in result['ticks'] if row.get('covariance_roundoff')]
         normalized = [item for entry in roundoff for item in entry['normalized']]
         self.assertTrue(normalized)
@@ -889,6 +896,10 @@ def make_world(robot_ids):
 
                 if robot['amcl'] == 'silent':
                     return
+
+                # roundoff(공분산 0 초기화)는 산포를 넣은 initialpose를 받은 뒤에는 실제 AMCL처럼 수렴한 추정을 낸다.
+                if robot['amcl'] == 'roundoff':
+                    robot['amcl'] = 'ok'
 
                 if robot['map_odom'] is not None:
                     robot['map_odom_before_loss'] = robot['map_odom']

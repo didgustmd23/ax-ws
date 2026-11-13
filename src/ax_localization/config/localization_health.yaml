@@ -17,7 +17,18 @@ health:
   position_std_lost_m: 1.0
   yaw_std_ok_rad: 0.15
   yaw_std_lost_rad: 0.5
+  # 공분산 붕괴 하한. 위치 std·방향 std 중 하나라도 미만이면 OK가 아니라 DEGRADED(COVARIANCE_COLLAPSED).
+  # Jazzy AMCL은 initial_poses·lifecycle 재활성 때 공분산 0(관측 1e-14 이하)으로 시작한다. 정상 갱신 최솟값은
+  # 위치 0.029 m·방향 0.025 rad였다(2026-11-13 통로 시험 1659표본, alpha 0.02 포함: log/b2_corridor_health/20261113_073004_slip).
+  # 그 사이에서 정상값보다 약 6배 작게 둔 개발값이다.
+  position_std_min_m: 0.005
+  yaw_std_min_rad: 0.005
   clock_stall_wall_s: 2.0       # sim time이 벽시계로 이만큼 멈추면 CLOCK_INVALID
+
+initial_spread:                 # launch initial_poses 최초 초기화(공분산 0) 확인 뒤 같은 자세를 다시 보낼 표준편차
+  position_std_m: 0.10          # reinit.base_std_m과 같은 출발값
+  yaw_std_rad: 0.10
+  timeout_s: 15.0               # 송신 뒤 OK·새 추정 reinit.min_updates개를 기다리는 제한(지나면 무이동 갱신 요청을 멈춤)
 
 trust:                          # 마지막 신뢰 위치로 기록할 조건(OK이고 아래 이하)
   position_std_m: 0.15

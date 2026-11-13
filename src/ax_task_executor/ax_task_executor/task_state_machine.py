@@ -21,6 +21,7 @@ class TaskPhase(str, Enum):
 class ConfirmLoadStateMachine:
     # 순서를 명시한다. 종료 단계에는 출구가 없으므로 다시 성공으로 바꿀 수 없다.
     ALLOWED = {
+        # 각 줄은 현재 단계에서 이동할 수 있는 다음 단계입니다. 빈 집합은 종료 단계입니다.
         TaskPhase.IDLE: frozenset({TaskPhase.VALIDATING}),
         TaskPhase.VALIDATING: frozenset({
             TaskPhase.CONFIRMING_LOAD, TaskPhase.FAILED, TaskPhase.UNCERTAIN}),
@@ -40,6 +41,7 @@ class ConfirmLoadStateMachine:
 
     def transition(self, next_phase):
         """허용된 전환만 적용한다. 잘못된 전환은 상태를 바꾸지 않고 거절한다."""
+        # 순서를 건너뛰거나 끝난 작업을 다시 성공 처리하려는 요청을 막습니다.
         if next_phase not in self.ALLOWED[self.phase]:
             raise ValueError(f'허용하지 않는 단계 전환: {self.phase.value} -> {next_phase.value}')
         self.phase = next_phase

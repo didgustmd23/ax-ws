@@ -39,6 +39,7 @@ class ExecutorState:
 
     # 처리 중 작업 표시를 확인하고, 비어 있으면 이 실행으로 잡는다. (busy, claimed)를 돌려준다
     def claim(self, execution_id, has_result):
+        # 로봇의 실행 자리만 선점합니다. 이 표시 자체가 실제 구동 권한은 아닙니다.
         with self.lock:
             busy = self.active_execution_id not in (None, execution_id)
 
@@ -79,6 +80,7 @@ class ExecutorState:
 
     # 원래 Goal이면 취소 표시를 남기고 True, 재요청 Goal이면 False
     def request_cancel(self, execution_id, goal_key):
+        # 원래 Goal의 취소만 받습니다. 결과를 재조회한 Goal이 원래 작업을 멈추면 안 됩니다.
         with self.lock:
             if self.owner_goal.get(execution_id) != goal_key:
                 return False

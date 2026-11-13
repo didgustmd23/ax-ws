@@ -6,6 +6,7 @@ A3 CheckCommandLease 서버(개발 정책).
 그 판정 자리는 파라미터 `policy`(dev_allow | dev_deny)가 대신하며 기본값은 dev_deny다.
 허용 응답의 reason_code는 DEV_POLICY_ALLOW, 수락 기록 ID는 `devpolicy-` 접두어라 개발 정책 결과임을 구분할 수 있다.
 """
+from contextlib import nullcontext
 import hashlib
 import json
 from pathlib import Path
@@ -93,6 +94,7 @@ def response(allowed, reason='', record='', valid_for_s=0.0):
 
 # 계약 형식·권한별 필드를 검사해 거절 사유를 돌려준다. 통과면 빈 문자열
 def check_form(fields, robot_id):
+    # 글자·필드 조합 검사입니다. 형식이 맞아도 실제 배정·Goal·lease가 유효하다는 뜻은 아닙니다.
     for key in ('request_id', 'execution_id', 'command_id'):
         if not ID_PATTERN.fullmatch(fields[key]):
             return REASON_AUTHORITY_INVALID
@@ -166,6 +168,7 @@ class LeaseLedger:
 
     # 트랜잭션 안의 처리 본체
     def _check(self, fields, decide, valid_for_s, marks):
+        # request_id는 질문 번호, command_id는 물리 명령 번호입니다. 둘의 중복을 따로 검사합니다.
         key = fingerprint(fields)
 
         # 1. 같은 request_id: 내용이 같으면 기존 응답, 다르면 DUPLICATE_REQUEST(기록하지 않음).
@@ -195,6 +198,7 @@ class LeaseLedger:
 
     # 정책 판정 결과로 응답을 만들고, 새 ACCEPT 허용이면 수락 기록을 먼저 남긴다
     def _decide(self, fields, reason, accepted, command, valid_for_s, marks):
+        # ACCEPT는 수락 영수증을 남깁니다. CONTINUE는 기존 영수증을 확인하고 새로 만들지 않습니다.
         allow, prefix = marks
 
         if reason:
@@ -246,6 +250,7 @@ class DevPolicyAuthority:
 
     # 형식 검사를 통과한 요청의 거절 사유를 돌려준다(허용이면 빈 문자열). state는 보지 않는다
     def decide(self, fields, state=None):
+        # 개발 시험용 허용/거절입니다. 운영 권한 검사와 구별해야 합니다.
         # 실제 lease 표·세대·활성 Goal·배정 판정 자리. 운영 판정 클래스는 state(ExecutorState)를 본다.
         return '' if self.policy == 'dev_allow' else self.deny_reason
 
@@ -288,8 +293,28 @@ class LeaseChecker:
 
         try:
             marks = getattr(self.authority, 'marks', ('', 'accept-'))
-
-            return self.ledger.check(fields, self.decide, self.valid_for_s, marks)
+            guard = getattr(self.authority, 'command_guard', nullcontext)
+            with guard():
+                # 저장된 옛 허용 응답을 꺼내기 전에 현재 권한을 다시 검사합니다.
+                # Operational checks must precede cached replies, too. A durable
+                # old allow is not authority after revoke, expiry or restart.
+                if hasattr(self.authority, 'remaining'):
+                    reason = self.decide(fields)
+                    if reason:
+                        return response(False, reason)
+                    duration = min(self.valid_for_s, self.authority.remaining(fields))
+                else:
+                    duration = self.valid_for_s
+                result = self.ledger.check(fields, self.decide, duration, marks)
+                if result['allowed'] and hasattr(self.authority, 'remaining'):
+                    # 장부 저장이 늦어 기한이 지났다면, 저장 전에는 유효했어도 허용을 반환하지 않습니다.
+                    # fsync may consume the remaining permission lifetime.
+                    reason = self.decide(fields)
+                    if reason:
+                        return response(False, reason)
+                    result['valid_for_s'] = min(
+                        result['valid_for_s'], self.authority.remaining(fields))
+                return result
         except sqlite3.Error:
             return response(False, REASON_RECORD_FAILED)
 

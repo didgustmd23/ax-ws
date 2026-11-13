@@ -24,6 +24,7 @@ def checked_bounds(value):
 
 # 영역 파일을 읽어 버전·좌표계·승인·영역 종류·접근 구역 참조를 검사하고 내용을 돌려준다.
 def load_regions(path):
+    # 파일이 존재해도 운영 승인된 것은 아닙니다. 좌표·버전·경계 형식을 먼저 검사합니다.
     data = json.loads(Path(path).read_text(encoding='utf-8'))
     if (data.get('schema_version') != 1 or not isinstance(data.get('approved'), bool)
             or not data.get('frame_id') or not data.get('world')
@@ -132,6 +133,7 @@ def bounds_polygon(bounds):
 
 
 def polygons_overlap(a, b):
+    # 중심점이 아니라 외곽끼리 비교합니다. 경계에 닿아 있으면 완전 이탈로 처리하지 않습니다.
     """볼록 다각형 두 개가 겹치거나 닿는지(분리축 정리). 닿기만 해도 True다."""
     for polygon in (a, b):
         for i in range(len(polygon)):
@@ -197,6 +199,7 @@ def observe_robot(catalog, outline_bounds, pose, *, frame_id, map_revision, posi
         return everywhere('GEOMETRY_INVALID')
 
     # 3) 통로별 판정
+    # OUTSIDE는 위치 관측일 뿐입니다. 실제 통로 허가·해제는 별도 D3 판단을 거쳐야 합니다.
     result = {}
     for corridor in corridors:
         if corridor.get('bounds') is None:

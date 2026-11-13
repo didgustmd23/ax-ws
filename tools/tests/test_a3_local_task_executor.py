@@ -220,8 +220,8 @@ class LocalTaskExecutorTests(unittest.TestCase):
         self.assertEqual(Path(node.ledger.path).parent,
                          Path(node.get_parameter('execution_db').value).parent)
 
-    # 기본 정책은 dev_deny다
-    def test_default_policy_dev_deny(self):
+    # 기본 정책은 실제 상태가 없으면 거절하는 operational이다.
+    def test_default_policy_operational(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         rclpy.init(args=['--ros-args', '-p', f'robot_id:={ROBOT}', '-p', 'name_check_s:=0.0',
@@ -231,8 +231,8 @@ class LocalTaskExecutorTests(unittest.TestCase):
         node = LocalTaskExecutor()
         self.addCleanup(node.destroy_node)
 
-        self.assertEqual(node.checker.policy, 'dev_deny')
-        self.assertEqual(node.checker.check(tool_request(ROBOT))['reason_code'], 'LEASE_EXPIRED')
+        self.assertEqual(node.checker.policy, 'operational')
+        self.assertEqual(node.checker.check(tool_request(ROBOT))['reason_code'], 'ASSIGNMENT_STALE')
 
     # --- 동시성 ---
 

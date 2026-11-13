@@ -27,7 +27,7 @@ REASON_ORDER = [
     "REINIT_FAILED_AMCL_UNAVAILABLE", "REINIT_FAILED_NOT_RECOVERED", "REINIT_FAILED_TIMEOUT",
     "ESTIMATE_DISCONTINUOUS", "ESTIMATE_INVALID", "ODOM_INVALID", "ODOM_DISCONTINUOUS", "TF_MISSING", "INPUT_LOST",
     "COVARIANCE_LOST",
-    "TF_STALE", "SCAN_STALE", "ODOM_STALE", "ESTIMATE_STALE", "COVARIANCE_HIGH",
+    "TF_STALE", "SCAN_STALE", "ODOM_STALE", "ESTIMATE_STALE", "COVARIANCE_HIGH", "COVARIANCE_COLLAPSED",
 ]
 
 # 개발용 출발값. config/localization_health.yaml이 덮어쓴다.
@@ -41,7 +41,15 @@ DEFAULTS = {
         "estimate_travel_m": 0.5, "estimate_rotation_rad": 0.4,
         "position_std_ok_m": 0.25, "position_std_lost_m": 1.0,
         "yaw_std_ok_rad": 0.15, "yaw_std_lost_rad": 0.5,
+        "position_std_min_m": 0.005, "yaw_std_min_rad": 0.005,
+        "unconstrained_std_per_m": 0.0, "constrained_std_m": 0.12,
         "clock_stall_wall_s": 2.0,
+    },
+    # launch initial_poses(AMCL 매개변수) 초기화는 공분산 0으로 필터를 시작하므로, 확인 뒤 감독 노드가 같은 자세를
+    # 이 표준편차로 한 번 다시 보내 실제 산포를 만든다(InitialSpread).
+    "initial_spread": {
+        "position_std_m": 0.10, "yaw_std_rad": 0.10,
+        "timeout_s": 15.0,
     },
     "trust": {
         "position_std_m": 0.15, "yaw_std_rad": 0.10,
@@ -158,6 +166,18 @@ def covariance_std_detail(covariance):
     xx, yy, yaw = variances
 
     return (math.sqrt(max(xx, yy)), math.sqrt(yaw)), normalized
+
+
+# 공분산이 붕괴(입자가 한 점에 모임)했는지. std=(위치, 방향) 중 하나라도 하한 미만이면 참, std가 None이면 거짓.
+# Nav2 Jazzy AMCL은 launch initial_poses(set_initial_pose)와 lifecycle 재활성 때 공분산 0으로 필터를 다시 시작하고,
+# 정지 중에는 운동 잡음이 0이라 무이동 갱신으로도 산포가 생기지 않는다. 이때의 std 0은 불확실성이 작다는 뜻이 아니다.
+def covariance_collapsed(std, config):
+    if std is None:
+        return False
+
+    h = config["health"]
+
+    return std[0] < h["position_std_min_m"] or std[1] < h["yaw_std_min_rad"]
 
 
 # 자세 값이 모두 유한한지 확인한다.
@@ -286,8 +306,47 @@ class ClockMonitor:
         return (not stalled and not self.reversed and sim > 0.0), jumped_back
 
 
+# 이동 거리 비례 위치 std 하한. AMCL 공분산은 odom 보정 오차(바퀴 반경·윤거 비율 오차)를 무작위 잡음으로만 보므로,
+# 평행 벽 통로처럼 길이 방향 관측이 없는 구간에서는 계통 오차(이동 거리에 비례)를 작은 공분산으로 낸다.
+# 마지막으로 잘 구속된 추정(원래 판정 OK, 위치 std가 position_std_min_m 이상 constrained_std_m 이하) 뒤
+# odom 누적 경로 길이에 unconstrained_std_per_m을 곱한 값을 위치 std 하한으로 쓴다(0이면 끔, 기본 0: 통로 시험 기준 미달).
+# 정지 중에는 경로가 늘지 않으므로 하한도 그대로다. 진단에는 원래 std와 하한을 따로 남긴다.
+class TravelStdFloor:
+    # config: 전체 설정
+    def __init__(self, config):
+        self.config = config
+        self.path_m = 0.0            # 마지막 잘 구속된 추정 뒤 odom 누적 경로(m)
+        self.last_odom = None
+
+    # odom 표본마다 경로를 더한다. 비유한 표본은 건너뛰고 끊김(odom_problem)이면 기준만 다시 잡는다.
+    def on_odom(self, pose, odom_problem=None):
+        if not finite_pose(pose):
+            return
+
+        if self.last_odom is not None and odom_problem is None:
+            self.path_m += difference(self.last_odom, pose)[0]
+
+        self.last_odom = pose
+
+    # 하한을 적용하기 전 판정(raw)이 잘 구속된 추정이면 경로를 0으로 되돌린다.
+    def observe(self, raw):
+        h = self.config["health"]
+
+        if raw.state == OK and h["position_std_min_m"] <= raw.position_std_m <= h["constrained_std_m"]:
+            self.path_m = 0.0
+
+    # 재위치 성공 등으로 추정이 새로 검증되면 경로를 0으로 되돌린다.
+    def reset(self):
+        self.path_m = 0.0
+
+    # 현재 위치 std 하한(m)
+    def floor(self):
+        return self.config["health"]["unconstrained_std_per_m"] * self.path_m
+
+
 # 입력 기록으로 위치 신뢰성 상태를 판정한다(재위치 진행·실패 표시는 호출자가 더한다).
-def evaluate(inputs, now, config, clock_valid=True):
+# std_floor: 위치 std 하한(TravelStdFloor.floor). 공분산 std가 이보다 작으면 이 값을 위치 std로 보고 판정·보고한다.
+def evaluate(inputs, now, config, clock_valid=True, std_floor=0.0):
     h = config["health"]
 
     if not clock_valid:
@@ -331,14 +390,18 @@ def evaluate(inputs, now, config, clock_valid=True):
         elif age > stale:
             degraded.append(code)
 
-    # 공분산(정확도 확정이 아니라 추정 불확실성의 상한 검사)
+    # 공분산(정확도 확정이 아니라 추정 불확실성의 상한 검사). 붕괴 검사는 하한 적용 전 값으로 한다.
     if std is not None:
-        position_std, yaw_std = std
+        collapsed = covariance_collapsed(std, config)
+        position_std, yaw_std = max(std[0], std_floor), std[1]
 
         if position_std > h["position_std_lost_m"] or yaw_std > h["yaw_std_lost_rad"]:
             lost.append("COVARIANCE_LOST")
         elif position_std > h["position_std_ok_m"] or yaw_std > h["yaw_std_ok_rad"]:
             degraded.append("COVARIANCE_HIGH")
+        elif collapsed:
+            # 공분산 0(필터 산포 없음)은 정확하다는 근거가 아니므로 OK로 내지 않는다.
+            degraded.append("COVARIANCE_COLLAPSED")
     else:
         position_std, yaw_std = float("nan"), float("nan")
 
@@ -483,6 +546,87 @@ class OdomHistory:
         self.samples.clear()
 
 
+# AMCL 재시작 감지. 두 신호 중 하나면 재시작으로 본다.
+# - lifecycle 전이: active 상태에서 나가는 전이(deactivate·shutdown). 최초 기동(unconfigured→active)은 해당 없음.
+# - 공분산 붕괴: 이 세션에서 산포가 있는 추정을 받은 뒤 다시 공분산 0 추정이 오면(AMCL 프로세스 재시작 포함).
+#   최초 초기화의 공분산 0 추정은 산포 있는 추정 전이므로 재시작으로 보지 않는다.
+#   감독 노드 sim time이 유효해진 시각(basis_at)보다 이른 stamp의 추정(transient local로 다시 받은 이전 세션 추정)은
+#   세지 않는다(launch 초기 위치 확인과 같은 기준).
+class AmclResetDetector:
+    # config: 전체 설정
+    def __init__(self, config):
+        self.config = config
+        self.spread_seen = False     # 산포 있는(붕괴 아닌) 유효 추정을 받았는지
+
+    # 받아들인 추정(stamp, std)으로 판단한다. 재시작이면 사유 문자열, 아니면 None.
+    # basis_at: 감독 노드 sim time이 처음 유효해진 시각(아직 없으면 None → 판단하지 않음)
+    def on_estimate(self, std, stamp=None, basis_at=None):
+        if std is None or basis_at is None or stamp is None or stamp < basis_at:
+            return None
+
+        if not covariance_collapsed(std, self.config):
+            self.spread_seen = True
+            return None
+
+        return "COVARIANCE_COLLAPSED_AFTER_SPREAD" if self.spread_seen else None
+
+    # lifecycle 전이 사건(시작 상태 label)으로 판단한다. active에서 나가는 전이면 사유, 아니면 None.
+    @staticmethod
+    def on_transition(start_label, goal_label):
+        if start_label == "active":
+            return f"LIFECYCLE_{start_label}_TO_{goal_label}".upper()
+
+        return None
+
+
+# launch initial_poses 최초 초기화의 산포 만들기. launch 초기 위치가 확인(established)됐는데 추정 공분산이 붕괴해 있으면
+# 감독 노드가 현재 자세를 initial_spread 표준편차로 한 번 보낸다(이 세션에서 한 번만). 보낸 뒤 health가 OK가 되고
+# 새 추정 min_updates개를 받거나 timeout_s가 지나면 무이동 갱신 요청을 멈춘다(정지 중 재표본만 반복하면 다시 붕괴하므로).
+class InitialSpread:
+    # config: 전체 설정
+    def __init__(self, config):
+        self.config = config
+        self.sent_at = None
+        self.updates = 0
+        self.done = False
+        self.last_nomotion = None
+        self.result = None           # None(진행·미송신), "SPREAD", "TIMEOUT"
+
+    # 지금 보내야 하는지: 아직 안 보냈고, 시계 유효, launch 초기 위치 확인됨, 현재 추정 공분산 붕괴, 현재 자세 있음
+    def due(self, enabled, established, std, pose, clock_valid):
+        return (enabled and self.sent_at is None and clock_valid and established and finite_pose(pose)
+                and covariance_collapsed(std, self.config))
+
+    # 보낸 시각을 기록한다.
+    def mark_sent(self, now):
+        self.sent_at = now
+
+    # 보낸 뒤의 새 추정을 센다(보낸 시각보다 늦은 stamp, 붕괴하지 않은 것만).
+    def on_amcl(self, stamp, std):
+        if self.sent_at is not None and not self.done and stamp > self.sent_at and std is not None \
+                and not covariance_collapsed(std, self.config):
+            self.updates += 1
+
+    # 진행 상태를 갱신하고 무이동 갱신 요청이 필요한지 돌려준다.
+    def step(self, now, health_ok):
+        if self.sent_at is None or self.done:
+            return False
+
+        if health_ok and self.updates >= self.config["reinit"]["min_updates"]:
+            self.done, self.result = True, "SPREAD"
+            return False
+
+        if now - self.sent_at > self.config["initial_spread"]["timeout_s"]:
+            self.done, self.result = True, "TIMEOUT"
+            return False
+
+        if self.last_nomotion is None or now - self.last_nomotion >= self.config["reinit"]["nomotion_period_s"]:
+            self.last_nomotion = now
+            return True
+
+        return False
+
+
 # 추정 연속성 감시: map→odom TF와 amcl_pose를 직전 비교 기준과 같은 odom 자세에서 비교해 도약을 찾는다.
 # - 비교 기준(reference)은 마지막으로 검증한 map→odom이다. TF 공백·신뢰 기록 유무와 관계없이 유지한다.
 # - 도약이면 latch(LOST·ESTIMATE_DISCONTINUOUS)한다. 해제는 허용된 재위치가 성공했을 때(release)만이다.
@@ -524,6 +668,13 @@ class EstimateMonitor:
         if self.latched is None:
             self.latched = {"source": source, "stamp": stamp, "jump_m": distance, "jump_rad": rotation}
             self.note("LATCHED", source=source, stamp=stamp, jump_m=distance, jump_rad=rotation)
+
+    # AMCL 재시작(lifecycle 재활성·공분산 0 재초기화)을 감지했을 때 latch를 건다. AMCL은 재시작 때 마지막 필터 갱신
+    # 자세로 공분산 0 재초기화를 하므로, 차이가 도약 기준보다 작아도 의도된 변경이 아니다. 해제는 재위치 성공 때만이다.
+    def reset(self, source, stamp, detail):
+        if self.latched is None:
+            self.latched = {"source": source, "stamp": stamp, "jump_m": None, "jump_rad": None, "detail": detail}
+            self.note("LATCHED", source=source, stamp=stamp, detail=detail)
 
     # 의도 후보를 기록한다. 확인 기준은 출처마다 다르다.
     # - START_POSE·REINIT: 감독 노드가 initialpose를 보낸 시각(basis "SENT")이 기준이고, 제한시간도 송신부터 잰다.
@@ -632,7 +783,7 @@ class EstimateMonitor:
             source = self.intent["source"]
             self.reference = map_odom
 
-            if source in ("START_POSE", "LAUNCH_INITIAL_POSE"):
+            if source in ("START_POSE", "LAUNCH_INITIAL_POSE", "INITIAL_SPREAD"):
                 self.established = True
 
             self.note("INTENDED", source=source, valid_time=valid_time)
@@ -1072,7 +1223,8 @@ class Reinitializer:
 
             last = updates[-1]
             converged = (last[2] <= r["recover_position_std_m"] and last[3] <= r["recover_yaw_std_rad"]
-                         and last[2] <= candidate["position_std_m"] * r["recover_std_ratio"])
+                         and last[2] <= candidate["position_std_m"] * r["recover_std_ratio"]
+                         and not covariance_collapsed((last[2], last[3]), self.config))
             consistent = distance <= r["consistency_m"] and rotation <= r["consistency_rad"]
             tf_fresh = (inputs.tf_valid_time is not None and inputs.tf_valid_time > attempt.sent_at
                         and now - inputs.tf_valid_time <= h["tf_stale_s"] and inputs.tf_chain_ok)
@@ -1108,7 +1260,8 @@ class Reinitializer:
         _, position_std, yaw_std = self.after_failure[-1]
         limit = self.attempt.candidate["position_std_m"] * r["recover_std_ratio"] if self.attempt else float("inf")
 
-        return position_std <= min(r["recover_position_std_m"], limit) and yaw_std <= r["recover_yaw_std_rad"]
+        return (position_std <= min(r["recover_position_std_m"], limit) and yaw_std <= r["recover_yaw_std_rad"]
+                and not covariance_collapsed((position_std, yaw_std), self.config))
 
     # 판정 결과에 재위치 진행·실패를 반영한다. 진행·실패는 LOST다.
     # 판정 불가(UNKNOWN·valid=false, 예: CLOCK_INVALID)는 덮지 않고 재위치 사유만 덧붙인다.

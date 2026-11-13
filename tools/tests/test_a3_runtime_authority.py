@@ -1,4 +1,5 @@
 """A3 operational authority regression tests; no ROS or Gazebo required."""
+# [검사 범위] A3 권한 검사: 배정·활성 Goal·세대·만료/철회를 검사합니다. 실제 팔 동작 시험은 아닙니다.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -37,6 +38,7 @@ class RuntimeAuthorityTests(unittest.TestCase):
         self.authority.set_lease('pick-1', 'a' * 32, 7, 101.5)
 
     def test_no_state_and_restart_fail_closed(self):
+        # [핵심] 기록이 없거나 재시작한 상태를 정상 권한으로 추측하지 않아야 합니다.
         self.assertEqual(self.authority.decide(self.fields), 'ASSIGNMENT_STALE')
         self.ready()
         restarted = RuntimeAuthority('robot_1', clock=lambda: self.now)
@@ -66,6 +68,7 @@ class RuntimeAuthorityTests(unittest.TestCase):
             self.authority.set_lease('pick-1', 'a' * 32, 7, 101.4)
 
     def test_old_lease_generation_and_wrong_goal_rejected(self):
+        # [핵심] 다른 로봇·실행·부모 Goal·이전 lease 세대의 명령을 현재 명령처럼 허용하지 않아야 합니다.
         self.ready()
         for field, value, reason in (
                 ('lease_generation', 6, 'LEASE_REVOKED'),
@@ -99,6 +102,7 @@ class RuntimeAuthorityTests(unittest.TestCase):
         self.assertFalse(self.authority.confirm_assignment(reply))
 
     def test_first_send_deadline_and_duplicate_does_not_extend(self):
+        # [핵심] 허용 시간은 최초 요청부터 셉니다. 중복 응답이나 재전송으로 늘어나면 안 됩니다.
         self.authority.begin_assignment_check('slow', 'assignment-1', 3)
         self.now = 101.0
         self.assertTrue(self.confirm('slow'))
@@ -123,6 +127,7 @@ class RuntimeAuthorityTests(unittest.TestCase):
         self.assertEqual(self.authority.decide(self.fields), 'LEASE_REVOKED')
 
     def test_local_retract_requires_active_local_task_and_assignment(self):
+        # [핵심] 일반 팔 후퇴는 현재 RETRACT_ARM 작업과 배정이 있어야 하며 C 조작 권한과 구별합니다.
         self.assertTrue(self.confirm())
         self.authority.activate_goal(self.execution, local_task_kind=6)
         fields = dict(self.fields, authority=2, goal_id='', lease_generation=0,

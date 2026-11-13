@@ -1,6 +1,7 @@
-# AX 공통 인터페이스 계약 초안 (K0)
+# AX 공통 인터페이스 계약 (K0)
 
-> 상태: **초안**. 생산자·소비자 승인 전이며 구현·동작을 뜻하지 않는다.
+> 상태: **확정**(K0 승인 2026-11-08, 7.1절 '이의 없으면 승인'). 승인 뒤 의미를 바꾸면 1절 규칙(`schema_version`·`ax_interfaces` 패키지 버전 증가, 생산자·소비자 통지)을 따른다.
+> 숫자 값은 P2 실측(11-22까지)으로 확정하는 출발값이며, 이 계약 문서는 구현·동작 완료를 뜻하지 않는다.
 > 기준 설계는 [통합 상세설계](DETAILED_DESIGN.md) 6·7절, 일정은 [팀 공통 일정](../management/TEAM_SCHEDULE.md)의 K0(W0~W1, 승인 11-08)이다.
 > 타입 정의는 `src/ax_interfaces/`의 `.msg`·`.srv`·`.action`이며, 이 문서는 이름·방향·QoS·최신성·소유 작업을 정한다.
 > 구성도: [인터페이스 관계](../assets/diagrams/ax-interfaces.html)(4절 묶음 개요) · [lease·명령 확인 순서](../assets/diagrams/ax-lease.html)(5.2절). 구성도는 이름·방향만 보이며 값의 기준은 이 문서다.
@@ -141,8 +142,10 @@
   - 판정할 수 없을 때만 `valid=false`·`state=UNKNOWN`이고, `validity_reason`에 그 이유를 적는다.
   - 사유가 여럿이면 심각한 순으로 `,`로 잇는다. 코드는 D-19 "위치"를 따른다.
   - `OK`는 위치 추정 입력·연결과 추정 불확실성이 개발 기준 안이라는 뜻이다. 정확도가 검증됐다는 뜻은 아니다. 공분산만으로 정확도를 확정하지 않는다.
+  - 추정 공분산이 붕괴(B2 설정 하한 미만, 예: AMCL 매개변수 초기화·재활성의 공분산 0)하면 `OK`가 아니라 `DEGRADED`·`COVARIANCE_COLLAPSED`다. launch 초기 위치는 B2가 같은 자세를 공분산과 함께 한 번 다시 보내 산포를 만든다.
 - **추정 도약(`ESTIMATE_DISCONTINUOUS`) 규칙:**
   - B2는 직전 비교 기준 추정과 새 추정(TF·`amcl_pose`)을 같은 odom 자세에서 비교해 개발 기준(B2 설정 `estimate_jump`)을 넘으면 `state=LOST`·`ESTIMATE_DISCONTINUOUS`로 고정(latch)한다. 마지막 신뢰 위치는 덮어쓰지 않는다.
+  - 같은 실행 세션에서 AMCL 재시작(lifecycle이 active를 떠나는 전이, 또는 산포 있는 추정 뒤 공분산 붕괴 추정)도 차이와 관계없이 같은 latch로 처리한다. AMCL은 재시작 때 마지막 필터 갱신 자세로 공분산 0 재초기화를 하므로 의도된 변경이 아니다.
   - 해제는 B2가 접수한 재위치가 완료 조건으로 성공했을 때만이다. 공분산 감소·시간 경과·같은 추정 재수신으로는 해제하지 않는다. 재위치 실패·거절이면 `LOST`를 유지한다.
   - B2가 보낸 초기 위치·재위치 후보, 또는 B2 launch가 AMCL 매개변수로 넣은 초기 위치 후보와 그 뒤 새 추정이 맞는 경우만 의도된 변경으로 본다. 외부 `initialpose`는 의도된 변경으로 보지 않는다.
   - 같은·역행 stamp 추정은 새 추정으로 세지 않는다(재위치 완료 조건의 새 추정 수 포함).
@@ -261,6 +264,7 @@ lease·명령 수락 규칙의 기준은 이 절이다. 다른 절은 이 절을
   누락·형식 오류(`goal_id`가 소문자 16진수 32자가 아님)·종료된 부모 Goal·이전 세대·다른 배정은 거절한다. `AUTH_A3_LOCAL_TASK`는 `RETRACT_ARM` 외의 로컬 작업에는 쓸 수 없어, 다른 로컬 작업이 이 경로로 팔을 움직이지 못한다. C의 조작 없이 하는 후퇴에 가짜 `ManipulateObject` Goal이나 임의 lease를 쓰지 않는다. 허용이면 A3는 **수락 기록을 먼저 남긴 뒤** 응답한다.
 - **허용 응답 표시:** 허용 응답의 `reason_code`는 운영 A3에서 빈 문자열이다. 개발 정책 서버만 `DEV_POLICY_ALLOW`를 넣고 `accept_record_id`에 `devpolicy-` 접두어를 붙인다.
 - **멱등:** 같은 `request_id`의 재전송은 기존 결과만 돌려주며 세대 증가·추가 수락 기록·물리 실행을 만들지 않는다. 같은 `request_id`나 같은 `command_id`에 인자(digest)가 다르면 거절한다(`DUPLICATE_REQUEST`). 기한이 지나 새 `request_id`로 다시 확인하더라도 `command_id`가 같으면 같은 물리 명령이다. A3는 기존 수락 기록을 재사용하고 새 기록을 만들지 않으며, A2·A4는 그 명령을 다시 실행하지 않는다.
+  - **운영 권한 재검사 예외:** 인자 불일치 검사를 권한 재검사보다 먼저 수행한다. 최초 거절도 원장에 저장하며 같은 요청은 이후 권한이 생겨도 허용으로 바뀌지 않는다. 저장된 허용은 현재 권한의 철회·만료·Goal 종료·배정 상실로 거절할 수 있다. 이 거절을 같은 요청의 응답에 내구성 있게 저장하고 기존 수락 기록은 보존한다. 이후 같은 요청은 저장된 거절만 반환하며 수락 기록을 추가하지 않는다. 저장된 허용 재전송의 `valid_for_s`는 현재 남은 권한 기한 이하로 줄일 수 있으며 최초 수신 기한을 갱신하지 않는다. 원장 저장 실패 시 `A3_RECORD_FAILED`로 거절한다.
 - **재전송 금지:** A2·A4는 무응답에 같은 `request_id`를 짧은 간격으로 재전송하지 않는다(rmw 중복 수신으로 서버 부하가 커진 사례, 2026-11-12 측정). 기한이 지나면 새 `request_id`로 다시 확인한다.
 - **실행 조건과 기한:** A2·A4는 `request_id`마다 **최초 송신 시각 `t_first`**(CLOCK_BOOTTIME)를 기록한다. 같은 요청을 재전송해도 `t_first`는 바꾸지 않는다. 허용 기한은 항상 `t_first + valid_for_s`이며, 응답 수신 시각이나 재전송 시각부터 권한을 늘리지 않는다. `allowed=false`, 무응답, 기한 경과 중 하나라도 해당하면 명령을 실행하지 않는다. 기한이 지났으면 캐시된 `allowed=true` 응답도 실행 권한으로 쓰지 않고, 새 `request_id`로 A3가 현재 권한을 다시 검사하게 한다. 프로세스 재시작 등으로 `t_first`를 잃으면 과거 응답을 재사용하지 않고 새 요청으로 확인한다. A3는 `valid_for_s`를 그 권한의 남은 기한(lease 또는 배정 확인 기한)보다 길게 주지 않는다.
 - **진행 중 확인:** 실행이 허용 기한보다 길면 A4는 lease 갱신 주기(D-07의 0.5 s)마다 `CONTINUE`로 다시 확인한다. `CONTINUE`는 새 수락 기록을 만들지 않는다. 거절·무응답으로 기한이 지나거나 `lease/revoke`를 받으면 A4는 진행 중 궤적을 검증된 방식으로 정지한다. 이 Service는 상위 명령 단위로 쓰며 관절 제어 주기마다 호출하지 않는다. `CONTINUE`는 그 `command_id`의 `ACCEPT` 수락 기록이 있을 때만 허용하고, 없으면 `AUTHORITY_INVALID`로 거절한다.
@@ -383,7 +387,7 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 | D-16 | 계약에서 새로 정한 이름 | `source_session_id`·`a_session_id`·`d_session_id`·`sequence`·`lease_generation`, 목록 메시지 7종, `missing_sources`, `RECORDED_ONLY`, `ToolCommand`, `PlanCondition`, `RobotStopPose`, 인계 상태 `TRANSFER_*`, `TimeValidity`(`REVERSED`·`RTF_OUT_OF_RANGE` 등), `LocalizationHealth`(`OK`·`DEGRADED`·`LOST`), `RegisteredLocation` 상태, `FailureEvent.classification`, `ActuationState` `RUNNING`·`FAULT`, `object_hold_state`, `observation_reason`·`observation_target`, `failures/report`, 보조 Service `ReleaseCorridor`·`QueryBudget`·`ClearFault`·`RequestSafeStop`, `FailureEventList`, lease 요청 `kind`(`FIRST`·`RENEW`)·`c_session_id`, 작업 `priority`·`deferred`·`schedule_revision`, 계획 단계 `task_id`, 로컬 작업 `pick_pose`·`place_pose`, lease `goal_id`, 적재함 frame `robot_<n>/cargo_link`, 보호 팔 궤적 `ProtectedArmTrajectory`(`arm/execute_trajectory`), 명령 확인 `CheckCommandLease`(`executor/lease/check_command`)와 권한 종류 `AUTH_C_MANIPULATION`·`AUTH_A3_LOCAL_TASK`, 명령의 부모 `goal_id`, lease 철회 `goal_id`, snapshot `open_failures`, 계획 `task_ids`. 설계 숫자 `SafetyState.CLEAR=0` 등은 유지 | 전원 | |
 | D-17 | 전체 계획 제출 경로 | 제안 종류가 아니라 별도 `AgentPlan` Topic(`/ax/fleet/agent/agent_central/plan`). 본설계 5.2·7.6절에 반영됨 | D4·E1·E3 | |
 | D-18 | 운영 중 모드 상향 | D는 자동 상향하지 않는다. 운영자 상향 요청은 `SYSTEM_NORMAL`이고 진행 중 그룹 작업이 없으며(작업 경계) ASSISTED는 인증 검증 완료일 때만 수락. 그 밖에는 거절 | D4·E3 | |
-| D-19 | 사유 코드 목록 | **안전(`SafetyState.reason_code`)**: `NONE`·`OBSTACLE_SLOWDOWN`·`OBSTACLE_STOP`·`SENSOR_STALE`·`SENSOR_INVALID`·`REAR_SENSOR_INVALID`·`LOCALIZATION_INVALID`. **Agent 결정(`AgentDecision.reason_code`)**: `OK`·`MODE_RECORD_ONLY`·`RECEIVER_NOT_ACTIVE`·`AUTH_FAILED`·`SCHEMA_INVALID`·`STALE_SNAPSHOT`·`STALE_GENERATION`·`TARGET_OUT_OF_SCOPE`·`PERMISSION_DENIED`·`EVIDENCE_MISMATCH`·`PRECONDITION_FAILED`·`BUDGET_EXHAUSTED`(접수 예산 소진)·`RATE_LIMITED`(빈도 초과). 그 밖의 `reason_code`는 D-12 구동 차단 사유 또는 D-13 오류 코드를 쓴다. **위치(`LocalizationHealth.meta.validity_reason`, 4.2절)**: 판정 불가(`UNKNOWN`) `NOT_INITIALIZED`·`CLOCK_INVALID`, 저하(`DEGRADED`) `SCAN_STALE`·`ODOM_STALE`·`TF_STALE`·`ESTIMATE_STALE`·`COVARIANCE_HIGH`, 상실(`LOST`) `ESTIMATE_DISCONTINUOUS`·`TF_MISSING`·`ESTIMATE_INVALID`·`ODOM_INVALID`·`ODOM_DISCONTINUOUS`·`COVARIANCE_LOST`·`INPUT_LOST`·`REINIT_IN_PROGRESS`·`REINIT_FAILED_TIMEOUT`·`REINIT_FAILED_NOT_STOPPED`·`REINIT_FAILED_NOT_RECOVERED`·`REINIT_FAILED_AMCL_UNAVAILABLE`·`REINIT_FAILED_CLOCK_INVALID`. 판정 불가(`UNKNOWN`·`valid=false`)일 때 재위치 진행·실패 코드와 `ESTIMATE_DISCONTINUOUS`는 판정 불가 사유 뒤에 덧붙이며 `valid=true`로 바꾸지 않는다. **재위치 응답(`Trigger.message`)**: `REINIT_ACCEPTED`·`REINIT_IN_PROGRESS`, 거절 `REINIT_REJECTED_NOT_STOPPED`·`REINIT_REJECTED_ACTUATION_STALE`·`REINIT_REJECTED_NO_TRUSTED_POSE`·`REINIT_REJECTED_TRUSTED_POSE_EXPIRED`·`REINIT_REJECTED_MOTION_TOO_LARGE`·`REINIT_REJECTED_ODOM_DISCONTINUOUS`·`REINIT_REJECTED_MAP_CHANGED`·`REINIT_REJECTED_CLOCK_INVALID`·`REINIT_REJECTED_NOT_NEEDED`(이미 `OK`) | B2·B4·D4·E3 | |
+| D-19 | 사유 코드 목록 | **안전(`SafetyState.reason_code`)**: `NONE`·`OBSTACLE_SLOWDOWN`·`OBSTACLE_STOP`·`SENSOR_STALE`·`SENSOR_INVALID`·`REAR_SENSOR_INVALID`·`LOCALIZATION_INVALID`. **Agent 결정(`AgentDecision.reason_code`)**: `OK`·`MODE_RECORD_ONLY`·`RECEIVER_NOT_ACTIVE`·`AUTH_FAILED`·`SCHEMA_INVALID`·`STALE_SNAPSHOT`·`STALE_GENERATION`·`TARGET_OUT_OF_SCOPE`·`PERMISSION_DENIED`·`EVIDENCE_MISMATCH`·`PRECONDITION_FAILED`·`BUDGET_EXHAUSTED`(접수 예산 소진)·`RATE_LIMITED`(빈도 초과). 그 밖의 `reason_code`는 D-12 구동 차단 사유 또는 D-13 오류 코드를 쓴다. **위치(`LocalizationHealth.meta.validity_reason`, 4.2절)**: 판정 불가(`UNKNOWN`) `NOT_INITIALIZED`·`CLOCK_INVALID`, 저하(`DEGRADED`) `SCAN_STALE`·`ODOM_STALE`·`TF_STALE`·`ESTIMATE_STALE`·`COVARIANCE_HIGH`·`COVARIANCE_COLLAPSED`(공분산 붕괴), 상실(`LOST`) `ESTIMATE_DISCONTINUOUS`·`TF_MISSING`·`ESTIMATE_INVALID`·`ODOM_INVALID`·`ODOM_DISCONTINUOUS`·`COVARIANCE_LOST`·`INPUT_LOST`·`REINIT_IN_PROGRESS`·`REINIT_FAILED_TIMEOUT`·`REINIT_FAILED_NOT_STOPPED`·`REINIT_FAILED_NOT_RECOVERED`·`REINIT_FAILED_AMCL_UNAVAILABLE`·`REINIT_FAILED_CLOCK_INVALID`. 판정 불가(`UNKNOWN`·`valid=false`)일 때 재위치 진행·실패 코드와 `ESTIMATE_DISCONTINUOUS`는 판정 불가 사유 뒤에 덧붙이며 `valid=true`로 바꾸지 않는다. **재위치 응답(`Trigger.message`)**: `REINIT_ACCEPTED`·`REINIT_IN_PROGRESS`, 거절 `REINIT_REJECTED_NOT_STOPPED`·`REINIT_REJECTED_ACTUATION_STALE`·`REINIT_REJECTED_NO_TRUSTED_POSE`·`REINIT_REJECTED_TRUSTED_POSE_EXPIRED`·`REINIT_REJECTED_MOTION_TOO_LARGE`·`REINIT_REJECTED_ODOM_DISCONTINUOUS`·`REINIT_REJECTED_MAP_CHANGED`·`REINIT_REJECTED_CLOCK_INVALID`·`REINIT_REJECTED_NOT_NEEDED`(이미 `OK`) | B2·B4·D4·E3 | |
 
 ### 7.2 지켜야 할 규칙 (확인만)
 
@@ -397,7 +401,7 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 **운영·작업**
 - 입고 사건 1건에 작업 1개. 같은 상자의 반복 관측은 새 작업이 아니다. 관측 출처(센서·정답 기반)를 구분한다.
 - 물체 상태가 C 보유 판정·A 적재 판정과 모순되면 성공으로 처리하지 않는다.
-- 통로 활성 허가는 1 이하. `OCCUPIED`·`BLOCKED_UNKNOWN`에서 신규 허가 없음. 점유 확인 없이 해제하지 않는다.
+- 통로당 활성 허가는 1 이하이며 로봇당 활성 허가도 1 이하이다. 기존 통로를 해제하기 전 다른 통로 허가는 발급하지 않는다. `OCCUPIED`·`BLOCKED_UNKNOWN`에서 신규 허가 없음. 점유 확인 없이 해제하지 않는다.
 - 운영 중 모드 자동 상향 금지(운영자 상향은 D-18), 인증 검증 전 ASSISTED 금지. SAFE_STOP 해제는 개별 잠금 해제가 아니다.
 - 실패는 사람 응답 없이 종료·격리·알림으로 기록하고 재시작 후에도 조회된다.
 
@@ -426,13 +430,13 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 
 | 묶음 | 생산자 | 소비자 | 상태 | 확정일 |
 |---|---|---|---|---|
-| 운영·작업(4.1) | D2·D3·D4·A3·A4·B3·B4·C1·C4·감독기 | A·B·C·D·E·관제 | 초안 | |
-| 안전·위치(4.2) | A4·B2·B3·B4 | A4·B3·B4·C4·D | 초안 | |
-| 로컬 실행·조작·적재(4.3) | A1·A2·A3·A4·B1·C3·C4·D4 | A3·A4·B1·C·D2·D4 | 초안 | |
-| Agent(4.4) | D4·E3(E1·E2 출력은 E3 어댑터 경유) | D4·E | 초안 | |
+| 운영·작업(4.1) | D2·D3·D4·A3·A4·B3·B4·C1·C4·감독기 | A·B·C·D·E·관제 | 승인 | 2026-11-08 |
+| 안전·위치(4.2) | A4·B2·B3·B4 | A4·B3·B4·C4·D | 승인 | 2026-11-08 |
+| 로컬 실행·조작·적재(4.3) | A1·A2·A3·A4·B1·C3·C4·D4 | A3·A4·B1·C·D2·D4 | 승인 | 2026-11-08 |
+| Agent(4.4) | D4·E3(E1·E2 출력은 E3 어댑터 경유) | D4·E | 승인 | 2026-11-08 |
 
 작업 ID의 담당자는 [번호별 작업자 배정](../management/TEAM_SCHEDULE.md#번호별-작업자-배정)을 따른다.
-이의 마감 후 결정 항목과 타입 필드 구성이 확정되면 네 묶음을 함께 "승인"으로 바꾸고 확정일을 적는다. 양현승이 공유한 초안에 생산자·소비자가 기한 내 이의를 제기하지 않으면 공동 검토를 거친 것으로 확정한다.
+이의 마감(11-06)까지 이의가 없어 결정 항목과 타입 필드 구성을 확정했고, 네 묶음을 2026-11-08 함께 승인했다. 양현승이 공유한 초안에 생산자·소비자가 기한 내 이의를 제기하지 않으면 공동 검토를 거친 것으로 확정한다.
 
 ## 8. 세부 결정
 

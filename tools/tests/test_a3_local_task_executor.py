@@ -6,6 +6,7 @@
 환경 변수 AX_LOCAL_EXECUTOR_LATENCY_OUT을 주면 측정 결과 json을 그 경로에 쓴다.
 AX_LOCAL_EXECUTOR_LEASE_MODE(reentrant 기본 | mutex | dedicated)로 lease 콜백 구성을 바꿔 비교할 수 있다(진단용).
 """
+# [검사 범위] 통합 A3의 모의 Action·권한 서비스·동시 처리·응답 지연을 확인합니다.
 from copy import deepcopy
 import json
 import os
@@ -29,11 +30,29 @@ from rclpy.node import Node
 TESTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TESTS.parents[1] / 'src/ax_task_executor'))
 sys.path.insert(0, str(TESTS))
+import ros_test_domain  # noqa: E402
 from ax_task_executor.local_task_executor import LocalTaskExecutor, lease_service_name  # noqa: E402
 from ax_task_executor.lease_check import LeaseCheckServer  # noqa: E402
 from ax_task_executor.mock_executor import execute_action_name  # noqa: E402
 from test_a3_lease_check import (  # noqa: E402
     check_tool_attach_goal_id, load_suction_tool_node, tool_request)
+
+# 이 모듈의 시험은 프로세스 안에서 rclpy.init을 여러 번 부르므로, 모듈 전체에 A3 시험 범위 domain 하나를 잡아
+# 환경변수로 쓴다(하위 프로세스도 물려받음). 계약 경로(/ax/<robot>/executor/...) 서비스가 이미 있으면 시작하지 않는다.
+A3_CONTRACT_SERVICES = r'^/ax/[^/]+/executor/'
+_DOMAIN_STATE = None
+
+
+# 모듈 시작 때 domain을 잡는다.
+def setUpModule():
+    global _DOMAIN_STATE
+    _DOMAIN_STATE = ros_test_domain.enter_module_domain(ros_test_domain.A3_DOMAINS, A3_CONTRACT_SERVICES)
+
+
+# 모듈이 끝나면 환경변수를 되돌리고 잠금을 푼다.
+def tearDownModule():
+    ros_test_domain.leave_module_domain(_DOMAIN_STATE)
+
 
 ROBOT = 'robot_1'
 Request = CheckCommandLease.Request
@@ -238,6 +257,7 @@ class LocalTaskExecutorTests(unittest.TestCase):
 
     # Action 대기·취소 처리·중복 Goal 대기 중에도 lease 응답이 막히지 않는다
     def test_lease_not_blocked_by_action(self):
+        # [핵심] 모의 작업이 대기·취소 중이어도 권한 서비스가 함께 응답할 수 있는지 확인합니다.
         self.start(delay=2.0)
         action = self.client()
         workers = [self.client() for _ in range(3)]
@@ -271,6 +291,7 @@ class LocalTaskExecutorTests(unittest.TestCase):
 
     # 같은 command_id를 여러 클라이언트가 동시에 ACCEPT해도 수락 기록은 하나다
     def test_concurrent_same_command_single_record(self):
+        # [핵심] 여러 요청이 동시에 와도 같은 물리 명령의 수락 영수증은 하나만 남아야 합니다.
         node = self.start()
         clients = [self.client() for _ in range(4)]
         command = uuid.uuid4().hex
@@ -292,6 +313,7 @@ class LocalTaskExecutorTests(unittest.TestCase):
 
     # Action 작업이 계속 도는 동안 lease 1000회 왕복 p50·p99·max
     def test_lease_latency_under_action_load(self):
+        # [핵심] 부하 중 실제 응답 시간을 측정합니다. 통과를 위해 시간 기준이나 요청 수를 바꾸지 않습니다.
         node = self.start(delay=0.3)
         action = self.client()
         workers = [self.client() for _ in range(4)]
@@ -422,6 +444,7 @@ class LocalTaskExecutorTests(unittest.TestCase):
 
     # 같은 로봇의 lease 서버가 이미 있으면 local_task_executor 시작을 거절한다. threads < 2도 거절
     def test_refuses_duplicate_server_and_bad_threads(self):
+        # [핵심] 같은 로봇의 서버 중복 실행과 잘못된 스레드 설정을 시작 단계에서 거절해야 합니다.
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         rclpy.init(args=['--ros-args', '-p', f'robot_id:={ROBOT}',

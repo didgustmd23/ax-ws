@@ -9,7 +9,8 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
 - AMCL: /ax/<robot_id>/amcl. 입력 /ax/<robot_id>/sensors/front_lidar/scan_filtered(B1, scan:=raw면 원시 스캔),
   초기 위치 /ax/<robot_id>/initialpose, 추정 /ax/<robot_id>/amcl_pose, TF map → <robot_id>/odom.
 - initial_poses는 로봇별 시험용 초기 위치(map 기준 x, y, yaw)다. 지정하지 않은 로봇은 initialpose 토픽을 기다린다.
-  감독 노드에는 최초 초기화 확인 후보로만 넘긴다(감독 노드는 initialpose를 보내지 않는다).
+  감독 노드에는 최초 초기화 확인 후보로 넘긴다. AMCL이 공분산 0으로 시작하므로 감독 노드가 확인 뒤 같은 자세를
+  공분산과 함께 한 번 다시 보낸다(INITIAL_SPREAD).
 - lifecycle: launch가 map_server와 각 AMCL에 configure → activate를 보낸다(launch_ros LifecycleNode).
   nav2 lifecycle_manager는 쓰지 않는다. 시험에서 configure 응답이 DDS 발견 경합으로 유실되자 시간 제한 없이 멈췄고,
   bond가 끊긴 AMCL에 다시 붙으면 launch 초기 위치로 조용히 재초기화되기 때문이다.
@@ -32,6 +33,7 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
 
 import json
 import math
+import os
 import time
 from pathlib import Path
 
@@ -212,11 +214,16 @@ class StartupMonitor:
         return {"status": self.status, "timeout_s": self.timeout_s, "elapsed_s": self.elapsed(),
                 "failure": self.failure, "nodes": self.nodes}
 
-    # 결과 JSON을 쓴다(지정한 경우만).
+    # 결과 JSON을 쓴다(지정한 경우만). 같은 폴더의 임시 파일에 쓴 뒤 이름을 바꿔(os.replace)
+    # 읽는 쪽이 쓰는 도중의 빈 파일·일부 내용을 보지 않게 한다.
     def write_report(self):
-        if self.report is not None:
-            self.report.parent.mkdir(parents=True, exist_ok=True)
-            self.report.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
+        if self.report is None:
+            return
+
+        self.report.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.report.with_name(f".{self.report.name}.{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(temporary, self.report)
 
     # 실패를 확정하고 기록한 뒤 예외로 launch를 끝낸다. 이미 끝난 상태면 아무것도 하지 않는다.
     def fail(self, label, stage, reason):

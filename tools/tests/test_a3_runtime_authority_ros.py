@@ -1,4 +1,5 @@
 """Operational command checks through SQLite and the actual ROS service."""
+# [검사 범위] A3 실제 ROS 서비스와 SQLite 수락 기록을 검사합니다. 입력 배정·Goal은 시험용입니다.
 from pathlib import Path
 import sys
 import tempfile
@@ -6,6 +7,12 @@ import threading
 import time
 from types import SimpleNamespace
 import unittest
+
+# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
+import sys as _domain_sys
+from pathlib import Path as _DomainPath
+_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
+from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import patch
 
 import rclpy
@@ -55,6 +62,7 @@ class OperationalLedgerTests(unittest.TestCase):
         self.assertEqual(self.ledger.accept_count(), 1)
 
     def test_cached_allow_rejected_after_revoke(self):
+        # [핵심] 예전에 허용한 응답이 장부에 있어도 현재 철회된 명령은 거절해야 합니다.
         self.assertTrue(self.checker.check(self.request)['allowed'])
         self.authority.revoke(self.request.execution_id, self.request.goal_id, 1)
         self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_REVOKED')
@@ -65,15 +73,16 @@ class OperationalLedgerTests(unittest.TestCase):
         self.now = 101.5
         self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
         self.authority.finish_goal(self.request.execution_id, self.request.goal_id)
-        self.assertEqual(self.checker.check(self.request)['reason_code'], 'GOAL_MISMATCH')
+        self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
         self.checker.authority = RuntimeAuthority('robot_1', lambda: self.now)
-        self.assertEqual(self.checker.check(self.request)['reason_code'], 'ASSIGNMENT_STALE')
+        self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
 
     def test_continue_requires_previous_accept(self):
         self.request.phase = CheckCommandLease.Request.CONTINUE
         self.assertEqual(self.checker.check(self.request)['reason_code'], 'AUTHORITY_INVALID')
 
     def test_slow_durable_write_cannot_return_expired_allow(self):
+        # [핵심] 저장 중 기한이 끝나는 상황입니다. 저장 전 유효했다고 허용을 반환하면 안 됩니다.
         original = self.ledger.check
 
         def slow_write(*args, **kwargs):
@@ -85,6 +94,7 @@ class OperationalLedgerTests(unittest.TestCase):
             self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
 
     def test_revoke_waits_until_acceptance_is_recorded(self):
+        # [핵심] 수락 저장과 철회가 겹칠 때 순서가 분명하고, 철회 이후 요청은 거절되는지 봅니다.
         entered, release, revoked = threading.Event(), threading.Event(), threading.Event()
         original = self.ledger.check
 

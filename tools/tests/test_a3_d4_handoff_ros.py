@@ -1,9 +1,16 @@
 """A3 -> mock D4 checks and real A3 service requests shaped like team A4."""
+# [검사 범위] A3와 모의 D4의 배정 요청·응답을 연결합니다. 승연님 실제 D4 원장 검증은 아닙니다.
 from pathlib import Path
 import sys
 import tempfile
 import time
 import unittest
+
+# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
+import sys as _domain_sys
+from pathlib import Path as _DomainPath
+_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
+from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 
 import rclpy
 from ax_interfaces.msg import AssignmentCheckRequest, AssignmentCheckResponse, ExecutionRef
@@ -19,6 +26,7 @@ class AssignmentHandoffTests(unittest.TestCase):
     """Do not implement or modify the other owner's D4 assignment ledger."""
 
     def test_periodic_d4_confirmation_a4_continue_and_lost_peer(self):
+        # [핵심] D4 응답을 끊었다 복구합니다. 주기 요청과 A4 형식의 CONTINUE가 만료를 지키는지 봅니다.
         with tempfile.TemporaryDirectory() as folder:
             rclpy.init(args=['--ros-args', '-p', 'robot_id:=robot_1',
                              '-p', 'name_check_s:=0.0', '-p', 'use_sim_time:=true',

@@ -7,6 +7,11 @@
   safety/actuation_state(A4, 재위치 전 실제 정지 확인)
 - 고정 출발 위치: start_pose_* 매개변수가 있으면 이 세션에서 AMCL이 처음 active가 됐을 때 한 번만 initialpose로 보낸다.
   위치를 잃었다는 이유로 다시 보내지 않는다.
+- launch initial_poses 산포: AMCL은 매개변수 초기 위치를 공분산 0으로 시작한다. 그 초기 위치가 확인되면 같은 자세를
+  initial_spread 표준편차로 이 세션에서 한 번 initialpose로 보내고, OK가 될 때까지 무이동 갱신을 요청한다.
+  공분산 0 추정은 OK로 내지 않는다(DEGRADED COVARIANCE_COLLAPSED).
+- AMCL 재시작: lifecycle 전이 사건(amcl/transition_event)에서 active를 떠나는 전이, 또는 산포 있는 추정 뒤 다시 공분산 0
+  추정이 오면 LOST(ESTIMATE_DISCONTINUOUS)로 latch한다. 해제는 재위치 성공 때만이다.
 - 로봇을 움직이지 않는다. 판단 로직은 localization_health.py에 있다.
 - 입력 stamp: amcl_pose·map→odom TF는 늦은 stamp만 받아들인다. 같은 stamp는 값이 같으면 중복, 다르면 충돌로
   나누고 갱신 수·회복 근거에 넣지 않는다(오래된 TF가 최신 추정을 덮지 않음).
@@ -32,6 +37,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profi
 from rclpy.time import Time
 
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from lifecycle_msgs.msg import TransitionEvent
 from lifecycle_msgs.srv import GetState
 from nav_msgs.msg import OccupancyGrid, Odometry
 from sensor_msgs.msg import LaserScan
@@ -109,6 +115,10 @@ class LocalizationSupervisor(Node):
         self.tf_gate = lh.StampGate()
         self.odom_history = lh.OdomHistory(self.config["estimate_jump"]["odom_history_s"])
         self.monitor = lh.EstimateMonitor(self.config)
+        self.reset_detector = lh.AmclResetDetector(self.config)
+        self.spread = lh.InitialSpread(self.config)
+        self.travel_floor = lh.TravelStdFloor(self.config)
+        self.clock_valid_at = None   # sim time이 처음 유효해진 시각(재시작 감지에서 이전 세션 추정 배제)
         self.map_id = None
         self.start_pose_sent = False
         self.health = lh.Health(lh.UNKNOWN, False, "NOT_INITIALIZED")
@@ -131,6 +141,7 @@ class LocalizationSupervisor(Node):
         self.create_subscription(LaserScan, "sensors/front_lidar/scan_filtered", self.on_scan, qos_profile_sensor_data)
         self.create_subscription(Odometry, "diff_drive_controller/odom", self.on_odom, 50)
         self.create_subscription(ActuationState, "safety/actuation_state", self.on_actuation, STATE_QOS)
+        self.create_subscription(TransitionEvent, "amcl/transition_event", self.on_amcl_transition, 10)
 
         # 출력
         self.publisher = self.create_publisher(LocalizationHealth, "localization/health", STATE_QOS)
@@ -203,6 +214,15 @@ class LocalizationSupervisor(Node):
 
         decision = self.monitor.on_amcl(stamp, pose, self.odom_history)
         self.note_input("amcl", stamp, verdict, decision, pose)
+        std = lh.covariance_std(tuple(message.pose.covariance)) if lh.finite_pose(pose) else None
+        reset = self.reset_detector.on_estimate(std, stamp, self.clock_valid_at)
+
+        # 산포 있는 추정 뒤의 공분산 0 추정은 AMCL 재초기화(재시작)다. 차이가 작아도 의도된 변경이 아니므로 latch한다.
+        if reset is not None:
+            self.get_logger().warn(f"AMCL 재초기화 감지({reset}): LOST(ESTIMATE_DISCONTINUOUS), 재위치 필요")
+            self.monitor.reset("amcl_reset", stamp, reset)
+
+        self.spread.on_amcl(stamp, std)
         self.inputs.amcl_stamp = stamp
         self.inputs.amcl_pose = pose
         self.inputs.amcl_covariance = tuple(message.pose.covariance)
@@ -212,6 +232,18 @@ class LocalizationSupervisor(Node):
         self.continuity.note_amcl(stamp)
         self.inputs.amcl_after_break = self.continuity.amcl_after_break
         self.reinit.on_amcl(stamp, pose, message.pose.covariance)
+
+    # AMCL lifecycle 전이 사건. active를 떠나는 전이(deactivate·shutdown)면 재시작으로 보고 latch한다.
+    def on_amcl_transition(self, message):
+        reset = self.reset_detector.on_transition(message.start_state.label, message.goal_state.label)
+        now = self.now()
+
+        if reset is not None:
+            self.get_logger().warn(f"AMCL lifecycle 전이 감지({reset}): LOST(ESTIMATE_DISCONTINUOUS), 재위치 필요")
+            self.monitor.reset("amcl_lifecycle", now, reset)
+
+        self.write_diagnostics("amcl_transition", now, self.health, start=message.start_state.label,
+                               goal=message.goal_state.label, reset=reset)
 
     # 스캔 수신 시각
     def on_scan(self, message):
@@ -229,6 +261,7 @@ class LocalizationSupervisor(Node):
             self.tracker.invalidate(problem)
 
         self.tracker.on_odom(pose)
+        self.travel_floor.on_odom(pose, problem)
         self.odom_history.add(stamp, pose)
         self.inputs.odom_break_at = self.continuity.broken_at
         self.inputs.amcl_after_break = self.continuity.amcl_after_break
@@ -261,6 +294,9 @@ class LocalizationSupervisor(Node):
         now = self.now()
         self.clock_valid, jumped_back = self.clock_monitor.update(now, time.monotonic())
 
+        if self.clock_valid and self.clock_valid_at is None:
+            self.clock_valid_at = now
+
         if jumped_back:
             self.get_logger().warn("sim time 역행: 마지막 신뢰 위치 무효")
             self.tracker.invalidate("CLOCK_REVERSED")
@@ -270,7 +306,7 @@ class LocalizationSupervisor(Node):
             self.write_diagnostics("estimate_retry", now, self.health, stream=stream, decision=decision)
 
         self.inputs.tf_chain_ok = self.tf_chain_ok()
-        health = self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid))
+        health = self.judge(now)
 
         # 재위치 진행: 무이동 갱신 요청과 회복·실패 판정
         if self.reinit.active():
@@ -285,7 +321,8 @@ class LocalizationSupervisor(Node):
                 # 성공이면 latch를 풀고 비교 기준을 검증된 새 추정으로 바꾼 뒤(같은 tick) 판정을 다시 한다.
                 if result == "SUCCEEDED":
                     self.monitor.release(self.inputs.map_odom)
-                    health = self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid))
+                    self.travel_floor.reset()
+                    health = self.judge(now)
                 else:
                     self.monitor.cancel_intent(result)
 
@@ -299,11 +336,22 @@ class LocalizationSupervisor(Node):
         self.maybe_note_expected_initial(now)
         self.maybe_check_expected_active()
         self.maybe_request_expected_update(now)
+        self.maybe_spread_initial(now, health)
         self.publish(health, now)
         self.write_diagnostics("tick", now, health, trust_stored=stored, trust_rejection=rejection,
                                estimate=self.monitor.summary(),
                                gates={"amcl": self.amcl_gate.counts, "tf": self.tf_gate.counts},
                                covariance_roundoff=self.covariance_roundoff())
+
+    # 판정: 이동 거리 비례 std 하한 적용 전 판정으로 '잘 구속됨'을 갱신한 뒤, 하한을 적용해 다시 판정하고 latch·근거
+    # 부족을 반영한다(재위치 표시는 호출자가 더한다).
+    def judge(self, now):
+        raw = lh.evaluate(self.inputs, now, self.config, self.clock_valid)
+        self.travel_floor.observe(raw)
+        self.raw_position_std = raw.position_std_m
+
+        return self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid,
+                                              self.travel_floor.floor()))
 
     # 진단용: 현재 amcl_pose 공분산에서 반올림 경계로 0으로 본 대각 항목(원래 값)과 경계값. 진단이 꺼져 있으면 계산 안 함.
     # 원시 공분산 배열은 그대로 두며 판정에는 쓰지 않는다(판정은 evaluate가 같은 함수로 따로 한다).
@@ -344,6 +392,8 @@ class LocalizationSupervisor(Node):
             "trust_record_age_s": None if record is None else now - record.stamp,
             "trust_path_m": self.tracker.path_m, "trust_path_rad": self.tracker.path_rad,
             "trust_invalid_reason": self.tracker.invalid_reason,
+            "raw_position_std_m": finite_or_none(getattr(self, "raw_position_std", float("nan"))),
+            "travel_floor_path_m": self.travel_floor.path_m, "travel_floor_std_m": self.travel_floor.floor(),
             **extra,
         }
         # 쓰기 실패(디스크 부족·닫힌 파일·권한 등)는 진단만 끄고 판정·발행·재위치 응답은 계속한다.
@@ -391,7 +441,7 @@ class LocalizationSupervisor(Node):
     def on_reinitialize(self, request, response):
         now = self.now()
         self.inputs.tf_chain_ok = self.tf_chain_ok()
-        health = self.reinit.apply(self.monitor.apply(lh.evaluate(self.inputs, now, self.config, self.clock_valid)))
+        health = self.reinit.apply(self.judge(now))
         accepted, code = self.reinit.request(health, self.inputs, self.tracker, now, self.map_id, self.clock_valid,
                                              time.monotonic())
 
@@ -482,6 +532,30 @@ class LocalizationSupervisor(Node):
         self.expected_nomotion_at = now
         self.nomotion.call_async(Empty.Request())
         self.write_diagnostics("initial_expected_nomotion", now, self.health, source="LAUNCH_INITIAL_POSE")
+
+    # launch initial_poses 최초 초기화의 산포 만들기: 초기 위치가 확인됐는데 공분산이 0이면 현재 자세를 initial_spread
+    # 표준편차로 한 번 보내고, 그 뒤 OK·새 추정 수가 찰 때까지(또는 제한시간까지) 무이동 갱신을 요청한다.
+    def maybe_spread_initial(self, now, health):
+        std = lh.covariance_std(self.inputs.amcl_covariance) if self.inputs.amcl_covariance is not None else None
+        enabled = self.expected_initial is not None and self.monitor.latched is None and not self.reinit.active()
+
+        if (self.spread.due(enabled, self.monitor.established, std, health.pose, self.clock_valid)
+                and self.initialpose.get_subscription_count() > 0):
+            s = self.config["initial_spread"]
+            self.send_initialpose(health.pose, s["position_std_m"], s["yaw_std_rad"], now, source="INITIAL_SPREAD")
+            self.spread.mark_sent(now)
+            self.get_logger().info(f"초기 위치 공분산 0 → 산포 초기화 송신: map {tuple(round(v, 3) for v in health.pose)}, "
+                                   f"std {s['position_std_m']} m·{s['yaw_std_rad']} rad")
+
+        was_done = self.spread.done
+
+        if self.spread.step(now, health.state == lh.OK) and self.nomotion.service_is_ready():
+            self.nomotion.call_async(Empty.Request())
+
+        if self.spread.done and not was_done:
+            self.get_logger().info(f"초기 산포 종료: {self.spread.result} (새 추정 {self.spread.updates}개)")
+            self.write_diagnostics("initial_spread_done", now, health, result=self.spread.result,
+                                   updates=self.spread.updates, sent_at=self.spread.sent_at)
 
     # 고정 출발 위치를 이 세션에서 한 번만 보낸다. AMCL이 active이고 initialpose 구독자가 있고 sim time이
     # 유효할 때만(송신 시각이 있어야 송신 뒤 새 입력으로 초기화를 확인할 수 있다).

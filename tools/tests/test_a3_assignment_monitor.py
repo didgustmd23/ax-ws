@@ -1,4 +1,5 @@
 """D4 heartbeat lifecycle and suspension recovery, without changing D4 code."""
+# [검사 범위] A3 배정 재확인: 주기·종료·단절·복구를 가짜 시계로 확인합니다.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -42,6 +43,7 @@ class AssignmentMonitorTests(unittest.TestCase):
                     local_task_kind=6, goal_id='', lease_generation=0, command_source=2)
 
     def test_idle_sends_nothing_and_active_task_renews_at_half_second(self):
+        # [핵심] 작업이 없으면 요청하지 않고, 작업 중에만 정해진 간격으로 D4에 재확인합니다.
         self.monitor.tick()
         self.assertEqual(self.sent, [])
         self.monitor.start(self.execution)
@@ -61,6 +63,7 @@ class AssignmentMonitorTests(unittest.TestCase):
         self.assertEqual(self.authority.decide(self.fields()), 'ASSIGNMENT_STALE')
 
     def test_stop_invalidates_and_does_not_publish_again(self):
+        # [핵심] 종료 시 권한과 대기 응답을 정리하고 이후 타이머가 다시 요청하지 않는지 봅니다.
         self.activate()
         self.assertEqual(self.authority.decide(self.fields()), '')
         self.assertTrue(self.monitor.stop('task-1'))
@@ -86,6 +89,7 @@ class AssignmentMonitorTests(unittest.TestCase):
         self.assertEqual(self.authority.decide(self.fields()), '')
 
     def test_recovery_after_suspend_does_not_resurrect_local_goal(self):
+        # [핵심] 절전·단절로 기한이 끊긴 Goal은 D4가 복구돼도 자동 재개하면 안 됩니다.
         self.activate()
         self.now += 4
         self.monitor.tick()

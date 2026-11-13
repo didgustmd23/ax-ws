@@ -1,4 +1,5 @@
 """A3 CheckCommandLease 개발 정책 서버 시험(계약 4.3·5.2절 형식·권한·멱등·수락 기록, ROS 왕복)."""
+# [검사 범위] 개발용 lease 서버의 형식·중복·기록·ROS 응답 검사입니다. dev_allow는 운영 권한이 아닙니다.
 import ast
 import hashlib
 import importlib.util
@@ -19,10 +20,30 @@ from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 from rclpy.node import Node
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_task_executor'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ros_test_domain  # noqa: E402
 from ax_task_executor.lease_check import (  # noqa: E402
     ACCEPT_RECORD_PREFIX, LeaseCheckServer, LeaseChecker, LeaseLedger, MAX_VALID_FOR_S)
 
 Request = CheckCommandLease.Request
+
+# 이 모듈의 시험은 프로세스 안에서 rclpy.init을 여러 번 부르므로, 모듈 전체에 A3 시험 범위 domain 하나를 잡아
+# 환경변수로 쓴다(하위 프로세스도 물려받음). 계약 경로(/ax/<robot>/executor/...) 서비스가 이미 있으면 시작하지 않는다.
+A3_CONTRACT_SERVICES = r'^/ax/[^/]+/executor/'
+_DOMAIN_STATE = None
+
+
+# 모듈 시작 때 domain을 잡는다.
+def setUpModule():
+    global _DOMAIN_STATE
+    _DOMAIN_STATE = ros_test_domain.enter_module_domain(ros_test_domain.A3_DOMAINS, A3_CONTRACT_SERVICES)
+
+
+# 모듈이 끝나면 환경변수를 되돌리고 잠금을 푼다.
+def tearDownModule():
+    ros_test_domain.leave_module_domain(_DOMAIN_STATE)
+
+
 GOAL_ID = 'a' * 32
 SCRIPTS = Path(__file__).resolve().parents[2] / 'src/ax_control/scripts'
 
@@ -158,6 +179,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # dev_allow 허용은 개발 정책 표시(사유·기록 ID 접두어)와 valid_for_s를 담는다
     def test_dev_allow_marks_development_policy(self):
+        # [핵심] 개발용 허용 응답에는 개발 표시가 있어야 합니다. 실제 권한 검증 결과와 혼동하면 안 됩니다.
         result = self.checker().check(tool_request())
 
         self.assertTrue(result['allowed'])
@@ -168,6 +190,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # 같은 request_id 재전송은 같은 응답, 내용이 다르면 DUPLICATE_REQUEST
     def test_same_request_id_idempotent(self):
+        # [핵심] 같은 질문을 다시 보내도 응답과 수락 기록이 중복 생성되지 않아야 합니다.
         checker = self.checker()
         request = tool_request()
 
@@ -199,6 +222,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # CONTINUE는 수락된 명령에만 허용하고 수락 기록을 만들지 않는다
     def test_continue_does_not_create_record(self):
+        # [핵심] CONTINUE는 이미 수락한 명령의 지속 확인입니다. 새 명령 수락 기록을 만들면 안 됩니다.
         checker = self.checker()
         command = uuid.uuid4().hex
         checker.check(tool_request(command_id=command))
@@ -403,6 +427,7 @@ class LeaseCheckServiceTests(unittest.TestCase):
 
     # 동시에 같은 command_id를 여러 request_id로 확인해도 수락 기록은 하나다(직렬 처리)
     def test_concurrent_same_command_single_record(self):
+        # [핵심] 여러 요청이 동시에 와도 같은 물리 명령의 수락 영수증은 하나만 남아야 합니다.
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         ledger = LeaseLedger(Path(temp.name) / 'lease.sqlite3', 'robot_3')

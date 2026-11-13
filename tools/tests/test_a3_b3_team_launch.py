@@ -1,4 +1,5 @@
 """Validate Kim's launch against team paths without starting other owners' nodes."""
+# [검사 범위] A3·B3 두 로봇 실행 경로를 확인합니다. 구동하지 않고 초기 무효·거절 상태를 검사합니다.
 import importlib.util
 import os
 from pathlib import Path
@@ -7,6 +8,12 @@ import subprocess
 import tempfile
 import time
 import unittest
+
+# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
+import sys as _domain_sys
+from pathlib import Path as _DomainPath
+_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
+from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +23,7 @@ class LaunchConfigurationTests(unittest.TestCase):
     """Reject robot/model mistakes before a partially configured pair starts."""
 
     def test_invalid_pairing_and_revision_rejected(self):
+        # [핵심] 로봇 ID 중복·모델 개수 불일치·잘못된 지도 버전은 노드 시작 전에 걸러야 합니다.
         from launch import LaunchContext
 
         spec = importlib.util.spec_from_file_location(
@@ -40,6 +48,7 @@ class TeamLaunchSmokeTests(unittest.TestCase):
     """Exercise the installed launch, two B3 publishers and two A3 services."""
 
     def test_both_robots_publish_to_team_paths_and_remain_fail_closed(self):
+        # [핵심] 두 로봇 주소가 분리되고, 입력이 없을 때 모의 상태·통로 무효·명령 거절을 유지해야 합니다.
         import rclpy
         from ax_interfaces.msg import CorridorObservationList, RobotTaskStatus
         from ax_interfaces.srv import CheckCommandLease
@@ -48,7 +57,7 @@ class TeamLaunchSmokeTests(unittest.TestCase):
         from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
-                'ROS_DOMAIN_ID': str(180 + os.getpid() % 40),
+                'ROS_DOMAIN_ID': os.environ['ROS_DOMAIN_ID'],
                 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'LOCALHOST',
                 'ROS_LOG_DIR': str(Path(folder) / 'logs')}):
             log_path = Path(folder) / 'launch.log'

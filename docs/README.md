@@ -36,7 +36,7 @@
 | lease·명령 확인 | 조작 1회의 lease 발급·명령 수락 확인·갱신·철회·재동기화 순서(규칙 기준은 계약 5.2절) | [열기](assets/diagrams/ax-lease.html) | [WebP](assets/diagrams/ax-lease.webp) | [lease](https://didgustmd23.github.io/ax-ws/lease.html) |
 | 공동 운반 | 입고·적재·배치·재고 갱신·실패 복구·예비 배정 | [열기](assets/diagrams/ax-transfer.html) | [WebP](assets/diagrams/ax-transfer.webp) | [transfer](https://didgustmd23.github.io/ax-ws/transfer.html) |
 | 최종 차단 권고 | 중앙 계획→D 검증→A 최종 차단·주행/조작 경로 | [열기](assets/diagrams/ax-safety.html) | [WebP](assets/diagrams/ax-safety.webp) | [safety](https://didgustmd23.github.io/ax-ws/safety.html) |
-| 패키지 구성 | A~E·공통 목표 패키지와 현재 공통 타입 초안. 실행 노드는 신규 구현 대상 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
+| 패키지 구성 | A~E·공통 목표 패키지와 현재 공통 타입. 실행 노드는 신규 구현 대상 | [열기](assets/diagrams/ax-packages.html) | [WebP](assets/diagrams/ax-packages.webp) | [packages](https://didgustmd23.github.io/ax-ws/packages.html) |
 | 이전 로봇 제어 | 이전 구현(커밋 `4f85007`)의 팔 명령 보호를 포함한 제어 구성 기록 | [열기](assets/diagrams/ax-control.html) | [WebP](assets/diagrams/ax-control.webp) | [internal](https://didgustmd23.github.io/ax-ws/internal.html) |
 | 문서 폴더 | 현행 본설계·인터페이스 계약·공통 일정과 이전 구현 이력의 구분 | [열기](assets/diagrams/ax-docs.html) | [WebP](assets/diagrams/ax-docs.webp) | [documents](https://didgustmd23.github.io/ax-ws/documents.html) |
 
@@ -55,7 +55,7 @@
 |---|---|---|
 | [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 조작·운송 역할 협업 그룹, A~E 기능, 상태 머신·통신·검증 목표 | 운영 무인·자동 입고·중앙 전체 계획·D 실행·역할별 예비·인증/관제 목표. 구현 완료 아님 |
 | [TEAM_SCHEDULE](management/TEAM_SCHEDULE.md) | 팀 공통 일정, A1~E4·공통 계약·통합/장시간 시험·완료 관문 | 1 이종수·2 양현승·3 김성민·4 엄승연. 2026-10-28 ~ 2027-01-28, 주차 계획은 초안 |
-| [INTERFACE_CONTRACT](design/INTERFACE_CONTRACT.md) | A~E 공유 Topic·Service·Action 이름·QoS·최신성·소유 작업, `src/ax_interfaces` 타입 초안 | K0 초안. 생산자·소비자 승인 전 |
+| [INTERFACE_CONTRACT](design/INTERFACE_CONTRACT.md) | A~E 공유 Topic·Service·Action 이름·QoS·최신성·소유 작업, `src/ax_interfaces` 타입 | K0 계약, 2026-11-08 승인 |
 | [GIT_UPLOAD_POLICY](management/GIT_UPLOAD_POLICY.md) | 포함·제외 파일과 확인 방법 | build/install/log 제외, 모델 자산·외부 LICENSE 포함 |
 | [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf) | 최초 통합 상세설계 원문 | 현재 작업트리에서 삭제 상태, 저장된 커밋 참조 |
 
@@ -66,4 +66,4 @@
 | [분리 메시 README](../src/ax_description/meshes/parts/README.md) | AX_1·AX_2·상자별 OBJ 분리, 재생성·좌표·원통 분리 규칙(도구는 커밋 `4f85007` 이력) |
 | [Robotiq README](../src/robotiq_description/README.md) | 도입 commit·모델 전용 범위·원본 파일 해시·라이선스 |
 
-문서의 설계 목표, 코드 반영, 정적 계산 통과, Gazebo 실행 통과는 서로 다른 상태다. 현재 작업트리에는 실행 가능한 기능 구현이 없으므로(공유 타입 초안만 빌드됨) 모든 기능은 새 구현과 검증 대상이다.
+문서의 설계 목표, 코드 반영, 정적 계산 통과, Gazebo 실행 통과는 서로 다른 상태다. 현재 작업트리에는 실행 가능한 기능 구현이 없으므로(공유 타입만 빌드됨) 모든 기능은 새 구현과 검증 대상이다.

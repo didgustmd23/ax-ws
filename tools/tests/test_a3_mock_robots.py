@@ -1,4 +1,5 @@
 """Check robot routing, mock outcomes, and isolated Gazebo entities using ROS."""
+# [검사 범위] 모의 실행·취소·결과 재조회·로봇별 분리를 확인합니다. 실제 적재·집기 판정은 아닙니다.
 from copy import deepcopy
 import json
 import os
@@ -21,9 +22,27 @@ from ax_interfaces.msg import LoadState, ResultStatus, RobotTaskStatus
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_task_executor'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ros_test_domain  # noqa: E402
 from ax_task_executor.mock_executor import MockExecutor
 from ax_task_executor.gazebo_mock_display import MockDisplay
 from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
+
+# 이 모듈의 시험은 프로세스 안에서 rclpy.init을 여러 번 부르므로, 모듈 전체에 A3 시험 범위 domain 하나를 잡아
+# 환경변수로 쓴다(하위 프로세스도 물려받음). 계약 경로(/ax/<robot>/executor/...) 서비스가 이미 있으면 시작하지 않는다.
+A3_CONTRACT_SERVICES = r'^/ax/[^/]+/executor/'
+_DOMAIN_STATE = None
+
+
+# 모듈 시작 때 domain을 잡는다.
+def setUpModule():
+    global _DOMAIN_STATE
+    _DOMAIN_STATE = ros_test_domain.enter_module_domain(ros_test_domain.A3_DOMAINS, A3_CONTRACT_SERVICES)
+
+
+# 모듈이 끝나면 환경변수를 되돌리고 잠금을 푼다.
+def tearDownModule():
+    ros_test_domain.leave_module_domain(_DOMAIN_STATE)
 
 
 class MockRobotTests(unittest.TestCase):
@@ -49,6 +68,7 @@ class MockRobotTests(unittest.TestCase):
         return request
 
     def test_state_machine_blocks_skipped_and_terminal_transitions(self):
+        # [핵심] 확인 단계를 건너뛰거나 끝난 결과를 다시 바꾸는 잘못된 전환을 막아야 합니다.
         flow = ConfirmLoadStateMachine()
         with self.assertRaises(ValueError):
             flow.transition(TaskPhase.SUCCEEDED)
@@ -61,6 +81,7 @@ class MockRobotTests(unittest.TestCase):
         self.assertEqual(flow.phase, TaskPhase.FAILED)
 
     def test_action_cancel_busy_and_duplicate_do_not_restart_work(self):
+        # [핵심] 취소·바쁨·중복 요청이 겹쳐도 같은 작업을 새로 실행하지 않아야 합니다.
         for robot in ('robot_1', 'robot_2'):
             with self.subTest(robot=robot):
                 self.init_ros(robot)
@@ -252,6 +273,7 @@ class MockRobotTests(unittest.TestCase):
                     rclpy.shutdown()
 
     def test_duplicate_changed_request_restart_and_robot_isolation(self):
+        # [핵심] 같은 ID의 내용 변경은 거절하고, 재시작한 기록과 다른 로봇의 기록을 구별해야 합니다.
         for robot in ('robot_1', 'robot_2'):
             for restart in (False, True):
                 with self.subTest(robot=robot, restart=restart):
@@ -433,6 +455,7 @@ class MockExecutorRegressionTests(unittest.TestCase):
 
     # 재요청 Goal을 취소해도 원래 Goal 작업은 취소되지 않는다
     def test_duplicate_goal_cancel_does_not_cancel_original(self):
+        # [핵심] 결과 재조회 Goal을 취소한다고 원래 실행 중인 작업까지 취소하면 안 됩니다.
         node, client, executor = self.start('robot_2', 1.0)
 
         original = self.wait(executor, client.send_goal_async(MockRobotTests.request('dup-cancel')))

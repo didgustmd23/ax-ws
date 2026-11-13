@@ -1,0 +1,70 @@
+{
+  "baseline_commit": "48a0ea6",
+  "date_kst": "2026-11-13",
+  "runs": {
+    "navigation_baseline": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "navigation_obstacle": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "navigation_blocked": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "navigation_missing_map": {
+      "exit_code": 1,
+      "domain": 93
+    },
+    "navigation_missing_tf": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "navigation_missing_scan": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "robot_1_calibration": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "robot_1_quality": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "robot_2_calibration": {
+      "exit_code": 1,
+      "domain": 93
+    },
+    "robot_2_quality": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "sensor_faults": {
+      "exit_code": 0,
+      "domain": 93
+    },
+    "navigation_missing_map_recheck": {
+      "exit_code": 0,
+      "domain": 99
+    },
+    "robot_2_calibration_recheck": {
+      "exit_code": 1,
+      "domain": 99
+    },
+    "visibility_neutral": {
+      "exit_code": 0,
+      "domain": 99
+    },
+    "visibility_reach_left": {
+      "exit_code": 0,
+      "domain": 100
+    },
+    "visibility_reach_right": {
+      "exit_code": 0,
+      "domain": 100
+    }
+  }
+}

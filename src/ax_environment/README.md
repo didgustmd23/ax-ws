@@ -106,3 +106,22 @@ python3 tools/tests/test_b3_review_regressions.py
 4. D2: 작업대·등록 지점 ID와 용량·접근 조건 확인.
 
 승인은 파일의 bool을 바꾸는 것만으로 성립하지 않는다. 위 확인과 관측 시험 근거가 필요하다.
+
+### 승인 전 재현 가능한 점검
+
+```bash
+python3 tools/check_b3_region_readiness.py --output docs/evidence/b3/region_readiness_2026-11-14.json
+python3 -m pytest tools/tests/test_b3_region_readiness.py tools/tests/test_b3_regions.py -q
+```
+
+점검기는 설정을 변경하지 않고 SDF 생성 일치, 지도·월드 해시와 revision, 기준 변환,
+AX_1/AX_2 외곽, 통로 3개 양방향의 접근·최초 접촉·진입·완전 이탈 계산 72개를 확인한다.
+`static_passed=true`도 운영 승인과 다르다. 보고서의 `ready_for_approval`은 실제 검증 전에는 false다.
+현재 B2 `map_info.yaml`의 T_world_map 초기값은 **검증 전용·운영 위치 추정/주행 사용 금지**로
+명시되어 있다. B3가 이 값으로 만든 개발 좌표를 실제 운영 경계로 승인하려면 B2와 실제 지도·TF
+정합 및 오차 여유를 확인해야 한다. 정적 통과만으로 이 경계를 운영 좌표라고 주장하지 않는다.
+
+실제 검증은 합의된 ROS domain과 같은 시계에서 두 로봇의 map→odom→base 변환, 위치 신뢰성,
+접힌 팔·적재물 외곽, 통로 양방향 진입/이탈 시각을 기록해 확인한다. 기록에는 사용한 지도·영역·
+모델 해시, 경계 근처 지연과 오차, 불명/만료 시 UNKNOWN 전이, 관련 담당자의 검토 근거를 남긴다.
+영역 파일 승인과 D3 허가 정책 합의는 별개이며 현재 D3 발급 보류를 영역 승인으로 해제하지 않는다.

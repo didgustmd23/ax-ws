@@ -18,7 +18,9 @@
 
 `launch/navigation.launch.py`가 A1 `config/a1_validation.yaml`의 footprint를 읽는다.
 robot_1은 **epick·무부하·기록된 주행 자세** 조건의 외곽이다. 현재 팔 자세를 강제하거나 검사하지 않는다.
-robot_2는 선반 포함 폭 2.06 m의 여유 포함 외곽이다. 1.9 m 통로에 맞도록 줄이지 않는다.
+robot_2는 현재 AX_2 적재함·전후 센서에 여유를 포함한 길이 1.30 m × 폭 1.06 m의 외곽이다
+(`x: -0.63~0.67 m`, `y: -0.53~0.53 m`). 통로 통과 여부는 지도·costmap·여유와 함께 확인하며,
+경로를 만들기 위해 외곽을 임의로 줄이지 않는다. 적재물이 이 외곽 안에 있는지도 별도 확인한다.
 robot_3/4는 동일 역할의 개발 모델 외곽을 재사용하며, 이번 실행 검증은 robot_1/2만 했다.
 
 - local costmap: 로봇별 odom 기준 6×6 m rolling window.
@@ -60,3 +62,15 @@ python3 tools/check_w2_navigation.py
 확인 뒤 두 프로세스를 종료한다. 모의 입력을 실제 운용 domain에 섞지 않는다.
 
 결과: [W2 증거](../../docs/evidence/w2/). 실제 주행·정차 W3, 복구 W4와 G1은 미완료다.
+
+2026-11-13 최신 AX_2 외곽으로 재검증했다. 두 로봇의 lifecycle 활성화와 각각 78 pose의 경로 계산,
+robot_2의 1.30 × 1.06 m footprint 적용, TwistStamped 출력 및 제어기 직접 발행자 부재를 확인했다.
+과거 폭 2.06 m 문구를 현재 설정에 맞게 정정했다. [재검증 결과](../../docs/evidence/w2_recheck_2026-11-13/).
+
+### W2 보완 검사 — main 48a0ea6
+
+`tools/check_w2_navigation.py --scenario <조건> --output <새 결과 경로>`로 정상 외에
+`obstacle`, `blocked`, `missing_map`, `missing_tf`, `missing_scan`, `stale_tf`, `stale_scan`을 검사한다.
+각 조건은 새 격리 domain/launch에서 실행한다. stale 조건은 정상 경로 성공 후 해당 입력을 끊는다.
+지도 미수신 시 lifecycle이 active여도 경로가 실패하는지 확인하며, TF 미수신은 기동 대기 상태도 기록한다.
+이 도구는 모의 입력·경로 계산만 사용한다. [8조건 결과·W2 인계 자료](../../docs/evidence/w2_complete_2026-11-13/).

@@ -1,0 +1,76 @@
+{
+  "baseline_commit": "48a0ea6",
+  "date_kst": "2026-11-13",
+  "runs": {
+    "navigation_baseline": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "navigation_obstacle": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "navigation_blocked": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "navigation_missing_map": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "navigation_missing_tf": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "navigation_missing_scan": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "robot_1_calibration": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "robot_1_quality": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "robot_2_calibration": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "robot_2_quality": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "sensor_faults": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "visibility_neutral": {
+      "exit_code": 0,
+      "domain": 90
+    },
+    "visibility_reach_left": {
+      "exit_code": 0,
+      "domain": 91
+    },
+    "visibility_reach_right": {
+      "exit_code": 0,
+      "domain": 91
+    },
+    "arm_sensors": {
+      "exit_code": 0,
+      "domain": 91
+    },
+    "navigation_stale_scan": {
+      "exit_code": 0,
+      "domain": 95
+    },
+    "navigation_stale_tf": {
+      "exit_code": 0,
+      "domain": 95
+    }
+  },
+  "raw_logs": "log/w2_complete_2026-11-13",
+  "scope": "W2 B1 simulation verification and D1 basic planning configuration; not W3 driving or G1."
+}

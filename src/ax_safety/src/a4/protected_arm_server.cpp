@@ -241,7 +241,7 @@ void ProtectedArmServer::ask_lease(uint8_t phase) {
   // 이후 tick이 service_timeout_과 lease valid_for_s를 비교할 수 있도록 요청 시각을 고정한다.
 
 
-  lease_future_=lease_->async_send_request(req);
+  lease_future_=lease_->async_send_request(req).future.share();
   lease_pending_=true;
 }
 void ProtectedArmServer::start_controller() {

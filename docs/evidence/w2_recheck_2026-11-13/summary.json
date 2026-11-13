@@ -1,0 +1,30 @@
+{
+  "baseline": "06f6308",
+  "date_kst": "2026-11-13",
+  "runs": {
+    "sensor_faults": {
+      "exit_code": 0,
+      "result_file": "sensor_faults.json"
+    },
+    "navigation_mock": {
+      "exit_code": 0,
+      "result_file": "navigation_mock.json"
+    },
+    "robot_1_calibration": {
+      "exit_code": 0,
+      "result_file": "robot_1_calibration.json"
+    },
+    "robot_2_calibration": {
+      "exit_code": 0,
+      "result_file": "robot_2_calibration.json"
+    },
+    "arm_sensors": {
+      "exit_code": 0,
+      "result_file": "arm_sensors.json"
+    }
+  },
+  "fixture": "log/w2_recheck_2026-11-13/empty_test_fixture.sdf",
+  "historical_source_hash_differences": [
+    "src/ax_description/config/a1_validation.yaml"
+  ]
+}

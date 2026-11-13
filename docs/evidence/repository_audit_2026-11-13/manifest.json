@@ -1,0 +1,39 @@
+{
+  "baseline_commit": "48a0ea6783253591d1c68221bb6a8f3e8346ecd1",
+  "date_kst": "2026-11-13",
+  "hash_policy": "SHA-256 of text with CRLF normalized to LF",
+  "source_files": {
+    "README.md": "0196ee433c6c7bafc7ab3b2545ec6c3c43e1dee5b6fd5b066b7bc66658bd637f",
+    "docs/guides/RUN_ON_ANOTHER_PC.md": "5bd8c4771d7a302cef994dc14e1e1322dc5a259ecd20cab6e78573675173c93c",
+    "docs/guides/W1_A4_B4_SETUP.txt": "fed804ec4a9907d0d90c8fe58b3c4a1dd6d8001c1e80e66517026afe912dba96",
+    "remote_controller/README.md": "4026b43717a59e1cf084314567dd7fc96e0be6f00cc93143a99d58f04af26e82",
+    "src/ax_safety/CMakeLists.txt": "6eb1f2782b7fcaf15767b921fa0d2e9a4a8b121d6315797795e5c0a0ebea01c8",
+    "src/ax_safety/README.md": "ff68115f50bd038f735b2470714d6f29f8356567d4003bc399009eaa8066f13c",
+    "src/ax_safety/ax_safety/__init__.py": "acab09c468428016b7f3edf48f391b779b03a694ed82c5dbe6025086e82a0099",
+    "src/ax_safety/ax_safety/b4/__init__.py": "ba7439d6ca00b0266cf5dba84ae3b78cc987317f92852f48688ed5c715bdfd22",
+    "src/ax_safety/ax_safety/b4/b4_risk_node.py": "83164f4b40e73ecbede6d600dbd8e3ad5f3f6041173e48c1b1d3e5e57df50a3f",
+    "src/ax_safety/ax_safety/b4/risk_rules.py": "6f5684fc48f84479ae6fc5b5d508c0c53a8a9a1b1265f3c673f42f6f820b9321",
+    "src/ax_safety/config/safety_limits.yaml": "d81b1e66bee24d2b8bf0dc0a5376f78fefcd08e43d7135c6b9f35ba2b2cd1026",
+    "src/ax_safety/include/ax_safety/a4/protected_arm_server.hpp": "82e38635097a34ec530c716067cd75e2ba225fdcf442632aa088ae3d3c6517a9",
+    "src/ax_safety/include/ax_safety/a4/safety_gate.hpp": "90eeeb28229668f7972840fbda60b3d8ada9c3bda91a52259e8fc9b7086d4090",
+    "src/ax_safety/launch/safety.launch.py": "2a88c502c37c4a34ddbae6a502486067f7ea927de896a098096223b3539e362a",
+    "src/ax_safety/package.xml": "568e280e528f5724dd6cecaa94694c02e63831bf670d809298c20d1758b0f8b3",
+    "src/ax_safety/src/a4/protected_arm_server.cpp": "e76579fa3f11fc6ef376888437c8045d72a33ef07c925dcfbbe23812fedc2b61",
+    "src/ax_safety/src/a4/safety_gate.cpp": "6875efe37cbf732cc0da56b5ebf40357616ec5a98b7259b1d8b1052d84264351",
+    "tools/check_repository_layout.py": "dbf0679b86d456122b374004458684396aec7e3a5235aafa05df986a46f7e9a1",
+    "tools/tests/mock_check_command_lease.py": "a1cffb1adcd172ce40ca5c3a41f2e5d5a20cb2a5c6aacd986ced7ed9f5df33ee",
+    "tools/tests/test_a4_safety_gate.cpp": "8cd0b48b29413b8ca7bf4aa8fe6d4f98c6de2ff1dce0ac48bcde12c22d4677c0",
+    "tools/tests/test_b3_b4_handoff_ros.py": "f01e07347ac6d29607e590abdb6edbeb2396bf136565ce8748edf74aa6d1a54f",
+    "tools/tests/test_b4_observation_validation.py": "c1b1b5acbd9d9c6e299235b6f210967b1da98294277d88a3bd1c924cb328df82",
+    "tools/tests/test_b4_risk_rules.py": "ce0ffb46656fffb01ae15e4fc5f6b58e876a6d9902bba65cf3150ecf13ba39b1",
+    "world_assets/aws_small_warehouse/README.md": "22466a2b037621d0c090f17a7db9d43d5c3b876445d346aa054f7581d345a1b9"
+  },
+  "evidence_files": {
+    "bash_syntax.json": "344af58c2ecb8949aabb31f929b0cfb9abe395c05abd20e407cf345b8d328824",
+    "moves.json": "e4ed0b0bdde30b08bc27ed552bc07b5dbae5248f36b6e1d1a7523eef685ca99c",
+    "powershell_syntax.json": "bd9b133288c882494c1a356095e430dabb0202b4e6b94ed82325529d4867d27c",
+    "README.md": "733a4fcc6c5afefe9659d81667570e43994489f33e6cd4ff749a5dfcf6bbab36",
+    "repository_scan.json": "1813c9401d45b70f9481df2a6c130a4e1fca21d9b0b6b8011f830c26e69486d8",
+    "validation.json": "dcd627123af66e1a9124ac766ce6d6e3706ce2aeb4d1ca3f4835f040b2f661fb"
+  }
+}

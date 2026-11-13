@@ -1,0 +1,26 @@
+{
+  "asset_generation": {
+    "exit_code": 0
+  },
+  "physical_generation": {
+    "exit_code": 0
+  },
+  "test_a1_assets": {
+    "exit_code": 0
+  },
+  "test_w1_models": {
+    "exit_code": 0
+  },
+  "test_ax2_revision": {
+    "exit_code": 0
+  },
+  "test_sensor_processing": {
+    "exit_code": 0
+  },
+  "test_navigation_config": {
+    "exit_code": 0
+  },
+  "test_dds_large_data_profile": {
+    "exit_code": 0
+  }
+}

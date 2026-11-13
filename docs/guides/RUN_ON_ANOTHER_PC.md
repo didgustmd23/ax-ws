@@ -7,7 +7,7 @@ Windows에서는 Ubuntu 24.04 WSL2와 WSLg가 필요하다. GUI에는 작동하�
 다운로드만으로 실행되는 바이너리는 아니며 최초 한 번 의존성 설치와 빌드가 필요하다.
 
 ```bash
-git clone --branch su --single-branch https://github.com/didgustmd23/ax-ws.git
+git clone --branch main --single-branch https://github.com/didgustmd23/ax-ws.git
 cd ax-ws
 bash tools/setup_jazzy.sh
 source install/setup.bash
@@ -19,13 +19,14 @@ ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 새 터미널에서는 workspace로 이동한 뒤 `source /opt/ros/jazzy/setup.bash`와
 `source install/setup.bash`를 실행한다. `build/`, `install/`, `log/`는 복사하지 않고 해당 PC에서 생성한다.
 
-## 하나의 월드
+## 실행 월드
 
-`src/ax_description/worlds/ax_test.world`: 30×30 m 바닥, 중력, 물리·카메라·LiDAR·IMU·접촉 시스템.
-원점 주변은 주행용이며 작업 테이블 중심은 (8, 3), (8, -3), 상자는 (8, 3)에 있다.
-테이블은 1×1×0.8 m, 상자는 0.2 m 정육면체·0.5 kg이다.
-작업 구역은 초기 로봇 위치에서 떨어져 있으므로 팔 시험 전 로봇을 테이블로 이동해야 한다.
-월드가 자동 집기나 내비게이션 동작을 수행하지는 않는다.
+선택 가능한 월드와 로봇 출발 위치는
+[`worlds.yaml`](../../src/ax_description/config/worlds.yaml)을 따른다.
+기본은 `planned/ax_warehouse.world`, 단색 보존판은 `planned/ax_warehouse_plain.world`다.
+두 월드는 재질 외 구조가 같고, launch가 각 로봇을 통로 밖의 지정 출발 위치에 생성한다.
+실행 가능한 `ax_test.world` 파일은 제거됐다. 빈 바닥 검사는 도구가 생성한 시험 치구를 사용한다.
+월드 실행만으로 자동 집기·내비게이션 작업이 시작되는 것은 아니다.
 
 ```bash
 ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
@@ -40,7 +41,8 @@ ros2 launch ax_control simulation.launch.py gui:=false sensors:=false
 `ax_arm_test.launch.py`는 robot_1, `ax_2_test.launch.py`는 robot_2,
 `ax_test_both.launch.py`는 두 로봇을 같은 월드에 생성하는 호환 진입점이다.
 이 호환 진입점과 `robot_test.launch.py`는 제어기 없이 모델·센서만 띄운다. 조종·시험은 `ax_control` launch를 쓴다.
-종전 `drive_test.world`/`ax_arm_test.world` 직접 지정은 `world:=ax_test.world`로 바꾼다.
+종전 `drive_test.world`/`ax_arm_test.world`/`ax_test.world` 직접 지정은
+`world:=planned/ax_warehouse.world`로 바꾼다(현재 기본값이므로 생략 가능).
 
 ## 경로와 검증
 

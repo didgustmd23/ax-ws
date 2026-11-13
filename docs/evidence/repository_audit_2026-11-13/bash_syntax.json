@@ -1,0 +1,42 @@
+[
+  {
+    "path": "docs/evidence/wheel_slip/attachments/candidate_tests/run_conditions.sh",
+    "exit_code": 2,
+    "error": "/mnt/c/Users/ljs38/OneDrive/\ubc14\ud0d5 \ud654\uba74/ax-ws/docs/evidence/wheel_slip/attachments/candidate_tests/run_conditions.sh: line 3: syntax error near unexpected token `;'\n/mnt/c/Users/ljs38/OneDrive/\ubc14\ud0d5 \ud654\uba74/ax-ws/docs/evidence/wheel_slip/attachments/candidate_tests/run_conditions.sh: line 3: `S=<tmp>; R=<workspace>/log/a2_rotation_slip/20261106_224038; D=$S/verify; X=<tmp>/overlay_contact/share/ax_description/urdf/ros2_control.xacro'\n"
+  },
+  {
+    "path": "docs/evidence/wheel_slip/attachments/drive_candidate/run_conditions.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "docs/evidence/wheel_slip/attachments/robot1/run_conditions.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "src/ax_localization/scripts/run_mapping_session.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "src/ax_localization/scripts/session_procs.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "tools/setup_jazzy.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "tools/setup_vision.sh",
+    "exit_code": 0,
+    "error": ""
+  },
+  {
+    "path": "tools/start_remote.sh",
+    "exit_code": 0,
+    "error": ""
+  }
+]

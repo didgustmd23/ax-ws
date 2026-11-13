@@ -59,14 +59,14 @@ A2·Gazebo 연동을 하지 않고 W1 단위 테스트만 실행하면 ax_contro
 
 프로젝트 루트에서 실행합니다.
 
-python3 src/ax_safety/tools/tests/test_b4_risk_rules.py
+python3 tools/tests/test_b4_risk_rules.py
 
 정상 결과: Ran 11 tests 및 OK.
 
 mkdir -p /tmp/ax_w1_test
 g++ -std=c++17 -Wall -Wextra -Wpedantic \
-  -I src/ax_safety/src/ax_safety/include \
-  src/ax_safety/tools/tests/test_a4_safety_gate.cpp \
+  -I src/ax_safety/include \
+  tools/tests/test_a4_safety_gate.cpp \
   -o /tmp/ax_w1_test/test_a4
 /tmp/ax_w1_test/test_a4
 

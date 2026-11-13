@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "scope": "MOCK inputs; planning only, no driving goals, physical motion, B2/A4 integration or G1 judgment",
+  "robots": {
+    "robot_1": {
+      "states": {
+        "controller_server": "active",
+        "planner_server": "active",
+        "bt_navigator": "active"
+      },
+      "global_base_frame": "robot_1/base_link",
+      "footprint": "[[-0.78, -0.42], [0.82, -0.42], [0.82, 0.42], [-0.78, 0.42]]",
+      "map_topic": "/map",
+      "plan": {
+        "status": 4,
+        "pose_count": 78,
+        "frame": "map",
+        "start_y": 1.4901161193847656e-07,
+        "end_x": 2.0
+      }
+    },
+    "robot_2": {
+      "states": {
+        "controller_server": "active",
+        "planner_server": "active",
+        "bt_navigator": "active"
+      },
+      "global_base_frame": "robot_2/base_link",
+      "footprint": "[[-0.63, -0.53], [0.67, -0.53], [0.67, 0.53], [-0.63, 0.53]]",
+      "map_topic": "/map",
+      "plan": {
+        "status": 4,
+        "pose_count": 78,
+        "frame": "map",
+        "start_y": 3.0000001937150955,
+        "end_x": 2.0
+      }
+    }
+  },
+  "checks": {
+    "robot_1": {
+      "command_types": [
+        "geometry_msgs/msg/TwistStamped"
+      ],
+      "nav_publishers": [
+        "controller_server"
+      ],
+      "direct_controller_publishers": [],
+      "navigate_to_pose_services_present": true
+    },
+    "robot_2": {
+      "command_types": [
+        "geometry_msgs/msg/TwistStamped"
+      ],
+      "nav_publishers": [
+        "controller_server"
+      ],
+      "direct_controller_publishers": [],
+      "navigate_to_pose_services_present": true
+    }
+  }
+}

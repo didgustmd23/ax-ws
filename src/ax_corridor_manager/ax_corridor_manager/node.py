@@ -38,7 +38,9 @@ class CorridorNode(Node):
         default_database = str(ros_home / 'ax_corridor_manager/corridors.sqlite3')
         database = self.declare_parameter('database', '').value or default_database
         self.manager = CorridorManager(
+            # 정책 승인값을 넘기지 않아 운영 노드는 기본 보류 상태로 시작합니다.
             database, corridors, self.robots, enabled=regions['approved'])
+        self.get_logger().warning('통로 허가 정책 미합의: 새 허가 발급 보류, 기존 원장 보존')
         self.session = uuid.uuid4().hex
         self.sources = {}
         self.retired = {}
@@ -180,11 +182,14 @@ class CorridorNode(Node):
         message.meta.source_session_id = self.session
         message.meta.revision = revision
         now = self.get_clock().now().nanoseconds
-        message.meta.valid = self.manager.enabled and not self.io_failed and now > 0
+        message.meta.valid = (self.manager.enabled and self.manager.grant_policy_approved
+                              # 영역 승인·유효한 시계만으로 미합의 정책을 활성화하지 않습니다.
+                              and not self.io_failed and now > 0)
         message.meta.validity_reason = (
             '' if message.meta.valid else
             'CORRIDOR_LEDGER_FAILED' if self.io_failed else
-            'REGIONS_NOT_APPROVED' if not self.manager.enabled else 'CLOCK_INVALID')
+            'REGIONS_NOT_APPROVED' if not self.manager.enabled else
+            'AUTHORITY_INVALID' if not self.manager.grant_policy_approved else 'CLOCK_INVALID')
         for row in rows:
             state = CorridorState()
             state.corridor_id = row['id']

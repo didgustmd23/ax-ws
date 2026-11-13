@@ -1,0 +1,11 @@
+{
+  "pose": "reach_right",
+  "joints": {
+    "column_yaw_joint": -0.35,
+    "shoulder_joint": 0.3,
+    "elbow_joint": -0.35,
+    "wrist_joint": 0.2,
+    "gripper_rotation_joint": -0.25
+  },
+  "scope": "Frozen geometry fixture; no actual arm movement."
+}

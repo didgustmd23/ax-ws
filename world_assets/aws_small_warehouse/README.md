@@ -3,7 +3,10 @@
 > 이 후보 월드는 현재 실행 구성에서 제거됐다. 변환본·원본 `.world`와 별도 실행기는 삭제했고,
 > 아래 내용은 이전 도입 기록이다. 미사용 메시·텍스처도 제거했고 LICENSE·SOURCE.json은 출처 보관용이며
 > 빌드·월드 선택 메뉴에 포함하지 않는다. 현재 실행 월드는
-> `planned/ax_warehouse.world` 하나다. 아래 옛 실행 명령은 사용할 수 없다.
+> `planned/ax_warehouse.world`와 구조가 같은 단색판 `planned/ax_warehouse_plain.world`다.
+> 아래 옛 실행 명령은 사용할 수 없다. `upstream/README.md`의 `docs/images/` 이미지 9개는
+> 이 출처 보관용 subset에 포함되지 않았다. 원본 설명은 `SOURCE.json`의 고정 commit을 참조하며,
+> 원본 README·라이선스와 해시는 수정하지 않는다.
 
 선반·통로·팔레트 운반 장비 등 창고 배경을 제공하는 외부 월드다. 지붕 없는 원본을 사용해 위에서 로봇을 관찰하기 쉽게 구성했다.
 기존 `ax_test.world`와 계획 창고를 유지하며 **AX 월드 선택**의 세 번째 항목에서 AWS 물류 창고를 선택할 수 있다.

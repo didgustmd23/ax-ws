@@ -124,3 +124,22 @@ python3 tools/check_w2_sensor_faults.py
 
 launch·검사기는 각각 별도 터미널에서 실행한다. 평면 검사기는 자기 이름의 시험판만 생성·삭제한다.
 오류 검사기는 합성 clock·센서를 발행한다. 결과와 초기 실패는 [W2 증거](../../docs/evidence/w2/)를 따른다.
+
+2026-11-13 최신 소스·AX_2 모델로 재검증했다. 빈 바닥 시험 치구에서 robot_1/2 전방 1·2 m 각 3표본,
+robot_1 팔 RGB-D 10·15 cm 및 ToF 8·15 cm 각 3표본, 격리 domain의 합성 오류·회복 13조건이 통과했다.
+기존 2026-11-09 기록과 팔 25 cm 가림 실패는 유지한다. 이번에도 전체 팔 시야·실물 보정·실제 절전 복귀는
+검증하지 않았다. [새 결과와 재현 조건](../../docs/evidence/w2_recheck_2026-11-13/)을 참조한다.
+
+### W2 수신 품질·시야 보완 — main 48a0ea6
+
+- Gazebo/B1과 같은 격리 domain에서 `check_w2_sensor_quality.py --robot-id <robot_1 또는 robot_2>
+  --duration-s 15 --output <새 결과 경로>`로 수신률·시각 간격·입출력 stamp 대응·RGB-D 시각 차·정지 IMU를 기록한다.
+  수신률은 sim time 기준이며 승인된 성능 기준이 없어 성능 판정은 not_judged다.
+- `check_w2_arm_visibility.py --pose <neutral 또는 reach_left 또는 reach_right> --prepare-only <새 폴더>`로
+  고정 자세 치구 launch를 생성한다. 이 launch 실행 뒤 같은 도구에 `--pose`와 `--output`을 주어 조사한다.
+  실제 팔 명령을 보내지 않는다. 세 자세 모두 좌/중앙/우의 10·15 cm 표적은 보이고 25 cm는 가렸다.
+- 거리 검사기는 장면 교체 후 1.0 sim s 안정화한다. NaN·inf가 있으면 null과 실패 상태로 저장해
+  검사 결과 파일 자체가 사라지지 않게 했다. 최초 과도 표본·검사기 오류는 별도 보존했다.
+
+[전체 결과·실행 조건](../../docs/evidence/w2_complete_2026-11-13/)과
+[B2/B3/B4·A4·C2/C4 인계 자료](../../docs/evidence/w2_complete_2026-11-13/HANDOFF.md)를 참조한다.

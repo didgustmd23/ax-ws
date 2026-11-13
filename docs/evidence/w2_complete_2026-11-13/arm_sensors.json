@@ -1,0 +1,119 @@
+{
+  "passed": true,
+  "scope": "ideal ray/depth and TF consistency; no hardware/independent arm calibration",
+  "tolerance_m": 0.02,
+  "cases": [
+    {
+      "sensor": "depth",
+      "nominal_distance_m": 0.1,
+      "samples": [
+        {
+          "stamp_s": 2.046,
+          "expected_m": 0.1052199829724224,
+          "measured_m": 0.10521020740270615,
+          "processed_m": 0.10521020740270615,
+          "passed": true
+        },
+        {
+          "stamp_s": 2.112,
+          "expected_m": 0.10525903000146188,
+          "measured_m": 0.10524830222129822,
+          "processed_m": 0.10524830222129822,
+          "passed": true
+        },
+        {
+          "stamp_s": 2.178,
+          "expected_m": 0.10530097997940377,
+          "measured_m": 0.1052858754992485,
+          "processed_m": 0.1052858754992485,
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "sensor": "depth",
+      "nominal_distance_m": 0.15,
+      "samples": [
+        {
+          "stamp_s": 2.64,
+          "expected_m": 0.1498767280708672,
+          "measured_m": 0.14966225624084473,
+          "processed_m": 0.14966225624084473,
+          "passed": true
+        },
+        {
+          "stamp_s": 2.706,
+          "expected_m": 0.14978280665026247,
+          "measured_m": 0.1495756208896637,
+          "processed_m": 0.1495756208896637,
+          "passed": true
+        },
+        {
+          "stamp_s": 2.7720000000000002,
+          "expected_m": 0.14960485179428995,
+          "measured_m": 0.14948906004428864,
+          "processed_m": 0.14948906004428864,
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "sensor": "raw",
+      "nominal_distance_m": 0.08,
+      "samples": [
+        {
+          "stamp_s": 3.201,
+          "expected_m": 0.07949894074325652,
+          "measured_m": 0.07949931919574738,
+          "processed_m": 0.07949931919574738,
+          "passed": true
+        },
+        {
+          "stamp_s": 3.268,
+          "expected_m": 0.07950708247813135,
+          "measured_m": 0.07950744777917862,
+          "processed_m": 0.07950744777917862,
+          "passed": true
+        },
+        {
+          "stamp_s": 3.3,
+          "expected_m": 0.07951019692318147,
+          "measured_m": 0.07951000332832336,
+          "processed_m": 0.07951000332832336,
+          "passed": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "sensor": "raw",
+      "nominal_distance_m": 0.15,
+      "samples": [
+        {
+          "stamp_s": 3.862,
+          "expected_m": 0.15000288546455737,
+          "measured_m": 0.15001119673252106,
+          "processed_m": 0.15001119673252106,
+          "passed": true
+        },
+        {
+          "stamp_s": 3.927,
+          "expected_m": 0.1500029005009706,
+          "measured_m": 0.15001116693019867,
+          "processed_m": 0.15001116693019867,
+          "passed": true
+        },
+        {
+          "stamp_s": 3.994,
+          "expected_m": 0.15000292969839413,
+          "measured_m": 0.1500113159418106,
+          "processed_m": 0.1500113159418106,
+          "passed": true
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

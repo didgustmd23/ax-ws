@@ -70,7 +70,7 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 | 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` | STATE | A4(현재는 시험 스텁) |
 
 - AMCL TF의 stamp는 처리한 스캔 시각에 `transform_tolerance`(1.0 s)를 더한 값이다(Nav2 동작).
-- `/map`은 [공통 인터페이스 계약 4.2절](../../docs/design/INTERFACE_CONTRACT.md#42-로봇-안전위치-ab)에 등록돼 있다(초안). 지도 작성 중 slam_toolbox가 내는 `/ax/<robot_id>/map`은 저장 도구용이며 위치 추정에 쓰지 않는다.
+- `/map`은 [공통 인터페이스 계약 4.2절](../../docs/design/INTERFACE_CONTRACT.md#42-로봇-안전위치-ab)에 등록돼 있다(K0, 2026-11-08 승인). 지도 작성 중 slam_toolbox가 내는 `/ax/<robot_id>/map`은 저장 도구용이며 위치 추정에 쓰지 않는다.
 - 설정은 [`config/amcl.yaml`](config/amcl.yaml)에 있다. 거리 범위는 B1 출력(0.12~10 m)에 맞췄고 나머지는 Nav2 기본값에서 출발한 개발값이다.
 
 ### 실행 순서

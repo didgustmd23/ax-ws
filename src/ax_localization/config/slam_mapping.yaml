@@ -1,6 +1,6 @@
 # B2 지도 작성용 slam_toolbox 설정(AWS 창고 시험 출발값).
 # 기준: Jazzy slam_toolbox 2.8.5 mapper_params_online_async.yaml. 바꾼 값만 아래에 적는다.
-# - 프레임: map → robot_2/odom → robot_2/base_link (K0 초안의 map→odom 발행 소유는 B2)
+# - 프레임: map → robot_2/odom → robot_2/base_link (K0 계약(2026-11-08 승인)의 map→odom 발행 소유는 B2)
 # - 입력: B1 scan_filtered(앞 LiDAR 180°, 0.12~10 m), max_laser_range 10 m
 # - map_update_interval 2 s, 대화형 모드 끔, 지도 토픽 /ax/<robot_id>/map(save_map이 띄우는 map_saver가 노드 namespace의 map을 구독한다)
 # 해상도 0.05 m와 그 밖의 값은 기본값 그대로다. 값은 시험 결과로 조정할 출발값이며 확정값이 아니다.

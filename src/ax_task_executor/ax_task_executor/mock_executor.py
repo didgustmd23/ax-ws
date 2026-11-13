@@ -32,7 +32,6 @@ ROBOT_IDS = ('robot_1', 'robot_2', 'robot_3', 'robot_4')
 
 # 로봇별 모의 결과 표시 Topic. robot_2는 이전 경로를 유지한다.
 def result_display_topic(robot_id):
-    # 역할: 로봇별 모의 결과 표시 토픽 경로를 만듭니다.
     if robot_id == 'robot_2':
         return '/a3_mock/result_display'
 
@@ -41,13 +40,11 @@ def result_display_topic(robot_id):
 
 # 계약 4.3절의 로컬 작업 Action 경로
 def execute_action_name(robot_id):
-    # 역할: 로봇별 작업 실행 액션 경로를 만듭니다.
     return f'/ax/{robot_id}/executor/execute_local_task'
 
 
 # 로컬 작업 실행기 기록 보존 폴더: ${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>
 def record_dir(robot_id):
-    # 역할: 로봇별 기록 저장 폴더 경로를 만듭니다.
     ros_home = os.environ.get('ROS_HOME') or str(Path.home() / '.ros')
 
     return Path(ros_home) / 'ax_task_executor' / robot_id
@@ -55,7 +52,6 @@ def record_dir(robot_id):
 
 # 지정하지 않으면 로봇별 보존 경로의 원장을 쓴다(재시작해도 이전 수락·결과가 남는다)
 def default_execution_db(robot_id):
-    # 역할: 로봇별 기본 작업 결과 원장 경로를 반환합니다.
     return str(record_dir(robot_id) / 'executions.sqlite3')
 
 
@@ -64,7 +60,6 @@ class MockExecutor(Node):
     # local_task_executor는 노드 이름·콜백 그룹·공유 상태를 넘겨 같은 로직을 한 프로세스에서 쓴다.
     def __init__(self, node_name='a3_mock_executor', action_group=None, status_group=None,
                  state=None):
-        # 역할: 설정과 내부 상태를 준비합니다.
         super().__init__(node_name, parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.action_group = action_group
@@ -88,8 +83,8 @@ class MockExecutor(Node):
         self.store = ExecutionStore(
             self.get_parameter('execution_db').value, self.robot_id)
         self.get_logger().info(f"모의 실행 원장: {self.get_parameter('execution_db').value}")
-        # 모의 상태를 계약 토픽에 게시하되 운영 판단에 쓰지 못하도록 무효로 표시합니다.
-        # 프로세스를 다시 시작하면 새 세션 식별자를 사용합니다.
+        # Publish mock execution state on the contract Topic, explicitly invalid
+        # for operational decisions. A new process always has a new session ID.
         self.task_status = RobotTaskStatus(robot_id=self.robot_id)
         self.task_status.meta.schema_version = 1
         self.task_status.meta.source_id = f'a3_mock_executor_{self.robot_id}'
@@ -100,7 +95,7 @@ class MockExecutor(Node):
             RobotTaskStatus, f'/ax/{self.robot_id}/executor/status',
             QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                        durability=DurabilityPolicy.TRANSIENT_LOCAL))
-        # Gazebo 시간이 멈춰도 실제 시간 기준으로 상태를 재발행합니다.
+        # Heartbeats use steady time even while Gazebo sim time is paused.
         self.status_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.status_timer = self.create_timer(
             1.0, self.publish_task_status, clock=self.status_clock,
@@ -125,7 +120,6 @@ class MockExecutor(Node):
     # Goal 수락 여부를 정한다. 끝난 실행의 재요청은 다른 작업 처리 중에도 저장 결과 조회로 받는다
     def accept_goal(self, request):
         # 접수 전에 작업 종류·필수 값·실행 자리를 검사합니다. 실제 구현 범위는 모의 적재 확인뿐입니다.
-        # 역할: 작업 형식과 처리 중 상태를 확인해 요청 접수 여부를 정합니다.
         execution_id = request.execution.execution_id
         if request.task_kind != ExecuteLocalTask.Goal.CONFIRM_LOAD:
             self.get_logger().warning('CONFIRM_LOAD만 지원합니다.')
@@ -145,7 +139,7 @@ class MockExecutor(Node):
             self._unclaim(execution_id, claimed)
             return GoalResponse.REJECT
         data = message_to_ordereddict(request)
-        # 계약에 따라 작업 수정 번호는 재전송 때 바뀔 수 있습니다.
+        # Contract: task revision may change on retransmission.
         data['execution'].pop('task_revision')
         fingerprint = json.dumps(data, sort_keys=True, separators=(',', ':'))
         try:
@@ -164,19 +158,16 @@ class MockExecutor(Node):
 
     # 수락하지 않기로 한 실행이 새로 잡은 처리 중 작업 표시를 되돌린다
     def _unclaim(self, execution_id, claimed):
-        # 역할: 선점한 현재 실행의 처리권을 반환합니다.
         if claimed:
             self.state.release(execution_id)
 
     # 이전 시험 코드 호환: 현재 처리 중 실행 ID
     @property
     def _active_execution_id(self):
-        # 역할: 현재 처리 중인 실행 식별자를 읽습니다.
         return self.state.active_execution_id
 
     # 저장된 최종 결과가 있는지 확인한다. 원장을 읽지 못하면 없다고 본다
     def _has_result(self, execution_id):
-        # 역할: 해당 실행의 완료 결과가 이미 저장됐는지 확인합니다.
         try:
             return self.store.cached_result(execution_id) is not None
         except sqlite3.Error:
@@ -257,7 +248,6 @@ class MockExecutor(Node):
     # 저장 결과로 이 Goal만 끝낸다. 상태 Topic·결과 표시·처리 중 작업 표시는 건드리지 않는다
     def _replay(self, goal_handle):
         # 이미 저장된 결과를 돌려주는 조회 경로입니다. 현재 다른 작업의 진행 상태를 덮어쓰지 않습니다.
-        # 역할: 새 물리 동작 없이 저장된 결과로 해당 요청만 종료합니다.
         execution_id = goal_handle.request.execution.execution_id
         result = ExecuteLocalTask.Result()
 
@@ -289,14 +279,12 @@ class MockExecutor(Node):
     def _begin_execution(self, goal_handle):
         # 현재 Action 콜백에서 실제로 사용하는 단계 머신이다.
         # 재요청은 새 물리 작업이 아니라 기존 SQLite 결과 조회로 연결된다.
-        # 역할: 작업 단계 추적을 시작하고 상태 및 피드백 발행 함수를 준비합니다.
         flow = ConfirmLoadStateMachine()
         execution = goal_handle.request.execution
 
         def advance(phase, progress, status=None):
             # 1. 순서 검사 → 2. 상태 Topic → 3. Action Feedback·로그.
             # 전환이 잘못되면 상태를 발행하기 전에 예외가 발생한다.
-            # 역할: 단계 전이를 검사하고 상태와 액션 피드백을 갱신합니다.
             flow.transition(phase)
             self.update_task_status(phase.value, execution, status)
             feedback = ExecuteLocalTask.Feedback(phase=phase.value, progress=progress)
@@ -322,7 +310,6 @@ class MockExecutor(Node):
         return advance, None
 
     def _complete_execution(self, goal_handle, advance, cancel_requested=False):
-        # 역할: 완료 또는 취소 결과를 기록하고 현재 실행을 정리합니다.
         try:
             saved = self.store.result(
                 goal_handle.request.execution.execution_id,
@@ -363,7 +350,6 @@ class MockExecutor(Node):
 
     @staticmethod
     def make_canceled_result(_value):
-        # 역할: 취소 상태를 나타내는 모의 작업 결과를 만듭니다.
         result = ExecuteLocalTask.Result()
         result.status.outcome = ResultStatus.CANCELED
         result.status.error_code = 'MOCK_CANCELED'
@@ -371,7 +357,7 @@ class MockExecutor(Node):
         return message_to_ordereddict(result)
 
     def update_task_status(self, phase, execution=None, result=None):
-        """현재 작업 단계와 결과를 상태 메시지에 반영합니다."""
+        """Publish state changes; keep the last completed result while running."""
         # 메시지 계산·교체만 잠금 안에서 하고 발행은 잠금 밖에서 한다.
         with self._status_lock:
             updated = deepcopy(self.task_status)
@@ -388,7 +374,7 @@ class MockExecutor(Node):
         self.publish_task_status()
 
     def publish_task_status(self):
-        """모의 작업 상태를 운영 판단에 쓰지 못하도록 무효 표시해 게시합니다."""
+        """Re-assess the in-memory mock state and refresh its ROS timestamp."""
         with self._status_lock:
             self.task_status.meta.header.stamp = self.get_clock().now().to_msg()
             message = deepcopy(self.task_status)
@@ -397,7 +383,6 @@ class MockExecutor(Node):
     @staticmethod
     def make_result(value):
         # 센서 판정이 아닌 시험 입력입니다. UNKNOWN을 EMPTY나 성공으로 바꾸면 안 됩니다.
-        # 역할: 시험 입력을 실제 센서 결과와 구분한 모의 결과를 만듭니다.
         result = ExecuteLocalTask.Result()
 
         if value == 'STOWED':
@@ -417,7 +402,6 @@ class MockExecutor(Node):
         return message_to_ordereddict(result)
 
     def destroy_node(self):
-        # 역할: 노드가 소유한 원장을 닫고 상위 노드를 정리합니다.
         self.server.destroy()
         self.store.close()
         return super().destroy_node()
@@ -425,7 +409,6 @@ class MockExecutor(Node):
 
 # Goal UUID를 문자열 키로 만든다. Mock 등 UUID가 없는 Goal은 객체 ID를 쓴다
 def goal_key_of(goal_handle):
-    # 역할: 액션 요청을 구분할 키를 UUID 또는 대체 식별자로 만듭니다.
     uuid = getattr(getattr(goal_handle, 'goal_id', None), 'uuid', None)
 
     try:
@@ -435,7 +418,6 @@ def goal_key_of(goal_handle):
 
 
 def main(args=None):
-    # 역할: 실행 인자를 받아 노드를 시작하고 종료 시 자원을 정리합니다.
     rclpy.init(args=args)
     node = MockExecutor()
     try:

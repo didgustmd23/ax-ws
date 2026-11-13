@@ -25,7 +25,6 @@ def checked_bounds(value):
 # 영역 파일을 읽어 버전·좌표계·승인·영역 종류·접근 구역 참조를 검사하고 내용을 돌려준다.
 def load_regions(path):
     # 파일이 존재해도 운영 승인된 것은 아닙니다. 좌표·버전·경계 형식을 먼저 검사합니다.
-    # 역할: 영역 파일을 읽고 좌표계와 영역 식별자 및 형상을 검사합니다.
     data = json.loads(Path(path).read_text(encoding='utf-8'))
     if (data.get('schema_version') != 1 or not isinstance(data.get('approved'), bool)
             or not data.get('frame_id') or not data.get('world')
@@ -175,7 +174,6 @@ def observe_robot(catalog, outline_bounds, pose, *, frame_id, map_revision, posi
     corridors = [r for r in catalog.get('regions', []) if r.get('kind') == 'corridor']
 
     def everywhere(reason):
-        # 역할: 모든 통로에 같은 판정 불가 사유를 적용합니다.
         return {r['id']: Observation('UNKNOWN', reason) for r in corridors}
 
     # 1) 공통 판정 불가 조건
@@ -236,7 +234,6 @@ def observe_robot(catalog, outline_bounds, pose, *, frame_id, map_revision, posi
 
 # 명령행: 영역 파일을 검사해 요약을 출력하고, --require-approved면 미승인을 종료 코드 2로 막는다.
 def main():
-    # 역할: 실행 인자를 받아 노드를 시작하고 종료 시 자원을 정리합니다.
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path)
     parser.add_argument('--require-approved', action='store_true')

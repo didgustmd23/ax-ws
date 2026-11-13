@@ -27,7 +27,7 @@ ros2 run ax_task_executor gazebo_mock_display
 ros2 run ax_task_executor mock_executor --ros-args -p mock_load:=EMPTY
 ```
 
-요청 경로는 계약 경로 `/ax/robot_2/executor/execute_local_task`다(모의 작업 상태는 `MOCK_ONLY`). 독립 개발용 lease 서버는 `ros2 run ax_task_executor lease_check`이며 기본값은 `dev_deny`다. `local_task_executor`는 작업 서버와 lease 확인을 묶고 **기본 정책은 `operational`**이다. 실제 배정 확인·활성 Goal·lease가 등록되지 않으면 거절하며, 모의 작업 접수만으로 실행 권한을 만들지 않는다. 같은 로봇에 독립 lease 서버를 동시에 실행하면 안 된다. 현재 D4에는 실제 `assignment_check` 응답 구현이 없어 A3↔D4 시험은 모의 D4를 사용한다. Gazebo와 표시 노드는 같은 `GZ_PARTITION`을 사용해야 한다.
+요청 경로는 계약 경로 `/ax/robot_2/executor/execute_local_task`다(상태는 `MOCK_ONLY`). lease 확인 개발 서버는 `ros2 run ax_task_executor lease_check`, 둘을 한 프로세스로 묶은 것은 `local_task_executor`다(같은 로봇에 동시 실행 금지). Gazebo와 표시 노드는 같은 `GZ_PARTITION`을 사용해야 한다.
 환경 설정·빌드·Goal 전송은 [A3 패키지 안내](../../src/ax_task_executor/README.md),
 계약 검토 범위와 미구현 항목은 [A3 K0 검토 기록](A3_K0_REVIEW.md)을 따른다.
 

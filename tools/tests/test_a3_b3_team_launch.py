@@ -8,12 +8,6 @@ import subprocess
 import tempfile
 import time
 import unittest
-
-# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
-import sys as _domain_sys
-from pathlib import Path as _DomainPath
-_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
-from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -57,7 +51,7 @@ class TeamLaunchSmokeTests(unittest.TestCase):
         from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
-                'ROS_DOMAIN_ID': os.environ['ROS_DOMAIN_ID'],
+                'ROS_DOMAIN_ID': str(180 + os.getpid() % 40),
                 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'LOCALHOST',
                 'ROS_LOG_DIR': str(Path(folder) / 'logs')}):
             log_path = Path(folder) / 'launch.log'

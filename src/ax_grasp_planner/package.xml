@@ -4,6 +4,5 @@
   <description>C3 rule-based suction candidates with explicit validators.</description>
   <maintainer email="freem@todo.todo">freem</maintainer><license>Apache-2.0</license>
   <exec_depend>rclpy</exec_depend><exec_depend>ax_interfaces</exec_depend>
-  <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
   <export><build_type>ament_python</build_type></export>
 </package>

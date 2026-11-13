@@ -38,19 +38,16 @@ HEALTH_NAMES = {LocalizationHealth.UNKNOWN: 'UNKNOWN', LocalizationHealth.OK: 'O
 
 # ROS Time 메시지 → 초
 def seconds(stamp):
-    # 역할: 메시지 시각을 초 단위 실수로 변환합니다.
     return stamp.sec + stamp.nanosec * 1e-9
 
 
 # 쿼터니언 → yaw
 def yaw_of(q):
-    # 역할: 회전 사원수에서 평면 방향각을 구합니다.
     return math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
 
 
 # 패키지 share 폴더(설치 환경). 없으면 None
 def share_dir(package):
-    # 역할: 설치된 패키지의 공유 경로를 찾습니다.
     try:
         from ament_index_python.packages import get_package_share_directory
         return Path(get_package_share_directory(package))
@@ -63,7 +60,6 @@ class CorridorObserver(Node):
 
     # 파라미터를 읽고 영역·외곽을 준비한 뒤 구독·발행·타이머를 만든다.
     def __init__(self):
-        # 역할: 설정과 내부 상태를 준비합니다.
         super().__init__('corridor_observer')
 
         # 1) 파라미터
@@ -135,16 +131,15 @@ class CorridorObserver(Node):
     # health 수신: 같은 세션의 revision 감소와 이미 대체된 세션은 버린다(계약 2.3절).
     def on_health(self, message):
         # B2의 상태를 받아도 곧바로 믿지 않습니다. 대상 로봇·세션·수정 번호·시각을 확인합니다.
-        # 역할: 위치 신뢰성의 로봇과 세션 및 수정 번호를 검사해 수신합니다.
         if message.robot_id != self.robot_id:
             return
 
         session, revision = message.meta.source_session_id, message.meta.revision
         if session in self.retired_sessions:
             return
-        # 형식 오류나 미초기화 입력은 현재 B2 세션을 폐기하지 않습니다.
-        # 다만 무효 입력 자체는 반영해 이전의 안전한 관측을 계속 보고하지 않습니다.
-        # 새 유효 세션이 확인될 때까지 통로를 안전하다고 추정하지 않습니다.
+        # Malformed/uninitialized publishers must not retire the live B2
+        # session. Still expose their invalid input so we do not keep reporting
+        # an old clear observation while waiting for a valid replacement.
         now = self.get_clock().now().nanoseconds * 1e-9
         sample = seconds(message.meta.header.stamp)
         sample_fresh = (math.isfinite(now) and now > 0.0 and sample > 0.0
@@ -171,7 +166,6 @@ class CorridorObserver(Node):
     # - DEGRADED(valid·나이 OK): std가 유한·0 초과·상한 이하일 때만 완화 판정, 아니면 LOST와 같게 HEALTH_STD_INVALID.
     # - LOST·UNKNOWN·무효·만료·미수신: 모든 통로 UNKNOWN.
     def health_problem(self, now):
-        # 역할: 위치 신뢰성의 시각과 오차를 검사해 판정 불가 사유를 반환합니다.
         message = self.health
         if message is None:
             return 'HEALTH_UNAVAILABLE', False
@@ -203,9 +197,8 @@ class CorridorObserver(Node):
     # 한 번 판정해 {통로: (상태 이름, position_valid)}와 목록 사유를 돌려준다.
     def evaluate(self, now):
         # 승인·시각·외곽·위치 신뢰성·TF를 확인한 뒤 기하 판정을 합니다. 통행 허가는 하지 않습니다.
-        # B4는 목록 전체를 검사하므로 빈 목록의 전체 참 판정을 주의합니다.
-        # 비어 있는 통로 목록을 유효한 비점유 관측으로 게시하지 않습니다.
-        # 역할: 현재 위치와 로봇 외곽에서 통로별 관측을 계산합니다.
+        # B4 checks all observations; all([]) is true. Never advertise an
+        # empty corridor catalog as a valid observation of a clear world.
         if self.catalog is None or not self.corridor_ids:
             return {}, 'REGIONS_INVALID'
         if not self.catalog.get('approved'):
@@ -247,7 +240,6 @@ class CorridorObserver(Node):
 
     # DEGRADED 완화 판정 시작·종료를 로그로 남긴다(validity_reason은 valid=false용이라 비워 두므로).
     def note_degraded(self, active):
-        # 역할: 위치 신뢰성 저하에 따른 완화 판정 변경을 로그로 남깁니다.
         if active != self.degraded_active:
             self.degraded_active = active
             self.get_logger().info('위치 DEGRADED: 넓힌 외곽(+%.2f m)이 통로·접근 구역 밖인 통로만 OUTSIDE, 나머지 UNKNOWN'
@@ -256,7 +248,6 @@ class CorridorObserver(Node):
     # 주기 판정·발행(5 Hz). 내용·유효성·사유가 바뀔 때만 revision을 올린다.
     def tick(self):
         # 승연님 B4가 목록과 개별 관측을 모두 검사하므로 각각의 유효성·시각·로봇 번호를 채웁니다.
-        # 역할: 현재 위치로 통로 관측을 계산하고 내용 변경 시 수정 번호를 올려 게시합니다.
         now = self.get_clock().now().nanoseconds * 1e-9
         result, reason = self.evaluate(now)
 
@@ -283,7 +274,6 @@ class CorridorObserver(Node):
 
     # 공통 StateMeta를 만든다. 사유가 있으면 valid=false다.
     def meta(self, now, reason):
-        # 역할: 공통 상태 메타데이터와 유효성 사유를 만듭니다.
         meta = StateMeta()
         stamp_s = max(now, 0.0) if math.isfinite(now) else 0.0
         meta.header.stamp = Time(nanoseconds=int(stamp_s * 1e9)).to_msg()
@@ -299,7 +289,6 @@ class CorridorObserver(Node):
 
 # 노드 실행 진입점
 def main(args=None):
-    # 역할: 실행 인자를 받아 노드를 시작하고 종료 시 자원을 정리합니다.
     rclpy.init(args=args)
     node = CorridorObserver()
 

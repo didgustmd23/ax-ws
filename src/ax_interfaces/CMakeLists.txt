@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(ax_interfaces)
 
-# 공통 인터페이스 초안(K0). 변경 추적은 계약 D-14(schema_version, 그 외 타입은 패키지 버전·타입 해시)를 따른다.
+# 공통 인터페이스 계약(K0, 2026-11-08 승인). 변경 추적은 계약 D-14(schema_version, 그 외 타입은 패키지 버전·타입 해시)를 따른다.
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)

@@ -3,7 +3,7 @@
 <package format="3">
   <name>ax_interfaces</name>
   <version>0.1.0</version>
-  <description>AX 공통 메시지·서비스·액션 계약 초안(K0). docs/design/INTERFACE_CONTRACT.md 참조.</description>
+  <description>AX 공통 메시지·서비스·액션 계약(K0, 2026-11-08 승인). docs/design/INTERFACE_CONTRACT.md 참조.</description>
   <maintainer email="didgustmd23@gmail.com">yhs</maintainer>
   <license>Apache-2.0</license>
 

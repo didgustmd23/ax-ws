@@ -26,18 +26,24 @@ def run(on_status):
     from ax_interfaces.msg import RobotTaskStatus
     from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
+    from rclpy.parameter import Parameter
     from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 
     class D4Input(Node):
         def __init__(self):
-            super().__init__("d4_a3_status_input")
+            super().__init__(
+                "d4_a3_status_input",
+                parameter_overrides=[Parameter("use_sim_time", value=True)],
+            )
             # 데이터를 받을 때 사용할 설정
             qos = QoSProfile(
                 depth=10,
                 reliability=ReliabilityPolicy.RELIABLE,
-                durability=DurabilityPolicy.VOLATILE,
+                # 늦게 시작한 D4도 A3의 최신 상태를 받도록 A3 RobotTaskStatus QoS와 맞춘다.
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
             )
-            self._subscriptions = []
+            # Node 내부 목록과 분리해 보관하여 destroy_node()가 구독을 안전하게 정리하게 한다.
+            self._status_subscriptions = []
             # 두 로봇의 결과를 각각 받음.
             for robot_id in ("robot_1", "robot_2"):
                 topic = f"/ax/{robot_id}/executor/status"
@@ -47,7 +53,7 @@ def run(on_status):
                     lambda message, expected=robot_id: self.receive(message, expected),
                     qos,
                 )
-                self._subscriptions.append(subscription)
+                self._status_subscriptions.append(subscription)
                 self.get_logger().info(f"A3 상태 수신 대기: {topic}")
 
         def receive(self, message, expected_robot_id):

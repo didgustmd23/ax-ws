@@ -8,6 +8,7 @@ import copy
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -74,7 +75,7 @@ def send(status, db, now=100, boot=100):
 
 
 def count_rows(db, table="history"):
-    with sqlite3.connect(db) as conn:
+    with closing(sqlite3.connect(db)) as conn:
         return conn.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
 
 
@@ -179,6 +180,11 @@ def run_checks():
         confirm("4초 지난 상태 → UNKNOWN", expired)
 
     print(f"\n결과: {total}/7개 테스트 통과")
+
+
+def test_d4_w0():
+    """기존 W0 검사를 바꾸지 않고 pytest가 실행할 수 있게 감싼다."""
+    run_checks()
 
 
 if __name__ == "__main__":

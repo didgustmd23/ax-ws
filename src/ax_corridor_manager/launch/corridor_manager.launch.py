@@ -1,4 +1,4 @@
-"""D3 통로 노드에 시뮬레이션 시계와 실행 설정을 전달합니다."""
+"""허가 발급 보류 상태인 D3 노드에 시계와 원장 설정을 전달합니다."""
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -10,6 +10,7 @@ def generate_launch_description():
     """시뮬레이션 시계 기본값과 선택 설정을 포함한 실행 구성을 만듭니다."""
     return LaunchDescription([
         # Gazebo 입력 시각과 비교 시계를 맞춥니다. 실제 시계 환경에서는 false를 명시합니다.
+        # 이 launch 실행이나 영역 승인은 허가 정책 합의를 뜻하지 않습니다.
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('regions_file', default_value=''),
         DeclareLaunchArgument('database', default_value=''),

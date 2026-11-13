@@ -12,6 +12,7 @@ from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.msg import LoadState, ResultStatus, RobotTaskStatus
 from ax_task_executor.execution_store import ExecutionStore
 from ax_task_executor.executor_state import ExecutorState
+from ax_task_executor.status_contract import make_unassigned_mock_idle
 from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -90,12 +91,8 @@ class MockExecutor(Node):
         self.get_logger().info(f"모의 실행 원장: {self.get_parameter('execution_db').value}")
         # 모의 상태를 계약 토픽에 게시하되 운영 판단에 쓰지 못하도록 무효로 표시합니다.
         # 프로세스를 다시 시작하면 새 세션 식별자를 사용합니다.
-        self.task_status = RobotTaskStatus(robot_id=self.robot_id)
-        self.task_status.meta.schema_version = 1
-        self.task_status.meta.source_id = f'a3_mock_executor_{self.robot_id}'
-        self.task_status.meta.source_session_id = uuid4().hex
-        self.task_status.meta.valid = False
-        self.task_status.meta.validity_reason = 'MOCK_ONLY'
+        # 작업 없는 초기 상태를 한 곳에서 정의해 빈 ExecutionRef의 의미를 명확히 합니다.
+        self.task_status = make_unassigned_mock_idle(self.robot_id, uuid4().hex)
         self.task_status_publisher = self.create_publisher(
             RobotTaskStatus, f'/ax/{self.robot_id}/executor/status',
             QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
@@ -105,7 +102,7 @@ class MockExecutor(Node):
         self.status_timer = self.create_timer(
             1.0, self.publish_task_status, clock=self.status_clock,
             callback_group=self.status_group)
-        self.update_task_status('MOCK_IDLE')
+        self.publish_task_status()
         self.result_display = self.create_publisher(
             String, result_display_topic(self.robot_id),
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))

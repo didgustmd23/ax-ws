@@ -354,7 +354,8 @@ ros2 launch ax_task_executor team_handoff.launch.py robot_ids:=robot_2 robot_mod
 | B2 위치 감독 | `/ax/<robot_id>/localization/health`, TF | B3가 팀의 위치·유효성 계약을 소비 |
 | B4 `b4_risk_node.py` | `/ax/<robot_id>/perception/corridor_observation` | AX_1·AX_2 각각 B4 원본 코드로 정상·무효·만료·회복 시험 |
 
-D4 상태 구독 QoS·시뮬레이션 시각·타입 조회의 알려진 제한과 배정 응답 미구현은 D4 담당 범위다.
+D4 상태 구독 QoS·시뮬레이션 시각·타입 조회의 알려진 제한과 **D4 실제 배정 확인 응답 미구현**은 D4 담당 범위다.
+A3의 배정 확인 요청·응답 처리와 주기 확인은 구현되어 있으며, D4 실제 응답 미구현과 구분한다.
 A3에서 잘못된 타입·시각으로 맞추거나 배정을 대신 승인하지 않는다.
 실제 상대 브랜치/실행 환경의 추가 변경은 그 담당자와 별도 확인해야 한다.
 
@@ -498,7 +499,29 @@ ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1           
 | `PICK_AND_STOW`·`UNLOAD_AND_PLACE` | 미구현(Goal 거절) | C4 `ManipulateObject`(`/ax/<robot_id>/manipulation/execute`) + lease 요청·발급·철회 Topic, 적재 확인 |
 | `RETRACT_ARM` | 미구현(Goal 거절) | A4 `ProtectedArmTrajectory`(`/ax/<robot_id>/arm/execute_trajectory`, `AUTH_A3_LOCAL_TASK`), `joint_states`로 완료 확인 |
 | `CONFIRM_LOAD` | 모의(시험 입력) | 실제 적재 판정(`load/state`) |
-| 배정 확인 | 미구현 | D4 `assignment_check/request·response` heartbeat |
+| 배정 확인 | A3 요청·응답 대조·주기 확인·만료 및 오류 무효화 구현. D4 실제 응답은 미구현 | D4 `assignment_check/request·response` heartbeat |
 
-C4·A4·D4의 모의 상대(가짜 서버)도 아직 없다. 위 연결은 담당 계약 확인 뒤 진행한다.
+테스트 내 **모의 D4는 구현되어 있다**(`tools/tests/test_a3_d4_handoff_ros.py`).
+A3 요청에 모의 응답을 보내 배정 확인·응답 단절·만료 경로를 검사하며, D4 실제 원장 응답을 대신하지 않는다.
+A4 형식의 lease 클라이언트 요청도 시험하지만 실제 C4·A4·D4 전체 노드의 종단 실행 완료를 뜻하지 않는다.
+현재 ROS 연결 시험은 합의된 domain 범위가 지정되어야 실행하며, 미지정 시 건너뛴다.
+
+### 초기 모의 대기의 선행 정리
+
+`status_contract.make_unassigned_mock_idle`은 실행 정보 전체가 비어 있는 초기 MOCK_IDLE을
+생성한다. 실제 초기 게시에 연결했으며 가짜 작업 ID나 성공 결과를 만들지 않는다.
+`is_unassigned_mock_idle`은 일부 실행 정보가 남은 메시지를 단순 대기로 분류하지 않도록 검사한다.
+이는 로봇 가용성·배정 해제·실행 권한 판정이 아니다. 현재 로컬 D4 검증은 형식 검사 뒤 정확한 초기
+모의 대기를 구분하고, 원장은 UNKNOWN으로 반환해 기존 작업 기록을 보존한다. 함수 직접 연결은
+통과했으며 담당자 검토와 실제 ROS 연결은 남아 있다. 적용 범위와 시험 기준은
+[초기 모의 대기 인계 초안](../../docs/guides/A3_D4_IDLE_HANDOFF_PROPOSAL.md)을 따른다.
+
+### 저장소 반영 상태 (2026-11-14 기준)
+
+기존 작업은 GK 커밋 `1cda53d`로 업로드했고, [PR #58](https://github.com/didgustmd23/ax-ws/pull/58)을
+통해 main에 반영했다(main 병합 커밋 `5ebbeae`). PR #56 반영 후 #57에서 되돌리고 #58에서 다시 반영한 이력이다.
+그 이후의 D3 정책 미합의 보류, C3 만료 후보 공간 회수·재수신 방어, B3 승인 전 검증 보완,
+A3/D4 초기 대기 처리와 검토 문서는 2026-11-14 후속 변경으로 구분한다. PR #58에 모두 들어 있다고
+해석하지 않는다. 각 후속 변경의 반영 여부는 해당 커밋과 main 대상 PR 이력으로 확인한다.
+앞으로도 main에 직접 push하지 않고 작업 브랜치의 변경을 PR로 제출한다.
 

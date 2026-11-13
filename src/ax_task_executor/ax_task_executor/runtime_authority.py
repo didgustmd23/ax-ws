@@ -7,9 +7,11 @@ never create authority. Restart deliberately discards all live permissions.
 from contextlib import contextmanager
 from dataclasses import dataclass
 import math
+import sqlite3
 import threading
 import time
 import uuid
+import weakref
 
 
 def boottime():
@@ -36,6 +38,8 @@ class RuntimeAuthority:
 
     policy = 'operational'
     marks = ('', 'accept-')
+    CHECK_LIFETIME_S = 2.0
+    MAX_PENDING_CHECKS = 64
 
     def __init__(self, robot_id, clock=boottime):
         self.robot_id = robot_id
@@ -46,7 +50,15 @@ class RuntimeAuthority:
         self.assignment_deadline = 0.0
         self.context = None
         self.pending = {}
-        self.sent_checks = {}
+        # Keep lifetime duplicate protection on temporary disk, not an
+        # ever-growing Python dictionary. SQLite removes this DB on close;
+        # a new process gets a new A session and cannot use its old replies.
+        self._check_history = sqlite3.connect('', check_same_thread=False, isolation_level=None)
+        self._check_history.execute('PRAGMA cache_size=-256')
+        self._check_history.execute("""CREATE TABLE sent_checks (
+            request_id TEXT PRIMARY KEY, assignment_id TEXT NOT NULL,
+            generation INTEGER NOT NULL, sent_at REAL NOT NULL)""")
+        self._close_history = weakref.finalize(self, self._check_history.close)
         self.d_session_id = None
         self.sequence = -1
         self.requested_assignment = None
@@ -56,8 +68,12 @@ class RuntimeAuthority:
         if not request_id or not assignment_id or generation <= 0:
             raise ValueError('assignment ID, request ID and positive generation required')
         with self.lock:
+            now = self.clock()
+            self._prune_checks(now)
             value = (assignment_id, generation)
-            previous = self.sent_checks.get(request_id)
+            previous = self._check_history.execute(
+                'SELECT assignment_id, generation, sent_at FROM sent_checks WHERE request_id=?',
+                (request_id,)).fetchone()
             if previous is not None:
                 if previous[:2] != value:
                     raise ValueError('request_id reused for another assignment')
@@ -67,22 +83,46 @@ class RuntimeAuthority:
                 self._invalidate()
             if self.requested_assignment != value:
                 self.pending.clear()
+            if len(self.pending) >= self.MAX_PENDING_CHECKS:
+                raise ValueError('too many outstanding assignment checks')
+            # Record before publishing. A completed/expired request ID is never
+            # re-enrolled, even after it has been removed from pending memory.
+            self._check_history.execute('INSERT INTO sent_checks VALUES (?, ?, ?, ?)',
+                                        (request_id, assignment_id, generation, now))
             self.requested_assignment = value
-            self.pending[request_id] = (*value, self.clock())
-            self.sent_checks[request_id] = self.pending[request_id]
+            self.pending[request_id] = (*value, now)
+
+    def _prune_checks(self, now):
+        """Keep only responses that can still grant authority in memory."""
+        expired = [key for key, value in self.pending.items()
+                   if now >= value[2] + self.CHECK_LIFETIME_S]
+        for key in expired:
+            del self.pending[key]
+
+    def close(self):
+        """Invalidate permissions and delete the temporary duplicate history."""
+        with self.lock:
+            self.invalidate_assignment()
+            self._close_history()
 
     def confirm_assignment(self, reply):
         """Correlate D4 response; authority deadline is tA + H, never receive + H."""
         with self.lock:
+            self.expire_assignment()
             pending = self.pending.get(reply.request_id)
             if pending is None or reply.a_session_id != self.session_id:
                 return False
             assignment_id, generation, sent_at = pending
             if (assignment_id, generation) != self.requested_assignment:
                 return False
-            if reply.assignment_generation != generation or not reply.d_session_id:
+            if not reply.d_session_id:
                 return False
             if self.d_session_id == reply.d_session_id and reply.sequence <= self.sequence:
+                return False
+            # A positive answer must match the requested generation. A fresh,
+            # correlated negative answer may report D4's NEW current generation:
+            # discard the old permission instead of ignoring that rejection.
+            if reply.valid and reply.assignment_generation != generation:
                 return False
             # Consume once: duplicates cannot extend a permission.
             del self.pending[reply.request_id]
@@ -93,14 +133,17 @@ class RuntimeAuthority:
             self.sequence = reply.sequence
             duration = float(reply.validity_s)
             if (not reply.valid or not math.isfinite(duration) or duration <= 0
-                    or sent_at + duration <= self.clock()):
-                self._invalidate()
+                    or sent_at + min(duration, self.CHECK_LIFETIME_S) <= self.clock()):
+                self.invalidate_assignment()
                 return False
+            # A delayed heartbeat must not resurrect a goal whose assignment
+            # expired while ROS callbacks were paused or the host suspended.
+            self.expire_assignment()
             # Late responses from a prior assignment must not restore it.
             if self.assignment is not None and self.assignment != (assignment_id, generation):
                 self._invalidate()
             self.assignment = (assignment_id, generation)
-            self.assignment_deadline = sent_at + min(duration, 2.0)
+            self.assignment_deadline = sent_at + min(duration, self.CHECK_LIFETIME_S)
             return self.assignment_deadline > self.clock()
 
     def _invalidate(self):
@@ -115,6 +158,13 @@ class RuntimeAuthority:
             self._invalidate()
             self.pending.clear()
             self.requested_assignment = None
+
+    def expire_assignment(self):
+        """Latch expiry on the active goal even if a new confirmation follows."""
+        with self.lock:
+            self._prune_checks(self.clock())
+            if self.assignment is not None and self.clock() >= self.assignment_deadline:
+                self._invalidate()
 
     def activate_goal(self, execution, goal_id='', local_task_kind=0):
         """
@@ -190,6 +240,7 @@ class RuntimeAuthority:
         """Return contract error or empty string; caller holds command_guard."""
         with self.lock:
             ctx = self.context
+            self.expire_assignment()
             if self.assignment is None or self.clock() >= self.assignment_deadline:
                 return 'ASSIGNMENT_STALE'
             if ctx is None or fields['execution_id'] != ctx.execution_id:

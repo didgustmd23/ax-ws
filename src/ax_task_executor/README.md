@@ -325,6 +325,44 @@ ros2 run ax_task_executor local_task_executor --ros-args -p robot_id:=robot_1 -p
 
 ## A4·A2 개발자용 연결 안내
 
+### 팀 시뮬레이션에서 로봇 1·2 함께 실행
+
+팀의 B2 `robot_ids` 인자와 같은 형식으로 A3·B3를 함께 실행한다.
+다른 담당자의 A2/B1/B2/A4/B4 노드는 이 launch에서 시작하거나 설정을 바꾸지 않는다.
+팀의 모델·시뮬레이션·위치 추정 실행 뒤 별도 터미널에서 사용한다.
+
+```bash
+ros2 launch ax_task_executor team_handoff.launch.py
+# 로봇 2만 사용할 때 (ID와 모델의 개수·순서가 같아야 함):
+ros2 launch ax_task_executor team_handoff.launch.py robot_ids:=robot_2 robot_models:=AX_2
+```
+
+- 기본 조합은 `robot_1,robot_2` / `AX_1,AX_2`이며 모델을 로봇 ID로 추측하지 않고 명시한다.
+- 각 `/ax/<robot_id>` namespace에서 `local_task_executor`와 `corridor_observer`만 실행한다.
+- A3는 `operational`, 시각은 팀 시뮬레이션과 같은 `use_sim_time=true`다.
+- `regions_file`과 `map_revision`(기본 1)을 지정할 수 있다. B2 채택 지도와 실제 영역 계약을 확인한다.
+- 기존 같은 로봇의 A3·B3 노드는 먼저 종료한다. 중복 ID·모델 개수 불일치는 시작 전에 거절한다.
+- 실행만으로 실제 배정·Goal·lease가 등록되거나, 모의 Action이 실제 조작으로 바뀌지 않는다.
+  D4 배정 미확인은 거절, 미승인 B3 영역은 UNKNOWN을 유지한다.
+
+현재 팀 소스의 연결 지점:
+
+| 상대 코드 | A3/B3 제공 경로 | 현재 확인 범위 |
+|---|---|---|
+| A4 `protected_arm_server.cpp` | `/ax/<robot_id>/executor/lease/check_command` | ACCEPT/CONTINUE 형식·기록·기한, 전체 A4 물리 구동 통과는 아님 |
+| D4 `input_source.py` | `/ax/<robot_id>/executor/status` | 같은 RobotTaskStatus 경로·로봇 번호, 모의 상태는 MOCK_ONLY 유지 |
+| B2 위치 감독 | `/ax/<robot_id>/localization/health`, TF | B3가 팀의 위치·유효성 계약을 소비 |
+| B4 `b4_risk_node.py` | `/ax/<robot_id>/perception/corridor_observation` | AX_1·AX_2 각각 B4 원본 코드로 정상·무효·만료·회복 시험 |
+
+D4 상태 구독 QoS·시뮬레이션 시각·타입 조회의 알려진 제한과 배정 응답 미구현은 D4 담당 범위다.
+A3에서 잘못된 타입·시각으로 맞추거나 배정을 대신 승인하지 않는다.
+실제 상대 브랜치/실행 환경의 추가 변경은 그 담당자와 별도 확인해야 한다.
+
+```bash
+python3 tools/tests/test_a3_b3_team_launch.py
+python3 tools/tests/test_b3_b4_handoff_ros.py
+```
+
 ### 운영 권한 검사 (`local_task_executor`, 기본 `policy:=operational`)
 
 `runtime_authority.py`는 요청자가 적어 보낸 ID를 권한으로 믿지 않는다. 다음을 모두 검사한다.
@@ -366,6 +404,48 @@ lease FIRST/RENEW/grant/revoke Topic 발급기·영속 세대·재동기화 절�
 python3 tools/tests/test_a3_runtime_authority.py
 # ROS Jazzy와 빌드된 ax_interfaces 환경을 source한 뒤:
 python3 tools/tests/test_a3_runtime_authority_ros.py
+```
+
+### W2 팀 코드 연결: 배정 재확인과 종료 정리
+
+실제 작업 dispatcher는 단발 `request_assignment_check` 대신
+`start_task_authority(execution)`으로 작업을 등록한다. `AssignmentMonitor`가 최초 요청과
+0.5초 주기의 재확인을 수행한다. ROS sim time이 멈춰도 STEADY 타이머·BOOTTIME 권한 기한을 사용한다.
+배정이 확인되기 전에는 Goal 활성화·명령 실행을 허용하지 않는다.
+
+작업 취소·종료 시 `stop_task_authority(execution_id)`를 호출해 배정 권한을 먼저 무효화하고
+재확인을 중단한다. 다른 실행 ID의 늦은 종료 알림은 현재 작업을 지우지 않는다.
+물리 Goal의 철회·Action 취소·실제 정지 확인은 별도로 수행하며, 실제 하위 종료 후
+`authority.finish_goal(...)`로 해당 Goal을 정리해야 한다. 재확인 중단 자체는 물리 정지 완료가 아니다.
+
+D4 단절·호스트 절전으로 배정 기한이 지나면 기존 Goal의 권한은 철회로 고정한다.
+D4 응답이 복구돼도 이전 Goal을 되살리지 않는다. 실제 상태 확인과 별도 복구 절차가 필요하다.
+모의 CONFIRM_LOAD는 이 API를 자동 호출하지 않는다.
+
+현재 요청·A 세션에 대응하고 순번이 새로운 D4의 `valid=false` 응답은,
+응답의 현재 배정 세대가 요청 때와 달라도 기존 권한을 즉시 무효화한다.
+대기 중이던 다른 응답도 정리해 지연된 허용 응답이 거절을 뒤집지 못하게 한다.
+반면 다른 요청·이전 A 세션·오래된 순번은 무시하며, `valid=true`는 요청 세대가 일치해야 한다.
+
+배정 확인의 대기 요청은 최대 2초 동안만 메모리에 두고, 동시 대기는 64개로 제한한다.
+정상 응답을 처리한 요청은 즉시 대기 목록에서 제거한다. 최초 요청 시각·중복 ID 이력은
+Python 사전에 계속 쌓지 않고 세션 전용 임시 SQLite에 보관한다(페이지 캐시 256 KiB).
+이력 파일은 작업 종료가 아니라 노드 종료/객체 정리 때 삭제한다. 실행 중 이력의 디스크 사용량은
+요청 수에 따라 증가하지만 Python 요청 사전은 누적되지 않는다. 정리된 ID를 다시 사용해도
+최초 발신 시각을 바꾸거나 배정 권한을 되살릴 수 없다. 노드 재시작 시 A 세션도 바뀐다.
+
+현재 팀 A4 `protected_arm_server.cpp`는 같은 서비스에 `ACCEPT`·`CONTINUE`를 보낸다.
+첫 허용 응답에는 수락 기록 ID를, CONTINUE에는 기존 수락을 전제로 한 허용 기간을 제공한다.
+승연님 A4·D4 코드는 수정하지 않았다. D4는 아직 상태 수신 골격이므로 배정 응답 시험에는
+테스트 안의 모의 D4를 사용했다. A4 C++ 서버·Gazebo 물리 정지까지의 통합 통과를 뜻하지 않는다.
+
+테스트 파일은 앞으로도 모두 저장소의 `tools/tests/`에 둔다.
+
+```bash
+python3 tools/tests/test_a3_assignment_monitor.py
+python3 tools/tests/test_a3_assignment_history.py
+python3 tools/tests/test_a3_d4_handoff_ros.py
+python3 tools/tests/test_additional_review_regressions.py
 ```
 
 ### 기존 개발 정책 서버

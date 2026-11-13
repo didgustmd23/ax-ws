@@ -26,6 +26,7 @@ import time
 
 from ax_interfaces.msg import AssignmentCheckRequest, AssignmentCheckResponse
 from ax_interfaces.srv import CheckCommandLease
+from ax_task_executor.assignment_monitor import AssignmentMonitor
 from ax_task_executor.executor_state import ExecutorState
 from ax_task_executor.lease_check import (
     default_lease_db, DevPolicyAuthority, LEASE_SERVICE_QOS, LeaseChecker, LeaseLedger)
@@ -33,6 +34,7 @@ from ax_task_executor.mock_executor import execute_action_name, MockExecutor
 from ax_task_executor.runtime_authority import RuntimeAuthority
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -111,6 +113,12 @@ class LocalTaskExecutor(MockExecutor):
             self.assignment_responses = self.create_subscription(
                 AssignmentCheckResponse, prefix + '/response',
                 self.authority.confirm_assignment, event_qos, callback_group=group)
+            self.assignment_monitor = AssignmentMonitor(
+                self.authority, self.request_assignment_check)
+            self.assignment_clock = Clock(clock_type=ClockType.STEADY_TIME)
+            self.assignment_timer = self.create_timer(
+                0.1, self.assignment_monitor.tick, clock=self.assignment_clock,
+                callback_group=MutuallyExclusiveCallbackGroup())
 
         others = self.duplicate_servers(self.get_parameter('name_check_s').value)
 
@@ -147,6 +155,18 @@ class LocalTaskExecutor(MockExecutor):
             request.request_id, request.assignment_id, request.assignment_generation)
         self.assignment_requests.publish(request)
         return request.request_id
+
+    def start_task_authority(self, execution):
+        """Track a real recorded local task; mock actions never call this API."""
+        if not isinstance(self.authority, RuntimeAuthority):
+            raise RuntimeError('task authority requires operational policy')
+        self.assignment_monitor.start(execution)
+
+    def stop_task_authority(self, execution_id):
+        """Invalidate authority on task cancellation/completion before cleanup."""
+        if not isinstance(self.authority, RuntimeAuthority):
+            raise RuntimeError('task authority requires operational policy')
+        return self.assignment_monitor.stop(execution_id)
 
     # 실행기 스레드 수
     def thread_count(self):
@@ -213,7 +233,13 @@ class LocalTaskExecutor(MockExecutor):
 
     # lease 원장을 닫고 모의 실행기 정리를 이어 한다
     def destroy_node(self):
+        if isinstance(getattr(self, 'authority', None), RuntimeAuthority):
+            self.authority.invalidate_assignment()
+        if hasattr(self, 'assignment_timer'):
+            self.assignment_timer.cancel()
         self.stop_lease_thread()
+        if isinstance(getattr(self, 'authority', None), RuntimeAuthority):
+            self.authority.close()
 
         if getattr(self, 'lease_node', None) is not None:
             self.lease_node.destroy_node()

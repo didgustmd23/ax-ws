@@ -73,6 +73,26 @@ ros2 launch ax_environment corridor_observer.launch.py robot_id:=robot_2 robot_m
 
 ## 한계
 
+- 팀 B4의 실제 `b4_risk_node.py`를 수정 없이 사용해 B3 Topic의 정상 수신·미승인 UNKNOWN·TF 만료·회복을
+  `tools/tests/test_b3_b4_handoff_ros.py`에서 확인한다. 위치·거리 입력과 승인 영역은 시험 전용이며
+  실제 B2 AMCL·Gazebo 주행 검증은 아니다. 저장소 영역의 `approved=false`는 유지한다.
+- 위 B4 연결 시험은 robot_1/AX_1과 robot_2/AX_2 양쪽에서 같은 조건을 확인한다.
+  함께 실행하려면 A3 패키지의 `ros2 launch ax_task_executor team_handoff.launch.py`를 사용할 수 있다.
+  이 명령은 A3·B3만 실행하며 다른 담당자의 센서·위치 추정·안전 노드는 별도로 실행한다.
+- B4가 빈 목록을 정상으로 오인하지 않도록 통로가 하나도 없는 B3 설정은
+  `meta.valid=false`, `REGIONS_INVALID`로 발행한다. 비유한 시각도 `CLOCK_INVALID`로 처리한다.
+- B2 세션 ID 누락·revision 0·무효인 새 세션은 기존 정상 세션을 폐기하지 않는다.
+  받은 무효 입력은 관측에 반영해 UNKNOWN을 내되, 정상 세션의 다음 메시지로 복구할 수 있다.
+  정상 새 세션으로 교체된 뒤의 이전 세션 메시지는 계속 무시한다.
+- 새 세션으로 교체하기 전에 ROS 시각과 측정 stamp의 최신성도 확인한다.
+  stamp 0·너무 오래된 값·미래 허용 범위를 넘는 값·유효하지 않은 현재 시각이면
+  기존 세션을 폐기하지 않는다. 관측은 무효 처리하고 정상 세션의 새 메시지로 복구한다.
+
+```bash
+python3 tools/tests/test_b3_b4_handoff_ros.py
+python3 tools/tests/test_b3_review_regressions.py
+```
+
 - 영역·접근 깊이·진입 각도·불확실성 배수·대기 지점은 개발값이며 운영 승인이 아니다.
 - 접근 구역에서 통로를 등지고 후진 진입하면 APPROACHING이 아니라 OUTSIDE다(겹치기 시작하면 INSIDE).
 - 통로 판정은 외곽과 통로 사각형의 겹침만 본다. 센서로 통로 안 물체를 관측하지 않는다.

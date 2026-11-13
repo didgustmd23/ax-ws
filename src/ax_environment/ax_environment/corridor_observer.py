@@ -136,6 +136,18 @@ class CorridorObserver(Node):
         session, revision = message.meta.source_session_id, message.meta.revision
         if session in self.retired_sessions:
             return
+        # Malformed/uninitialized publishers must not retire the live B2
+        # session. Still expose their invalid input so we do not keep reporting
+        # an old clear observation while waiting for a valid replacement.
+        now = self.get_clock().now().nanoseconds * 1e-9
+        sample = seconds(message.meta.header.stamp)
+        sample_fresh = (math.isfinite(now) and now > 0.0 and sample > 0.0
+                        and -self.future_tolerance_s <= now - sample <= self.health_timeout_s)
+        if (not session or revision == 0 or
+                (session != self.health_session and (not message.meta.valid or not sample_fresh))):
+            self.health = message
+            self.health_received = time.monotonic()
+            return
         if session == self.health_session and revision < self.health_revision:
             return
 
@@ -155,14 +167,17 @@ class CorridorObserver(Node):
         message = self.health
         if message is None:
             return 'HEALTH_UNAVAILABLE', False
-        if not message.meta.valid or message.meta.revision == 0:
+        if (not message.meta.valid or message.meta.revision == 0
+                or not message.meta.source_session_id):
             return 'HEALTH_INVALID', False
         if message.state not in (LocalizationHealth.OK, LocalizationHealth.DEGRADED):
             return f'HEALTH_{HEALTH_NAMES.get(message.state, "UNKNOWN")}', False
 
-        sample_age = now - seconds(message.meta.header.stamp)
+        sample = seconds(message.meta.header.stamp)
+        sample_age = now - sample
         silence = time.monotonic() - self.health_received
-        fresh = -self.future_tolerance_s <= sample_age <= self.health_timeout_s
+        fresh = (math.isfinite(now) and now > 0.0 and sample > 0.0
+                 and -self.future_tolerance_s <= sample_age <= self.health_timeout_s)
         if not fresh or silence > self.health_timeout_s:
             return 'HEALTH_STALE', False
 
@@ -179,11 +194,13 @@ class CorridorObserver(Node):
 
     # 한 번 판정해 {통로: (상태 이름, position_valid)}와 목록 사유를 돌려준다.
     def evaluate(self, now):
-        if self.catalog is None:
+        # B4 checks all observations; all([]) is true. Never advertise an
+        # empty corridor catalog as a valid observation of a clear world.
+        if self.catalog is None or not self.corridor_ids:
             return {}, 'REGIONS_INVALID'
         if not self.catalog.get('approved'):
             return {c: ('UNKNOWN', False) for c in self.corridor_ids}, 'REGIONS_NOT_APPROVED'
-        if now <= 0.0:
+        if not math.isfinite(now) or now <= 0.0:
             return {c: ('UNKNOWN', False) for c in self.corridor_ids}, 'CLOCK_INVALID'
         if self.outline is None:
             return {c: ('UNKNOWN', False) for c in self.corridor_ids}, 'OUTLINE_UNDEFINED'
@@ -254,7 +271,8 @@ class CorridorObserver(Node):
     # 공통 StateMeta를 만든다. 사유가 있으면 valid=false다.
     def meta(self, now, reason):
         meta = StateMeta()
-        meta.header.stamp = Time(nanoseconds=int(max(now, 0.0) * 1e9)).to_msg()
+        stamp_s = max(now, 0.0) if math.isfinite(now) else 0.0
+        meta.header.stamp = Time(nanoseconds=int(stamp_s * 1e9)).to_msg()
         meta.header.frame_id = 'map'
         meta.schema_version = SCHEMA_VERSION
         meta.source_id = SOURCE_ID

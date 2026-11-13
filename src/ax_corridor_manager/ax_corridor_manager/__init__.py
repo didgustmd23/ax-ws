@@ -1,1 +1,1 @@
-"""D3 corridor grants and durable occupancy, owned by Kim's part."""
+"""패키지의 공개 모듈을 묶습니다."""

@@ -12,7 +12,7 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 for relative in ('src/ax_environment', 'src/ax_task_executor',
-                 'src/ax_safety/src/ax_safety', 'src/ax_d4/ax_d4', 'tools/tests'):
+                 'src/ax_safety', 'src/ax_d4/ax_d4', 'tools/tests'):
     sys.path.insert(0, str(ROOT / relative))
 # 임시 설치한 D4 의존성이 있으면 시험에서만 사용합니다. 전역 환경은 바꾸지 않습니다.
 sys.path.insert(0, str(ROOT.parent / '.ax-ws-backups/d4-review-deps'))

@@ -23,6 +23,7 @@ def union(boxes):
 
 # 모델 외곽을 계산해 (경계, 근거 문자열)을 돌려준다. config_dir는 ax_description의 config 폴더다.
 def model_outline(model, config_dir, margin_m=0.0):
+    # 로봇 번호 대신 AX_1/AX_2 모델을 명시합니다. 정해진 팔 자세·적재 범위 가정 안의 외곽입니다.
     if model not in MODELS:
         raise ValueError(f'알 수 없는 로봇 모델: {model!r} (AX_1 또는 AX_2)')
     if not math.isfinite(margin_m) or margin_m < 0:

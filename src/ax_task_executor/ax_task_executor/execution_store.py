@@ -19,6 +19,7 @@ class ExecutionStore:
         self.db.commit()
 
     def reserve(self, execution_id, request, mock_load):
+        # 작업 전에 주문 내용을 저장합니다. 같은 번호로 다른 내용을 보내면 접수하지 않습니다.
         with self.lock, self.db:
             self.db.execute('BEGIN IMMEDIATE')
             row = self.db.execute(
@@ -31,6 +32,7 @@ class ExecutionStore:
             return True
 
     def result(self, execution_id, make_result):
+        # 저장 결과가 있으면 재사용합니다. 이 모의 복구 방식을 실제 집기 재실행에 사용하면 안 됩니다.
         # Transaction spans the pure mock computation: concurrent Goals/processes
         # reuse one result. Never use this recovery policy for physical commands.
         with self.lock, self.db:

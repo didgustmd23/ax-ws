@@ -7,6 +7,7 @@ from launch_ros.actions import Node
 
 def setup_nodes(context):
     """Validate an explicit robot/model pairing before creating any nodes."""
+    # B2와 같은 robot_ids 형식을 사용합니다. ID와 모델의 개수·순서가 맞아야 합니다.
     robot_ids = [value.strip() for value in
                  LaunchConfiguration('robot_ids').perform(context).split(',')]
     models = [value.strip() for value in
@@ -23,6 +24,7 @@ def setup_nodes(context):
         raise ValueError('map_revision must be positive')
     nodes = []
     for robot, model in zip(robot_ids, models):
+        # 김성민님 A3·B3만 시작합니다. 상대 파트 노드나 안전 허용 설정은 변경하지 않습니다.
         common = {'robot_id': robot, 'use_sim_time': True}
         nodes.extend([
             Node(package='ax_task_executor', executable='local_task_executor',

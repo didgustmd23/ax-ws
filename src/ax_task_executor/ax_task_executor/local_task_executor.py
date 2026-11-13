@@ -79,6 +79,7 @@ class LocalTaskExecutor(MockExecutor):
         path = self.get_parameter('lease_db').value or default_lease_db(self.robot_id)
         self.ledger = LeaseLedger(path, self.robot_id)
         policy = self.get_parameter('policy').value
+        # 기본 operational은 실제 등록 상태를 검사합니다. dev_*는 명시적으로 고르는 시험 모드입니다.
         authority = (RuntimeAuthority(self.robot_id) if policy == 'operational' else
                      DevPolicyAuthority(policy, self.get_parameter('deny_reason').value))
         self.authority = authority
@@ -105,6 +106,7 @@ class LocalTaskExecutor(MockExecutor):
             qos_profile=LEASE_SERVICE_QOS, callback_group=group)
 
         if policy == 'operational':
+            # D4 소스는 수정하지 않고 공통 계약의 요청·응답 Topic으로만 연결합니다.
             from rclpy.qos import QoSProfile, ReliabilityPolicy
             event_qos = QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)
             prefix = f'/ax/{self.robot_id}/executor/assignment_check'
@@ -158,12 +160,14 @@ class LocalTaskExecutor(MockExecutor):
 
     def start_task_authority(self, execution):
         """Track a real recorded local task; mock actions never call this API."""
+        # 실제 dispatcher의 시작 입구입니다. 함수가 있다고 현재 모의 Action과 연결된 것은 아닙니다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
         self.assignment_monitor.start(execution)
 
     def stop_task_authority(self, execution_id):
         """Invalidate authority on task cancellation/completion before cleanup."""
+        # 배정 재확인 중단과 권한 해제만 담당합니다. 물리 취소·정지 확인을 대신하지 않습니다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
         return self.assignment_monitor.stop(execution_id)
@@ -222,6 +226,7 @@ class LocalTaskExecutor(MockExecutor):
 
     # lease 요청을 판정기에 넘기고 응답을 채운다(lease 콜백 그룹, 직렬)
     def on_check(self, request, reply):
+        # 승연님 A4·양현승님 A2의 명령 확인에 답합니다. 요청자가 자기 권한을 등록하지 못하게 합니다.
         result = self.checker.check(request)
 
         reply.allowed = result['allowed']

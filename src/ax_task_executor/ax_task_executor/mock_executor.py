@@ -119,6 +119,7 @@ class MockExecutor(Node):
 
     # Goal 수락 여부를 정한다. 끝난 실행의 재요청은 다른 작업 처리 중에도 저장 결과 조회로 받는다
     def accept_goal(self, request):
+        # 접수 전에 작업 종류·필수 값·실행 자리를 검사합니다. 실제 구현 범위는 모의 적재 확인뿐입니다.
         execution_id = request.execution.execution_id
         if request.task_kind != ExecuteLocalTask.Goal.CONFIRM_LOAD:
             self.get_logger().warning('CONFIRM_LOAD만 지원합니다.')
@@ -175,6 +176,7 @@ class MockExecutor(Node):
     def cancel_goal(self, goal_handle):
         """완료 전 모의 작업을 처리 중인 그 Goal만 취소한다. 물리 정지를 확인한 것으로 해석하지 않는다."""
         execution_id = goal_handle.request.execution.execution_id
+        # 같은 실행의 재조회 Goal과 실제 처리 중인 원래 Goal을 구별해 취소합니다.
         goal_key = goal_key_of(goal_handle)
         try:
             if self.store.cached_result(execution_id) is not None:
@@ -192,6 +194,7 @@ class MockExecutor(Node):
         execution_id = goal_handle.request.execution.execution_id
         goal_key = goal_key_of(goal_handle)
         done = Future()
+        # 같은 작업의 재요청은 기존 완료를 기다립니다. 새 모의 실행을 하나 더 만들지 않습니다.
         # 저장 결과가 있거나 다른 Goal이 처리 중이면 재요청이다.
         # 기존 처리가 끝나기를 기다린 뒤 저장 결과만 돌려주고, 상태 Topic·revision·결과 표시는 다시 발행하지 않는다.
         running = None if not self._has_result(execution_id) else done
@@ -244,6 +247,7 @@ class MockExecutor(Node):
 
     # 저장 결과로 이 Goal만 끝낸다. 상태 Topic·결과 표시·처리 중 작업 표시는 건드리지 않는다
     def _replay(self, goal_handle):
+        # 이미 저장된 결과를 돌려주는 조회 경로입니다. 현재 다른 작업의 진행 상태를 덮어쓰지 않습니다.
         execution_id = goal_handle.request.execution.execution_id
         result = ExecuteLocalTask.Result()
 
@@ -378,6 +382,7 @@ class MockExecutor(Node):
 
     @staticmethod
     def make_result(value):
+        # 센서 판정이 아닌 시험 입력입니다. UNKNOWN을 EMPTY나 성공으로 바꾸면 안 됩니다.
         result = ExecuteLocalTask.Result()
 
         if value == 'STOWED':

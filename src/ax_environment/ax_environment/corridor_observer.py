@@ -130,6 +130,7 @@ class CorridorObserver(Node):
 
     # health 수신: 같은 세션의 revision 감소와 이미 대체된 세션은 버린다(계약 2.3절).
     def on_health(self, message):
+        # B2의 상태를 받아도 곧바로 믿지 않습니다. 대상 로봇·세션·수정 번호·시각을 확인합니다.
         if message.robot_id != self.robot_id:
             return
 
@@ -143,6 +144,7 @@ class CorridorObserver(Node):
         sample = seconds(message.meta.header.stamp)
         sample_fresh = (math.isfinite(now) and now > 0.0 and sample > 0.0
                         and -self.future_tolerance_s <= now - sample <= self.health_timeout_s)
+        # 오래된 새 세션은 기존 정상 세션을 폐기하지 않습니다. 현재 관측은 무효 처리해 복구를 기다립니다.
         if (not session or revision == 0 or
                 (session != self.health_session and (not message.meta.valid or not sample_fresh))):
             self.health = message
@@ -194,6 +196,7 @@ class CorridorObserver(Node):
 
     # 한 번 판정해 {통로: (상태 이름, position_valid)}와 목록 사유를 돌려준다.
     def evaluate(self, now):
+        # 승인·시각·외곽·위치 신뢰성·TF를 확인한 뒤 기하 판정을 합니다. 통행 허가는 하지 않습니다.
         # B4 checks all observations; all([]) is true. Never advertise an
         # empty corridor catalog as a valid observation of a clear world.
         if self.catalog is None or not self.corridor_ids:
@@ -244,6 +247,7 @@ class CorridorObserver(Node):
 
     # 주기 판정·발행(5 Hz). 내용·유효성·사유가 바뀔 때만 revision을 올린다.
     def tick(self):
+        # 승연님 B4가 목록과 개별 관측을 모두 검사하므로 각각의 유효성·시각·로봇 번호를 채웁니다.
         now = self.get_clock().now().nanoseconds * 1e-9
         result, reason = self.evaluate(now)
 

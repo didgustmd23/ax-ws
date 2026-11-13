@@ -32,6 +32,7 @@ Gazebo·제어기·B1을 새로 띄우지 않는다.
 
 import json
 import math
+import os
 import time
 from pathlib import Path
 
@@ -212,11 +213,16 @@ class StartupMonitor:
         return {"status": self.status, "timeout_s": self.timeout_s, "elapsed_s": self.elapsed(),
                 "failure": self.failure, "nodes": self.nodes}
 
-    # 결과 JSON을 쓴다(지정한 경우만).
+    # 결과 JSON을 쓴다(지정한 경우만). 같은 폴더의 임시 파일에 쓴 뒤 이름을 바꿔(os.replace)
+    # 읽는 쪽이 쓰는 도중의 빈 파일·일부 내용을 보지 않게 한다.
     def write_report(self):
-        if self.report is not None:
-            self.report.parent.mkdir(parents=True, exist_ok=True)
-            self.report.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
+        if self.report is None:
+            return
+
+        self.report.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.report.with_name(f".{self.report.name}.{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(temporary, self.report)
 
     # 실패를 확정하고 기록한 뒤 예외로 launch를 끝낸다. 이미 끝난 상태면 아무것도 하지 않는다.
     def fail(self, label, stage, reason):

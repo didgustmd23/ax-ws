@@ -3,6 +3,7 @@ import importlib.util
 import json
 import math
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import time
@@ -106,8 +107,20 @@ class RawLogFormat(unittest.TestCase):
             self.assertEqual(len(stored['files_sha256']['a']['sha256']), 64)
             self.assertIsNone(stored['files_sha256']['none']['sha256'])
             self.assertIn('monotonic_s', stored['time_reference'])
-            self.assertIsNotNone(stored['git']['commit'])
+            self.assert_git_state(stored['git'])
             self.assertFalse((Path(folder) / 'conditions.json.tmp').exists())
+
+    # 작업공간이 git 저장소이면 현재 commit 해시와 변경 목록을, 아니면(.git 없는 복사본) 둘 다 None을 기록해야 한다.
+    def assert_git_state(self, git):
+        head = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], capture_output=True, text=True)
+
+        if head.returncode == 0:
+            self.assertRegex(git['commit'], r'^[0-9a-f]{40}$')
+            self.assertEqual(git['commit'], head.stdout.strip())
+            self.assertIsInstance(git['dirty_files'], list)
+        else:
+            self.assertIsNone(git['commit'])
+            self.assertIsNone(git['dirty_files'])
 
 
 # 분석 계산

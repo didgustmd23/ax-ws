@@ -2,6 +2,7 @@
 # - 월드·경로 사전검사: 시뮬레이션·로그 폴더를 만들기 전에 exit 2로 거절하는지
 # - 정리: setsid 그룹·SIGINT 무시·그룹 밖으로 빠진 소유 프로세스까지 정리하고, 표식 없는 프로세스는 남기는지
 # - 중단 우선: 주행 그룹에 SIGINT를 보내 정지 절차가 끝날 때까지 기다리는지
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -20,11 +21,27 @@ SESSION = ROOT / "src/ax_localization/scripts/run_mapping_session.sh"
 PROCS = ROOT / "src/ax_localization/scripts/session_procs.sh"
 ROUTES = ROOT / "src/ax_localization/config/routes"
 WORLD = "planned/ax_warehouse.world"
-ROS_READY = Path("/opt/ros/jazzy/setup.bash").is_file() and (ROOT / "install/setup.bash").is_file()
+
+# run_mapping_session.sh는 스스로 두 setup 파일을 source하므로 파일 존재만 확인한다
+ROS_FILES = Path("/opt/ros/jazzy/setup.bash").is_file() and (ROOT / "install/setup.bash").is_file()
+
+# 현재 환경에서 ros2 명령과 rclpy·std_msgs를 직접 쓰는 시험은 실제로 source된 상태여야 한다.
+# 모듈 확인은 이 시험을 실행하는 Python(sys.executable) 기준이며, 발행자도 같은 Python으로 띄운다
+ROS_MODULES = all(importlib.util.find_spec(name) is not None for name in ("rclpy", "std_msgs"))
+ROS_ENV = shutil.which("ros2") is not None and ROS_MODULES
+
+# session_procs.sh를 불러오는 첫 줄. 경로는 환경변수로 넘겨 공백을 보존하고,
+# source나 함수 정의가 실패하면 97·98로 끝내 이후 명령이 조용히 넘어가지 않게 한다
+SOURCE_PROCS = 'source "$AX_TEST_PROCS" || exit 97; declare -F session_owned > /dev/null || exit 98'
 
 
 # bash 스크립트를 실행해 (종료 코드, 출력)을 돌려준다.
-def bash(script, timeout=60, env=None):
+# paths의 각 경로는 환경변수로 넘기며 스크립트에서는 "$이름"으로 인용해 참조한다.
+def bash(script, timeout=60, env=None, paths=None):
+    env = dict(os.environ if env is None else env)
+    env["AX_TEST_PROCS"] = str(PROCS)
+    env.update({name: str(path) for name, path in (paths or {}).items()})
+
     result = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=timeout,
                             env=env, stdin=subprocess.DEVNULL)
     return result.returncode, result.stdout + result.stderr
@@ -40,10 +57,10 @@ def alive(pid):
     return state != "Z"
 
 
-@unittest.skipUnless(ROS_READY, "ROS Jazzy·install/setup.bash 필요")
 class SessionPrecheck(unittest.TestCase):
 
     # 각 잘못된 조합은 exit 2이고 시뮬레이션 로그 폴더(log/b2_mapping/<시각>)를 만들지 않는다
+    @unittest.skipUnless(ROS_FILES, "ROS Jazzy·install/setup.bash 필요")
     def test_rejected_before_launch(self):
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
@@ -80,6 +97,7 @@ class SessionPrecheck(unittest.TestCase):
 
     # 예방: wait_topic과 같은 명령(ros2 topic echo --once --no-daemon)은 메시지를 받고 ros2-daemon을 띄우지 않는다.
     # 전용 ROS domain을 써서 사용자 세션과 섞지 않고, 이 시험이 띄운 발행자만 정리한다.
+    @unittest.skipUnless(ROS_ENV, "현재 환경의 ros2·rclpy·std_msgs 필요(source ROS)")
     def test_wait_topic_no_daemon(self):
         self.assertIn('ros2 topic echo --once --no-daemon "$topic"', SESSION.read_text())
         domain, lock = ros_test_domain.reserve_domain(ros_test_domain.HEALTH_AND_SESSION_DOMAINS)
@@ -87,7 +105,7 @@ class SessionPrecheck(unittest.TestCase):
         domain = str(domain)
         env = dict(os.environ, ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE="LOCALHOST")
         publisher = subprocess.Popen(
-            ["python3", "-c", "import rclpy, time\nfrom std_msgs.msg import String\nrclpy.init()\n"
+            [sys.executable, "-c", "import rclpy, time\nfrom std_msgs.msg import String\nrclpy.init()\n"
              "n = rclpy.create_node('ax_test_pub')\np = n.create_publisher(String, '/ax_wait_topic_test', 10)\n"
              "while True:\n    p.publish(String(data='x'))\n    time.sleep(0.1)\n"],
             env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -105,6 +123,7 @@ class SessionPrecheck(unittest.TestCase):
             publisher.wait()
 
     # 도움말은 새 옵션을 설명하고 0으로 끝난다
+    @unittest.skipUnless(ROS_FILES, "ROS Jazzy·install/setup.bash 필요")
     def test_help(self):
         result = subprocess.run(["bash", str(SESSION), "--help"], capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0)
@@ -129,17 +148,19 @@ class SessionProcesses(unittest.TestCase):
     def test_cleanup_owned_only(self):
         pids = self.folder / "pids"
         script = textwrap.dedent(f"""
-            source {PROCS}
+            {SOURCE_PROCS}
             export AX_SESSION_OWNER=test-owner-$$
-            session_start stubborn {self.folder}/a.log bash -c 'trap "" INT; sleep 300 & echo $! >> {pids}; wait'
-            session_start escaped {self.folder}/b.log bash -c 'setsid sleep 300 & echo $! >> {pids}; sleep 300'
-            session_start plain {self.folder}/c.log sleep 300
+            session_start stubborn "$AX_TEST_DIR/a.log" \\
+                bash -c 'trap "" INT; sleep 300 & echo $! >> "$AX_TEST_PIDS"; wait'
+            session_start escaped "$AX_TEST_DIR/b.log" \\
+                bash -c 'setsid sleep 300 & echo $! >> "$AX_TEST_PIDS"; sleep 300'
+            session_start plain "$AX_TEST_DIR/c.log" sleep 300
             sleep 1
             echo "before $(session_owned | wc -l)"
             session_cleanup 2
             echo "remaining $SESSION_REMAINING"
         """)
-        code, output = bash(script, timeout=60)
+        code, output = bash(script, timeout=60, paths={"AX_TEST_DIR": self.folder, "AX_TEST_PIDS": pids})
         self.assertEqual(code, 0, output)
         before = int(output.split("before ")[1].split()[0])
         self.assertGreaterEqual(before, 5, output)
@@ -153,24 +174,25 @@ class SessionProcesses(unittest.TestCase):
     # 중단 우선: 주행 그룹에 SIGINT → 정지 절차(1 s)가 끝나 표시 파일을 남길 때까지 기다린 뒤 돌아온다
     def test_stop_group_waits_for_stop_procedure(self):
         marker = self.folder / "stopped"
-        drive = textwrap.dedent(f"""
-            trap 'sleep 1; echo done > {marker}; exit 130' INT
+        # 표시 파일 경로는 session_start가 넘기는 환경(AX_TEST_MARKER)에서 읽는다
+        drive = textwrap.dedent("""
+            trap 'sleep 1; echo done > "$AX_TEST_MARKER"; exit 130' INT
             while true; do sleep 0.1; done
         """)
         (self.folder / "drive.sh").write_text(drive)
         script = textwrap.dedent(f"""
-            source {PROCS}
+            {SOURCE_PROCS}
             export AX_SESSION_OWNER=test-owner-$$
-            session_start drive {self.folder}/drive.log bash {self.folder}/drive.sh
+            session_start drive "$AX_TEST_DIR/drive.log" bash "$AX_TEST_DIR/drive.sh"
             sleep 0.5
             start=$SECONDS
             session_stop_group "$SESSION_PID_drive" 20; code=$?
             echo "code $code waited $((SECONDS - start))"
-            [ -f {marker} ] && echo marker-ok
+            [ -f "$AX_TEST_MARKER" ] && echo marker-ok
             session_cleanup 1
             echo "remaining $SESSION_REMAINING"
         """)
-        code, output = bash(script, timeout=60)
+        code, output = bash(script, timeout=60, paths={"AX_TEST_DIR": self.folder, "AX_TEST_MARKER": marker})
         self.assertEqual(code, 0, output)
         self.assertIn("code 0", output)
         self.assertIn("marker-ok", output)
@@ -179,15 +201,16 @@ class SessionProcesses(unittest.TestCase):
     # 정지 절차가 시간 안에 끝나지 않으면 1을 돌려주고, 정리 단계가 강제로 끝낸다
     def test_stop_group_timeout_then_cleanup(self):
         script = textwrap.dedent(f"""
-            source {PROCS}
+            {SOURCE_PROCS}
             export AX_SESSION_OWNER=test-owner-$$
-            session_start drive {self.folder}/drive.log bash -c 'trap "" INT; while true; do sleep 0.1; done'
+            session_start drive "$AX_TEST_DIR/drive.log" bash -c 'trap "" INT; while true; do sleep 0.1; done'
             sleep 0.5
             session_stop_group "$SESSION_PID_drive" 1; echo "code $?"
             session_cleanup 1
             echo "remaining $SESSION_REMAINING"
         """)
-        code, output = bash(script, timeout=60)
+        code, output = bash(script, timeout=60, paths={"AX_TEST_DIR": self.folder})
+        self.assertEqual(code, 0, output)
         self.assertIn("code 1", output)
         self.assertIn("remaining 0", output)
 
@@ -196,17 +219,18 @@ class SessionProcesses(unittest.TestCase):
     def test_same_sid_orphan_counted_and_cleaned(self):
         orphan, other = self.folder / "orphan.pid", self.folder / "other.pid"
         script = textwrap.dedent(f"""
-            source {PROCS}
-            ( AX_SESSION_OWNER=other-run setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > {other} )
+            {SOURCE_PROCS}
+            ( AX_SESSION_OWNER=other-run setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$AX_TEST_OTHER" )
             export AX_SESSION_OWNER=test-owner-$$
-            ( sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > {orphan} )
+            ( sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$AX_TEST_ORPHAN" )
             sleep 0.5
-            echo "sid_shell $(session_sid $$) sid_orphan $(session_sid $(cat {orphan}))"
+            echo "sid_shell $(session_sid $$) sid_orphan $(session_sid $(cat "$AX_TEST_ORPHAN"))"
             echo "listed $(session_owned | tr '\\n' ' ')"
             session_cleanup 1
             echo "remaining $SESSION_REMAINING"
         """)
-        code, output = bash(script, timeout=60)
+        code, output = bash(script, timeout=60, paths={"AX_TEST_ORPHAN": orphan, "AX_TEST_OTHER": other})
+        self.assertEqual(code, 0, output)
         orphan_pid, other_pid = int(orphan.read_text()), int(other.read_text())
 
         try:
@@ -227,13 +251,14 @@ class SessionProcesses(unittest.TestCase):
     # 정리 보조 명령(tr·grep·wc·명령 치환 subshell)은 소유 프로세스로 세지 않는다
     def test_helpers_not_listed(self):
         script = textwrap.dedent(f"""
-            source {PROCS}
+            {SOURCE_PROCS}
             export AX_SESSION_OWNER=test-owner-$$
             echo "n=$(session_owned | wc -l)"
             session_cleanup 1
             echo "remaining $SESSION_REMAINING"
         """)
         code, output = bash(script, timeout=60)
+        self.assertEqual(code, 0, output)
         self.assertIn("n=0", output)
         self.assertIn("remaining 0", output)
 
@@ -241,24 +266,29 @@ class SessionProcesses(unittest.TestCase):
     def test_remaining_reflects_actual(self):
         pid_file = self.folder / "kept.pid"
         script = textwrap.dedent(f"""
-            source {PROCS}
+            {SOURCE_PROCS}
             export AX_SESSION_OWNER=test-owner-$$
-            session_start kept {self.folder}/k.log sleep 300
-            echo $SESSION_PID_kept > {pid_file}
+            session_start kept "$AX_TEST_DIR/k.log" sleep 300
+            echo $SESSION_PID_kept > "$AX_TEST_PID_FILE"
             sleep 0.5
             kill() {{ :; }}          # 신호 전달을 막아 정리가 실패하는 상황을 만든다
             session_cleanup 1
             unset -f kill
             echo "remaining $SESSION_REMAINING"
-            command kill -9 $(cat {pid_file})
+            command kill -9 $(cat "$AX_TEST_PID_FILE")
         """)
-        code, output = bash(script, timeout=60)
+        code, output = bash(script, timeout=60, paths={"AX_TEST_DIR": self.folder, "AX_TEST_PID_FILE": pid_file})
+        self.assertEqual(code, 0, output)
         self.assertNotIn("remaining 0", output, output)
         self.assertRegex(output, r"remaining [1-9]")
 
-    # 표식이 없으면 아무것도 소유로 보지 않는다(다른 세션 보호)
+    # 표식이 없으면 아무것도 소유로 보지 않는다(다른 세션 보호).
+    # source 실패로 함수가 없을 때도 n=0이 나오므로 종료 코드와 함수 로드를 함께 확인한다
     def test_no_owner_no_match(self):
-        code, output = bash(f"source {PROCS}; unset AX_SESSION_OWNER; echo \"n=$(session_owned | wc -l)\"")
+        script = f'{SOURCE_PROCS}; unset AX_SESSION_OWNER; echo "n=$(session_owned | wc -l)"'
+        code, output = bash(script)
+
+        self.assertEqual(code, 0, output)
         self.assertIn("n=0", output)
 
 

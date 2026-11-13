@@ -37,6 +37,7 @@ class ConfirmLoadStateMachine:
 
     def __init__(self):
         # Action 요청마다 별도 객체를 만든다. 로봇·작업 사이 상태를 공유하지 않는다.
+        # 역할: 설정과 내부 상태를 준비합니다.
         self.phase = TaskPhase.IDLE
 
     def transition(self, next_phase):

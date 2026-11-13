@@ -393,6 +393,39 @@ class StartupMonitorLogic(unittest.TestCase):
         self.assertIsNone(data['failure'])
         self.assertEqual(data['nodes']['/ax/robot_2/amcl']['exit_code'], 4)
 
+    # 결과 JSON은 임시 파일에 다 쓴 뒤 이름 바꾸기로 교체한다. 교체 직전까지 기존 파일은 이전 내용 그대로 읽히고,
+    # 끝난 뒤 임시 파일이 남지 않는다(폴링하는 쪽이 빈 파일·일부 내용을 읽지 않게 함).
+    def test_report_atomic_write(self):
+        with tempfile.TemporaryDirectory() as folder:
+            report = Path(folder) / 'startup.json'
+            report.write_text(json.dumps({'status': 'old'}), encoding='utf-8')
+            monitor = self.monitor(report)
+            seen = []
+            replace = LAUNCH.os.replace
+
+            # 교체 순간의 기존 파일 내용과 임시 파일 내용을 기록하고 실제 교체를 한다.
+            def checked_replace(source, target):
+                seen.append((Path(target), json.loads(Path(target).read_text(encoding='utf-8')),
+                             json.loads(Path(source).read_text(encoding='utf-8'))))
+                replace(source, target)
+
+            LAUNCH.os.replace = checked_replace
+
+            try:
+                monitor.write_report()
+            finally:
+                LAUNCH.os.replace = replace
+
+            data = json.loads(report.read_text(encoding='utf-8'))
+            left = sorted(path.name for path in Path(folder).iterdir())
+
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0][0], report)
+        self.assertEqual(seen[0][1], {'status': 'old'})
+        self.assertEqual(seen[0][2]['status'], 'starting')
+        self.assertEqual(data, seen[0][2])
+        self.assertEqual(left, ['startup.json'])
+
     # 시작 중 노드 종료는 실패 처리다(활성화 완료 후 종료와 구분).
     def test_exit_during_startup_is_failure(self):
         monitor = self.monitor()

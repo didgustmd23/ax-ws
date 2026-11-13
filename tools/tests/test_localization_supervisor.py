@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -15,6 +16,13 @@ import unittest
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ros_test_domain  # noqa: E402
+
+# B2 실행과 같은 이름 노드. 시험 domain에 이미 있으면 가짜 세계·감독 노드가 섞이므로 시작 전에 확인한다.
+CONFLICT_NAMES = r'^/ax/[^/]+/(localization_supervisor|amcl)$|^/map_server$'
+
 SUPERVISOR = ROOT / 'src/ax_localization/scripts/localization_supervisor.py'
 ROBOTS = ('robot_1', 'robot_2')
 START = {'robot_1': (-2.5, 1.5, 0.0), 'robot_2': (0.0, 0.0, 0.0)}
@@ -43,6 +51,18 @@ def compose(a, b):
     return (a[0] + c * b[0] - s * b[1], a[1] + s * b[0] + c * b[1], math.atan2(math.sin(a[2] + b[2]), math.cos(a[2] + b[2])))
 
 
+# 시험 하나가 쓸 supervisor 범위 domain을 잡고 시험이 끝나면 푼다. 같은 이름 노드가 보이면 원인이 보이는 실패로 끝낸다.
+def isolated_domain(case):
+    domain, lock = ros_test_domain.reserve_domain(ros_test_domain.SUPERVISOR_DOMAINS)
+    case.addCleanup(ros_test_domain.release, lock)
+    conflict = ros_test_domain.conflicting_nodes(domain, CONFLICT_NAMES)
+
+    if conflict:
+        case.fail(ros_test_domain.conflict_message(domain, conflict))
+
+    return str(domain)
+
+
 def inverse(a):
     c, s = math.cos(a[2]), math.sin(a[2])
     return (-c * a[0] - s * a[1], s * a[0] - c * a[1], -a[2])
@@ -54,8 +74,15 @@ class SupervisorWithStubs(unittest.TestCase):
     # 격리 domain에서 가짜 세계 노드와 감독 노드 두 개를 시작하고 둘 다 OK가 될 때까지 기다린다.
     @classmethod
     def setUpClass(cls):
+        cls.domain, cls.lock = ros_test_domain.reserve_domain(ros_test_domain.SUPERVISOR_DOMAINS)
+        conflict = ros_test_domain.conflicting_nodes(cls.domain, CONFLICT_NAMES)
+
+        if conflict:
+            ros_test_domain.release(cls.lock)
+            raise AssertionError(ros_test_domain.conflict_message(cls.domain, conflict))
+
         cls.folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_'))
-        domain = str(200 + os.getpid() % 30)
+        domain = str(cls.domain)
         os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(cls.folder / 'roslog'))
         cls.marker = uuid.uuid4().hex
@@ -115,6 +142,7 @@ class SupervisorWithStubs(unittest.TestCase):
         cls.world.destroy_node()
         rclpy.try_shutdown()
         shutil.rmtree(cls.folder, ignore_errors=True)
+        ros_test_domain.release(cls.lock)
 
     # 감독 노드 로그(실패 진단용)
     @classmethod
@@ -435,8 +463,9 @@ class AmclBeforeOdom(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_order_'))
-        os.environ.update(ROS_DOMAIN_ID=str(170 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))
@@ -497,8 +526,9 @@ class LaunchInitialPose(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_launch_pose_'))
-        os.environ.update(ROS_DOMAIN_ID=str(140 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))
@@ -578,13 +608,20 @@ class LaunchInitialPose(unittest.TestCase):
         self.assertIsNotNone(result['closed_sim'])
         self.assertEqual([t for t in result['nomotion_sims'] if t > result['closed_sim']], [])
 
-    # [공분산 반올림] 무이동 갱신 새 추정이 실제 smoke 공분산(yaw −1.09e-13)이어도 판정·확인이 진행돼 신뢰 기록이
-    # 생기고, 진단에 정규화 대상·원래 값·경계가 남는다. initialpose 송신 없음.
+    # [공분산 반올림·붕괴] 무이동 갱신 새 추정이 실제 smoke 공분산(yaw −1.09e-13)이어도 판정·확인이 진행되고,
+    # 진단에 정규화 대상·원래 값·경계가 남는다. 공분산 0은 OK가 아니므로(COVARIANCE_COLLAPSED) 감독 노드가 확인된
+    # 자세를 initial_spread 표준편차로 한 번 보내고(INITIAL_SPREAD), 그 뒤 산포 있는 추정으로 OK·신뢰 기록이 생긴다.
     def test_roundoff_covariance_estimate(self):
         result = self.run_supervisor(amcl_mode='roundoff')
 
         self.assertTrue(result['stored'], result['log'])
-        self.assertEqual(result['initialposes'], [])
+        self.assertEqual(len(result['initialposes']), 1, result['log'])
+        self.assertIn(('INTENT', 'INITIAL_SPREAD'), result['events'])
+        collapsed = [row for row in result['ticks'] if 'COVARIANCE_COLLAPSED' in row['reason']]
+        self.assertTrue(collapsed)
+        self.assertFalse(any(row['trust_stored'] for row in collapsed))
+        # 최초 초기화의 공분산 0은 AMCL 재시작이 아니다(감독 노드 시작 전 추정은 세지 않음): 재시작 latch 없음.
+        self.assertFalse(any('ESTIMATE_DISCONTINUOUS' in row['reason'] for row in result['ticks']))
         roundoff = [row['covariance_roundoff'] for row in result['ticks'] if row.get('covariance_roundoff')]
         normalized = [item for entry in roundoff for item in entry['normalized']]
         self.assertTrue(normalized)
@@ -599,8 +636,9 @@ class LaunchInitialPose(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_first_'))
-        os.environ.update(ROS_DOMAIN_ID=str(80 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))
@@ -858,6 +896,10 @@ def make_world(robot_ids):
 
                 if robot['amcl'] == 'silent':
                     return
+
+                # roundoff(공분산 0 초기화)는 산포를 넣은 initialpose를 받은 뒤에는 실제 AMCL처럼 수렴한 추정을 낸다.
+                if robot['amcl'] == 'roundoff':
+                    robot['amcl'] = 'ok'
 
                 if robot['map_odom'] is not None:
                     robot['map_odom_before_loss'] = robot['map_odom']

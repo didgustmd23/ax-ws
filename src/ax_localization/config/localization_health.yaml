@@ -17,7 +17,26 @@ health:
   position_std_lost_m: 1.0
   yaw_std_ok_rad: 0.15
   yaw_std_lost_rad: 0.5
+  # 공분산 붕괴 하한. 위치 std·방향 std 중 하나라도 미만이면 OK가 아니라 DEGRADED(COVARIANCE_COLLAPSED).
+  # Jazzy AMCL은 initial_poses·lifecycle 재활성 때 공분산 0(관측 1e-14 이하)으로 시작한다. 정상 갱신 최솟값은
+  # 위치 0.029 m·방향 0.025 rad였다(2026-11-13 통로 시험 1659표본, alpha 0.02 포함: log/b2_corridor_health/20261113_073004_slip).
+  # 그 사이에서 정상값보다 약 6배 작게 둔 개발값이다.
+  position_std_min_m: 0.005
+  yaw_std_min_rad: 0.005
+  # 이동 거리 비례 위치 std 하한 = unconstrained_std_per_m × (마지막 잘 구속된 추정 뒤 odom 누적 경로). 기본 0(꺼짐).
+  # 잘 구속됨 = 하한 적용 전 판정 OK이고 위치 std가 position_std_min_m 이상 constrained_std_m 이하.
+  # 0.025로 통로 Gazebo 시험(2026-11-13, log/b2_restart_impl/gazebo/corridor/table.md)을 했으나 기준 미달이라 끈다:
+  # C1 2/2가 통로 출구 뒤 OUTSIDE 복귀 9.0~9.2 s(기준 5 s), C3(보정 3~5% 오차) 1/2에서 과신 71표본이 남았고,
+  # 정지 뒤에도 하한이 줄지 않아 DEGRADED가 이어져 B4가 차단하면 풀리지 않는다.
+  # 그 전의 오프라인 비교(log/b2_restart_impl/alpha_floor_offline/offline.md)는 같은 기록에 맞춘 값이라 근거로 쓰지 않는다.
+  unconstrained_std_per_m: 0.0
+  constrained_std_m: 0.12
   clock_stall_wall_s: 2.0       # sim time이 벽시계로 이만큼 멈추면 CLOCK_INVALID
+
+initial_spread:                 # launch initial_poses 최초 초기화(공분산 0) 확인 뒤 같은 자세를 다시 보낼 표준편차
+  position_std_m: 0.10          # reinit.base_std_m과 같은 출발값
+  yaw_std_rad: 0.10
+  timeout_s: 15.0               # 송신 뒤 OK·새 추정 reinit.min_updates개를 기다리는 제한(지나면 무이동 갱신 요청을 멈춤)
 
 trust:                          # 마지막 신뢰 위치로 기록할 조건(OK이고 아래 이하)
   position_std_m: 0.15

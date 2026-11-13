@@ -30,10 +30,20 @@
 
     # 운동 모델(차동 구동)
     robot_model_type: nav2_amcl::DifferentialMotionModel
-    alpha1: 0.2
-    alpha2: 0.2
-    alpha3: 0.2
-    alpha4: 0.2
+    # alpha1~4: 0.2(Jazzy 기본) → 0.02. 조건부 채택(2026-11-13).
+    # - 전제: 바퀴 odom 거리·회전 보정 오차가 약 1% 이하일 것. 근거는 A2 윤거 보정 측정
+    #   (ax_control README "바퀴 보정값": 권장값과 0.3% 안쪽, 회전 보정만 측정했고 바퀴 반경 거리 보정은 미측정)과
+    #   시뮬레이션 odom 단독 오차(직진·회전 경로 끝 0.015 m)다.
+    # - 시험: 통로 corridor_2(robot_2)에서 0.2는 통로 길이 방향 분산이 커져 대부분 DEGRADED, 0.02는 오차 0.085~0.13 m로
+    #   기준 통과(log/b2_corridor_health/20261112_215004, 20261113_073004_slip REPORT.md).
+    # - 한계: 보정 오차 3~5%(시험 C3)에서는 AMCL이 odom 거리 오차를 따라가 0.3~0.4 m 오차를 작은 공분산으로 낸다
+    #   (과신, log/b2_corridor_health/20261113_073004_slip REPORT.md). 이동 거리 비례 std 하한은 시험 기준 미달로
+    #   꺼 두었으므로(localization_health.yaml) 이 과신은 남는다. 바퀴 반경 거리 보정 측정은 A2 후속이다.
+    # alpha5(전방향 모델 전용)는 차동 모델에서 쓰지 않아 그대로 둔다.
+    alpha1: 0.02
+    alpha2: 0.02
+    alpha3: 0.02
+    alpha4: 0.02
     alpha5: 0.2
 
     # 레이저 모델. 거리 범위는 B1 scan_filtered 범위(0.12~10 m)에 맞춘다(기본 -1~100 m).

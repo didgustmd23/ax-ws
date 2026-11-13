@@ -22,9 +22,27 @@ from ax_interfaces.msg import LoadState, ResultStatus, RobotTaskStatus
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_task_executor'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ros_test_domain  # noqa: E402
 from ax_task_executor.mock_executor import MockExecutor
 from ax_task_executor.gazebo_mock_display import MockDisplay
 from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
+
+# 이 모듈의 시험은 프로세스 안에서 rclpy.init을 여러 번 부르므로, 모듈 전체에 A3 시험 범위 domain 하나를 잡아
+# 환경변수로 쓴다(하위 프로세스도 물려받음). 계약 경로(/ax/<robot>/executor/...) 서비스가 이미 있으면 시작하지 않는다.
+A3_CONTRACT_SERVICES = r'^/ax/[^/]+/executor/'
+_DOMAIN_STATE = None
+
+
+# 모듈 시작 때 domain을 잡는다.
+def setUpModule():
+    global _DOMAIN_STATE
+    _DOMAIN_STATE = ros_test_domain.enter_module_domain(ros_test_domain.A3_DOMAINS, A3_CONTRACT_SERVICES)
+
+
+# 모듈이 끝나면 환경변수를 되돌리고 잠금을 푼다.
+def tearDownModule():
+    ros_test_domain.leave_module_domain(_DOMAIN_STATE)
 
 
 class MockRobotTests(unittest.TestCase):

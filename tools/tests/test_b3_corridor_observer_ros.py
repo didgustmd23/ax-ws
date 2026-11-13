@@ -1,7 +1,7 @@
 # [검사 범위] 가짜 시계·TF·위치 정보로 실제 B3 ROS 관측을 검사합니다. B2 실주행 통합은 아닙니다.
 # B3 통로 관측 노드(corridor_observer)를 가짜 시계·TF·health로 실제 ROS 통신에서 검사한다(Gazebo 없음).
 # 이 시험 프로세스가 /clock, /tf(map→robot_2/odom, robot_2/odom→robot_2/base_link), localization/health를 흉내 내고
-# 관측 노드를 격리 ROS_DOMAIN_ID(150~179)에서 실행한다. B2 AMCL·실제 주행 통합 시험이 아니다.
+# 관측 노드를 격리 ROS_DOMAIN_ID(126~133, ros_test_domain.py)에서 실행한다. B2 AMCL·실제 주행 통합 시험이 아니다.
 from copy import deepcopy
 import importlib.util
 import json
@@ -19,6 +19,13 @@ import unittest
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ros_test_domain  # noqa: E402
+
+# 실제 B2·B3 실행과 같은 이름 노드. 시험 domain에 이미 있으면 가짜 세계·관측 노드와 섞이므로 시작 전에 확인한다.
+CONFLICT_NAMES = r'^/ax/[^/]+/(corridor_observer|localization_supervisor)$'
+
 REGIONS = ROOT / 'src/ax_environment/config/ax_warehouse_regions.json'
 DESCRIPTION_CONFIG = ROOT / 'src/ax_description/config'
 ROBOT = 'robot_2'
@@ -155,8 +162,15 @@ class CorridorObserverWithStubs(unittest.TestCase):
     # 격리 domain에서 가짜 세계와 관측 노드 두 개(승인 사본·실제 미승인 파일)를 시작한다.
     @classmethod
     def setUpClass(cls):
+        cls.domain, cls.lock = ros_test_domain.reserve_domain(ros_test_domain.CORRIDOR_OBSERVER_DOMAINS)
+        conflict = ros_test_domain.conflicting_nodes(cls.domain, CONFLICT_NAMES)
+
+        if conflict:
+            ros_test_domain.release(cls.lock)
+            raise AssertionError(ros_test_domain.conflict_message(cls.domain, conflict))
+
         cls.folder = Path(tempfile.mkdtemp(prefix='ax_b3_observer_'))
-        domain = str(150 + os.getpid() % 30)
+        domain = str(cls.domain)
         os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(cls.folder / 'roslog'))
 
@@ -208,6 +222,7 @@ class CorridorObserverWithStubs(unittest.TestCase):
         cls.world.destroy_node()
         import rclpy
         rclpy.try_shutdown()
+        ros_test_domain.release(cls.lock)
 
     # 자세를 바꾸고 corridor_2 상태가 기대값이 될 때까지 기다린다.
     def move_and_wait(self, pose_name, expected):

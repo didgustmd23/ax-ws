@@ -93,11 +93,12 @@ class RoundoffBoundary(unittest.TestCase):
 # 판정·도약·신뢰 기록·재위치에 미치는 범위
 class RoundoffEffects(unittest.TestCase):
 
-    # 실제 표본: ESTIMATE_INVALID가 아니고 다른 검사가 진행된다(입력이 정상이면 OK).
+    # 실제 표본: ESTIMATE_INVALID가 아니고 다른 검사가 진행된다. 다만 공분산 0(붕괴)이라 OK가 아니라
+    # DEGRADED(COVARIANCE_COLLAPSED)다(2026-11-13 AMCL 재시작 대책 P1: 공분산 0은 정확도 근거가 아님).
     def test_evaluate_real_sample(self):
         health = lh.evaluate(inputs_with(real_sample()), 10.0, CONFIG)
 
-        self.assertEqual((health.state, health.reason), (lh.OK, ''))
+        self.assertEqual((health.state, health.reason), (lh.DEGRADED, 'COVARIANCE_COLLAPSED'))
 
     # 기존 유의한 음수는 그대로 ESTIMATE_INVALID
     def test_evaluate_significant_negative(self):
@@ -132,7 +133,7 @@ class RoundoffEffects(unittest.TestCase):
 
         self.assertEqual(monitor.on_tf(6.0, (3.5, 0.2, 0.0), odom), 'JUMP')
         health = monitor.apply(lh.evaluate(inputs, 10.0, CONFIG))
-        self.assertEqual((health.state, health.reason), (lh.LOST, 'ESTIMATE_DISCONTINUOUS'))
+        self.assertEqual((health.state, health.reason), (lh.LOST, 'ESTIMATE_DISCONTINUOUS,COVARIANCE_COLLAPSED'))
         self.assertEqual(monitor.trust_block(), 'ESTIMATE_DISCONTINUOUS')
         self.assertIsNone(tracker.record)
 

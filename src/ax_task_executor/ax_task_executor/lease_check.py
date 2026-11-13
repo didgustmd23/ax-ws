@@ -6,6 +6,7 @@ A3 CheckCommandLease 서버(개발 정책).
 그 판정 자리는 파라미터 `policy`(dev_allow | dev_deny)가 대신하며 기본값은 dev_deny다.
 허용 응답의 reason_code는 DEV_POLICY_ALLOW, 수락 기록 ID는 `devpolicy-` 접두어라 개발 정책 결과임을 구분할 수 있다.
 """
+from contextlib import nullcontext
 import hashlib
 import json
 from pathlib import Path
@@ -288,8 +289,26 @@ class LeaseChecker:
 
         try:
             marks = getattr(self.authority, 'marks', ('', 'accept-'))
-
-            return self.ledger.check(fields, self.decide, self.valid_for_s, marks)
+            guard = getattr(self.authority, 'command_guard', nullcontext)
+            with guard():
+                # Operational checks must precede cached replies, too. A durable
+                # old allow is not authority after revoke, expiry or restart.
+                if hasattr(self.authority, 'remaining'):
+                    reason = self.decide(fields)
+                    if reason:
+                        return response(False, reason)
+                    duration = min(self.valid_for_s, self.authority.remaining(fields))
+                else:
+                    duration = self.valid_for_s
+                result = self.ledger.check(fields, self.decide, duration, marks)
+                if result['allowed'] and hasattr(self.authority, 'remaining'):
+                    # fsync may consume the remaining permission lifetime.
+                    reason = self.decide(fields)
+                    if reason:
+                        return response(False, reason)
+                    result['valid_for_s'] = min(
+                        result['valid_for_s'], self.authority.remaining(fields))
+                return result
         except sqlite3.Error:
             return response(False, REASON_RECORD_FAILED)
 

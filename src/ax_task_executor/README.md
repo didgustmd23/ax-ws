@@ -279,8 +279,10 @@ A2의 lease 대기(0.5 s)를 넘기면 무응답 거절(안전 쪽)로 나타날
 ## 로컬 작업 실행기 한 프로세스 (local_task_executor)
 
 `local_task_executor`는 한 노드 안에 `ExecuteLocalTask` Action 서버(모의 실행기와 같은 로직)와
-`CheckCommandLease` 서비스(lease_check와 같은 개발 정책)를 함께 둔다(설계 11.1절).
-lease 판정은 여전히 개발 정책(`dev_deny` 기본)이며 운영 lease 판정이 아니다.
+`CheckCommandLease` 서비스를 함께 둔다(설계 11.1절).
+기본 정책은 `operational`이다. D4가 확인한 배정과 A3가 등록한 실제 활성 Goal·lease가
+없으면 거절한다. `dev_allow`·`dev_deny`는 명시적으로 지정하는 개발 시험 정책이다.
+Action 처리 자체는 여전히 모의 `CONFIRM_LOAD`이며 실제 조작 실행기는 아니다.
 
 ```bash
 ros2 run ax_task_executor local_task_executor --ros-args -p robot_id:=robot_1 -p policy:=dev_allow
@@ -292,8 +294,10 @@ ros2 run ax_task_executor local_task_executor --ros-args -p robot_id:=robot_1 -p
     - Action: Reentrant 그룹(Goal 수락·취소·실행, 실행 대기 타이머).
     - 상태: MutuallyExclusive 그룹(1 Hz 상태 재발행).
   - 공유 상태 `ExecutorState`(현재 실행·진행 중 처리·취소 표시, 앞으로 C4 활성 Goal·lease 세대 자리)는 잠금 하나로 보호한다.
-  - 잠금 안에서는 SQLite 쓰기·ROS 호출·await를 하지 않는다. 한 스레드가 두 잠금을 함께 잡지 않는다(순서는 `local_task_executor.py` 머리말).
-  - lease 판정은 정책 객체 `DevPolicyAuthority`가 맡는다. 운영 판정은 같은 `decide(fields, state)` 인터페이스로 교체한다.
+  - `ExecutorState` 잠금 안에서는 SQLite 쓰기·ROS 호출·await를 하지 않는다.
+  - 운영 권한은 별도 `RuntimeAuthority` 잠금으로 보호한다. 잠금 순서는 RuntimeAuthority → LeaseLedger이며,
+    권한 검사부터 SQLite 수락 기록 커밋까지 철회·재배정과 직렬화한다. 반대 순서로 취득하지 않는다.
+  - 운영 판정은 `RuntimeAuthority`, 명시적 개발 정책은 `DevPolicyAuthority`가 맡는다.
   - 원장은 `${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/`의 `executions.sqlite3`·`lease_checks.sqlite3`(분리)다.
 - 기존 실행 파일과의 관계
   - `mock_executor`·`lease_check`는 호환용으로 그대로 둔다.
@@ -320,6 +324,51 @@ ros2 run ax_task_executor local_task_executor --ros-args -p robot_id:=robot_1 -p
   - 표본이 작아 "통합이 지연을 없앤다"고 단정하지 않는다. local_task_executor는 Action 처리와 함께 돌아 p50이 두 배쯤 길다.
 
 ## A4·A2 개발자용 연결 안내
+
+### 운영 권한 검사 (`local_task_executor`, 기본 `policy:=operational`)
+
+`runtime_authority.py`는 요청자가 적어 보낸 ID를 권한으로 믿지 않는다. 다음을 모두 검사한다.
+
+- 배정: D4 응답이 현재 A 세션·요청 ID·배정 세대에 대응하고 `valid=true`이며,
+  BOOTTIME 최초 요청 시각 `tA + min(validity_s, 2.0)` 안인지 확인한다.
+  중복·이전 순번·다른 세션·이전 배정 응답은 권한을 연장하지 않는다.
+- 활성 Goal: A3가 등록한 현재 execution_id와 부모 ManipulateObject UUID가 같은지 검사한다.
+  작업 종료 뒤 지연 명령은 `GOAL_MISMATCH`로 거절한다.
+- 세대·lease: A3가 등록한 현재 lease 세대와 일치하고, 만료·철회되지 않아야 한다.
+  세대 불일치·철회는 `LEASE_REVOKED`, 기한 경과는 `LEASE_EXPIRED`다.
+- 로컬 후퇴: 현재 등록 작업이 `RETRACT_ARM`이고 A4 출처·빈 부모 Goal·세대 0일 때만 허용한다.
+
+허용 응답의 `valid_for_s`는 남은 실제 권한 시간 이하이다. 같은 request_id의 저장된 허용 응답도
+철회·만료·작업 종료 후에는 허용 근거가 되지 않는다. SQLite 커밋 도중 기한이 지나면 응답은 거절이다.
+재시작 시 과거 수락 기록은 보존하되 라이브 권한은 복구하지 않고 새 배정 확인부터 요구한다.
+
+연결 순서(실제 A3 dispatcher용 내부 API, 외부 명령 요청에서 호출하면 안 됨):
+
+1. 실제 작업을 수락·기록한 A3가 `request_assignment_check(execution)`을 호출한다.
+   `/ax/<robot_id>/executor/assignment_check/request`를 발행하고 같은 prefix의 `/response`를 받는다.
+   D4 응답은 A3가 생성한 `a_session_id`를 그대로 돌려줘야 한다. 실행 중에는 계약 주기로 재확인한다.
+2. 확인된 배정에서 실제로 수락된 C4 Goal UUID를 `authority.activate_goal(execution, goal_id)`로 등록한다.
+   로컬 후퇴는 `authority.activate_goal(execution, local_task_kind=6)`이다.
+3. A3 lease 발급기가 세대 영속 기록·재동기화 검사를 마친 뒤
+   `authority.set_lease(execution_id, goal_id, generation, deadline)`으로 BOOTTIME 기한을 등록한다.
+   기한은 현재 배정 기한과 1.5초 상한 이내여야 한다. 만료·철회된 세대는 갱신할 수 없다.
+4. 취소 시 `authority.revoke(...)`를 먼저 호출한 뒤 철회 Topic·Action cancel을 보낸다.
+   하위 종료 시 `authority.finish_goal(...)`, 배정 무효화 시 `authority.invalidate_assignment()`을 호출한다.
+
+**구현 범위:** 네 가지 명령 검사와 D4 응답 연결을 구현했다. 실제 C4 Goal 전송,
+lease FIRST/RENEW/grant/revoke Topic 발급기·영속 세대·재동기화 절차·실제 dispatcher는 아직 없다.
+모의 `CONFIRM_LOAD`는 위 API로 운영 권한을 만들지 않으므로, 노드를 실행하는 것만으로
+실제 명령이 허용되지 않는다. 이것을 피하려고 운영에서 `dev_allow`로 바꾸지 않는다.
+
+검증 (테스트는 모두 `tools/tests/`):
+
+```bash
+python3 tools/tests/test_a3_runtime_authority.py
+# ROS Jazzy와 빌드된 ax_interfaces 환경을 source한 뒤:
+python3 tools/tests/test_a3_runtime_authority_ros.py
+```
+
+### 기존 개발 정책 서버
 
 A4(`ProtectedArmTrajectory`)·A2(`ToolCommand`)를 개발할 때 상대 A3로 `lease_check`를 띄운다.
 **개발 정책 서버이므로 응답은 운영 lease 판정이 아니다.** 허용을 받아도 실제 lease·세대·배정이 유효하다는 뜻은 아니다.

@@ -1,5 +1,5 @@
 """
-로컬 작업 실행기 한 프로세스: ExecuteLocalTask Action 서버(모의 적재 확인)와 CheckCommandLease 서비스(개발 정책).
+로컬 작업 실행기: 모의 적재 확인 Action과 상태 기반 CheckCommandLease 서비스.
 
 설계 11.1절에 따라 lease 확인을 Action 대기·실행 기록 쓰기와 다른 콜백 그룹으로 분리한다.
 - lease(기본 lease_mode=reentrant): 같은 노드의 Reentrant 그룹. 요청 직렬 처리(계약 5.2절)는
@@ -17,16 +17,20 @@ MultiThreadedExecutor(파라미터 threads, 기본 4)가 세 그룹을 돌린다
 
 원장은 분리된 두 파일이다(${ROS_HOME:-~/.ros}/ax_task_executor/<robot_id>/ 아래):
 executions.sqlite3, lease_checks.sqlite3.
-실제 lease 판정은 없고 DevPolicyAuthority(dev_allow | dev_deny, 기본 dev_deny)가 대신한다.
+기본 RuntimeAuthority는 배정·활성 Goal·lease를 검사한다. 실제 dispatcher의 등록이 없으면 거절한다.
+DevPolicyAuthority(dev_allow | dev_deny)는 명시적으로 선택하는 개발 시험 모드다.
+운영 권한 잠금은 RuntimeAuthority → LeaseLedger 순서로 잡으며, 검사와 수락 커밋을 철회와 직렬화한다.
 """
 import threading
 import time
 
+from ax_interfaces.msg import AssignmentCheckRequest, AssignmentCheckResponse
 from ax_interfaces.srv import CheckCommandLease
 from ax_task_executor.executor_state import ExecutorState
 from ax_task_executor.lease_check import (
     default_lease_db, DevPolicyAuthority, LEASE_SERVICE_QOS, LeaseChecker, LeaseLedger)
 from ax_task_executor.mock_executor import execute_action_name, MockExecutor
+from ax_task_executor.runtime_authority import RuntimeAuthority
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
@@ -54,7 +58,7 @@ class LocalTaskExecutor(MockExecutor):
                          status_group=MutuallyExclusiveCallbackGroup(), state=state)
 
         self.declare_parameter('threads', 4)
-        self.declare_parameter('policy', 'dev_deny')
+        self.declare_parameter('policy', 'operational')
         self.declare_parameter('deny_reason', 'LEASE_EXPIRED')
         self.declare_parameter('valid_for_s', 2.0)
         self.declare_parameter('lease_db', '')
@@ -72,10 +76,12 @@ class LocalTaskExecutor(MockExecutor):
 
         path = self.get_parameter('lease_db').value or default_lease_db(self.robot_id)
         self.ledger = LeaseLedger(path, self.robot_id)
-        authority = DevPolicyAuthority(self.get_parameter('policy').value,
-                                       self.get_parameter('deny_reason').value)
+        policy = self.get_parameter('policy').value
+        authority = (RuntimeAuthority(self.robot_id) if policy == 'operational' else
+                     DevPolicyAuthority(policy, self.get_parameter('deny_reason').value))
+        self.authority = authority
         self.checker = LeaseChecker(
-            self.robot_id, authority.policy, authority.deny_reason,
+            self.robot_id, authority.policy, getattr(authority, 'deny_reason', ''),
             self.get_parameter('valid_for_s').value, self.ledger,
             authority=authority, state=state)
 
@@ -96,6 +102,16 @@ class LocalTaskExecutor(MockExecutor):
             CheckCommandLease, lease_service_name(self.robot_id), self.on_check,
             qos_profile=LEASE_SERVICE_QOS, callback_group=group)
 
+        if policy == 'operational':
+            from rclpy.qos import QoSProfile, ReliabilityPolicy
+            event_qos = QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)
+            prefix = f'/ax/{self.robot_id}/executor/assignment_check'
+            self.assignment_requests = self.create_publisher(
+                AssignmentCheckRequest, prefix + '/request', event_qos)
+            self.assignment_responses = self.create_subscription(
+                AssignmentCheckResponse, prefix + '/response',
+                self.authority.confirm_assignment, event_qos, callback_group=group)
+
         others = self.duplicate_servers(self.get_parameter('name_check_s').value)
 
         if others:
@@ -105,7 +121,32 @@ class LocalTaskExecutor(MockExecutor):
         self.get_logger().warning(
             f'로컬 작업 실행기(lease 정책 {authority.policy}, lease {self.lease_mode}, '
             f'스레드 {self.thread_count()}). '
-            f'실제 lease·세대·배정 검증이 없습니다. lease 원장: {path}')
+            f'lease 원장: {path}. operational은 확인된 배정·활성 Goal·lease가 없으면 거절합니다. '
+            'dev_allow/dev_deny는 개발 시험 전용입니다.')
+
+    def request_assignment_check(self, execution):
+        """
+        Request D4 confirmation for a recorded real task.
+
+        This method does not authorize the mock CONFIRM_LOAD action. The real
+        dispatcher must periodically request checks, register accepted C4 goal
+        UUIDs via authority.activate_goal, and install A3-issued leases via
+        authority.set_lease. No command request can register its own authority.
+        """
+        import uuid
+
+        if not isinstance(self.authority, RuntimeAuthority):
+            raise RuntimeError('assignment checks require operational policy')
+        request = AssignmentCheckRequest()
+        request.request_id = uuid.uuid4().hex
+        request.a_session_id = self.authority.session_id
+        request.robot_id = self.robot_id
+        request.assignment_id = execution.assignment_id
+        request.assignment_generation = execution.assignment_generation
+        self.authority.begin_assignment_check(
+            request.request_id, request.assignment_id, request.assignment_generation)
+        self.assignment_requests.publish(request)
+        return request.request_id
 
     # 실행기 스레드 수
     def thread_count(self):

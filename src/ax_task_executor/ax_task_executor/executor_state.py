@@ -26,6 +26,7 @@ class ExecutorState:
 
     # 빈 상태로 시작한다
     def __init__(self):
+        # 역할: 설정과 내부 상태를 준비합니다.
         self.lock = threading.Lock()
         self.active_execution_id = None
         # execution_id → 실제로 처리 중인 Goal 키(Goal UUID 16진 문자열)
@@ -40,6 +41,7 @@ class ExecutorState:
     # 처리 중 작업 표시를 확인하고, 비어 있으면 이 실행으로 잡는다. (busy, claimed)를 돌려준다
     def claim(self, execution_id, has_result):
         # 로봇의 실행 자리만 선점합니다. 이 표시 자체가 실제 구동 권한은 아닙니다.
+        # 역할: 다른 작업과 겹치지 않도록 현재 실행 처리권을 선점합니다.
         with self.lock:
             busy = self.active_execution_id not in (None, execution_id)
 
@@ -53,12 +55,14 @@ class ExecutorState:
 
     # 이 실행이 처리 중 작업 표시를 가지고 있으면 놓는다
     def release(self, execution_id):
+        # 역할: 현재 소유권과 이탈 증거를 확인하거나 실행 중 선점을 해제합니다.
         with self.lock:
             if self.active_execution_id == execution_id:
                 self.active_execution_id = None
 
     # 처리 시작을 기록한다. 이미 처리 중이면 그 Future를 돌려준다(재요청). 새로 시작하면 None
     def begin(self, execution_id, goal_key, future):
+        # 역할: 해당 실행의 처리 중 요청과 완료 대기 객체를 등록합니다.
         with self.lock:
             if execution_id in self.inflight:
                 return self.inflight[execution_id]
@@ -70,6 +74,7 @@ class ExecutorState:
 
     # 처리 종료를 기록하고 처리 중 표시를 정리한다
     def finish(self, execution_id, goal_key):
+        # 역할: 현재 실행의 처리 표시와 대기 객체를 정리합니다.
         with self.lock:
             self.inflight.pop(execution_id, None)
             self.owner_goal.pop(execution_id, None)
@@ -81,6 +86,7 @@ class ExecutorState:
     # 원래 Goal이면 취소 표시를 남기고 True, 재요청 Goal이면 False
     def request_cancel(self, execution_id, goal_key):
         # 원래 Goal의 취소만 받습니다. 결과를 재조회한 Goal이 원래 작업을 멈추면 안 됩니다.
+        # 역할: 현재 처리 중인 원래 요청에 취소 의사를 기록합니다.
         with self.lock:
             if self.owner_goal.get(execution_id) != goal_key:
                 return False
@@ -91,10 +97,12 @@ class ExecutorState:
 
     # 이 Goal에 취소 표시가 있는지 확인한다
     def is_cancel_requested(self, goal_key):
+        # 역할: 현재 요청에 취소 표시가 있는지 확인합니다.
         with self.lock:
             return goal_key in self.cancel_requested
 
     # 이 실행을 다른 Goal이 처리 중인지 확인한다
     def is_inflight(self, execution_id):
+        # 역할: 해당 실행이 아직 처리 중인지 확인합니다.
         with self.lock:
             return execution_id in self.inflight

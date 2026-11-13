@@ -26,7 +26,15 @@ class AssignmentMonitor:
             self.execution = deepcopy(execution)
             # 원본 요청이 나중에 바뀌어도 추적 대상이 몰래 바뀌지 않도록 복사합니다.
             self.next_check = 0.0
-            self.tick()
+            try:
+                self.tick()
+            except Exception:
+                # 첫 요청이 실패하면 임시 작업·대기 권한을 함께 정리해 재시도를 허용합니다.
+                self.authority.invalidate_assignment()
+                self.execution = None
+                self.next_check = 0.0
+                # 실패를 성공처럼 숨기지 않고 원래 오류를 호출자에게 다시 전달합니다.
+                raise
 
     def tick(self):
         """Request checks on BOOTTIME and latch expiry before any recovery."""

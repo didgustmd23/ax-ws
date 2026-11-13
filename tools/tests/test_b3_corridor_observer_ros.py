@@ -1,3 +1,4 @@
+# [검사 범위] 가짜 시계·TF·위치 정보로 실제 B3 ROS 관측을 검사합니다. B2 실주행 통합은 아닙니다.
 # B3 통로 관측 노드(corridor_observer)를 가짜 시계·TF·health로 실제 ROS 통신에서 검사한다(Gazebo 없음).
 # 이 시험 프로세스가 /clock, /tf(map→robot_2/odom, robot_2/odom→robot_2/base_link), localization/health를 흉내 내고
 # 관측 노드를 격리 ROS_DOMAIN_ID(150~179)에서 실행한다. B2 AMCL·실제 주행 통합 시험이 아니다.
@@ -218,6 +219,7 @@ class CorridorObserverWithStubs(unittest.TestCase):
 
     # 1) OUTSIDE→APPROACHING→INSIDE→OUTSIDE 전이, 2) LOST·만료 UNKNOWN, 3) 회복, 4) revision·주기·QoS
     def test_transitions_health_and_rate(self):
+        # [핵심] 가짜 위치를 바꾸며 관측 전이·만료·회복·재발행 주기와 revision을 함께 확인합니다.
         from ax_interfaces.msg import CorridorObservation as O
         from ax_interfaces.msg import LocalizationHealth as H
 
@@ -328,6 +330,7 @@ class CorridorObserverWithStubs(unittest.TestCase):
     # 미승인 실제 파일: meta.valid=false, REGIONS_NOT_APPROVED, 모든 통로 UNKNOWN·position_valid=false.
     # 늦게 접속한 구독자도 마지막 값을 받는다(STATE transient_local).
     def test_unapproved_regions_and_late_join(self):
+        # [핵심] 미승인 영역은 UNKNOWN이어야 하고, 늦게 구독한 프로그램도 최근 상태를 받아야 합니다.
         from ax_interfaces.msg import CorridorObservation as O
         from ax_interfaces.msg import CorridorObservationList
         from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy

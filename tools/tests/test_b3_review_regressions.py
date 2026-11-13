@@ -3,6 +3,7 @@
 These preserve the fixes for the session handling defects found during review.
 No production source is modified by these tests.
 """
+# [검사 범위] B3 세션 복구 회귀 검사: 잘못된 새 메시지가 정상 세션을 영구히 막지 않게 합니다.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -38,6 +39,7 @@ class SessionValidationReviewTests(unittest.TestCase):
                                    now=lambda: SimpleNamespace(nanoseconds=100_000_000_000)))
 
     def test_empty_session_must_not_retire_valid_publisher(self):
+        # [핵심] 세션 ID가 비어 있는 메시지 하나 때문에 정상 B2 세션을 폐기하면 안 됩니다.
         observer = self.observer()
         CorridorObserver.on_health(observer, health('b2-live', revision=10))
         CorridorObserver.on_health(observer, health('', revision=1))
@@ -66,6 +68,7 @@ class SessionValidationReviewTests(unittest.TestCase):
         self.assertEqual(observer.health_revision, 11)
 
     def test_valid_new_session_retires_old_and_old_cannot_replace_it(self):
+        # [핵심] 정상 새 세션으로 바뀐 뒤에는 예전 세션의 늦은 메시지가 현재 상태를 덮어쓰지 못해야 합니다.
         observer = self.observer()
         CorridorObserver.on_health(observer, health('b2-old', revision=10))
         CorridorObserver.on_health(observer, health('b2-new', revision=1))

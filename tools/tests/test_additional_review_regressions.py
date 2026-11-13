@@ -1,4 +1,5 @@
 """Guard reassignment rejection and B2 session timestamp validation fixes."""
+# [검사 범위] 재배정 거절과 오래된 B2 세션에서 발견했던 오류가 다시 생기지 않는지 확인합니다.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -39,6 +40,7 @@ class AdditionalReviewTests(unittest.TestCase):
     """Use the real decision/callback code with controlled peer messages."""
 
     def test_current_d4_reassignment_rejection_must_revoke_old_permission(self):
+        # [핵심] 현재 D4가 재배정으로 거절하면 옛 세대의 권한을 즉시 무효화해야 합니다.
         authority = RuntimeAuthority('robot_1', lambda: 100.0)
         self.addCleanup(authority.close)
         authority.begin_assignment_check('initial', 'assignment', 3)
@@ -61,6 +63,7 @@ class AdditionalReviewTests(unittest.TestCase):
                             'current D4 rejection must block the old generation immediately')
 
     def test_stale_new_session_must_not_prevent_live_publisher_recovery(self):
+        # [핵심] 오래되거나 잘못된 시각의 새 세션 뒤에도 정상 세션의 새 메시지로 복구할 수 있어야 합니다.
         for stamp in (0, 50, 103):
             with self.subTest(stamp=stamp):
                 observer = observer_at()
@@ -89,6 +92,7 @@ class AdditionalReviewTests(unittest.TestCase):
         self.assertNotIn('live', observer.retired_sessions)
 
     def test_unrelated_or_out_of_order_d4_rejections_do_not_clear_current_assignment(self):
+        # [핵심] 현재 D4의 거절과 무관한·오래된 응답을 구별합니다. 엉뚱한 응답으로 정상 권한을 지우면 안 됩니다.
         cases = ({'sequence': 0}, {'a_session_id': 'old-a-session'},
                  {'request_id': 'unknown'}, {'valid': True, 'validity_s': 2.0})
         for changes in cases:
@@ -108,6 +112,7 @@ class AdditionalReviewTests(unittest.TestCase):
                 self.assertEqual(authority.assignment, ('assignment', 3))
 
     def test_rejection_discards_other_pending_positive_responses(self):
+        # [핵심] 거절 뒤에 늦게 온 허용 응답이 권한을 되살리지 못하게 대기 요청도 정리해야 합니다.
         authority = RuntimeAuthority('robot_1', lambda: 100.0)
         self.addCleanup(authority.close)
         authority.begin_assignment_check('negative', 'assignment', 3)

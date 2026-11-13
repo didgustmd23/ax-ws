@@ -1,4 +1,5 @@
 """Run unchanged team B4 against B3 output; synthetic inputs, no robot motion."""
+# [검사 범위] B3와 승연님 B4 원본 코드를 연결합니다. 위치·거리 입력과 승인 영역 사본은 시험용입니다.
 import json
 from pathlib import Path
 import sys
@@ -101,6 +102,7 @@ class B3B4HandoffTests(unittest.TestCase):
         self.fail('B4 did not publish expected state')
 
     def test_normal_unknown_and_restored_observations_reach_actual_b4(self):
+        # [핵심] 정상→무효→회복→TF 만료를 실제 B4 코드에 전달합니다. 물리 구동 검증은 아닙니다.
         clear = self.wait_state(lambda m: m.meta.valid and m.allow_forward)
         self.assertEqual(clear.robot_id, self.robot_id)
         self.observer.catalog['approved'] = False
@@ -114,6 +116,7 @@ class B3B4HandoffTests(unittest.TestCase):
         self.wait_state(lambda m: not m.meta.valid and not m.allow_forward)
 
     def test_empty_catalog_is_invalid_not_vacuously_clear(self):
+        # [핵심] 통로가 0개인 목록을 빈 통로가 확인됐다는 뜻으로 오인하지 않아야 합니다.
         self.wait_state(lambda m: m.meta.valid and m.allow_forward)
         self.observer.corridor_ids = []
         self.assertEqual(self.observer.evaluate(time.time()), ({}, 'REGIONS_INVALID'))

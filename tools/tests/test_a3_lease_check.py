@@ -1,4 +1,5 @@
 """A3 CheckCommandLease 개발 정책 서버 시험(계약 4.3·5.2절 형식·권한·멱등·수락 기록, ROS 왕복)."""
+# [검사 범위] 개발용 lease 서버의 형식·중복·기록·ROS 응답 검사입니다. dev_allow는 운영 권한이 아닙니다.
 import ast
 import hashlib
 import importlib.util
@@ -158,6 +159,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # dev_allow 허용은 개발 정책 표시(사유·기록 ID 접두어)와 valid_for_s를 담는다
     def test_dev_allow_marks_development_policy(self):
+        # [핵심] 개발용 허용 응답에는 개발 표시가 있어야 합니다. 실제 권한 검증 결과와 혼동하면 안 됩니다.
         result = self.checker().check(tool_request())
 
         self.assertTrue(result['allowed'])
@@ -168,6 +170,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # 같은 request_id 재전송은 같은 응답, 내용이 다르면 DUPLICATE_REQUEST
     def test_same_request_id_idempotent(self):
+        # [핵심] 같은 질문을 다시 보내도 응답과 수락 기록이 중복 생성되지 않아야 합니다.
         checker = self.checker()
         request = tool_request()
 
@@ -199,6 +202,7 @@ class LeaseCheckerTests(unittest.TestCase):
 
     # CONTINUE는 수락된 명령에만 허용하고 수락 기록을 만들지 않는다
     def test_continue_does_not_create_record(self):
+        # [핵심] CONTINUE는 이미 수락한 명령의 지속 확인입니다. 새 명령 수락 기록을 만들면 안 됩니다.
         checker = self.checker()
         command = uuid.uuid4().hex
         checker.check(tool_request(command_id=command))
@@ -403,6 +407,7 @@ class LeaseCheckServiceTests(unittest.TestCase):
 
     # 동시에 같은 command_id를 여러 request_id로 확인해도 수락 기록은 하나다(직렬 처리)
     def test_concurrent_same_command_single_record(self):
+        # [핵심] 여러 요청이 동시에 와도 같은 물리 명령의 수락 영수증은 하나만 남아야 합니다.
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         ledger = LeaseLedger(Path(temp.name) / 'lease.sqlite3', 'robot_3')

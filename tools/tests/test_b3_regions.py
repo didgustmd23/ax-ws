@@ -1,4 +1,5 @@
 """B3 영역 파일·전체 외곽·불명 처리, 두 창고 월드 영역의 SDF 대조, 회전 외곽·접근 방향 판정을 검증한다."""
+# [검사 범위] B3 영역·외곽·경계와 월드 좌표의 일치를 확인합니다. 실제 통로 운영 승인은 아닙니다.
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -56,6 +57,7 @@ class RegionTests(unittest.TestCase):
         return catalog
 
     def test_full_footprint_boundary_stale_and_coordinate_checks(self):
+        # [핵심] 로봇 중심점만 보지 않습니다. 전체 외곽·경계·위치 만료·좌표 불일치를 함께 확인합니다.
         catalog = self.approved_test_catalog()
         self.assertEqual(self.observe(catalog, [5.5, 0, 6.5, 0.5]).state, 'INSIDE')
         self.assertEqual(self.observe(catalog, [6, 0, 7, 0.5]).state, 'INSIDE')
@@ -117,6 +119,7 @@ class WarehouseRegionTests(unittest.TestCase):
 
     # 파일이 생성기 결과와 같고, 단색 보존 월드에서 만들어도 같다(구조 동일).
     def test_file_matches_generator_and_plain_world(self):
+        # [핵심] 영역 파일을 임의로 바꾸지 않았는지 생성기 결과와 기준 월드에 대조합니다.
         self.assertEqual(json.loads(WAREHOUSE.read_text(encoding='utf-8')), gen.build())
         self.assertEqual(gen.build(PLAIN_WORLD)['regions'], gen.build()['regions'])
 
@@ -279,6 +282,7 @@ class RotatedOutlineTests(unittest.TestCase):
 
     # 경계: 앞 끝이 통로 서쪽 면에 닿으면 INSIDE, 1 mm 떨어지면 접근 구역 안 APPROACHING
     def test_boundary_touch_is_inside(self):
+        # [핵심] 외곽이 통로 경계에 닿아 있으면 완전히 나간 것으로 처리하면 안 됩니다.
         front = self.outline[2]
         self.assertEqual(self.state((self.corridor[0] - front, 0.0, 0.0)).state, 'INSIDE')
         self.assertEqual(self.state((self.corridor[0] - front - 0.001, 0.0, 0.0)).state, 'APPROACHING')
@@ -326,6 +330,7 @@ class RotatedOutlineTests(unittest.TestCase):
 
     # DEGRADED: 넓힌 외곽이 통로·접근 구역과 떨어지면 OUTSIDE(유효), 겹치면 UNKNOWN. INSIDE·APPROACHING은 확정하지 않는다.
     def test_degraded_mode(self):
+        # [핵심] 위치가 불확실하면 여유를 넓혀 판단하고, 통로 근처는 정상 이탈로 확정하지 않습니다.
         margin = 0.04 + 0.5                                # k·std + degraded_margin_m(노드 기본값 기준)
 
         def degraded(pose):

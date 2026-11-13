@@ -1,4 +1,5 @@
 """Bound request memory without allowing expired or completed IDs to be reused."""
+# [검사 범위] A3 배정 요청 기록: 메모리 정리 뒤에도 만료·중복 요청이 권한을 되살리지 않는지 확인합니다.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ class AssignmentHistoryTests(unittest.TestCase):
             valid=True, validity_s=2.0)
 
     def test_unanswered_10000_checks_have_only_live_requests_in_memory(self):
+        # [핵심] 응답이 없어도 만료된 대기 요청이 계속 메모리에 쌓이면 안 됩니다.
         for index in range(10000):
             self.now += 0.5
             self.send(f'missing-{index}')
@@ -35,6 +37,7 @@ class AssignmentHistoryTests(unittest.TestCase):
         self.assertEqual(self.authority.pending, {})
 
     def test_completed_10000_checks_leave_no_pending_requests(self):
+        # [핵심] 완료 요청은 대기 목록에서 지우되, 예전 ID를 재사용해 새 권한을 만들 수 없어야 합니다.
         for index in range(10000):
             self.now += 0.5
             request_id = f'answered-{index}'
@@ -48,6 +51,7 @@ class AssignmentHistoryTests(unittest.TestCase):
         self.assertIsNone(self.authority.assignment)
 
     def test_expired_request_cannot_be_reenrolled_or_extend_first_send_time(self):
+        # [핵심] 정리된 요청을 다시 보내도 최초 발신 시각과 만료 기한이 초기화되면 안 됩니다.
         self.send('expired')
         reply = self.reply('expired', 1)
         self.now += 3

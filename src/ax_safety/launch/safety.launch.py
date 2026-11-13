@@ -30,14 +30,16 @@ def generate_launch_description():
         DeclareLaunchArgument('travel_envelope_verified', default_value='false'),
         DeclareLaunchArgument('arm_operation_verified', default_value='false'),
         # B4는 B1 센서와 B2/B3 관측을 모아 A4가 읽는 SafetyState를 발행한다.
-        Node(package='ax_safety', executable='b4_risk_node', output='screen',
+        # 로봇별 namespace로 감싸 여러 로봇의 B4 노드 이름이 겹치지 않게 한다.
+        Node(package='ax_safety', executable='b4_risk_node', namespace=['/ax/', robot_id], output='screen',
              parameters=[config, {'robot_id': robot_id,
                                   'front_scan_topic': ['/ax/', robot_id,
                                                        '/sensors/front_lidar/scan_filtered'],
                                   'rear_scan_topic': ['/ax/', robot_id,
                                                       '/sensors/rear_lidar/scan_filtered']}]),
         # A4 주행 게이트는 SafetyState·odom·joint state·D2/D3 허가를 모두 확인한다.
-        Node(package='ax_safety', executable='a4_safety_gate', output='screen',
+        # 로봇별 namespace로 감싸 여러 로봇의 A4 안전 게이트를 구분한다.
+        Node(package='ax_safety', executable='a4_safety_gate', namespace=['/ax/', robot_id], output='screen',
              # 빈 vector를 YAML에서 읽으면 ROS 2 C++ 파라미터 타입이
              # 불명확해질 수 있으므로 A4의 타입 지정 기본값을 사용한다.
              parameters=[{'robot_id': robot_id,
@@ -51,7 +53,8 @@ def generate_launch_description():
                                   'arm_operation_verified': ParameterValue(
                                       arm_operation_verified, value_type=bool)}]),
         # 팔 action은 A3 lease를 확인하는 별도 서버를 거쳐 A2 controller로 전달된다.
-        Node(package='ax_safety', executable='a4_protected_arm_server', output='screen',
+        # 로봇별 namespace로 감싸 보호 팔 서버의 이름 충돌을 막는다.
+        Node(package='ax_safety', executable='a4_protected_arm_server', namespace=['/ax/', robot_id], output='screen',
              parameters=[{'robot_id': robot_id,
                                   'use_sim_time': True,
                                   'enable_simulation_arm': ParameterValue(

@@ -4,9 +4,13 @@
 import copy
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
-from common_contract import check_status, OUTCOMES
+try:
+    from .common_contract import OUTCOMES, check_status
+except ImportError:  # W0 개발 시험에서 파일을 직접 실행할 때도 모듈을 불러온다.
+    from common_contract import OUTCOMES, check_status
 
 
 
@@ -50,7 +54,8 @@ def accept_status(status, database_path, *, now_sim_s, received_boottime_s):
 
 
     # 4. execute(명령 실행)로 DB에 기록 표를 만들고 로봇별 기존 기록 조회함
-    with sqlite3.connect(database_path) as conn:
+    # 연결을 자동으로 닫아 시험과 실제 실행에서 SQLite 자원을 남기지 않는다.
+    with closing(sqlite3.connect(database_path)) as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS latest (robot TEXT, source TEXT, "
                      "session TEXT, revision TEXT, body TEXT, payload TEXT, "
                      "received REAL, PRIMARY KEY(robot, source))")
@@ -84,6 +89,7 @@ def accept_status(status, database_path, *, now_sim_s, received_boottime_s):
                 conn.execute("UPDATE latest SET payload=?, received=? "
                              "WHERE robot=? AND source=?",
                              (payload, received_boottime_s, *key))
+                conn.commit()
                 return "중복 수신: 기존 내용 유지, 시각만 갱신"
 
     
@@ -97,6 +103,8 @@ def accept_status(status, database_path, *, now_sim_s, received_boottime_s):
         conn.execute("INSERT OR REPLACE INTO latest VALUES (?,?,?,?,?,?,?)",
                      (*key, session, str(revision), body_text, payload,
                       received_boottime_s))
+        # 기록 변경을 명시적으로 저장한 뒤 연결을 닫는다.
+        conn.commit()
 
 
     if status["last_result"]["outcome"] in (OUTCOMES["UNSPECIFIED"], OUTCOMES["UNCERTAIN"]):
@@ -107,7 +115,8 @@ def accept_status(status, database_path, *, now_sim_s, received_boottime_s):
 
 def read_latest(database_path, *, now_sim_s, now_boottime_s):
     # 7. CURRENT(현재 유효)와 UNKNOWN(상태 확인 필요)으로 구분함
-    with sqlite3.connect(database_path) as conn:
+    # 최신 기록을 읽은 뒤에도 SQLite 연결을 자동으로 닫는다.
+    with closing(sqlite3.connect(database_path)) as conn:
         rows = conn.execute("SELECT payload, received FROM latest").fetchall()
 
 

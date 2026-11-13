@@ -4,20 +4,33 @@
 
 
 # pathlib(파이썬 기본 기능)에서 파일·폴더 경로를 다루는 Path를 가져옴
+import os
 from pathlib import Path
 # D4(승연)가 만든 input_source.py에서 A3의 로봇 상태를 받는 기능을 가져옴
-import input_source
+try:
+    from . import input_source
+except ImportError:  # W0 개발 시험에서 파일을 직접 실행할 때도 모듈을 불러온다.
+    import input_source
 # D4가 만든 common_contract.py에서 상태 검사 함수와 결과 번호·이름 정보를 가져옴
-from common_contract import check_status, OUTCOME_NAMES
+try:
+    from .common_contract import OUTCOME_NAMES, check_status
+except ImportError:  # W0 개발 시험에서 파일을 직접 실행할 때도 모듈을 불러온다.
+    from common_contract import OUTCOME_NAMES, check_status
 # D4가 만든 ledger.py에서 상태 저장 함수와 최신 기록 조회 함수를 가져옴
-from ledger import accept_status, read_latest
+try:
+    from .ledger import accept_status, read_latest
+except ImportError:  # W0 개발 시험에서 파일을 직접 실행할 때도 모듈을 불러온다.
+    from ledger import accept_status, read_latest
 
 # DB는 **데이터베이스(Database)**의 줄임말
 
 
 def main():
     # record_file(DB 저장 위치): 이 파일과 같은 폴더에 기록을 저장함
-    record_file = Path(__file__).with_name("w0_ledger.sqlite3")
+    # 기본 경로는 개발용으로 유지하고, ROS 설치 노드는 쓰기 가능한 경로를 지정할 수 있다.
+    record_file = Path(
+        os.environ.get("AX_D4_LEDGER_PATH", Path(__file__).with_name("w0_ledger.sqlite3"))
+    ).expanduser()
 
     def on_status(status, *, now_sim_s, received_boottime_s):
         # 1. check_status(상태 검사): 받은 로봇 정보와 실행 번호를 검사함

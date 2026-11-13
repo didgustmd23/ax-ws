@@ -9,7 +9,34 @@ from uuid import UUID
 import rfc8785
 
 # 메시지 항목이 적혀 있는 schema 폴더 위치
-SCHEMA = Path(__file__).resolve().parents[2] / "ax_interfaces" / "msg"
+_SOURCE_SCHEMA = Path(__file__).resolve().parents[2] / "ax_interfaces" / "msg"
+
+
+def _schema_dir():
+    """소스 트리 또는 colcon 설치 경로에서 메시지 schema 위치를 찾는다."""
+    if _SOURCE_SCHEMA.is_dir():
+        return _SOURCE_SCHEMA
+    try:
+        from ament_index_python.packages import get_package_share_directory
+
+        return Path(get_package_share_directory("ax_interfaces")) / "msg"
+    except (ImportError, LookupError):
+        return _SOURCE_SCHEMA
+
+
+SCHEMA = _schema_dir()
+
+# ROS 표준 Header와 Time 메시지는 ax_interfaces 파일이 없어도 검사할 수 있게 직접 정의한다.
+_STANDARD_FIELDS = {
+    "std_msgs/Header": {
+        "stamp": "builtin_interfaces/Time",
+        "frame_id": "string",
+    },
+    "builtin_interfaces/Time": {
+        "sec": "int32",
+        "nanosec": "uint32",
+    },
+}
 
 # 현재 A3가 사용하는 두 로봇의 번호
 ROBOT_IDS = ("robot_1", "robot_2")
@@ -18,6 +45,8 @@ ROBOT_IDS = ("robot_1", "robot_2")
 # 2. 메시지에 어떤 항목이 있는지 읽기
 # 입력: 메시지 이름 / 결과: 항목 이름과 종류
 def fields(message_type):
+    if message_type in _STANDARD_FIELDS:
+        return _STANDARD_FIELDS[message_type]
     # 메시지 종류에 따라 패키지와 이름을 구분함
     if "/" in message_type:
         package, name = message_type.split("/", 1)

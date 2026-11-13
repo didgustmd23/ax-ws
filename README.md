@@ -75,6 +75,9 @@ ros2 launch ax_control simulation.launch.py robots:=2 tool:=robotiq
 실제 적재 관측·로봇 구동·운영 lease 검증은 포함하지 않는다.
 [빌드·ros2 run 실행 안내](src/ax_task_executor/README.md) · [A3 K0 검토 기록(초안)](docs/guides/A3_K0_REVIEW.md).
 
+W1 A4·B4 설치·빌드·A3 연결·A2/Gazebo 검증은 [W1 A4·B4 설치·검증 안내](W1_A4_B4_SETUP.txt)를 따른다.
+실행 결과 요약은 [W1 A4·B4 검증 기록](docs/evidence/w1_a4_b4/W1_A4_B4_VERIFICATION_2026-11-13.md)에서 확인한다.
+
 ## B1 센서 전처리 (개발 중)
 
 모델·제어 시뮬레이션을 실행한 뒤 별도 터미널에서 아래 명령으로 연결한다.

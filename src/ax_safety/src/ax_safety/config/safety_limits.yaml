@@ -1,0 +1,45 @@
+# 실제 A1/A2 센서/물리 데이터, 계약, 팀 리뷰를 통해 값을 확정할 때만 활성화.
+# wheel_slip S005 slip1=0.05는 안전 임계값이 아니므로 여기에 넣지 않는다.
+a4_safety_gate:
+  ros__parameters:
+    robot_id: robot_1
+    use_sim_time: true
+    enable_simulation_drive: false
+    operational_permits_verified: false  # D2/D3 계약/상호배제 구현 후에만 별도 확인
+    travel_envelope_verified: false     # A1 자세/외곽 검증 전 false
+    arm_operation_verified: false        # 실제 A4 팔 보호 경로 검증 전 false
+    travel_joint_names: []
+    travel_joint_positions: []
+    travel_pose_tolerance_rad: 0.04
+    max_linear_m_s: 0.67
+    max_angular_rad_s: 0.50
+    max_linear_accel_m_s2: 0.67
+    max_angular_accel_rad_s2: 0.20
+a4_protected_arm_server:
+  ros__parameters:
+    robot_id: robot_1
+    use_sim_time: true
+    enable_simulation_arm: false
+    arm_joint_names: []
+    arm_position_min_rad: []
+    arm_position_max_rad: []
+    arm_max_velocity_rad_s: []
+    arm_max_acceleration_rad_s2: []
+    # controller_action: /ax/robot_1/arm_controller/follow_joint_trajectory
+b4_risk_node:
+  ros__parameters:
+    robot_id: robot_1
+    use_sim_time: true
+    scan_topic: ''            # A1/B1 실제 LaserScan 경로 확인 후 설정
+    front_scan_topic: ''      # launch가 B1의 sensors/front_lidar/scan_filtered를 지정
+    rear_scan_topic: ''       # launch가 B1의 sensors/rear_lidar/scan_filtered를 지정
+    front_range_topic: ''     # 개별 Range 센서 사용 시 실제 경로
+    rear_range_topic: ''      # 개별 Range 센서 사용 시 실제 경로
+    sector_half_width_deg: 30.0
+    sensor_stale_s: 0.25
+    localization_stale_s: 1.0
+    corridor_stale_s: 1.0
+    max_linear_m_s: 0.67
+    max_angular_rad_s: 0.50
+    stop_distance_m: 0.50      # 미검증 개발 기본값. 최종 안전거리 아님.
+    slowdown_distance_m: 1.00  # 미검증 개발 기본값. 최종 안전거리 아님.

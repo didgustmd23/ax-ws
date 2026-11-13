@@ -1,18 +1,16 @@
 # localization.launch.py 시작 감시(StartupMonitor)를 가짜 lifecycle 노드로 실제 ros2 launch에서 검사한다.
 # Gazebo 없이 격리 ROS_DOMAIN_ID에서 실행하고, 실행마다 환경 표시로 남은 프로세스를 찾는다.
-# domain은 시험 전용 범위(101~140)에서 다른 프로세스가 쓰지 않는 값을 잠금 파일로 잡아 클래스 전체에 쓴다.
+# domain은 시험 전용 범위(101~110, ros_test_domain.py)에서 다른 프로세스가 쓰지 않는 값을 잠금 파일로 잡아 클래스 전체에 쓴다.
 # 팀 격리 시뮬레이션(141~231)의 같은 이름 노드(/map_server, /ax/<robot>/amcl)와 섞이면 결과가 뒤틀린다.
 #
 # 환경변수
 #   AX_STARTUP_TEST_DOMAIN    domain을 직접 지정한다(재현용). 프로세스 사용 검사는 하지 않고 시작 전 그래프 검사만 한다.
 #   AX_STARTUP_TEST_KEEP_DIR  실패한 시험의 launch.log·startup.json·stub.launch.py·domain.txt를 이 폴더에 보존한다.
 from datetime import datetime
-import fcntl
 import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import signal
 import subprocess
@@ -23,39 +21,15 @@ import unittest
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ros_test_domain  # noqa: E402
+
 LAUNCH_FILE = ROOT / 'src/ax_localization/launch/localization.launch.py'
 STUB = Path(__file__).resolve().parent / 'stub_lifecycle_node.py'
 
-# 시험 전용 domain 범위. 팀 격리 시뮬레이션 범위(141~231)와 겹치지 않는다.
-TEST_DOMAINS = range(101, 141)
-LOCK_DIR = Path(tempfile.gettempdir()) / 'ax_test_domains'
-
 # 이 시험의 가짜 노드와 같은 이름. 선택한 domain에 이미 있으면 다른 실행과 섞인다.
-CONFLICT_NAMES = re.compile(r'^/map_server$|^/ax/[^/]+/amcl$')
-
-# 그래프 검사: 지정 domain에서 같은 이름 노드를 최대 5 s 찾는다(로컬 탐색에 0.2~2.7 s 걸린 사례가 있음).
-# 찾으면 바로 끝내고, 찾은 노드 전체 이름을 한 줄에 하나씩 출력한다.
-GRAPH_PROBE = '''
-import re
-import sys
-import time
-import rclpy
-
-pattern = re.compile(sys.argv[1])
-rclpy.init()
-node = rclpy.create_node("ax_startup_domain_probe")
-end = time.monotonic() + 5.0
-found = []
-
-while time.monotonic() < end and not found:
-    rclpy.spin_once(node, timeout_sec=0.05)
-    names = [namespace.rstrip("/") + "/" + name for name, namespace in node.get_node_names_and_namespaces()]
-    found = [name for name in names if pattern.match(name)]
-
-print("\\n".join(found))
-node.destroy_node()
-rclpy.shutdown()
-'''
+CONFLICT_NAMES = r'^/map_server$|^/ax/[^/]+/amcl$'
 
 # 시험용 launch: 감시 코드는 localization.launch.py의 startup_actions를 그대로 쓰고 노드만 가짜로 바꾼다.
 TEST_LAUNCH = '''
@@ -90,28 +64,9 @@ def ros_available():
     return importlib.util.find_spec('launch_ros') is not None and importlib.util.find_spec('rclpy') is not None
 
 
-# 환경변수 항목(KEY=VALUE)을 가진 살아 있는 프로세스 pid 목록
-def processes_with(item):
-    found = []
-
-    for entry in Path('/proc').iterdir():
-        if not entry.name.isdigit():
-            continue
-
-        try:
-            environ = (entry / 'environ').read_bytes().split(b'\0')
-        except OSError:
-            continue
-
-        if item.encode() in environ:
-            found.append(int(entry.name))
-
-    return found
-
-
 # 표시 환경변수를 가진 살아 있는 프로세스 pid 목록
 def marked_processes(marker):
-    return processes_with(f'AX_STARTUP_TEST={marker}')
+    return ros_test_domain.processes_with(f'AX_STARTUP_TEST={marker}')
 
 
 # 기한(s) 안에서 표시 프로세스가 모두 끝날 때까지 기다리고 남은 목록을 돌려준다.
@@ -124,39 +79,6 @@ def wait_marked_gone(marker, deadline_s):
         left = marked_processes(marker)
 
     return left
-
-
-# 시험 domain을 잡는다. 잠금 파일(fcntl)로 동시 실행끼리 겹치지 않게 하고,
-# 그 ROS_DOMAIN_ID를 쓰는 다른 프로세스가 있으면 다음 값으로 넘어간다. (domain, 잠금 파일) 또는 RuntimeError.
-def reserve_domain():
-    LOCK_DIR.mkdir(parents=True, exist_ok=True)
-    domains = list(TEST_DOMAINS)
-    start = os.getpid() % len(domains)
-
-    for domain in domains[start:] + domains[:start]:
-        handle = open(LOCK_DIR / f'{domain}.lock', 'w')
-
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            handle.close()
-            continue
-
-        if processes_with(f'ROS_DOMAIN_ID={domain}'):
-            handle.close()
-            continue
-
-        return domain, handle
-
-    raise RuntimeError(f'시험 domain {TEST_DOMAINS.start}~{TEST_DOMAINS.stop - 1}이 모두 사용 중')
-
-
-# 지정 domain에서 보이는 노드 중 이 시험과 같은 이름을 돌려준다.
-def conflicting_nodes(env):
-    output = subprocess.run([sys.executable, '-c', GRAPH_PROBE, CONFLICT_NAMES.pattern], env=env, capture_output=True,
-                            text=True, timeout=30).stdout
-
-    return sorted(set(output.split()))
 
 
 # 폴링용 결과 상태 읽기. 파일이 없거나 쓰는 중이라 해석할 수 없으면 None(다음 폴링에서 다시 읽음).
@@ -179,23 +101,20 @@ class StartupMonitorLaunch(unittest.TestCase):
         if fixed:
             cls.domain, cls.lock = int(fixed), None
         else:
-            cls.domain, cls.lock = reserve_domain()
+            cls.domain, cls.lock = ros_test_domain.reserve_domain(ros_test_domain.STARTUP_DOMAINS)
 
-        probe_env = dict(os.environ, ROS_DOMAIN_ID=str(cls.domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
-        cls.conflict = conflicting_nodes(probe_env)
+        cls.conflict = ros_test_domain.conflicting_nodes(cls.domain, CONFLICT_NAMES)
 
     # domain 잠금을 푼다.
     @classmethod
     def tearDownClass(cls):
-        if cls.lock is not None:
-            cls.lock.close()
+        ros_test_domain.release(cls.lock)
 
     # 실행마다 임시 폴더를 쓴다. 클래스 시작 때 같은 이름 노드가 보였으면 원인이 보이는 실패로 즉시 끝낸다.
     # setUp이 실패하면 tearDown이 불리지 않으므로 임시 폴더를 만들기 전에 확인한다.
     def setUp(self):
         if self.conflict:
-            self.fail(f'domain {self.domain} 사용 중: 같은 이름 노드 {", ".join(self.conflict)}가 이미 있음. '
-                      f'다른 실행과 섞이므로 시험하지 않음')
+            self.fail(ros_test_domain.conflict_message(self.domain, self.conflict))
 
         self.folder = Path(tempfile.mkdtemp(prefix='ax_startup_'))
         self.marker = uuid.uuid4().hex
@@ -253,8 +172,8 @@ class StartupMonitorLaunch(unittest.TestCase):
         if os.environ.get('AX_STARTUP_TEST_DOMAIN'):
             return
 
-        own = set(marked_processes(self.marker)) | {process.pid for process in self.extra} | {os.getpid()}
-        others = sorted(set(processes_with(f'ROS_DOMAIN_ID={self.domain}')) - own)
+        own = set(marked_processes(self.marker)) | {process.pid for process in self.extra}
+        others = ros_test_domain.other_domain_users(self.domain, own)
 
         if others:
             self.fail(f'domain {self.domain} 사용 중: 다른 프로세스 {others}가 같은 ROS_DOMAIN_ID를 씀. '

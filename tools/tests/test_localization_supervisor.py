@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -15,6 +16,13 @@ import unittest
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ros_test_domain  # noqa: E402
+
+# B2 실행과 같은 이름 노드. 시험 domain에 이미 있으면 가짜 세계·감독 노드가 섞이므로 시작 전에 확인한다.
+CONFLICT_NAMES = r'^/ax/[^/]+/(localization_supervisor|amcl)$|^/map_server$'
+
 SUPERVISOR = ROOT / 'src/ax_localization/scripts/localization_supervisor.py'
 ROBOTS = ('robot_1', 'robot_2')
 START = {'robot_1': (-2.5, 1.5, 0.0), 'robot_2': (0.0, 0.0, 0.0)}
@@ -43,6 +51,18 @@ def compose(a, b):
     return (a[0] + c * b[0] - s * b[1], a[1] + s * b[0] + c * b[1], math.atan2(math.sin(a[2] + b[2]), math.cos(a[2] + b[2])))
 
 
+# 시험 하나가 쓸 supervisor 범위 domain을 잡고 시험이 끝나면 푼다. 같은 이름 노드가 보이면 원인이 보이는 실패로 끝낸다.
+def isolated_domain(case):
+    domain, lock = ros_test_domain.reserve_domain(ros_test_domain.SUPERVISOR_DOMAINS)
+    case.addCleanup(ros_test_domain.release, lock)
+    conflict = ros_test_domain.conflicting_nodes(domain, CONFLICT_NAMES)
+
+    if conflict:
+        case.fail(ros_test_domain.conflict_message(domain, conflict))
+
+    return str(domain)
+
+
 def inverse(a):
     c, s = math.cos(a[2]), math.sin(a[2])
     return (-c * a[0] - s * a[1], s * a[0] - c * a[1], -a[2])
@@ -54,8 +74,15 @@ class SupervisorWithStubs(unittest.TestCase):
     # 격리 domain에서 가짜 세계 노드와 감독 노드 두 개를 시작하고 둘 다 OK가 될 때까지 기다린다.
     @classmethod
     def setUpClass(cls):
+        cls.domain, cls.lock = ros_test_domain.reserve_domain(ros_test_domain.SUPERVISOR_DOMAINS)
+        conflict = ros_test_domain.conflicting_nodes(cls.domain, CONFLICT_NAMES)
+
+        if conflict:
+            ros_test_domain.release(cls.lock)
+            raise AssertionError(ros_test_domain.conflict_message(cls.domain, conflict))
+
         cls.folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_'))
-        domain = str(200 + os.getpid() % 30)
+        domain = str(cls.domain)
         os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(cls.folder / 'roslog'))
         cls.marker = uuid.uuid4().hex
@@ -115,6 +142,7 @@ class SupervisorWithStubs(unittest.TestCase):
         cls.world.destroy_node()
         rclpy.try_shutdown()
         shutil.rmtree(cls.folder, ignore_errors=True)
+        ros_test_domain.release(cls.lock)
 
     # 감독 노드 로그(실패 진단용)
     @classmethod
@@ -435,8 +463,9 @@ class AmclBeforeOdom(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_order_'))
-        os.environ.update(ROS_DOMAIN_ID=str(170 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))
@@ -497,8 +526,9 @@ class LaunchInitialPose(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_launch_pose_'))
-        os.environ.update(ROS_DOMAIN_ID=str(140 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))
@@ -599,8 +629,9 @@ class LaunchInitialPose(unittest.TestCase):
         import rclpy
         from rclpy.executors import MultiThreadedExecutor
 
+        domain = isolated_domain(self)
         folder = Path(tempfile.mkdtemp(prefix='ax_supervisor_first_'))
-        os.environ.update(ROS_DOMAIN_ID=str(80 + os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+        os.environ.update(ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                           ROS_LOG_DIR=str(folder / 'roslog'))
         rclpy.init()
         world = make_world(('robot_3',))

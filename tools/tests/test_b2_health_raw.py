@@ -11,8 +11,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / 'src/ax_localization/scripts'
 sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import localization_health as lh  # noqa: E402
+import ros_test_domain  # noqa: E402
 
 spec = importlib.util.spec_from_file_location('check_localization', SCRIPTS / 'check_localization.py')
 CHECK = importlib.util.module_from_spec(spec)
@@ -324,7 +326,9 @@ class HealthStreamDelivery(unittest.TestCase):
         import os
         import threading
 
-        os.environ.update(ROS_DOMAIN_ID=str(170 + os.getpid() % 20), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
+        domain, lock = ros_test_domain.reserve_domain(ros_test_domain.HEALTH_AND_SESSION_DOMAINS)
+        self.addCleanup(ros_test_domain.release, lock)
+        os.environ.update(ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
 
         import rclpy
         from rclpy.executors import MultiThreadedExecutor

@@ -11,7 +11,8 @@ import uuid
 ROOT=Path(__file__).resolve().parents[1]
 
 def main():
-    os.environ.update(ROS_DOMAIN_ID='101',GZ_PARTITION='ax-camera-removal-'+uuid.uuid4().hex,
+    # domain 100: 시험 전용 범위(101~140, tools/tests/ros_test_domain.py)와 팀 격리 범위(141~231) 밖의 고정값
+    os.environ.update(ROS_DOMAIN_ID='100',GZ_PARTITION='ax-camera-removal-'+uuid.uuid4().hex,
                       ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',LIBGL_ALWAYS_SOFTWARE='1')
     import rclpy
     from rclpy.qos import QoSProfile,DurabilityPolicy,qos_profile_sensor_data

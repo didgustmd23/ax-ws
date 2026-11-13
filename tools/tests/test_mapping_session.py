@@ -6,11 +6,16 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1].parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import ros_test_domain  # noqa: E402
+
 SESSION = ROOT / "src/ax_localization/scripts/run_mapping_session.sh"
 PROCS = ROOT / "src/ax_localization/scripts/session_procs.sh"
 ROUTES = ROOT / "src/ax_localization/config/routes"
@@ -77,7 +82,9 @@ class SessionPrecheck(unittest.TestCase):
     # 전용 ROS domain을 써서 사용자 세션과 섞지 않고, 이 시험이 띄운 발행자만 정리한다.
     def test_wait_topic_no_daemon(self):
         self.assertIn('ros2 topic echo --once --no-daemon "$topic"', SESSION.read_text())
-        domain = str(150 + os.getpid() % 50)
+        domain, lock = ros_test_domain.reserve_domain(ros_test_domain.HEALTH_AND_SESSION_DOMAINS)
+        self.addCleanup(ros_test_domain.release, lock)
+        domain = str(domain)
         env = dict(os.environ, ROS_DOMAIN_ID=domain, ROS_AUTOMATIC_DISCOVERY_RANGE="LOCALHOST")
         publisher = subprocess.Popen(
             ["python3", "-c", "import rclpy, time\nfrom std_msgs.msg import String\nrclpy.init()\n"

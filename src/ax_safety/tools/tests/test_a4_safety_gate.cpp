@@ -3,12 +3,18 @@
 #include <cassert>
 #include <limits>
 int main() {
+
+
   ax_safety::GateInput g;
   assert(!ax_safety::evaluate_drive_gate(g,0.2,0).drive_allowed);
+
+
   g.enabled=g.safety_fresh=g.state_fresh=g.travel_pose_valid=g.operational_permits_valid=true;
   g.stop_required=false;g.allow_forward=true;g.allow_backward=true;g.allow_rotate=true;
   g.max_linear=.67;g.max_angular=.50;
   assert(ax_safety::evaluate_drive_gate(g,.3,0).drive_allowed);
+
+
   assert(ax_safety::evaluate_drive_gate(g,3.0,0).linear==.67);
   g.allow_forward=false;
   assert(ax_safety::evaluate_drive_gate(g,.3,0).linear==0);

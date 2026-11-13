@@ -1,33 +1,48 @@
 # 실제 A1/A2 센서/물리 데이터, 계약, 팀 리뷰를 통해 값을 확정할 때만 활성화.
 # wheel_slip S005 slip1=0.05는 안전 임계값이 아니므로 여기에 넣지 않는다.
+# 이 파일은 A4/B4 노드의 개발용 기본값을 제공한다.
+# false·빈 배열은 실제 A1~A3 측정, D2/D3 permit, 팀 검토가 끝나기 전까지
+# 안전 경로를 열지 않도록 하는 보수적인 기본 상태이다.
+
+
 a4_safety_gate:
   ros__parameters:
+    # robot_id는 토픽 namespace와 SafetyState의 대상 로봇을 함께 결정한다.
     robot_id: robot_1
     use_sim_time: true
+    # 시뮬레이션 주행은 명시적으로 활성화한 시험에서만 허용한다.
     enable_simulation_drive: false
     operational_permits_verified: false  # D2/D3 계약/상호배제 구현 후에만 별도 확인
     travel_envelope_verified: false     # A1 자세/외곽 검증 전 false
     arm_operation_verified: false        # 실제 A4 팔 보호 경로 검증 전 false
+    # A1 자세 외곽과 wheel joint 기준 자세가 검증되기 전에는 주행 허가를 만들지 않는다.
     travel_joint_names: []
     travel_joint_positions: []
     travel_pose_tolerance_rad: 0.04
+    # 속도·가속도는 개발 기본 상한이며, 실제 안전 한계로 확정된 값이 아니다.
     max_linear_m_s: 0.67
     max_angular_rad_s: 0.50
     max_linear_accel_m_s2: 0.67
     max_angular_accel_rad_s2: 0.20
 a4_protected_arm_server:
   ros__parameters:
+    # 보호 팔 서버도 동일한 로봇 namespace를 사용하고 기본값은 잠금 상태이다.
     robot_id: robot_1
     use_sim_time: true
     enable_simulation_arm: false
+    # A2 FollowJointTrajectory로 전달할 팔 관절 범위·속도·가속도 검증 자료이다.
+    # 비어 있으면 서버가 ARM_LIMITS_NOT_VERIFIED로 모든 목표를 거절한다.
     arm_joint_names: []
     arm_position_min_rad: []
     arm_position_max_rad: []
     arm_max_velocity_rad_s: []
     arm_max_acceleration_rad_s2: []
     # controller_action: /ax/robot_1/arm_controller/follow_joint_trajectory
+
+
 b4_risk_node:
   ros__parameters:
+    # B4는 명시적으로 설정된 센서 토픽만 구독한다. 빈 값은 해당 입력이 없음을 뜻한다.
     robot_id: robot_1
     use_sim_time: true
     scan_topic: ''            # A1/B1 실제 LaserScan 경로 확인 후 설정
@@ -35,11 +50,14 @@ b4_risk_node:
     rear_scan_topic: ''       # launch가 B1의 sensors/rear_lidar/scan_filtered를 지정
     front_range_topic: ''     # 개별 Range 센서 사용 시 실제 경로
     rear_range_topic: ''      # 개별 Range 센서 사용 시 실제 경로
+    # 센서·위치·통로 입력이 이 시간보다 오래되면 UNKNOWN으로 차단한다.
     sector_half_width_deg: 30.0
     sensor_stale_s: 0.25
     localization_stale_s: 1.0
     corridor_stale_s: 1.0
     max_linear_m_s: 0.67
     max_angular_rad_s: 0.50
+    # stop/slowdown 값은 현재 개발용 기본값이다. 실제 운용 안전거리로 사용하려면
+    # A1/B1 센서와 물리 시험 결과로 별도 확정해야 한다.
     stop_distance_m: 0.50      # 미검증 개발 기본값. 최종 안전거리 아님.
     slowdown_distance_m: 1.00  # 미검증 개발 기본값. 최종 안전거리 아님.

@@ -1,12 +1,20 @@
 <?xml version="1.0"?>
 <package format="3">
+  <!-- A4 최종 주행/팔 차단과 B4 위험 판정 런타임을 함께 제공한다.
+       A4는 A2 명령 경로 앞에서 동작하고, B4는 센서·위치·통로 상태를 SafetyState로 발행한다. -->
   <name>ax_safety</name>
   <version>0.1.0</version>
   <description>A4 ROS2 safety gate/protected-arm and B4 risk decision runtime for AX</description>
+
+
   <maintainer email="maintainer@example.invalid">AX project maintainers</maintainer>
   <license>TODO</license>
+  <!-- CMake와 Python 패키지를 함께 설치하는 ROS 2 빌드 도구이다. -->
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+
+  <!-- A4 C++ 노드와 B4 Python 노드가 컴파일·실행 중 직접 사용하는 ROS 메시지·action·서비스이다. -->
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>
   <depend>rclpy</depend>
@@ -16,9 +24,19 @@
   <depend>trajectory_msgs</depend>
   <depend>control_msgs</depend>
   <depend>ax_interfaces</depend>
+
+
+  <!-- 보호 팔 명령 digest 계산에 필요한 시스템 암호화 라이브러리이다. -->
   <build_depend>libssl-dev</build_depend>
+
+
+  <!-- safety.launch.py가 노드와 패키지 경로를 구성할 때 사용하는 실행 의존성이다. -->
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
+
+
+  <!-- ament가 package.xml과 CMake 설치 결과를 검증할 때 사용하는 테스트 의존성이다. -->
   <test_depend>ament_lint_auto</test_depend>
+  <!-- ament_cmake 패키지로 인식되도록 빌드 타입을 선언한다. -->
   <export><build_type>ament_cmake</build_type></export>
 </package>

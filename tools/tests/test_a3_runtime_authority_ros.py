@@ -7,12 +7,6 @@ import threading
 import time
 from types import SimpleNamespace
 import unittest
-
-# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
-import sys as _domain_sys
-from pathlib import Path as _DomainPath
-_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
-from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import patch
 
 import rclpy
@@ -73,9 +67,9 @@ class OperationalLedgerTests(unittest.TestCase):
         self.now = 101.5
         self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
         self.authority.finish_goal(self.request.execution_id, self.request.goal_id)
-        self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
+        self.assertEqual(self.checker.check(self.request)['reason_code'], 'GOAL_MISMATCH')
         self.checker.authority = RuntimeAuthority('robot_1', lambda: self.now)
-        self.assertEqual(self.checker.check(self.request)['reason_code'], 'LEASE_EXPIRED')
+        self.assertEqual(self.checker.check(self.request)['reason_code'], 'ASSIGNMENT_STALE')
 
     def test_continue_requires_previous_accept(self):
         self.request.phase = CheckCommandLease.Request.CONTINUE

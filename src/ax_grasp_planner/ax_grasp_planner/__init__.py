@@ -1,1 +1,1 @@
-"""패키지의 공개 모듈을 묶습니다."""
+"""C3 rule-based candidates, with explicit C2 and validator boundaries."""

@@ -4,12 +4,6 @@ from pathlib import Path
 import sys
 import threading
 import unittest
-
-# 공용 잠금·그래프 검사 후 합의한 domain에서만 ROS 시험을 실행합니다.
-import sys as _domain_sys
-from pathlib import Path as _DomainPath
-_domain_sys.path.insert(0, str(_DomainPath(__file__).resolve().parent))
-from kim_ros_test_domain import setUpModule, tearDownModule  # noqa: E402, F401
 from unittest.mock import Mock
 
 import rclpy

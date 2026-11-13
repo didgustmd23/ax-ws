@@ -1,4 +1,4 @@
-"""계산된 후보를 읽기 전용으로 게시하며 상대 입력이나 팔 명령을 임의로 만들지 않습니다."""
+"""Publish C3 read-only snapshots; no invented C2 input topic or arm commands."""
 import math
 import threading
 import uuid
@@ -12,12 +12,11 @@ from rclpy.time import Time
 
 
 class CandidatePublisher(Node):
-    """내부 연결부가 전달한 후보를 검사해 공통 후보 상태로 게시합니다."""
+    """C4/C2 integration calls publish_plan with a validated C3 Plan."""
 
     # 후보를 읽기 전용으로 게시합니다. C2 입력 Topic을 임의로 만들거나 팔 명령을 보내지 않습니다.
 
     def __init__(self):
-        # 역할: 설정과 내부 상태를 준비합니다.
         super().__init__('candidate_publisher')
         self.robot_id = self.declare_parameter('robot_id', 'robot_1').value
         if self.robot_id not in ('robot_1', 'robot_2', 'robot_3', 'robot_4'):
@@ -35,20 +34,18 @@ class CandidatePublisher(Node):
             1.0, self.publish_snapshot, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
     def publish_plan(self, plan):
-        """동시 호출을 잠그고 내부 연결부에서 전달한 후보를 접수합니다."""
+        """Accept a plan from the internal C2/C4 integration API."""
         # 버전 확인과 저장을 묶어, 동시에 도착한 결과가 최신 후보를 덮어쓰지 않게 합니다.
         with self._plan_lock:
             self._accept_plan(plan)
 
     def _accept_plan(self, plan):
         # 실제 연결부가 계산한 Plan만 받습니다. 다른 로봇의 후보와 관측 시각이 잘못된 자료는 거절합니다.
-        # 역할: 로봇과 버전 및 관측 시각을 검사해 이전 후보의 덮어쓰기를 막습니다.
         if plan.robot_id != self.robot_id:
             raise ValueError('plan belongs to another robot')
         if not math.isfinite(plan.stamp_s) or plan.stamp_s <= 0 or not plan.frame_id:
             raise ValueError('finite positive observation stamp and frame required')
         previous = self.plans.get(plan.object_id)
-        # 최신 이력은 물체별로 비교합니다. 다른 물체의 버전과 섞지 않습니다.
         if previous is not None:
             current = previous[0]
             # 도착 순서가 최신 순서는 아닙니다. 세 기준 중 하나라도 과거로 돌아가면 거절합니다.
@@ -68,19 +65,16 @@ class CandidatePublisher(Node):
         self.publish_snapshot()
 
     def _steady_seconds(self):
-        # 역할: 후보의 실제 경과 시간을 재기 위한 벽시계 값을 반환합니다.
         import time
         return time.clock_gettime(time.CLOCK_BOOTTIME)
 
     def publish_snapshot(self):
         # 주기 발행도 같은 잠금을 사용해 후보 교체 중간의 상태를 읽지 않습니다.
-        # 역할: 후보 교체와 겹치지 않도록 잠근 뒤 상태를 게시합니다.
         with self._plan_lock:
             self._publish_snapshot()
 
     def _publish_snapshot(self):
         # 재발행으로 오래된 후보를 새 후보처럼 만들지 않도록 sim 시각과 벽시계 기한을 함께 봅니다.
-        # 역할: 후보의 기한을 검사하고 유효 후보 또는 무효 사유를 게시합니다.
         now = self.get_clock().now().nanoseconds * 1e-9
         message = CandidateSetList()
         message.robot_id = self.robot_id
@@ -141,7 +135,6 @@ class CandidatePublisher(Node):
 
 
 def main(args=None):
-    # 역할: 실행 인자를 받아 노드를 시작하고 종료 시 자원을 정리합니다.
     rclpy.init(args=args)
     node = CandidatePublisher()
     try:

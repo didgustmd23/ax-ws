@@ -144,6 +144,8 @@ def checked(candidate, reachability, collision):
 def plan_candidates(surface, constraints, now_s, *, reachability=None, collision=None):
     """관측 표면과 공구 조건에서 검증된 흡착 후보와 기본 순위를 만듭니다."""
     # 관측·공구 조건 → 후보 생성 → 도달·충돌 필터 → 규칙 점수 순으로 계산합니다.
+    # C3 사유 코드는 공통 계약 추가 제안입니다. 재관측·전략 전환·작업 종료를 여기서 대신 결정하지 않습니다.
+    # 조건이 여러 개 틀려도 아래 검사 순서의 첫 사유만 반환합니다. 모든 오류를 모은 목록은 아닙니다.
     def invalid(reason):
         # 역할: 입력 식별자와 무효 사유를 보존한 빈 후보 결과를 만듭니다.
         return Plan(surface.robot_id, surface.object_id, surface.scene_revision,
@@ -174,6 +176,7 @@ def plan_candidates(surface, constraints, now_s, *, reachability=None, collision
             or not 0 <= surface.flatness_error_m <= constraints.max_flatness_error_m):
         return invalid('TOOL_CONDITIONS_NOT_MET')
     if reachability is None or collision is None:
+        # C-07: 검증기 미제공과, 제공된 검증기가 후보를 불가능하다고 판정한 경우를 구분합니다.
         return invalid('VALIDATORS_UNAVAILABLE')
     try:
         normal = unit(surface.normal)
@@ -213,6 +216,7 @@ def plan_candidates(surface, constraints, now_s, *, reachability=None, collision
     result.sort(key=lambda candidate: (-candidate.rule_score, candidate.candidate_id))
     # 학습 모델이 없으므로 성공 확률은 -1입니다. 같은 점수는 후보 ID로 정렬해 결과를 일정하게 합니다.
     if not result:
+        # C-02: 검증 실패·예외로 후보가 전부 제거돼도 좌표를 만들어 실행 가능하다고 하지 않습니다.
         return invalid('NO_VALID_CANDIDATES')
     set_id = identifier(
         'cset-', [asdict(surface), asdict(constraints), [asdict(c) for c in result]])

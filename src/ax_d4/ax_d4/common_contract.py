@@ -168,6 +168,22 @@ def check_a3_action_result(result):
     return result
 
 
+def is_unassigned_mock_idle(status):
+    """형식 검사 후 정확한 초기 모의 대기만 구분합니다. 배정·가용성 판단은 아닙니다."""
+    meta = status['meta']
+    # execution_id만 비어 있는 손상된 작업을 대기로 오해하지 않도록 전체 기본값을 비교합니다.
+    empty_execution = {name: '' if kind == 'string' else 0
+                       for name, kind in fields('ExecutionRef').items()}
+    empty_result = {name: '' if kind == 'string' else 0
+                    for name, kind in fields('ResultStatus').items()}
+    return (status['robot_id'] in ROBOT_IDS and meta['schema_version'] == 1
+            and meta['revision'] > 0 and bool(meta['source_session_id'])
+            and meta['source_id'] == 'a3_mock_executor_' + status['robot_id']
+            and meta['valid'] is False and meta['validity_reason'] == 'MOCK_ONLY'
+            and status['local_phase'] == 'MOCK_IDLE' and status['paused'] is False
+            and status['execution'] == empty_execution and status['last_result'] == empty_result)
+
+
 # 7. 로봇 작업 상태 전체 검사
 # 입력: 로봇 번호, 실행 번호, 작업 결과 등이 담긴 상태 정보
 def check_status(status):
@@ -180,6 +196,10 @@ def check_status(status):
         raise ValueError("로봇 번호가 robot_1 또는 robot_2가 아니에요")
     if status["meta"]["schema_version"] != 1:
         raise ValueError("메시지 규칙 버전이 현재 지원하는 버전이 아니에요")
+    # 무효인 초기 모의 heartbeat에는 실행 번호가 없습니다. 구조 검사는 위에서 이미 수행했습니다.
+    # 원장 accept_status는 valid=false를 UNKNOWN으로 반환해 배정·작업 이력에 기록하지 않습니다.
+    if is_unassigned_mock_idle(status):
+        return status
     if execution["derive_rule_version"] != "derive-v1":
         raise ValueError("실행 번호를 만드는 규칙 버전이 달라요")
  

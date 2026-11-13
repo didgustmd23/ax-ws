@@ -22,7 +22,8 @@ class CorridorTests(unittest.TestCase):
 
     def open_manager(self, enabled=True):
         return CorridorManager(self.path, ['corridor'], ['robot_1', 'robot_2'],
-                               enabled=enabled, clock=lambda: self.now)
+                               enabled=enabled, clock=lambda: self.now,
+                               grant_policy_approved=True)  # 합의 가정의 기존 정책 회귀 시험 전용
 
     def ready(self, first=OUTSIDE, second=OUTSIDE):
         for robot, state in (('robot_1', first), ('robot_2', second)):

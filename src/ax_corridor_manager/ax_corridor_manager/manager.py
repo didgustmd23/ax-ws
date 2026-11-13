@@ -1,4 +1,4 @@
-"""통로별 단일 소유권과 요청 응답을 SQLite에 보존하는 상태 머신입니다."""
+"""통로 원장과 요청 이력을 보존하며 정책 미합의 상태에서는 새 허가를 보류합니다."""
 from contextlib import contextmanager
 import hashlib
 import json
@@ -12,6 +12,9 @@ import uuid
 FREE, RESERVED, OCCUPIED, BLOCKED_UNKNOWN = range(4)
 OUTSIDE, APPROACHING, INSIDE, UNKNOWN = range(4)
 
+# 아래 신규 사유 6종은 D-13 추가 제안 상태입니다. 소비자 대응 초안은
+# docs/guides/A3_C3_D3_INTEGRATION_REVIEW_DRAFT.md의 D-01~D-06에 정리했습니다.
+
 
 def boottime():
     # 역할: 절전 중에도 흐르는 시간을 초 단위로 반환합니다.
@@ -19,11 +22,12 @@ def boottime():
 
 
 class CorridorManager:
-    """통로당 및 로봇당 소유권을 제한하며 시간초과만으로 이탈을 추정하지 않습니다."""
+    """기존 허가를 보존하고 정책 합의 전에는 새 허가를 발급하지 않습니다."""
 
     # D3는 통로 허가·점유만 관리합니다. 작업 배정·실제 주행·안전 정지는 상대 파트 책임입니다.
 
-    def __init__(self, database, corridor_ids, robot_ids, *, enabled=False, clock=boottime):
+    def __init__(self, database, corridor_ids, robot_ids, *, enabled=False, clock=boottime,
+                 grant_policy_approved=False):
         # 역할: 설정과 내부 상태를 준비합니다.
         if (not corridor_ids or len(set(corridor_ids)) != len(corridor_ids)
                 or not robot_ids or len(set(robot_ids)) != len(robot_ids)
@@ -33,6 +37,9 @@ class CorridorManager:
         self.corridor_ids = tuple(corridor_ids)
         self.robot_ids = tuple(robot_ids)
         self.enabled = enabled
+        # 영역 승인과 허가 정책 합의는 별개입니다. 합의 전에는 기존 원장만 보존합니다.
+        # 기본값 False는 발급 보류입니다. True를 쓰는 회귀 시험은 실제 팀 합의를 대신하지 않습니다.
+        self.grant_policy_approved = grant_policy_approved
         self.clock = clock
         self.lock = threading.RLock()
         self.observations = {}
@@ -147,7 +154,8 @@ class CorridorManager:
         for corridor in self.corridor_ids:
             row = self._row(corridor)
             observed = {robot: self._observation(robot, corridor)[0] for robot in self.robot_ids}
-            if not self.enabled or UNKNOWN in observed.values():
+            if not self.enabled or not self.grant_policy_approved or UNKNOWN in observed.values():
+                # 발급 보류를 FREE로 표현하면 소비자가 진입 가능으로 오해할 수 있어 불명으로 둡니다.
                 self._state(corridor, BLOCKED_UNKNOWN)
             elif row['owner']:
                 others_inside = any(state == INSIDE for robot, state in observed.items()
@@ -187,13 +195,14 @@ class CorridorManager:
         return response
 
     def request(self, corridor, robot, request_id):
-        """배정과 정지 및 통로 상태를 확인하고 단일 허가를 발급합니다."""
-        # 새 진입에는 유효한 배정·실제 정지·통로 상태와 대기 순서가 모두 맞아야 합니다.
+        """과거 요청은 재현하고 새 요청은 정책 합의와 배정 및 정지 조건을 검사합니다."""
+        # 운영 기본값은 발급 보류입니다. 아래 발급 알고리즘은 합의를 가정한 회귀 시험에 남깁니다.
         with self._atomic():
             self._refresh()
             fingerprint, cached = self._cached('entry', request_id, [corridor, robot])
             if cached is not None:
                 # 과거 응답의 재전송입니다. 현재 진입에는 최신 상태와 안전 게이트도 확인해야 합니다.
+                # 보류 중에도 과거 응답을 지우지 않습니다. granted=True 재현은 새 허가 발급이 아닙니다.
                 return dict({'granted': False, 'grant_id': '', 'corridor_revision': 0}, **cached)
             reason = ''
             row = self._row(corridor)
@@ -201,10 +210,15 @@ class CorridorManager:
                 reason = 'AUTHORITY_INVALID'
             elif not self.enabled:
                 reason = 'REGIONS_NOT_APPROVED'
+            elif not self.grant_policy_approved:
+                # 미합의 정책으로 새 허가를 발급하거나 기존 허가를 재승인하지 않습니다.
+                # 새 사유 코드를 임의로 추가하지 않고 기존 AUTHORITY_INVALID를 사용합니다.
+                reason = 'AUTHORITY_INVALID'
             elif self.assignments.get(robot, 0.0) <= self.clock():
                 reason = 'ASSIGNMENT_STALE'
             elif (self.stops.get(robot, (False, 0))[0] is not True
                   or self.stops.get(robot, (False, 0))[1] <= self.clock()):
+                # D-01: 정지 요청을 보냈다는 사실이 아니라 실제 정지 확인이 필요합니다.
                 reason = 'STOP_NOT_CONFIRMED'
             elif row['owner'] == robot:
                 # 기존 소유자도 새 요청에서는 위의 배정·정지 검사를 생략하지 않습니다.
@@ -214,11 +228,6 @@ class CorridorManager:
                     return self._save('entry', request_id, fingerprint, {
                         'granted': True, 'grant_id': row['grant_id'], 'reason_code': '',
                         'corridor_revision': row['revision']})
-            elif self.db.execute(
-                    'SELECT 1 FROM corridors WHERE owner=? AND id!=?',
-                    (robot, corridor)).fetchone():
-                # 합의한 로봇당 1개 제한: 불명 상태의 허가도 정식 해제 전까지 셉니다.
-                reason = 'CORRIDOR_BLOCKED'
             else:
                 self.db.execute("""INSERT INTO waiters(corridor, robot, deadline) VALUES (?, ?, ?)
                     ON CONFLICT(corridor, robot) DO UPDATE SET deadline=excluded.deadline""",
@@ -229,6 +238,7 @@ class CorridorManager:
                 if row['state'] != FREE or row['owner']:
                     reason = 'CORRIDOR_BLOCKED'
                 elif head['robot'] != robot:
+                    # D-02: 이 개발안에서는 순서 대기입니다. 전체 작업 실패 결정은 소비자 몫입니다.
                     reason = 'WAITING_TURN'
             if reason:
                 return self._save('entry', request_id, fingerprint, {
@@ -244,6 +254,7 @@ class CorridorManager:
                 'corridor_revision': self._row(corridor)['revision']})
 
     def release(self, corridor, robot, grant, request_id):
+        # 보류는 기존 허가 삭제가 아닙니다. 소유권과 완전 이탈 증거가 맞는 정상 해제는 허용합니다.
         """현재 소유권과 이탈 증거를 확인하거나 실행 중 선점을 해제합니다."""
         # 현재 owner/grant와 새 완전 이탈 관측을 확인합니다. 시간초과만으로 해제하지 않습니다.
         with self._atomic():
@@ -255,6 +266,7 @@ class CorridorManager:
             reason = ''
             if (not request_id or row is None or not grant
                     or row['owner'] != robot or row['grant_id'] != grant):
+                # D-03: 잘못된 소유권을 임의로 교정하거나 현재 허가를 삭제하지 않습니다.
                 reason = 'GRANT_MISMATCH'
             elif not self.enabled:
                 reason = 'REGIONS_NOT_APPROVED'

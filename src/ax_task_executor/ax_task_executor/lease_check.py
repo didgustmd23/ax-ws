@@ -322,6 +322,7 @@ class LeaseChecker:
             with guard():
                 # 중복 인자와 저장된 거절을 먼저 확인합니다. 최초 거절도 원장에 남깁니다.
                 # digest 변경은 철회 사유보다 DUPLICATE_REQUEST를 우선합니다.
+                # A-04 연결 시험 기준입니다. 상대 A4는 거절을 받으면 이 요청으로 실행하면 안 됩니다.
                 if hasattr(self.authority, 'remaining'):
                     duration = min(self.valid_for_s, self.authority.remaining(fields))
                 else:

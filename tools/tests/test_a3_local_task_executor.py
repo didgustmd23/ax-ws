@@ -116,7 +116,8 @@ class LocalTaskExecutorTests(unittest.TestCase):
 
     # ROS_HOME·원장을 임시 폴더로 두고 local_task_executor를 멀티스레드 실행기로 띄운다
     def start(self, policy='dev_allow', delay=0.5, threads=4, extra=()):
-        self.temp = tempfile.TemporaryDirectory()
+        # 원장 위치 비교만 허용합니다. TMPDIR을 바꾸면 공용 domain 잠금 위치까지 달라질 수 있습니다.
+        self.temp = tempfile.TemporaryDirectory(dir=os.environ.get('AX_A3_LEDGER_TEMP_ROOT'))
         self.addCleanup(self.temp.cleanup)
         patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
         patcher.start()
@@ -315,6 +316,11 @@ class LocalTaskExecutorTests(unittest.TestCase):
     def test_lease_latency_under_action_load(self):
         # [핵심] 부하 중 실제 응답 시간을 측정합니다. 통과를 위해 시간 기준이나 요청 수를 바꾸지 않습니다.
         node = self.start(delay=0.3)
+        # 요청별 병목 분석은 명시적으로 요청한 시험에서만 켭니다. 운영 응답 경로는 바꾸지 않습니다.
+        profiler = None
+        if os.environ.get('AX_A3_PROFILE_OUT'):
+            from a3_latency_profile import LeaseProfiler
+            profiler = LeaseProfiler(node.checker)
         action = self.client()
         workers = [self.client() for _ in range(4)]
         stop = threading.Event()
@@ -396,6 +402,10 @@ class LocalTaskExecutorTests(unittest.TestCase):
             Path(os.environ['AX_LOCAL_EXECUTOR_LATENCY_OUT']).write_text(json.dumps(summary, indent=1))
 
         print('local executor lease latency', json.dumps(summary))
+        if profiler is not None:
+            path = Path(os.environ['AX_A3_PROFILE_OUT'])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(profiler.report(samples), indent=2))
         self.assertEqual(summary['n'], 1000)
         self.assertEqual(summary['accept_records'], 1000)
         self.assertGreater(summary['action_goals_during'], 0)

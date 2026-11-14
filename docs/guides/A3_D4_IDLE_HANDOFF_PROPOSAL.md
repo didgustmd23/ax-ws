@@ -63,6 +63,15 @@ D4 담당자가 결정한다. 신규 사유 코드를 이 초안에서 임의로
 
 ## 현재 검증 범위와 남은 작업
 
+최신 D4 패키지 구조에 맞춰 내 연동 시험은 ax_d4.common_contract / ax_d4.input_source /
+ax_d4.ledger를 가져온다. B3↔B4 시험은 이동된 src/ax_safety를 참조한다.
+안전 패키지의 이전 중첩 경로를 설치 경로로 다시 추가하지 않는다.
+시험·진단은 개인 임시 의존성 경로를 추가하지 않고 D4가 선언한 rfc8785 설치를 전제로 한다.
+이번 환경 점검에서 누락을 재현해 사용자 Python 경로에 설치했으며, 임시 경로 없이 설치본
+A3→D4 두 로봇 대기와 메시지 schema 조회·B4 import가 통과했다. 다른 PC는 requirements.txt
+의존성과 ROS 패키지를 각자 설치·빌드해야 하며 이 로컬 설치가 저장소 업로드로 전달되지는 않는다.
+실제 ROS 그래프 통신·주행·팔 실행은 여전히 별도 검증이다.
+
 - tools/tests/test_a3_idle_contract.py: 두 로봇의 초기 표현, 부분 실행 정보 거절, 메타·결과 오분류 방지,
   실제 A3 publish_task_status의 시각 갱신을 ROS 그래프 없이 검사한다.
 - tools/tests/test_a3_d4_idle_receiver.py: 실제 D4 검증·원장 함수에 A3 메시지를 직접 전달한다.

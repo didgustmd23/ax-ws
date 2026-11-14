@@ -7,14 +7,15 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-for relative in ('src/ax_task_executor', 'src/ax_d4/ax_d4', 'tools/tests'):
+for relative in ('src/ax_task_executor', 'src/ax_d4', 'tools/tests'):
     sys.path.insert(0, str(ROOT / relative))
-sys.path.insert(0, str(ROOT.parent / '.ax-ws-backups/d4-review-deps'))
+# D4 의존성은 실행 환경에 설치된 것을 사용하며 개인 임시 경로로 누락을 가리지 않습니다.
 
 from ax_task_executor.status_contract import make_unassigned_mock_idle
-from common_contract import check_status, is_unassigned_mock_idle
-from input_source import to_d4_status
-from ledger import accept_status
+# 최신 D4의 정식 패키지 경로를 사용해 실제 설치 실행과 같은 상대 import 방식을 검사합니다.
+from ax_d4.common_contract import check_status, is_unassigned_mock_idle
+from ax_d4.input_source import to_d4_status
+from ax_d4.ledger import accept_status
 from rclpy.time import Time
 import test_d4_w0 as fixture
 

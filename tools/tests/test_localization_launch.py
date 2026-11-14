@@ -123,14 +123,24 @@ class LaunchNodes(unittest.TestCase):
 
     # 실행 그래프 조회 없이 setup을 불러 만들어지는 노드 목록을 돌려준다.
     # start_poses: 고정 출발 위치 yaml 내용 함수(지도 이미지 sha256 → 문자열). 지도 이미지는 임시 pgm이다.
-    def nodes(self, robot_ids, poses='', conflicts=(), start_poses=None, health='true'):
+    def nodes(self, robot_ids, poses='', conflicts=(), start_poses=None, health='true', scan='filtered',
+              merge_conflicts=()):
         from launch import LaunchContext
         from launch_ros.actions import Node
 
         original = LAUNCH.running_conflicts
         original_share = LAUNCH.get_package_share_directory
+        original_merge = getattr(LAUNCH, 'running_merge_inputs', None)
         LAUNCH.running_conflicts = lambda ids: list(conflicts)
         LAUNCH.get_package_share_directory = lambda name: str(PACKAGE)
+        self.merge_checked = []
+
+        # 병합 입력 중복 조회 모의: 부른 로봇 목록을 남기고 지정한 충돌을 돌려준다.
+        def fake_merge(ids):
+            self.merge_checked.append(list(ids))
+            return list(merge_conflicts)
+
+        LAUNCH.running_merge_inputs = fake_merge
 
         try:
             with tempfile.TemporaryDirectory() as folder:
@@ -148,7 +158,7 @@ class LaunchNodes(unittest.TestCase):
 
                 context = LaunchContext()
                 context.launch_configurations.update({
-                    'map': str(map_path), 'robot_ids': robot_ids, 'scan': 'filtered',
+                    'map': str(map_path), 'robot_ids': robot_ids, 'scan': scan,
                     'initial_poses': poses, 'startup_timeout': '60.0', 'startup_report': '',
                     'start_poses': start_file, 'health': health, 'health_config': ''})
 
@@ -156,6 +166,9 @@ class LaunchNodes(unittest.TestCase):
         finally:
             LAUNCH.running_conflicts = original
             LAUNCH.get_package_share_directory = original_share
+
+            if original_merge is not None:
+                LAUNCH.running_merge_inputs = original_merge
 
         return [action for action in actions if isinstance(action, Node)]
 
@@ -318,6 +331,93 @@ class LaunchNodes(unittest.TestCase):
 
 
 @unittest.skipIf(LAUNCH is None, 'ROS launch 패키지 필요(source install/setup.bash)')
+# 시험용 선택 입력 scan:=merged(앞·뒤 B1 scan_filtered 병합, 2026-11-14). 기본 filtered·raw 동작은 그대로다.
+class MergedInput(unittest.TestCase):
+
+    # LaunchNodes의 setup 호출 도우미를 빌려 쓴다(상속하면 LaunchNodes 시험이 중복 실행된다).
+    def setUp(self):
+        self.helper = LaunchNodes()
+
+    def nodes(self, *args, **kwargs):
+        nodes = self.helper.nodes(*args, **kwargs)
+        self.merge_checked = self.helper.merge_checked
+
+        return nodes
+
+    def describe(self, node):
+        return LaunchNodes.describe(node)
+
+    # 노드 (패키지, namespace, 이름) → remap 목록
+    @staticmethod
+    def remaps(node):
+        return [(LaunchNodes.plain(tuple(a)) if isinstance(a, (list, tuple)) else a,
+                 LaunchNodes.plain(tuple(b)) if isinstance(b, (list, tuple)) else b)
+                for a, b in (node._Node__remappings or [])]
+
+    # AMCL 입력 토픽: merged는 /ax/<robot>/sensors/merged/scan_filtered, 잘못된 값은 거절
+    def test_amcl_topic(self):
+        self.assertEqual(LAUNCH.amcl_overrides('robot_2', 'merged')['scan_topic'],
+                         '/ax/robot_2/sensors/merged/scan_filtered')
+        self.assertEqual(LAUNCH.amcl_overrides('robot_2', 'filtered')['scan_topic'],
+                         '/ax/robot_2/sensors/front_lidar/scan_filtered')
+
+        with self.assertRaises(ValueError):
+            LAUNCH.amcl_overrides('robot_2', 'both')
+
+        with self.assertRaises(ValueError):
+            self.nodes('robot_2', scan='both')
+
+    # merged: 로봇마다 같은 namespace에 scan_merge 1개(robot_id), 감독 노드는 병합 토픽을 감시(remap).
+    # filtered·raw: scan_merge 없음, 감독 remap 없음(기존 감시 의미 그대로), 병합 중복 조회도 하지 않는다.
+    def test_nodes(self):
+        nodes = self.nodes('robot_1,robot_2', 'robot_2=0,0,0', scan='merged')
+        described = [self.describe(node) for node in nodes]
+        mergers = {item[1]: item for item in described if item[2] == 'scan_merge'}
+        supervisors = [node for node in nodes if self.describe(node)[2] == 'localization_supervisor']
+
+        self.assertEqual(set(mergers), {'/ax/robot_1', '/ax/robot_2'})
+        # launch가 문자열 매개변수를 YAML 문서로 정규화해 두므로 해석해서 비교한다.
+        self.assertEqual(yaml.safe_load(mergers['/ax/robot_2'][3]['robot_id']), 'robot_2')
+        self.assertEqual(self.merge_checked, [['robot_1', 'robot_2']])
+
+        for node in supervisors:
+            self.assertIn(('sensors/front_lidar/scan_filtered', 'sensors/merged/scan_filtered'), self.remaps(node))
+
+        for scan in ('filtered', 'raw'):
+            nodes = self.nodes('robot_2', scan=scan)
+            described = [self.describe(node) for node in nodes]
+
+            self.assertFalse([item for item in described if item[2] == 'scan_merge'], scan)
+            self.assertEqual(self.merge_checked, [], scan)
+            supervisor = next(node for node in nodes if self.describe(node)[2] == 'localization_supervisor')
+            self.assertEqual(self.remaps(supervisor), [], scan)
+
+    # 같은 namespace에 병합 노드·병합 토픽 발행자가 이미 있으면 시작하지 않는다.
+    def test_duplicate_rejected(self):
+        with self.assertRaises(RuntimeError) as caught:
+            self.helper.nodes('robot_2', scan='merged', merge_conflicts=['/ax/robot_2/scan_merge'])
+
+        self.assertIn('scan_merge', str(caught.exception))
+
+    # 평가 도구(check_localization)가 같은 실제 AMCL 입력을 구독한다(L9 수신률 근거).
+    def test_recorder_topic(self):
+        self.assertEqual(CHECK.SCAN_TOPICS, {'filtered': 'sensors/front_lidar/scan_filtered',
+                                             'raw': 'sensors/front_lidar/scan',
+                                             'merged': 'sensors/merged/scan_filtered'})
+        self.assertEqual(LAUNCH.SCAN_INPUTS, CHECK.SCAN_TOPICS)
+
+    # 주행 보호(장애물 감시)는 AMCL 입력과 관계없이 앞·뒤 개별 scan_filtered다.
+    def test_protection_scans_unchanged(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location('mapping_drive_for_test', PACKAGE / 'scripts' / 'mapping_drive.py')
+        drive = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(drive)
+
+        self.assertEqual(drive.obstacle_scan_suffix('filtered'), 'scan_filtered')
+        self.assertEqual(drive.obstacle_scan_suffix('merged'), 'scan_filtered')
+
+
 class StartupMonitorLogic(unittest.TestCase):
 
     # 두 노드를 감시하는 기록기

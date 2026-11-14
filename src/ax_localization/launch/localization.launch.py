@@ -2,11 +2,13 @@
 Gazebo·제어기·B1을 새로 띄우지 않는다.
 
   ros2 launch ax_localization localization.launch.py map:=<지도.yaml> \
-      [robot_ids:=robot_1,robot_2] [scan:=filtered|raw] \
+      [robot_ids:=robot_1,robot_2] [scan:=filtered|raw|merged] \
       [initial_poses:="robot_2=0,0,0;robot_1=-2.5,1.5,0"] [startup_timeout:=60] [startup_report:=<결과.json>]
 
 - 지도: map_server가 /map(frame map, transient_local)으로 발행하고 모든 AMCL이 같은 지도를 쓴다.
-- AMCL: /ax/<robot_id>/amcl. 입력 /ax/<robot_id>/sensors/front_lidar/scan_filtered(B1, scan:=raw면 원시 스캔),
+- AMCL: /ax/<robot_id>/amcl. 입력 /ax/<robot_id>/sensors/front_lidar/scan_filtered(B1, scan:=raw면 원시 스캔,
+  scan:=merged면 시험용 선택 입력 sensors/merged/scan_filtered: 이 launch가 로봇마다 scan_merge.py를 띄우고
+  감독 노드의 스캔 감시도 같은 병합 토픽으로 remap한다. 기본은 filtered이며 merged는 비교 시험용이다),
   초기 위치 /ax/<robot_id>/initialpose, 추정 /ax/<robot_id>/amcl_pose, TF map → <robot_id>/odom.
 - initial_poses는 로봇별 시험용 초기 위치(map 기준 x, y, yaw)다. 지정하지 않은 로봇은 initialpose 토픽을 기다린다.
   감독 노드에는 최초 초기화 확인 후보로 넘긴다. AMCL이 공분산 0으로 시작하므로 감독 노드가 확인 뒤 같은 자세를
@@ -88,16 +90,28 @@ def parse_robot_ids(text):
     return robot_ids
 
 
+# scan 인자 → AMCL 입력 토픽(namespace 기준 상대). check_localization.py SCAN_TOPICS와 같다.
+# merged는 시험용 선택 입력(2026-11-14): 앞·뒤 B1 scan_filtered를 scan_merge.py가 base_link 기준 720빔으로 합친 것
+# (두 스캔 사이 차체 이동 보정 없음). 기본은 filtered다.
+SCAN_INPUTS = {"filtered": "sensors/front_lidar/scan_filtered", "raw": "sensors/front_lidar/scan",
+               "merged": "sensors/merged/scan_filtered"}
+# 감독 노드가 구독하는 스캔(상대 이름). merged일 때만 병합 토픽으로 remap한다(filtered·raw의 기존 감시 의미 유지).
+SUPERVISOR_SCAN = "sensors/front_lidar/scan_filtered"
+
+
 # 한 로봇의 AMCL 덮어쓰기 값(프레임·입력 토픽·초기 위치)을 만든다.
 def amcl_overrides(robot_id, scan, pose=None):
     namespace = f"/ax/{robot_id}"
-    suffix = "scan_filtered" if scan == "filtered" else "scan"
+
+    if scan not in SCAN_INPUTS:
+        raise ValueError(f"scan은 {', '.join(SCAN_INPUTS)} 중 하나")
+
     overrides = {
         "use_sim_time": True,
         "global_frame_id": "map",
         "odom_frame_id": f"{robot_id}/odom",
         "base_frame_id": f"{robot_id}/base_link",
-        "scan_topic": f"{namespace}/sensors/front_lidar/{suffix}",
+        "scan_topic": f"{namespace}/{SCAN_INPUTS[scan]}",
         "map_topic": "/map",
         "tf_broadcast": True,
         "set_initial_pose": pose is not None,
@@ -375,7 +389,7 @@ def start_poses_for(path, map_path, robot_ids):
 
 # 로봇 하나의 위치 신뢰성 감독 노드(LocalizationHealth 발행·재위치 서비스·고정 출발 위치 최초 초기화)
 # expected_initial: initial_poses로 AMCL에 넣은 (x, y, yaw). 감독 노드는 보내지 않고 최초 초기화 확인 후보로만 쓴다.
-def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir="", expected_initial=None):
+def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir="", expected_initial=None, scan="filtered"):
     parameters = {"use_sim_time": True, "robot_id": robot_id, "config_file": str(health_config),
                   "start_pose_enabled": start_pose is not None,
                   "expected_initial_enabled": expected_initial is not None}
@@ -392,8 +406,55 @@ def supervisor_node(robot_id, health_config, start_pose, diagnostics_dir="", exp
     if start_pose is not None:
         parameters.update({f"start_pose_{key}": value for key, value in start_pose.items()})
 
+    # merged: 감독 노드의 스캔 신선도 감시가 실제 AMCL 입력(병합 토픽)을 보게 한다. 임계값은 그대로다.
+    remappings = [(SUPERVISOR_SCAN, SCAN_INPUTS["merged"])] if scan == "merged" else []
+
     return Node(package="ax_localization", executable="localization_supervisor.py", name="localization_supervisor",
-                namespace=f"/ax/{robot_id}", output="screen", parameters=[parameters])
+                namespace=f"/ax/{robot_id}", output="screen", parameters=[parameters], remappings=remappings)
+
+
+# mapping.launch.py의 병합 노드 정의(scan_merge_node)를 그대로 쓴다(같은 디렉터리의 launch 파일을 불러온다).
+def mapping_launch():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("ax_mapping_launch", Path(__file__).with_name("mapping.launch.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+
+# merged 입력의 중복을 그래프에서 본다: 같은 namespace의 scan_merge 노드, 병합 토픽의 기존 발행자.
+def running_merge_inputs(robot_ids, wait_seconds=10.0, settle_seconds=3.0):
+    import rclpy
+
+    rclpy.init(args=[])
+    node = rclpy.create_node("ax_localization_merge_preflight")
+    namespaces = {f"/ax/{robot_id}" for robot_id in robot_ids}
+    found = set()
+
+    try:
+        deadline = time.monotonic() + wait_seconds
+        settle_until = None
+
+        while time.monotonic() < (settle_until or deadline):
+            rclpy.spin_once(node, timeout_sec=0.1)
+            graph = [(name, space.rstrip("/") or "/") for name, space in node.get_node_names_and_namespaces()]
+
+            if settle_until is None and namespaces <= {space for name, space in graph if name == "robot_state_publisher"}:
+                settle_until = time.monotonic() + settle_seconds
+
+            found.update(f"{space}/{name}" for name, space in graph if space in namespaces and name == "scan_merge")
+
+            for namespace in namespaces:
+                for info in node.get_publishers_info_by_topic(f"{namespace}/{SCAN_INPUTS['merged']}"):
+                    found.add(f"{namespace}/{SCAN_INPUTS['merged']} 발행자 "
+                              f"{info.node_namespace.rstrip('/')}/{info.node_name}")
+
+        return sorted(found)
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 # 인자를 검사하고 공통 map_server와 로봇별 AMCL(lifecycle 활성화 포함)·위치 신뢰성 감독을 만든다.
@@ -417,8 +478,8 @@ def setup(context):
     if not map_path.is_file():
         raise FileNotFoundError(f"map 인자의 지도 yaml이 없음: {map_path}")
 
-    if scan not in ("filtered", "raw"):
-        raise ValueError("scan은 filtered 또는 raw")
+    if scan not in SCAN_INPUTS:
+        raise ValueError(f"scan은 {', '.join(SCAN_INPUTS)} 중 하나")
 
     # 고정 출발 위치: 지도 revision·이미지 해시와 로봇별 값을 검사한다(최초 초기화에만 쓰며 감독 노드가 한 번 보낸다).
     start_poses = {}
@@ -441,6 +502,13 @@ def setup(context):
 
     if conflicts:
         raise RuntimeError(f"이미 실행 중인 위치 추정·지도 노드: {', '.join(conflicts)}. 하나만 실행한다")
+
+    # merged: 같은 namespace의 병합 노드·병합 토픽 발행자가 이미 있으면 시작하지 않는다(발행자는 하나여야 한다).
+    if scan == "merged":
+        merge_conflicts = running_merge_inputs(robot_ids)
+
+        if merge_conflicts:
+            raise RuntimeError(f"이미 실행 중인 병합 입력: {', '.join(merge_conflicts)}. scan_merge는 하나만 실행한다")
 
     config = str(Path(get_package_share_directory("ax_localization")) / "config" / "amcl.yaml")
 
@@ -481,8 +549,14 @@ def setup(context):
         actions.append(LogInfo(msg=f"[ax_localization] {namespace}/amcl 초기 위치 {text}"))
         nodes.append((amcl, f"{namespace}/amcl"))
 
+        if scan == "merged":
+            merge_node = mapping_launch().scan_merge_node(namespace, robot_id)
+            actions.append(merge_node)
+            actions.append(LogInfo(msg=f"[ax_localization] {namespace}/scan_merge 실행: AMCL 입력 "
+                                       f"{namespace}/{SCAN_INPUTS['merged']}(시험용 선택 입력, 이동 보정 없음)"))
+
         if health_enabled:
-            actions.append(supervisor_node(robot_id, health_config, start, diagnostics_dir, pose))
+            actions.append(supervisor_node(robot_id, health_config, start, diagnostics_dir, pose, scan))
 
     # 시작 감시(전체 제한시간·전이 실패·프로세스 종료)
     monitored, _ = startup_actions(nodes, timeout_s, report)
@@ -495,7 +569,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("map", description="지도 yaml 경로(map_server yaml_filename)"),
         DeclareLaunchArgument("robot_ids", default_value="robot_2", description="쉼표로 구분한 로봇 ID"),
-        DeclareLaunchArgument("scan", default_value="filtered", description="filtered(B1) 또는 raw"),
+        DeclareLaunchArgument("scan", default_value="filtered",
+                              description="filtered(B1 앞, 기본) / raw(앞 원시) / merged(앞·뒤 병합, 시험용 선택)"),
         DeclareLaunchArgument("initial_poses", default_value="",
                               description="시험용 초기 위치 robot_id=x,y,yaw;... (map 기준 m·rad)"),
         DeclareLaunchArgument("startup_timeout", default_value="60.0",

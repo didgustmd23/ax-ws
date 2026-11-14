@@ -107,10 +107,13 @@ class SlamConfig(unittest.TestCase):
         self.assertIs(cfg["use_response_expansion"], False)
         self.assertEqual((cfg["minimum_travel_distance"], cfg["minimum_travel_heading"], cfg["resolution"]), (0.5, 0.5, 0.05))
 
-    # AMCL 입력은 바꾸지 않는다(앞 scan_filtered 유지, 별도 결정)
+    # AMCL 기본 입력은 바꾸지 않는다(앞 scan_filtered 유지, 별도 결정). 2026-11-14부터 localization.launch.py에
+    # 시험용 선택 입력 scan:=merged가 있으나 기본값은 filtered이고 amcl.yaml은 앞 입력 그대로다.
     def test_amcl_untouched(self):
         self.assertNotIn("merged", (PKG / "config/amcl.yaml").read_text())
-        self.assertNotIn("merged", (PKG / "launch/localization.launch.py").read_text())
+        self.assertIn("/sensors/front_lidar/scan_filtered", (PKG / "config/amcl.yaml").read_text())
+        launch = (PKG / "launch/localization.launch.py").read_text()
+        self.assertIn('DeclareLaunchArgument("scan", default_value="filtered",', launch)
 
 
 class Session(unittest.TestCase):

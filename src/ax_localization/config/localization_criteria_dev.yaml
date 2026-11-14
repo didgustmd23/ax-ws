@@ -1,0 +1,80 @@
+# B2 위치 추정(AMCL) 판정 기준.
+# 상태: 개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님.
+# 성격: G1(11-22) 판정과 회귀 확인을 위한 개발용 기준. 현재 시뮬레이션(개발 물리 설정, 평면, S005 slip1 0.05)에서 정했으며
+#   물리 설정·채택 지도가 바뀌면 다시 정한다. 소비자 허용치 근거: Nav2 xy_goal_tolerance 0.1 m·yaw_goal_tolerance 0.1 rad
+#   (ax_navigation/launch/navigation.launch.py). 이 값이 바뀌면 주행 중 오차 기준을 다시 본다.
+# 근거 문서: src/ax_localization/README.md, src/ax_localization/maps/ax_warehouse/README.md 'AMCL 회귀 (2026-11-12)' 절,
+#   docs/management/TEAM_SCHEDULE.md 'W2 양현승 A2·B2 진행 — 2026-11-14' 절.
+# 사용: check_localization.py --criteria(측정 시), --rejudge·--batch(ROS 없이 과거 결과, 2026-11-14 1.5단계).
+#   판정 값은 PASS·FAIL·not_judged·not_applicable·recorded다. B2-L3(health 원시 기록)·LD-3(종료 원인·감독 진단)과
+#   B2-L4~L7(원시 기록·감독 진단의 과신·도약 감지·재위치)은 2026-11-14 연결했다. 사건 시험(B2-L5~L7)이 노출되지 않은
+#   회차(not_applicable)는 회차 전체 PASS가 아니고, 묶음은 B2-L5~L7 지표마다 판정된 회차가 있어야 충족이다
+#   (판정한 항목만 judged_subset). 계산 정의: src/ax_localization/README.md 'B2-L4~L7' 항목.
+# 시간 기준: 물리 판정 값은 sim time이다. 부하 단계(L0~L2)와 관계없이 같은 값을 적용한다.
+# status가 incomplete인 회차는 판정하지 않는다.
+
+# 대상: 두 창고 기준 월드의 채택 지도 revision 1.
+target:
+  world: "planned/ax_warehouse.world"
+  map: "src/ax_localization/maps/ax_warehouse/map.yaml"
+  map_revision: 1
+
+# B2-L1 정지 위치 오차 상한(AMCL 추정 대 Gazebo 실제, T_world_map은 평가 전용).
+stationary:
+  max_position_error_m: 0.05
+  # 2026-11-14 재검토: 원래 값 0.03 rad(원래 근거: 11-14 run1~3 정지 구간 최대 0.0227 m·0.0084 rad, 11-12 rev 1 회귀 0.0359 m·0.0176 rad).
+  # 위치 기준은 Nav2 허용(0.1 m)의 50 %(0.05 m)인데 yaw만 0.1 rad의 30 %라 비율을 같게 맞춰 0.05 rad로 바꿨다.
+  # 결과에 맞춘 완화가 아니다: 0.03 기준에서도 FAIL은 없었다(재판정 4회차 정지 yaw 최대 0.0176 rad).
+  max_yaw_error_rad: 0.05
+
+# B2-L2 주행 중 위치 오차.
+moving:
+  max_position_error_p95_m: 0.10
+  max_position_error_m: 0.15
+  max_yaw_error_rad: 0.05
+  # B2-L3 정상 주행 구간 health OK 비율 하한. 시간 비율(sim): 주행(odom 속도 > D-06) 중 OK·valid 시간 / 주행 시간.
+  # health는 다음 갱신까지 최대 1.0 s(D-05) 유지, 확인 불가 시간이 있으면 not_judged, 명시적 제외 구간 표시만 뺀다.
+  min_health_ok_ratio: 0.90
+
+# B2-L4 과신 금지: 실제 위치 오차가 이 값을 넘는 표본에서 health OK 허용 수.
+overconfidence:
+  error_threshold_m: 0.15
+  max_ok_samples_above_threshold: 0
+
+# B2-L5 AMCL 재시작·도약 감지: OK 이탈까지 상한(sim), 재위치 성공 전 OK 복귀 허용 수.
+discontinuity:
+  max_ok_exit_delay_s: 1.0
+  max_ok_before_relocalization: 0
+
+# B2-L6 재위치 정확도, B2-L7 재위치 거절.
+relocalization:
+  max_position_error_after_ok_m: 0.05
+  max_completion_s: 10.0
+  # 이동 중 요청은 REJECTED_NOT_STOPPED, OK 중 요청은 NOT_NEEDED여야 한다. 오판 접수 허용 수.
+  moving_request_result: "REJECTED_NOT_STOPPED"
+  ok_request_result: "NOT_NEEDED"
+  max_wrong_accept_count: 0
+  # 실제 A4 경로 판정은 A4가 STOPPED를 발행할 때부터 적용한다. 그 전에는 A4 스텁 결과로만 판정하고 그 사실을 판정 기록에 남긴다.
+  # A4·B4 벽시계 신선도 때문에 A4 경유 판정이 성립하지 않으면 실제 A4 경로 판정은 incomplete로 둔다.
+  real_a4_path_requires_a4_stopped: true
+
+# B2-L8 반복·대상: robot_2 단독 3회 + 두 로봇 동시 1회 이상, 경로는 ax_warehouse_center.yaml 이상.
+repeats:
+  robot_2_single_runs: 3
+  two_robot_simultaneous_runs_min: 1
+  min_route: "src/ax_localization/config/routes/ax_warehouse_center.yaml"
+
+# 부하 조건 B2 몫.
+load:
+  # B2-L9 AMCL 입력 스캔: 수신률(sim time 기준, 공칭 10 Hz 대비) 하한, 이 값을 넘는 공백(sim) 허용 수 0.
+  # 누락은 위치 정확도와 별개로 부하 실패로 기록한다.
+  min_scan_receive_ratio: 0.90
+  nominal_scan_rate_hz: 10
+  max_scan_gap_s: 0.5
+  # LD-2 부하 불변성: 주행 중 위치 오차 p95가 L0(1대 단독) 대비 이 값 이내로 늘어야 한다. 월드 sha256이 다른 회차끼리는 비교하지 않는다.
+  max_moving_p95_increase_from_l0_m: 0.03
+  # LD-3 벽시계 시간 제한(B2 AMCL_UNAVAILABLE 60 s 등)이 판정에 걸린 회차 허용 수. 걸리면 그 회차는 incomplete.
+  # 대상: 수집기 --wall-limit, 재위치 timeout_wall_s, 의도 추적 intent_timeout_wall_s. 묶음에서 고유 회차 수를 센다.
+  max_wall_clock_limited_runs: 0
+  # RTF 하한은 A4(P2 자원 계측)가 정한다. 그 전에는 RTF를 기록만 하고 회차를 무효 처리하지 않는다.
+  rtf_min: null

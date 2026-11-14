@@ -82,6 +82,8 @@ A4 게이트는 아직 없다. 지금은 제어기를 누구나 직접 호출할
 odom만으로 실제 정지를 판정하면 차체가 아직 움직일 수 있다.
 Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 
+주행 정지·바퀴 odom 판정 기준은 [`config/stop_odom_criteria_dev.yaml`](config/stop_odom_criteria_dev.yaml)이다(개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님). 정지 정의는 계약 D-06을 따르고 이론 감속 시간은 `common_controllers.yaml` 감속 제한으로 계산한다. 두 측정 도구는 `--criteria`로 이 파일을 읽어 결과에 항목별 판정을 더한다(아래 사용법).
+
 ## 흡착 부착·해제
 
 기본 `DetachableJoint`는 연결 대상을 불러올 때 고정해서 실행 중에 정해지는 물체를 붙일 수 없다. 설계의 조건부 기준에 따라 플러그인 `ax_suction_attach_system`을 쓴다.
@@ -115,6 +117,10 @@ python3 src/ax_control/scripts/check_wheel_calibration.py --robot-id robot_1 --a
 python3 src/ax_control/scripts/check_tool_attach.py --robot-id robot_1 [--box-mass 2.0]
 python3 src/ax_control/scripts/check_payload_tracking.py --robot-id robot_1 [--masses 0 0.5 1 2] [--repeats 3]
 ```
+
+`check_stop_feedback.py`·`check_wheel_calibration.py`의 개발용 판정 기준은 [`config/stop_odom_criteria_dev.yaml`](config/stop_odom_criteria_dev.yaml)이다(개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님). `--criteria <기준 파일>`을 주면 결과에 `criteria_items`·`judgment`가 더해진다(판정 값 PASS·FAIL·not_judged·not_applicable·recorded). 과거 결과 재판정과 여러 회차 묶음 판정은 ROS 없이 `python3 src/ax_control/scripts/a2_criteria.py --rejudge <result.json> --criteria <기준 파일>`, `... --batch <result.json>... --criteria <기준 파일> --output <묶음.json>`로 한다.
+
+`--world-file <월드 파일>`을 주면 결과 `conditions`에 `world_file`·`world_sha256`이 남는다. 같은 `GZ_PARTITION`의 `gz sim` 서버 명령줄 월드와 sha256이 같은지도 `world_check`에 남긴다. 서버 명령줄을 찾지 못하면 "인자 기준"으로 남는다. 측정 시작 시 같은 ROS domain에서 `/ax/<id>/joint_states` 발행자가 있는 로봇이 `active_robot_ids`·`active_robot_count`로, 도구 프로세스의 렌더러 환경값이 `renderer`로 기록된다. 묶음 판정의 반복 수(A2-S7)와 부하 불변성(LD-1)은 이 필드를 쓰며, 필드가 없는 옛 결과에서는 `not_judged`다.
 
 정지 피드백·바퀴 보정·부착·하중 시험 도구는 시뮬레이션과 같은 `ROS_DOMAIN_ID`·`GZ_PARTITION`·`ROS_AUTOMATIC_DISCOVERY_RANGE`에서 실행해야 한다. 대상(robot_description·제어기 서비스·Gazebo 월드)을 찾지 못하면 현재 환경 변수, 다른 노드가 발행 중인 로봇 ID, 발행자가 있는 Gazebo 월드와 원인 추정을 함께 출력한다. 정지 피드백·바퀴 보정·부착 결과의 `status`는 `completed`·`failed`·`interrupted`(Ctrl+C, 종료 코드 130)이며, 중단돼도 `result.json`을 남긴다. 정지 피드백은 시나리오마다, 부착 시험은 판정마다 중간 저장하므로 `last_scenario`·`last_check`까지의 결과가 보존된다.
 

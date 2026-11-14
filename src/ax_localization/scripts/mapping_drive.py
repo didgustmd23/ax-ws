@@ -1742,6 +1742,17 @@ def obstacle_scan_suffix(slam_scan_input):
     return "scan" if slam_scan_input == "raw" else "scan_filtered"
 
 
+# 출발 전 문제 목록: 입력 문제에 sim time 미수신을 더한다. sim time이 0이면(/clock 전) 진척 감시 기준 시각이
+# 0으로 잡혀 첫 갱신에서 실제 경과로 건너뛰므로 출발하지 않는다(2026-11-14 중앙 경로 AMCL 회차에서 재현).
+def start_problems(input_problems, sim_now):
+    problems = list(input_problems)
+
+    if not (isinstance(sim_now, (int, float)) and math.isfinite(sim_now) and sim_now > 0.0):
+        problems.append("sim time 미수신(/clock)")
+
+    return problems
+
+
 # 명령행 인자를 읽어 지도 작성 주행을 실행한다.
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1844,13 +1855,13 @@ def main():
         run.record["mounts"] = node.mounts
         follower.configure_limits(node.read_drive_limits())
 
-        # 입력이 모두 들어오고 다른 발행자가 없는지 확인한 뒤 출발한다.
+        # 입력이 모두 들어오고 다른 발행자가 없으며 sim time을 받은 뒤 출발한다.
         deadline = time.monotonic() + 30.0
 
-        while follower.input_problems() and time.monotonic() < deadline:
+        while start_problems(follower.input_problems(), node.now_seconds()) and time.monotonic() < deadline:
             time.sleep(0.2)
 
-        problems = follower.input_problems()
+        problems = start_problems(follower.input_problems(), node.now_seconds())
 
         if problems:
             raise RuntimeError("출발 전 입력 없음: " + ", ".join(problems))

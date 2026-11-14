@@ -617,5 +617,114 @@ class FinalReviewFindings(unittest.TestCase):
                 self.assertTrue(health.reason)
 
 
+# LD-3 근거: 재위치·의도 추적 시간초과가 sim time·단조 벽시계 중 어느 제한으로 끝났는지 진단 기록에 남긴다.
+# 판단 법칙·임계값·결과 코드는 그대로이며 가짜 시계(now·wall 인자)로 경계·시계 정체·동시 초과를 본다.
+class TimeoutCause(unittest.TestCase):
+
+    # 접수(sim 20 s, 벽시계 100 s) 뒤 step 한 번의 결과와 시간초과 기록
+    def finish(self, now, wall):
+        tracker, inputs, reinit, health = Reinit().prepared()
+        reinit.request(health, inputs, tracker, 20.0, 'map-a', True, wall=100.0)
+        reinit.mark_sent(20.0)
+        fresh_actuation(inputs, now)
+
+        return reinit.step(inputs, now, clock_valid=True, wall=wall), reinit
+
+    # sim 제한만 지남: 결과 코드는 기존 그대로, 원인은 sim
+    def test_sim_only(self):
+        result, reinit = self.finish(35.5, 110.0)
+        timeout = reinit.attempt.timeout
+
+        self.assertEqual(result, 'REINIT_FAILED_AMCL_UNAVAILABLE')
+        self.assertEqual((timeout['sim_expired'], timeout['wall_expired']), (True, False))
+        self.assertEqual((timeout['sim_limit_s'], timeout['wall_limit_s']), (15.0, 60.0))
+        self.assertAlmostEqual(timeout['sim_elapsed_s'], 15.5)
+        self.assertAlmostEqual(timeout['wall_elapsed_s'], 10.0)
+
+    # sim time 정체 중 벽시계 제한만 지남: 원인은 벽시계
+    def test_wall_only_when_sim_frozen(self):
+        result, reinit = self.finish(20.0, 161.0)
+
+        self.assertEqual(result, 'REINIT_FAILED_AMCL_UNAVAILABLE')
+        self.assertEqual((reinit.attempt.timeout['sim_expired'], reinit.attempt.timeout['wall_expired']),
+                         (False, True))
+
+    # 두 제한이 동시에 지나면 둘 다 기록한다.
+    def test_both(self):
+        _, reinit = self.finish(36.0, 161.0)
+
+        self.assertEqual((reinit.attempt.timeout['sim_expired'], reinit.attempt.timeout['wall_expired']),
+                         (True, True))
+
+    # 경계: 경과가 제한과 같으면 아직 끝나지 않는다(기존 > 비교 유지). 시간초과 기록도 없다.
+    def test_boundary_not_expired(self):
+        result, reinit = self.finish(35.0, 160.0)
+
+        self.assertIsNone(result)
+        self.assertIsNone(reinit.attempt.timeout)
+
+    # 시간초과가 아닌 종료(시계 무효)는 시간초과 기록이 없다.
+    def test_clock_invalid_has_no_timeout(self):
+        tracker, inputs, reinit, health = Reinit().prepared()
+        reinit.request(health, inputs, tracker, 20.0, 'map-a', True, wall=100.0)
+
+        self.assertEqual(reinit.step(inputs, 20.5, clock_valid=False, wall=200.0), 'REINIT_FAILED_CLOCK_INVALID')
+        self.assertIsNone(reinit.attempt.timeout)
+
+    # 감독 노드 진단 줄 내용: 결과·시간초과 원인·실제 적용 제한값·설정 출처
+    def test_finished_entry(self):
+        result, reinit = self.finish(20.0, 161.0)
+        entry = lh.reinit_finished_entry(reinit, result, '/x/health.yaml')
+
+        self.assertEqual(entry['result'], 'REINIT_FAILED_AMCL_UNAVAILABLE')
+        self.assertTrue(entry['timeout']['wall_expired'])
+        self.assertEqual(entry['limits'], {'timeout_s': 15.0, 'timeout_wall_s': 60.0})
+        self.assertEqual(entry['config_source'], '/x/health.yaml')
+        self.assertEqual(entry['attempt'], 1)
+
+    # 시도 번호는 접수할 때만 늘고(진행 중 응답·거절은 그대로) 종료 진단 줄과 같은 번호다. 판정 결과는 바뀌지 않는다.
+    def test_attempt_number(self):
+        tracker, inputs, reinit, health = Reinit().prepared()
+
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.0, 'map-a', True, wall=100.0),
+                         (True, 'REINIT_ACCEPTED'))
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.05, 'map-a', True, wall=100.05),
+                         (True, 'REINIT_IN_PROGRESS'))
+        self.assertEqual(reinit.attempt.number, 1)
+        self.assertEqual(reinit.step(inputs, 20.1, clock_valid=False, wall=100.1), 'REINIT_FAILED_CLOCK_INVALID')
+        self.assertEqual(lh.reinit_finished_entry(reinit, 'REINIT_FAILED_CLOCK_INVALID', 'x')['attempt'], 1)
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.2, 'map-a', True, wall=100.2),
+                         (True, 'REINIT_ACCEPTED'))
+
+        self.assertEqual(reinit.attempt.number, 2)
+
+    # 의도 추적 제한: 사유 문자열(TIMEOUT·TIMEOUT_WALL)은 그대로이고 두 시계 조건을 함께 남긴다.
+    def test_intent_expire_detail(self):
+        pose = (1.0, 0.0, 0.0)
+
+        for name, now, wall, reason, flags in (('sim', 21.5, 101.0, 'TIMEOUT', (True, False)),
+                                               ('wall', 6.5, 161.5, 'TIMEOUT_WALL', (False, True)),
+                                               ('both', 21.5, 161.5, 'TIMEOUT', (True, True))):
+            with self.subTest(case=name):
+                monitor = lh.EstimateMonitor(CONFIG)
+                monitor.expect(pose, 'REINIT', 6.0, 101.0, True)
+                monitor.events = []
+                monitor.expire(now, wall, True)
+                closed = [event for event in monitor.events if event['event'] == 'INTENT_CLOSED']
+
+                self.assertEqual(len(closed), 1)
+                self.assertEqual(closed[0]['reason'], reason)
+                self.assertEqual((closed[0]['timeout']['sim_expired'], closed[0]['timeout']['wall_expired']), flags)
+                self.assertEqual(closed[0]['timeout']['wall_limit_s'], 60.0)
+
+    # 의도 기간 안(경계 포함)이면 닫지 않는다.
+    def test_intent_boundary(self):
+        monitor = lh.EstimateMonitor(CONFIG)
+        monitor.expect((1.0, 0.0, 0.0), 'REINIT', 6.0, 101.0, True)
+        monitor.expire(21.0, 161.0, True)
+
+        self.assertIsNotNone(monitor.intent)
+
+
 if __name__ == '__main__':
     unittest.main()

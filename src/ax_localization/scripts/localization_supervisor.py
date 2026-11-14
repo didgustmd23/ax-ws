@@ -17,7 +17,7 @@
   나누고 갱신 수·회복 근거에 넣지 않는다(오래된 TF가 최신 추정을 덮지 않음).
 - 추정 도약: 이전·새 추정을 같은 odom 자세에서 비교해 기준을 넘으면 LOST(ESTIMATE_DISCONTINUOUS)로 latch하고
   신뢰 기록 덮어쓰기를 막는다. 해제는 허용된 재위치 성공 때만이다(localization_health.EstimateMonitor).
-- 진단 기록(선택): diagnostics_file 매개변수가 있으면 판정 tick·입력 판정·재위치 요청마다 판단 근거를 JSON 줄로
+- 진단 기록(선택): diagnostics_file 매개변수가 있으면 판정 tick·입력 판정·재위치 요청·종료마다 판단 근거를 JSON 줄로
   덧붙인다. 판정 동작은 바꾸지 않으며 공유 토픽으로 내지 않는다(시험 기록 전용).
 """
 
@@ -81,6 +81,7 @@ class LocalizationSupervisor(Node):
         config_file = self.declare_parameter("config_file", "").value
         user = yaml.safe_load(Path(config_file).read_text(encoding="utf-8")) if config_file else None
         self.config = lh.merge_config(user)
+        self.config_source = config_file or "기본값(localization_health.py DEFAULTS)"
         self.start_pose = None
 
         if self.declare_parameter("start_pose_enabled", False).value:
@@ -317,6 +318,9 @@ class LocalizationSupervisor(Node):
 
             if result is not None:
                 self.get_logger().info(f"재위치 종료: {result}")
+                # 종료 원인(시간초과면 sim·벽시계 조건, 적용 제한값·설정 출처)을 진단에 남긴다. 판정에는 쓰지 않는다.
+                self.write_diagnostics("reinit_finished", now, health,
+                                       **lh.reinit_finished_entry(self.reinit, result, self.config_source))
 
                 # 성공이면 latch를 풀고 비교 기준을 검증된 새 추정으로 바꾼 뒤(같은 tick) 판정을 다시 한다.
                 if result == "SUCCEEDED":
@@ -459,7 +463,9 @@ class LocalizationSupervisor(Node):
 
         response.success = accepted
         response.message = code
-        self.write_diagnostics("reinit_request", now, health, accepted=accepted, code=code)
+        # 접수(진행 중 응답 포함)면 시도 번호를 남겨 종료 진단(reinit_finished)과 대응한다. 판정에는 쓰지 않는다.
+        attempt = self.reinit.attempt.number if accepted and self.reinit.attempt is not None else None
+        self.write_diagnostics("reinit_request", now, health, accepted=accepted, code=code, attempt=attempt)
 
         return response
 

@@ -700,10 +700,11 @@ class EstimateMonitor:
             self.intent["window_at"], self.intent["window_wall"] = now, wall
             self.note("INTENT_WINDOW", source=self.intent["source"], window_at=now)
 
-    # 의도 기록을 지운다(재위치 실패·완료).
-    def cancel_intent(self, reason):
+    # 의도 기록을 지운다(재위치 실패·완료). timeout은 제한시간으로 닫을 때의 두 시계 조건(진단 기록용)이다.
+    def cancel_intent(self, reason, timeout=None):
         if self.intent is not None:
-            self.note("INTENT_CLOSED", source=self.intent["source"], reason=reason)
+            self.note("INTENT_CLOSED", source=self.intent["source"], reason=reason,
+                      **({"timeout": timeout} if timeout is not None else {}))
             self.intent = None
 
     # 제한시간(sim)·벽시계 상한이 지났거나 시계가 무효면 의도 기록을 닫는다.
@@ -713,12 +714,22 @@ class EstimateMonitor:
 
         if not clock_valid:
             self.cancel_intent("CLOCK_INVALID")
-        elif self.intent["window_at"] is None:
             return
-        elif now - self.intent["window_at"] > self.j["intent_timeout_s"]:
-            self.cancel_intent("TIMEOUT")
-        elif wall is not None and wall - self.intent["window_wall"] > self.j["intent_timeout_wall_s"]:
-            self.cancel_intent("TIMEOUT_WALL")
+
+        if self.intent["window_at"] is None:
+            return
+
+        # 판단 순서·사유 문자열은 그대로 두고(sim 우선), 닫을 때 두 시계 조건을 함께 남긴다.
+        sim_elapsed = now - self.intent["window_at"]
+        sim_expired = sim_elapsed > self.j["intent_timeout_s"]
+        wall_elapsed = (None if wall is None or self.intent["window_wall"] is None
+                        else wall - self.intent["window_wall"])
+        wall_expired = wall_elapsed is not None and wall_elapsed > self.j["intent_timeout_wall_s"]
+
+        if sim_expired or wall_expired:
+            detail = timeout_detail(sim_elapsed, self.j["intent_timeout_s"], sim_expired,
+                                    wall_elapsed, self.j["intent_timeout_wall_s"], wall_expired)
+            self.cancel_intent("TIMEOUT" if sim_expired else "TIMEOUT_WALL", detail)
 
     # 의도를 확인할 수 있는 단계인지. launch 초기 위치(LAUNCH_INITIAL_POSE)는 감독 노드가 보낸 것이 아니므로
     # TF만으로 확인하지 않고, 기록 뒤 stamp의 새 amcl_pose가 후보와 맞은 다음에만 TF로 확인한다
@@ -1082,6 +1093,13 @@ def actuation_problem(inputs, now, config):
 
 
 # 진행 중인 재위치 한 건. 초기 위치 전달 뒤 새 AMCL 추정·TF·센서가 회복 조건을 만족해야 완료한다.
+# 시간초과 한 건의 두 시계 조건(sim time·단조 벽시계 경과와 제한, 초과 여부). 진단 기록용이며 판정에 쓰지 않는다.
+def timeout_detail(sim_elapsed, sim_limit, sim_expired, wall_elapsed, wall_limit, wall_expired):
+    return {"sim_elapsed_s": sim_elapsed, "sim_limit_s": sim_limit, "sim_expired": bool(sim_expired),
+            "wall_elapsed_s": wall_elapsed, "wall_limit_s": wall_limit, "wall_expired": bool(wall_expired),
+            "wall_source": "단조 벽시계(time.monotonic)"}
+
+
 @dataclass
 class ReinitAttempt:
     accepted_at: float
@@ -1091,6 +1109,8 @@ class ReinitAttempt:
     updates: list = field(default_factory=list)   # (stamp, pose, position_std, yaw_std)
     last_nomotion: float = None
     result: str = None                             # None(진행), "SUCCEEDED", "REINIT_FAILED_*"
+    timeout: dict = None                           # 시간초과로 끝났을 때 두 시계 조건(진단 기록용, 판정에 쓰지 않음)
+    number: int = None                             # 이 감독 세션의 접수 순번(진단 기록의 접수·종료 대응용, 판정에 쓰지 않음)
 
 
 # 현재 map→odom · odom 자세가 후보와 허용 범위 안인지(재위치 완료 시 TF도 같은 갱신을 따랐는지 확인).
@@ -1113,6 +1133,7 @@ class Reinitializer:
         self.failure_at = None       # 실패 확정 시각
         self.after_failure = []      # 실패 뒤 받은 AMCL 추정 (stamp, position_std, yaw_std)
         self.last_amcl = None        # 마지막으로 받은 AMCL stamp
+        self.accepted_count = 0      # 접수한 재위치 수(진단 기록의 시도 번호, 판정에 쓰지 않음)
 
     # 진행 중인지
     def active(self):
@@ -1142,7 +1163,9 @@ class Reinitializer:
         if candidate is None:
             return False, rejection
 
-        self.attempt = ReinitAttempt(accepted_at=now, candidate=candidate, accepted_wall=wall)
+        self.accepted_count += 1
+        self.attempt = ReinitAttempt(accepted_at=now, candidate=candidate, accepted_wall=wall,
+                                     number=self.accepted_count)
         self.failure = None
 
         return True, "REINIT_ACCEPTED"
@@ -1235,7 +1258,14 @@ class Reinitializer:
                 return self.finish("SUCCEEDED", now)
 
         # 시간초과(sim time 또는 벽시계): 추정이 전혀 없으면 AMCL 무응답, 있으면 조건 미충족
-        if now - attempt.accepted_at > r["timeout_s"] or wall_expired:
+        # 두 시계 조건을 함께 남긴다(LD-3 근거, 결과 코드만으로는 어느 시계인지 알 수 없다).
+        sim_expired = now - attempt.accepted_at > r["timeout_s"]
+
+        if sim_expired or wall_expired:
+            attempt.timeout = timeout_detail(now - attempt.accepted_at, r["timeout_s"], sim_expired,
+                                             None if wall is None or attempt.accepted_wall is None
+                                             else wall - attempt.accepted_wall, r["timeout_wall_s"], wall_expired)
+
             return self.finish("REINIT_FAILED_TIMEOUT" if updates else "REINIT_FAILED_AMCL_UNAVAILABLE", now)
 
         return None
@@ -1287,6 +1317,17 @@ class Reinitializer:
                           health.position_std_m, health.yaw_std_rad, health.pose)
 
         return health
+
+
+# 재위치 종료 진단 줄의 내용: 결과 코드, 시도 번호(접수 줄과 대응), 시간초과면 두 시계 조건, 실제 적용 제한값과 설정 출처.
+def reinit_finished_entry(reinit, result, config_source):
+    r = reinit.config["reinit"]
+    attempt = reinit.attempt
+
+    return {"result": result, "attempt": None if attempt is None else attempt.number,
+            "timeout": None if attempt is None else attempt.timeout,
+            "limits": {"timeout_s": r["timeout_s"], "timeout_wall_s": r["timeout_wall_s"]},
+            "config_source": config_source}
 
 
 # 고정 출발 위치 설정을 읽고 검사한다. 지도 revision·이미지 해시가 실제 지도와 다르면 거절한다.

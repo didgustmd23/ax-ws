@@ -1,0 +1,103 @@
+# A2 주행 정지·바퀴 odom 판정 기준.
+# 상태: 개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님.
+# 성격: G1(11-22) 판정과 회귀 확인을 위한 개발용 기준. 현재 시뮬레이션(개발 물리 설정, 평면, S005 slip1 0.05)에서 정했으며
+#   물리 설정이 바뀌면 다시 정한다. 범위 밖: A4 게이트 경유 정지(A4 기준), 적재·고속·장거리·경사, 실물.
+# 근거 문서: src/ax_control/README.md '정지 피드백'·'S005·AX_2 갱신 뒤 재확인 (2026-11-13)' 절,
+#   docs/management/TEAM_SCHEDULE.md 'W2 양현승 A2·B2 진행 — 2026-11-14' 절(바퀴 직진·회전 비율).
+# 사용: check_stop_feedback.py·check_wheel_calibration.py --criteria, 과거 결과는 a2_criteria.py --rejudge·--batch
+#   (2026-11-14 1.5단계). 판정 값은 PASS·FAIL·not_judged·not_applicable·recorded다.
+# 시간 기준: 물리 판정 값은 모두 sim time(s)이다. 부하 단계(L0~L2)와 관계없이 같은 값을 적용한다.
+
+# 실제 정지 정의는 공통 인터페이스 계약 D-06(docs/design/INTERFACE_CONTRACT.md)을 따른다. 이 파일에서 값을 재정의하지 않는다.
+stop_definition: "INTERFACE_CONTRACT D-06"
+
+# 판정하지 않고 값만 기록하는 항목(결과에 recorded로 남는다). 키 값은 아래 각 절에 참고 값으로 둔다.
+record_only:
+  - A2-S5
+
+# 이론 감속 시간 T = 명령 속도 / 감속 제한. 감속 제한은 common_controllers.yaml의 diff_drive_controller 값을 참조한다.
+# 아래 감속 제한은 T 계산 근거를 보이려고 옮긴 값이며 common_controllers.yaml(linear.x.max_deceleration -0.67,
+# angular.z.max_deceleration -0.20, 2026-11-14 확인)과 같다. 제어기 값이 바뀌면 T를 다시 계산한다.
+theoretical_deceleration:
+  source: "src/ax_control/config/common_controllers.yaml"
+  linear_deceleration_limit_m_s2: 0.67
+  angular_deceleration_limit_rad_s2: 0.20
+  # 시나리오별 명령과 T. 호 주행은 선·각 성분 중 긴 쪽(0.3/0.67=0.45 s, 0.3/0.20=1.50 s → 1.50 s).
+  scenarios:
+    straight_slow:          # 직진 저속
+      linear_m_s: 0.3
+      angular_rad_s: 0.0
+      t_s: 0.45
+    straight_max:           # 직진 최고
+      linear_m_s: 0.67
+      angular_rad_s: 0.0
+      t_s: 1.00
+    rotate_in_place:        # 제자리 회전
+      linear_m_s: 0.0
+      angular_rad_s: 0.5
+      t_s: 2.50
+    arc:                    # 호 주행
+      linear_m_s: 0.3
+      angular_rad_s: 0.3
+      t_s: 1.50
+
+# 주행 정지(robot_1·robot_2 각각). 정지 시간은 기준 시각부터 Gazebo 실제 기준 D-06 진입까지(check_stop_feedback.py).
+stop:
+  # A2-S1 zero_command: 실제 기준 D-06 진입 ≤ T + 이 여유.
+  zero_command_margin_s: 0.20
+  # A2-S2 command_loss: 실제 기준 D-06 진입 ≤ cmd_vel_timeout + T + 이 여유.
+  # cmd_vel_timeout 0.5 s는 common_controllers.yaml 값(2026-11-14 확인)과 같다.
+  command_loss_cmd_vel_timeout_s: 0.5
+  command_loss_margin_s: 0.20
+  # A2-S3 모든 회차에서 D-06 정지 유지 확인, 재가속 0.
+  hold_s: 0.5
+  max_reacceleration_count: 0
+  # A2-S4 |odom 정지 시각 − 실제 정지 시각| 상한.
+  # 2026-11-14 재검토(사용자 승인): 원래 값 0.05 s. 원래 근거는 실측 최대 35 ms와 표본 간격 약 0.03 s였다.
+  #   그 값이면 표본 1~2개 차이로 FAIL이 날 수 있어 측정 정밀도 대비 여유가 부족해 0.10 s로 바꿨다.
+  #   결과에 맞춘 완화가 아니다. 변경 전 재판정(11-09·11-13 기록 9개)에서 A2-S4 FAIL은 없었다(최대 35 ms).
+  max_odom_truth_stop_time_difference_s: 0.10
+  # A2-S5 odom 정지 뒤 차체 실제 추가 이동(위 record_only: 판정 안 함, 값만 기록). 아래 1 mm는 참고 값이다.
+  # 2026-11-14 재검토(사용자 승인): 원래 값 1 mm 상한. 소비자 허용치 없이 robot_2 실측(≤0.40 mm)에서 잡았다.
+  #   11-13 두 로봇 동시 회차 robot_1에서 제자리 회전 2.52 mm·호 주행 2.34 mm로 FAIL이 난 뒤 근거를 재검토해
+  #   판정에서 뺐다. FAIL이 실제로 있었고, 그 FAIL 뒤의 변경이다.
+  #   소비자 허용치(인계 상대 위치 허용 오차, 설계서 14절 미정)가 정해지면 다시 판정 기준으로 넣는다.
+  max_post_stop_body_motion_m: 0.001
+  # A2-S6 팔 취소 정지(robot_1): 취소부터 Gazebo 기준 정지까지 상한.
+  max_arm_cancel_stop_s: 0.30
+  # A2-S7 시나리오·하중 조건마다 반복 수, 실패·미완료 허용 0. 실패는 숨기지 않고 모두 보고한다.
+  repeats: 3
+  max_failed_runs: 0
+  # 하중 조건: robot_2 0·0.5·1·2 kg(A1 중앙 상자), robot_1 무부하·주행 자세.
+  payload_conditions:
+    robot_2_kg: [0, 0.5, 1, 2]
+    robot_1: "무부하·주행 자세"
+
+# 바퀴 odom 정확도(check_wheel_calibration.py). 벗어나면 B2 AMCL alpha(0.02) 재검토 대상이다(9c5554c).
+odom:
+  # A2-O1 직진 거리 비율(odom/실제) 범위.
+  straight_ratio_min: 0.99
+  straight_ratio_max: 1.01
+  # A2-O2 회전 비율(odom/실제) 범위.
+  rotation_ratio_min: 0.99
+  rotation_ratio_max: 1.01
+  # A2-O3 조건: 0.3 m/s × 약 0.9 m 전·후진 각 3회, 제자리 회전 좌·우 각 3회(--repeats 3).
+  conditions:
+    straight_speed_m_s: 0.3
+    straight_distance_m: 0.9
+    straight_repeats_each_direction: 3
+    rotation_repeats_each_direction: 3
+
+# 부하 조건 A2 몫. 판정은 sim time이라 부하가 높다고 기준을 늘리지 않는다.
+load:
+  # LD-1 부하 불변성: 같은 시나리오 정지 시간이 L0(1대 단독) 대비 |차이| 이하. 월드 sha256이 다른 회차끼리는 비교하지 않는다.
+  # 2026-11-14 재검토(사용자 승인): 원래 값 0.05 s. A2-S4와 같은 사유(표본 간격 약 0.03 s, 1~2 표본 차이로 FAIL 가능)로
+  #   0.10 s로 바꿨다. 결과에 맞춘 완화가 아니다. LD-1은 아직 판정한 적이 없어 FAIL도 없었다.
+  max_stop_time_difference_from_l0_s: 0.10
+  # A2-L1 odom·joint_states 수신 공백 상한(sim). 명령 끊김 정지 시험 외의 cmd_vel_timeout 오작동 0.
+  max_control_input_gap_s: 0.1
+  max_unexpected_cmd_vel_timeout_count: 0
+  # 회차 유효 조건(기준 아님): 기록 표본 최대 간격(sim). 넘으면 incomplete(SAMPLE_GAP).
+  max_sample_interval_s: 0.05
+  # RTF 하한은 A4(P2 자원 계측)가 정한다. 그 전에는 RTF를 기록만 하고 회차를 무효 처리하지 않는다.
+  rtf_min: null

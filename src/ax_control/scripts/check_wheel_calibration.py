@@ -50,6 +50,8 @@ from rclpy.parameter_client import AsyncParameterClient
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
 
+from a2_criteria import judge_wheel, load_criteria, measurement_load_conditions, print_judgment, run_rejudge
+
 from gazebo_observer import (
     ModelPoseTracker,
     describe_environment,
@@ -559,6 +561,9 @@ def check(checks, name, passed, detail):
 # 회전·직진 시험을 반복하고 결과를 정리한다
 def run(node, arguments, checks):
     parameters = node.read_parameters()
+
+    # 부하 단계 정보(같은 domain의 활성 로봇, --world-file 월드, 렌더러 환경값). 묶음 판정에 쓴다.
+    conditions = measurement_load_conditions(node, arguments.world_file)
     print("[INFO] 현재 파라미터: " + ", ".join(f"{key} {value}" for key, value in parameters.items()), flush=True)
 
     arm_pose = None
@@ -631,6 +636,7 @@ def run(node, arguments, checks):
 
     return {
         "robot_id": node.robot_id,
+        'conditions': conditions,
         "parameters": parameters,
         "arm_pose": arm_pose,
         "arm_hold": None if arm_pose is None else {
@@ -722,7 +728,32 @@ def main():
     parser.add_argument("--arm-pose", type=lambda text: [float(v) for v in text.split(",")], default=None,
                         help="주행 전 팔 자세(rad, 기둥·어깨·팔꿈치·손목·공구 순). 예: -1,0,0,0,0")
     parser.add_argument("--arm-tolerance", type=float, default=0.02, help="팔 자세 정착·유지 허용 오차(rad, A1 joint_tolerance_rad)")
+    parser.add_argument('--criteria', type=Path, default=None,
+                        help='판정 기준 파일(stop_odom_criteria_dev.yaml). 주면 결과에 기준 항목별 판정을 더한다')
+    parser.add_argument('--world-file', type=Path, default=None,
+                        help='측정 월드 파일. 결과 conditions에 경로·sha256을 남긴다(LD-1 비교 키)')
+    parser.add_argument('--rejudge', type=Path, default=None,
+                        help='측정 없이 과거 result.json을 --criteria로 재판정해 같은 폴더에 <이름>.judged.json을 쓴다')
     arguments = parser.parse_args()
+
+    # 과거 결과 재판정은 시뮬레이션 없이 판정만 하고 끝낸다.
+    if arguments.rejudge is not None:
+        if arguments.criteria is None:
+            parser.error('--rejudge에는 --criteria가 필요')
+
+        sys.exit(run_rejudge('wheel', arguments.rejudge, arguments.criteria))
+
+    if arguments.world_file is not None and not arguments.world_file.is_file():
+        parser.error(f'--world-file 파일 없음: {arguments.world_file}')
+
+    # 기준 파일은 측정 전에 읽어 형식 오류를 먼저 알린다.
+    criteria = None
+
+    if arguments.criteria is not None:
+        try:
+            criteria = load_criteria(arguments.criteria)
+        except (OSError, ValueError) as error:
+            parser.error(f'--criteria 읽기 실패: {error}')
 
     if arguments.arm_pose is not None and len(arguments.arm_pose) != len(ARM_JOINTS):
         parser.error(f"--arm-pose는 {len(ARM_JOINTS)}개 값")
@@ -793,7 +824,18 @@ def main():
 
     result["status"] = status
     result["checks"] = checks
+
+    # 기준 파일을 받았으면 최종 상태로 판정해 결과에 더한다.
+    judged = None
+
+    if criteria is not None:
+        judged = judge_wheel(result, *criteria)
+        result.update(judged)
+
     (output / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False, default=float) + "\n")
+
+    if judged is not None:
+        print_judgment(judged)
 
     failures = sum(1 for item in checks if not item["passed"])
     print(f"결과: {output / 'result.json'}", flush=True)

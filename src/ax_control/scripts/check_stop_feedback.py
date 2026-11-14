@@ -83,6 +83,17 @@ from rclpy.parameter import Parameter
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
 
+
+# 공통 주행 시나리오 목록은 재판정(a2_criteria.py)과 같은 정의를 쓴다.
+from a2_criteria import (
+    drive_scenarios,
+    judge_stop,
+    load_criteria,
+    measurement_load_conditions,
+    print_judgment,
+    run_rejudge,
+)
+
 from gazebo_observer import (
     GazeboObserver,
     describe_environment,
@@ -194,16 +205,6 @@ def mode_settle_seconds(stop_mode, linear, angular, drive, command_timeout):
         return drive_settle_seconds(linear, angular, drive, command_timeout or 0.0)
 
     return drive_settle_seconds(linear, angular, drive)
-
-
-# 공통 주행 시나리오 목록(이름, 선속도, 각속도, 명령 시간 s). 저속 비교 조건은 유지하고 상한은 현재 공통 설정을 쓴다.
-def drive_scenarios(maximum_linear, maximum_angular):
-    return [
-        ("직진 0.3 m/s", 0.3, 0.0, 3.0),
-        (f"직진 상한 {maximum_linear:g} m/s", maximum_linear, 0.0, 3.0),
-        (f"제자리 회전 상한 {maximum_angular:g} rad/s", 0.0, maximum_angular, 3.0),
-        ("호 주행", 0.3, 0.3, 3.0),
-    ]
 
 
 # URDF 관절 목록으로 팔 유무를 정한다. 팔 관절이 모두 있으면 True, 하나도 없으면 False.
@@ -1150,6 +1151,9 @@ def record_conditions(record, node, urdf, drive):
         "base_height_abort_m": BASE_HEIGHT_ABORT_M,
     })
 
+    # 부하 단계 정보(같은 domain의 활성 로봇, --world-file 월드, 렌더러 환경값). 묶음 판정의 반복·LD-1에 쓴다.
+    record['conditions'].update(measurement_load_conditions(node, getattr(node, 'world_file', None)))
+
     live = record["conditions"]["diff_drive_live"] or {}
     timeout = live.get("cmd_vel_timeout")
     record["conditions"]["cmd_vel_timeout_s"] = timeout
@@ -1347,6 +1351,12 @@ def build_parser():
                         help="차체 기울기가 이 값(rad)을 넘으면 시험 중단. 시험 보호용이며 성능 기준이 아님")
     parser.add_argument("--stop-mode", choices=STOP_MODES, default="command_loss",
                         help="주행 정지 방식. command_loss(기본, 발행 중단·timeout 감속) 또는 zero_command(0 명령 즉시·유지)")
+    parser.add_argument('--criteria', type=Path, default=None,
+                        help='판정 기준 파일(stop_odom_criteria_dev.yaml). 주면 결과에 기준 항목별 판정을 더한다')
+    parser.add_argument('--world-file', type=Path, default=None,
+                        help='측정 월드 파일. 결과 conditions에 경로·sha256을 남긴다(LD-1 비교 키)')
+    parser.add_argument('--rejudge', type=Path, default=None,
+                        help='측정 없이 과거 result.json을 --criteria로 재판정해 같은 폴더에 <이름>.judged.json을 쓴다')
 
     return parser
 
@@ -1358,6 +1368,25 @@ def main():
 
     if arguments.repeats < 1:
         parser.error("--repeats는 1 이상")
+
+    # 과거 결과 재판정은 시뮬레이션 없이 판정만 하고 끝낸다.
+    if arguments.rejudge is not None:
+        if arguments.criteria is None:
+            parser.error('--rejudge에는 --criteria가 필요')
+
+        sys.exit(run_rejudge('stop', arguments.rejudge, arguments.criteria))
+
+    if arguments.world_file is not None and not arguments.world_file.is_file():
+        parser.error(f'--world-file 파일 없음: {arguments.world_file}')
+
+    # 기준 파일은 측정 전에 읽어 형식 오류를 먼저 알린다.
+    criteria = None
+
+    if arguments.criteria is not None:
+        try:
+            criteria = load_criteria(arguments.criteria)
+        except (OSError, ValueError) as error:
+            parser.error(f'--criteria 읽기 실패: {error}')
 
     payload = None
 
@@ -1391,6 +1420,7 @@ def main():
     rclpy.init()
     node = StopFeedbackRecorder(arguments.robot_id, truth_poses, arguments.tilt_abort)
     node.payload_spawned = False
+    node.world_file = arguments.world_file
 
     try:
         urdf = fetch_robot_description(
@@ -1458,8 +1488,18 @@ def main():
         reader.terminate()
         reader.wait(timeout=5)
 
+        # 기준 파일을 받았으면 최종 상태로 판정해 결과에 더한다.
+        judged = None
+
+        if criteria is not None:
+            judged = judge_stop(record, *criteria)
+            record.update(judged)
+
         # 정리 뒤 최종 기록을 남긴다. 중간 저장본을 마지막 상태로 덮어쓴다.
         write_record(path, record, report=True)
+
+        if judged is not None:
+            print_judgment(judged)
 
     failures = record["failures"]
     status = record["status"]

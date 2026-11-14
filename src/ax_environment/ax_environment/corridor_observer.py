@@ -268,6 +268,7 @@ class CorridorObserver(Node):
         message = CorridorObservationList()
         message.robot_id = self.robot_id
         message.meta = self.meta(now, reason)
+        # B4는 목록과 각 관측을 함께 검사합니다. 미승인·위치 불명은 정상 비점유로 보내지 않습니다.
 
         for corridor_id in self.corridor_ids:
             state, position_valid = result.get(corridor_id, ('UNKNOWN', False))

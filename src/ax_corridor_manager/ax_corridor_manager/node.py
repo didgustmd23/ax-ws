@@ -41,6 +41,7 @@ class CorridorNode(Node):
             # 정책 승인값을 넘기지 않아 운영 노드는 기본 보류 상태로 시작합니다.
             database, corridors, self.robots, enabled=regions['approved'])
         self.get_logger().warning('통로 허가 정책 미합의: 새 허가 발급 보류, 기존 원장 보존')
+        # 연동 시험 통과와 정책 승인은 별개입니다. 상대가 연결됐다고 보류를 자동 해제하지 않습니다.
         self.session = uuid.uuid4().hex
         self.sources = {}
         self.retired = {}

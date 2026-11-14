@@ -12,10 +12,9 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 for relative in ('src/ax_environment', 'src/ax_task_executor',
-                 'src/ax_safety', 'src/ax_d4/ax_d4', 'tools/tests'):
+                 'src/ax_safety', 'src/ax_d4', 'tools/tests'):
     sys.path.insert(0, str(ROOT / relative))
-# 임시 설치한 D4 의존성이 있으면 시험에서만 사용합니다. 전역 환경은 바꾸지 않습니다.
-sys.path.insert(0, str(ROOT.parent / '.ax-ws-backups/d4-review-deps'))
+# rfc8785는 D4에 선언된 의존성입니다. 개인 임시 폴더를 import 경로로 추가하지 않습니다.
 
 from ax_environment.corridor_observer import CorridorObserver
 from ax_environment.regions import observe_robot
@@ -90,6 +89,15 @@ class B3B4ConsumerTests(unittest.TestCase):
         self.assertFalse(result.meta.valid)
         self.assertFalse(result.allow_forward)
 
+    def test_empty_b3_catalog_is_blocked_by_updated_b4(self):
+        """새 B4의 빈 목록 차단이 실제 B3 메시지와 연결돼도 유지되는지 확인합니다."""
+        message = self.produce(True)
+        # 메타가 유효해도 통로가 사라진 목록을 통로 전체 비점유로 해석하면 안 됩니다.
+        message.observations = []
+        result = self.consume(message)
+        self.assertFalse(result.meta.valid)
+        self.assertFalse(result.allow_forward or result.allow_backward or result.allow_rotate)
+
 
 class A3D4ConsumerTests(unittest.TestCase):
     """A3 실제 상태·결과 생성 함수를 D4 원본 검증과 원장에 직접 연결합니다."""
@@ -97,9 +105,10 @@ class A3D4ConsumerTests(unittest.TestCase):
     def test_mock_output_is_schema_compatible_but_not_operational_authority(self):
         """모의 상태는 형식 검사를 통과해도 운영 원장에서는 UNKNOWN이어야 합니다."""
         import test_d4_w0 as fixture
-        from common_contract import check_a3_action_result, check_status
-        from input_source import to_d4_status
-        from ledger import accept_status
+        # 최신 D4의 패키지 import 및 SQLite 명시적 커밋 경로를 그대로 사용합니다.
+        from ax_d4.common_contract import check_a3_action_result, check_status
+        from ax_d4.input_source import to_d4_status
+        from ax_d4.ledger import accept_status
 
         status = RobotTaskStatus()
         set_message_fields(status, fixture.make_status())

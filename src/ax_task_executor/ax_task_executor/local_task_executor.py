@@ -101,6 +101,7 @@ class LocalTaskExecutor(MockExecutor):
         elif self.lease_mode == 'mutex':
             host, group = self, MutuallyExclusiveCallbackGroup()
         else:
+            # Action 대기와 lease 확인을 분리합니다. 실제 직렬 기록은 원장·권한 잠금이 담당합니다.
             host, group = self, ReentrantCallbackGroup()
 
         self.lease_service = host.create_service(

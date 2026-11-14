@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-14",
+  "subject": "김성민 A3 lease 지연 점검표 재확인",
+  "scope": "dev_allow 모의 Action 부하 중 실제 local_task_executor ROS 서비스 왕복",
+  "domain_allocation": "test_a3_local_task_executor 전용 138~140 공용 잠금 예약",
+  "thresholds": {
+    "p99_s_less_than": 0.1,
+    "max_s_less_than": 0.5
+  },
+  "measurement": {
+    "n": 1000,
+    "accept_records": 1000,
+    "clients": 4,
+    "threads": 4,
+    "action_goals_during": 10,
+    "sqlite_synchronous": "FULL",
+    "p50_s": 0.015459694499998733,
+    "p99_s": 0.030241921000000005,
+    "max_s": 0.034753613999999544,
+    "wall_s": 4.311387374999999,
+    "server_p99_s": 0.025374057000000505
+  },
+  "measurement_source": "test_lease_latency_under_action_load의 이번 실행 stdout 실측 요약",
+  "passed": true,
+  "limitations": [
+    "이번 한 회차의 통과이며 일반적인 지연 보장이나 과거 초과 원인 확정이 아님",
+    "실제 D4 배정 응답·운영 lease 발급·Gazebo 전체 부하를 포함하지 않음",
+    "SQLite WAL 및 synchronous=FULL을 유지했고 판정 기준·표본 수를 완화하지 않음"
+  ]
+}

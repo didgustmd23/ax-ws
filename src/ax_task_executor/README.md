@@ -354,8 +354,9 @@ ros2 launch ax_task_executor team_handoff.launch.py robot_ids:=robot_2 robot_mod
 | B2 위치 감독 | `/ax/<robot_id>/localization/health`, TF | B3가 팀의 위치·유효성 계약을 소비 |
 | B4 `b4_risk_node.py` | `/ax/<robot_id>/perception/corridor_observation` | AX_1·AX_2 각각 B4 원본 코드로 정상·무효·만료·회복 시험 |
 
-D4 상태 구독 QoS·시뮬레이션 시각·타입 조회의 알려진 제한과 **D4 실제 배정 확인 응답 미구현**은 D4 담당 범위다.
-A3의 배정 확인 요청·응답 처리와 주기 확인은 구현되어 있으며, D4 실제 응답 미구현과 구분한다.
+최신 D4는 ax_d4 패키지 실행, 상태 구독 TRANSIENT_LOCAL, use_sim_time 기본값과 설치 환경의
+메시지 schema 조회를 반영했다. 이는 상태 수신·원장 실행 경로의 보완이며 **D4 실제 배정 확인 응답은
+여전히 미구현**이다. A3의 배정 확인 요청·응답 처리와 주기 확인은 구현되어 있으며 이와 구분한다.
 A3에서 잘못된 타입·시각으로 맞추거나 배정을 대신 승인하지 않는다.
 실제 상대 브랜치/실행 환경의 추가 변경은 그 담당자와 별도 확인해야 한다.
 
@@ -517,6 +518,13 @@ A4 형식의 lease 클라이언트 요청도 시험하지만 실제 C4·A4·D4 �
 [초기 모의 대기 인계 초안](../../docs/guides/A3_D4_IDLE_HANDOFF_PROPOSAL.md)을 따른다.
 
 ### 저장소 반영 상태 (2026-11-14 기준)
+
+담당자 점검표의 A3 지연·메시지 인계에 대한 현재 재확인 결과는
+[김성민 담당 후속 검증](../../docs/guides/KIM_VALIDATION_STATUS_2026-11-14.md)을 본다.
+이번 개발 정책 측정의 p99 통과를 실제 운영 배정·Gazebo 전체 부하의 지연 보장으로 해석하지 않는다.
+추가 다회차 계측과 저장소·잠금 대기 분석은
+[A3 지연 원인 조사](../../docs/guides/A3_LEASE_LATENCY_INVESTIGATION_2026-11-14.md)를 본다.
+과거 초과 원인 확정과 운영 코드 수정은 아직 완료되지 않았다.
 
 기존 작업은 GK 커밋 `1cda53d`로 업로드했고, [PR #58](https://github.com/didgustmd23/ax-ws/pull/58)을
 통해 main에 반영했다(main 병합 커밋 `5ebbeae`). PR #56 반영 후 #57에서 되돌리고 #58에서 다시 반영한 이력이다.

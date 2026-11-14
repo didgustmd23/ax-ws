@@ -149,6 +149,7 @@ class LeaseLedger:
         # 실제 모드를 journal_mode에 남겨 서버가 경고하게 한다.
         self.journal_mode = self.db.execute('PRAGMA journal_mode=WAL').fetchone()[0].lower()
         self.db.execute('PRAGMA synchronous=FULL')
+        # 지연 시험을 통과시키려고 내구성을 낮추면 안 됩니다. 허용 전에 수락 기록이 저장돼야 합니다.
         self.db.execute("""CREATE TABLE IF NOT EXISTS checks (
             robot TEXT NOT NULL, request_id TEXT NOT NULL, fingerprint TEXT NOT NULL,
             response TEXT NOT NULL, PRIMARY KEY (robot, request_id))""")

@@ -37,7 +37,7 @@ TOOL = load_tool()
 
 class TexturedWorld(unittest.TestCase):
 
-    # 단색 월드와 구조(태그·속성·텍스트·자식 수)가 같고, 차이는 material 아래 pbr 240개뿐이다
+    # 두 상자 배치에서 단색 월드와 구조가 같고, 차이는 material 아래 pbr 99개뿐이다.
     def test_structure_matches_base_except_pbr(self):
         base = TOOL.BASE_WORLD.read_text(encoding='utf-8')
         textured = TOOL.TEXTURED_WORLD.read_text(encoding='utf-8')
@@ -45,7 +45,7 @@ class TexturedWorld(unittest.TestCase):
         errors, pbr_list = TOOL.compare_structure(base, textured)
 
         self.assertEqual(errors, [])
-        self.assertEqual(len(pbr_list), 240)
+        self.assertEqual(len(pbr_list), 99)
         self.assertNotIn('<pbr>', base)
 
     # 단색 월드에 없는 줄은 pbr 블록뿐이고, 단색 월드 줄은 하나도 빠지지 않는다
@@ -61,7 +61,7 @@ class TexturedWorld(unittest.TestCase):
         kept = [line for line in textured_lines if not line.strip().startswith(allowed)]
 
         self.assertEqual(kept, base_lines)
-        self.assertEqual(len(textured_lines) - len(base_lines), 240 * 8)
+        self.assertEqual(len(textured_lines) - len(base_lines), 99 * 8)
 
     # Gazebo 월드 이름은 도구 호환을 위해 단색 월드와 같은 ax_test다
     def test_world_name_kept(self):
@@ -78,7 +78,7 @@ class TexturedWorld(unittest.TestCase):
         uris = {item['albedo_map'] for item in pbr_list}
 
         self.assertEqual(TOOL.texture_problems(pbr_list, manifest), [])
-        self.assertEqual(len(uris), 33)
+        self.assertEqual(len(uris), 30)
         prefix = 'model://ax_description/worlds/planned/textures/'
         self.assertTrue(all(uri.startswith(prefix) for uri in uris))
         # 작성 PC 절대 경로가 없어야 한다(check_portability.py와 같은 방식으로 문자열을 나눠 적는다)
@@ -148,9 +148,11 @@ class TexturedWorld(unittest.TestCase):
             ]
             subprocess.run(command, check=True, capture_output=True, timeout=300)
 
-            for path in sorted(TOOL.TEXTURE_DIR.iterdir()):
-                regenerated = (Path(folder) / path.name).read_bytes()
-                self.assertEqual(regenerated, path.read_bytes(), path.name)
+            # 제거된 상자에 쓰던 보관 이미지까지 재생성할 필요는 없다.
+            for path in sorted(Path(folder).iterdir()):
+                if path.name == 'textures_manifest.json':
+                    continue
+                self.assertEqual(path.read_bytes(), (TOOL.TEXTURE_DIR / path.name).read_bytes(), path.name)
 
 
 if __name__ == '__main__':

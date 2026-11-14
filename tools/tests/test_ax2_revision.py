@@ -101,7 +101,7 @@ class Ax2Revision(unittest.TestCase):
         self.assertTrue(data['unloaded_com_xy_inside_wheel_centers'])
         self.assertTrue(np.all(np.linalg.eigvalsh(data['inertia_at_total_com_kg_m2'])>0))
 
-    def test_worlds_three_clear_corridors_and_all_size_samples(self):
+    def test_worlds_three_clear_corridors_and_two_color_samples(self):
         self.assertEqual({p.relative_to(ROOT).as_posix() for p in ROOT.rglob('*.world')
                           if not any(part in ('build','install','log') or part.startswith('.')
                                      for part in p.relative_to(ROOT).parts)},
@@ -111,8 +111,13 @@ class Ax2Revision(unittest.TestCase):
                 world=ET.parse(PKG/'worlds/planned'/world_name).getroot().find('world')
                 models={m.get('name'):m for m in world.findall('model')}
                 self.assertEqual(sum(n.startswith('floor_transfer_corridor') for n in models),3)
-                self.assertEqual(sum(n.startswith('cargo_box_') for n in models),120)
-                self.assertEqual(sum(n.startswith('sample_') for n in models),23)
+                self.assertEqual(sum(n.startswith('cargo_box_') for n in models),0)
+                self.assertEqual({n for n in models if n.startswith('sample_')},
+                                 {'sample_fit_medium_01', 'sample_reject_wide_01'})
+                for name, channel in (('sample_fit_medium_01', 1),
+                                      ('sample_reject_wide_01', 0)):
+                    color=np.fromstring(models[name].findtext('link/visual/material/diffuse'),sep=' ')
+                    self.assertGreater(color[channel],max(color[(channel+1)%3],color[(channel+2)%3]))
                 for name,m in models.items():
                     if not name.startswith('floor_transfer_corridor'):continue
                     self.assertEqual(m.findtext('static'),'true')
@@ -145,7 +150,8 @@ class Ax2Revision(unittest.TestCase):
                 if other_name!=name:
                     self.assertFalse(np.all(abs(p-q)<(size+other)/2-1e-6),(name,other_name))
         catalog=json.loads((PKG/'worlds/planned/box_samples.json').read_text())
-        self.assertEqual(len(catalog['layout']['stacks']),54)
+        self.assertEqual(len(catalog['layout']['stacks']),2)
+        self.assertEqual(catalog['layout']['box_count'],2)
         for sample in catalog['samples']:
             np.testing.assert_allclose(sample['position_m'],boxes[sample['model']][0])
         for lane in catalog['layout']['clear_lanes']:

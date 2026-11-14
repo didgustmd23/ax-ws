@@ -416,6 +416,13 @@ def staged_record(count, truth_offset=0.0, repeats=3):
     return record
 
 
+# 시험용 회차 구별 메타정보(측정 시각)를 붙인다. 판정기는 이 필드를 요구하지 않고 측정 내용 비교에만 쓰인다.
+def measured_at(record, stamp):
+    record['measured_at'] = stamp
+
+    return record
+
+
 class BatchJudgment(unittest.TestCase):
     def setUp(self):
         self.criteria, self.source = a2_criteria.load_criteria(CRITERIA)
@@ -463,7 +470,9 @@ class BatchJudgment(unittest.TestCase):
         result = self.judge([staged_record(1, repeats=1), staged_record(1, repeats=2)])
         self.assertEqual(result['batch_items'][0]['result'], 'PASS')
 
-        result = self.judge([staged_record(1, repeats=1), staged_record(1, repeats=1)])
+        # 서로 다른 두 회차(측정 시각이 다름). 같은 내용 두 번은 중복 입력으로 거부된다(BatchDuplicates).
+        result = self.judge([measured_at(staged_record(1, repeats=1), '20261114_100000'),
+                             measured_at(staged_record(1, repeats=1), '20261114_110000')])
         item = result['batch_items'][0]
         self.assertEqual(item['result'], 'not_judged')
         self.assertIn('반복 수 부족', item['reason'])
@@ -533,6 +542,211 @@ class BatchJudgment(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 a2_criteria.batch(None, paths, CRITERIA, output)
+
+
+# 묶음 판정 중복 회차 입력 거부: 같은 측정 결과를 여러 번 넣어 A2-S7·LD-1·coverage를 늘릴 수 없다.
+class BatchDuplicates(unittest.TestCase):
+    def setUp(self):
+        self.criteria, self.source = a2_criteria.load_criteria(CRITERIA)
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = Path(self.folder.name)
+        self.record = staged_record(1, repeats=1)
+        self.path = self.root / 'a' / 'result.json'
+        self.path.parent.mkdir()
+        self.path.write_text(json.dumps(self.record, ensure_ascii=False), encoding='utf-8')
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    # batch()가 중복 회차 입력 오류를 내는지 확인하고 오류 문구를 돌려준다
+    def assert_refused(self, paths, basis):
+        output = self.root / 'out' / 'batch.json'
+
+        with self.assertRaises(ValueError) as caught:
+            a2_criteria.batch(None, paths, CRITERIA, output)
+
+        message = str(caught.exception)
+        self.assertIn('중복 회차 입력', message)
+        self.assertIn(basis, message)
+        self.assertFalse(output.parent.exists())
+
+        return message
+
+    def test_same_path_three_times_direct_call(self):
+        # 최초 재현: 같은 파일 3번이면 runs=3으로 A2-S7 PASS가 됐다. judge_batch 직접 호출도 거부한다.
+        original = json.dumps(self.record, ensure_ascii=False).encode('utf-8')
+
+        with self.assertRaises(ValueError) as caught:
+            a2_criteria.judge_batch([('x.json', original, None)] * 3, self.criteria, self.source)
+
+        self.assertIn('중복 회차 입력', str(caught.exception))
+        self.assertIn('경로', str(caught.exception))
+
+        # 한 번만 넣으면 기존처럼 반복 수 부족으로 not_judged다.
+        single = a2_criteria.judge_batch([('x.json', original, None)], self.criteria, self.source)
+        self.assertEqual(single['batch_items'][0]['result'], 'not_judged')
+
+    def test_dotdot_and_symlink_aliases(self):
+        alias = self.root / 'a' / '..' / 'a' / 'result.json'
+        message = self.assert_refused([self.path, alias], '경로')
+        self.assertIn(str(self.path), message)
+
+        link = self.root / 'link.json'
+        link.symlink_to(self.path)
+        self.assert_refused([self.path, link], '경로')
+
+    def test_same_bytes_at_other_path(self):
+        other = self.root / 'copy.json'
+        other.write_bytes(self.path.read_bytes())
+        message = self.assert_refused([self.path, other], '원본 해시')
+        self.assertIn(str(self.path), message)
+        self.assertIn(str(other), message)
+
+    def test_same_content_other_json_format(self):
+        other = self.root / 'pretty.json'
+        reordered = dict(reversed(list(self.record.items())))
+        other.write_text(json.dumps(reordered, ensure_ascii=False, indent=4), encoding='utf-8')
+        message = self.assert_refused([self.path, other], '측정 내용')
+        self.assertNotIn('원본 해시', message)
+
+    def test_original_and_rejudged_copy(self):
+        # 최초 재현: 원본과 원본의 .judged.json은 runs=2로 중복 집계됐다.
+        target, _ = a2_criteria.rejudge('stop', self.path, CRITERIA)
+        self.assert_refused([self.path, target], '측정 내용')
+
+    def test_rejudged_with_different_criteria_and_time(self):
+        # 같은 원본을 서로 다른 기준·시각으로 재판정한 두 사본도 같은 측정 내용이다.
+        changed = self.root / 'criteria_changed.yaml'
+        text = CRITERIA.read_text(encoding='utf-8')
+        self.assertEqual(text.count('max_sample_interval_s: 0.05'), 1)
+        changed.write_text(text.replace('max_sample_interval_s: 0.05', 'max_sample_interval_s: 0.04'), encoding='utf-8')
+
+        first, _ = a2_criteria.rejudge('stop', self.path, CRITERIA)
+        moved = self.root / 'first.judged.json'
+        record = json.loads(first.read_text(encoding='utf-8'))
+        record['rejudged_from']['at'] = '2026-11-14T00:00:00+09:00'
+        moved.write_text(json.dumps(record, ensure_ascii=False), encoding='utf-8')
+        second, _ = a2_criteria.rejudge('stop', self.path, changed)
+
+        first_record = json.loads(moved.read_text(encoding='utf-8'))
+        second_record = json.loads(second.read_text(encoding='utf-8'))
+        self.assertNotEqual(first_record['criteria'], second_record['criteria'])
+        self.assertNotEqual(first_record['sample_gap'], second_record['sample_gap'])
+        self.assertNotEqual(first_record['rejudged_from']['at'], second_record['rejudged_from']['at'])
+        self.assert_refused([moved, second], '측정 내용')
+
+    def test_measured_rtf_value_still_distinguishes(self):
+        # 판정기가 rtf를 기록 사전으로 바꿔도 측정값(value)은 비교에 남는다.
+        first = dict(self.record, rtf=0.9)
+        second = dict(self.record, rtf=0.5)
+        inputs = [(f'r{index}.json', json.dumps(record).encode('utf-8'), None)
+                  for index, record in enumerate((first, second))]
+        a2_criteria.judge_batch(inputs, self.criteria, self.source)
+
+        judged = dict(first)
+        judged.update(a2_criteria.judge_stop(copy.deepcopy(first), self.criteria, self.source))
+        self.assertEqual(a2_criteria.measurement_key(judged), a2_criteria.measurement_key(first))
+        self.assertNotEqual(a2_criteria.measurement_key(first), a2_criteria.measurement_key(second))
+
+    # 원본에서 시작해 재판정을 count번 거듭한 파일 경로 목록(원본 포함)을 돌려준다
+    def rejudge_chain(self, path, count):
+        paths = [path]
+
+        for _ in range(count):
+            target, _ = a2_criteria.rejudge(None, paths[-1], CRITERIA)
+            paths.append(target)
+
+        return paths
+
+    def test_repeated_rejudge_chain_is_same_run(self):
+        # 재판정본을 다시 재판정하면 rtf 기록 사전이 value 안에 겹친다. 그래도 같은 회차로 본다.
+        paths = self.rejudge_chain(self.path, 3)
+        records = [json.loads(path.read_text(encoding='utf-8')) for path in paths]
+        self.assertIsInstance(records[2]['rtf']['value'], dict)
+        self.assertEqual(len({a2_criteria.measurement_key(record) for record in records}), 1)
+
+        before = [path.read_bytes() for path in paths]
+        inputs = [(str(path), path.read_bytes(), None) for path in (paths[0], paths[2])]
+
+        with self.assertRaises(ValueError) as caught:
+            a2_criteria.judge_batch(inputs, self.criteria, self.source)
+
+        self.assertIn('측정 내용', str(caught.exception))
+
+        # CLI: 원본 + 두 번째 재판정본은 exit 2, 모든 입력 바이트 불변, 출력 없음
+        output = self.root / 'out' / 'batch.json'
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPTS / 'a2_criteria.py'), '--batch', str(paths[0]), str(paths[2]),
+             '--criteria', str(CRITERIA), '--output', str(output)],
+            capture_output=True, text=True, timeout=60,
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn('중복 회차 입력', completed.stderr)
+        self.assertEqual([path.read_bytes() for path in paths], before)
+        self.assertFalse(output.parent.exists())
+
+    def test_measured_rtf_number_survives_rejudge_chain(self):
+        # 측정 RTF 숫자는 재판정을 거듭해도 그대로 남고, 다른 숫자·없음과 구별된다.
+        keys = {}
+
+        for name, value in (('fast', 0.9), ('slow', 0.5), ('none', None)):
+            path = self.root / name / 'result.json'
+            path.parent.mkdir()
+            path.write_text(json.dumps(dict(self.record, rtf=value), ensure_ascii=False), encoding='utf-8')
+            chain = self.rejudge_chain(path, 2)
+            records = [json.loads(item.read_text(encoding='utf-8')) for item in chain]
+            self.assertEqual(len({a2_criteria.measurement_key(record) for record in records}), 1)
+            keys[name] = a2_criteria.measurement_key(records[-1])
+
+        self.assertEqual(len(set(keys.values())), 3)
+
+        # rtf가 None인 결과는 rtf가 없는 결과와 같은 측정 내용이다.
+        self.assertEqual(keys['none'], a2_criteria.measurement_key(self.record))
+
+        # 기록 사전과 키 집합이 다른 rtf 사전은 측정값 그대로 두고 벗기지 않는다.
+        other = dict(self.record, rtf={'value': 0.9, 'source': 'measured'})
+        self.assertNotEqual(a2_criteria.measurement_key(other), keys['fast'])
+
+    def test_command_line_refuses_without_writing(self):
+        before = self.path.read_bytes()
+        output = self.root / 'out' / 'batch.json'
+        command = [sys.executable, str(SCRIPTS / 'a2_criteria.py'), '--batch', str(self.path), str(self.path),
+                   str(self.path), '--criteria', str(CRITERIA), '--output', str(output)]
+
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=60)
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn('중복 회차 입력', completed.stderr)
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertFalse(output.parent.exists())
+
+        # 기존 출력이 있으면 그 내용은 바뀌지 않는다.
+        output.parent.mkdir()
+        output.write_text('{"keep": true}\n', encoding='utf-8')
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=60)
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertEqual(output.read_text(encoding='utf-8'), '{"keep": true}\n')
+        self.assertEqual(sorted(path.name for path in output.parent.iterdir()), ['batch.json'])
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_independent_runs_still_add_up(self):
+        first = measured_at(staged_record(1, repeats=1), '20261114_100000')
+        second = measured_at(staged_record(1, repeats=2), '20261114_110000')
+        result = a2_criteria.judge_batch(batch_inputs([first, second]), self.criteria, self.source)
+        self.assertEqual(result['batch_items'][0]['result'], 'PASS')
+
+        # 한 파일 안의 반복 3회는 그대로 충족이다.
+        result = a2_criteria.judge_batch(batch_inputs([staged_record(1, repeats=3)]), self.criteria, self.source)
+        self.assertEqual(result['batch_items'][0]['result'], 'PASS')
+
+        # 독립 회차 FAIL은 묶음 FAIL로 남는다.
+        failed = measured_at(staged_record(1, repeats=2), '20261114_120000')
+        failed['runs']['직진 0.3 m/s'][0]['stop_time_difference_s'] = 10.0
+        result = a2_criteria.judge_batch(batch_inputs([first, failed]), self.criteria, self.source)
+        self.assertEqual(result['judgment'], 'FAIL')
+        self.assertEqual(result['failures'][0]['path'], 'run1.json')
 
 
 # get_topic_names_and_types·count_publishers만 흉내 내는 그래프 조회 모의 노드

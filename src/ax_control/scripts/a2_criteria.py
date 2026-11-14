@@ -937,12 +937,71 @@ def run_summary(entry):
     return summary
 
 
+# 판정·재판정이 결과에 덧붙이는 최상위 필드(judge_stop·judge_wheel·overall·rejudge). 측정 내용 비교에서 뺀다.
+# sample_gap은 runs 등 측정값과 기준 한계로 다시 계산되는 판정 기록이다. rtf는 measurement_key에서 측정값만 남긴다.
+JUDGED_FIELDS = ('criteria', 'criteria_items', 'judgment', 'judgment_reason', 'judged_subset', 'rejudged_from',
+                 'sample_gap')
+RTF_RECORD_KEYS = {'rtf_min', 'value', 'use'}
+
+
+# 판정 부가 필드를 뺀 측정 내용의 SHA-256. 원본·재판정본·서식만 다른 사본이 같은 값을 낸다.
+def measurement_key(record):
+    content = {key: value for key, value in record.items() if key not in JUDGED_FIELDS}
+    rtf = content.get('rtf')
+
+    # 판정기가 rtf를 기록 사전(rtf_record)으로 바꾼 경우 측정값만 남긴다. 재판정을 거듭하면 사전이 value 안에
+    # 겹겹이 쌓이므로, 키 집합이 정확히 기록 사전인 겹만 연속으로 벗긴다(그 밖의 사전은 측정값으로 그대로 둔다).
+    while isinstance(rtf, dict) and set(rtf) == RTF_RECORD_KEYS:
+        rtf = rtf['value']
+
+    # 값이 없으면(None) 원본에 rtf가 없던 것과 같다.
+    if rtf is None:
+        content.pop('rtf', None)
+    else:
+        content['rtf'] = rtf
+
+    text = json.dumps(content, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+
+# 묶음 입력 중 같은 회차(경로·원본 바이트·측정 내용 중 하나라도 같음)를 모두 찾아 ValueError를 낸다.
+# 입력: (경로, 원본 바이트, 해석한 결과) 목록. 경로는 존재를 요구하지 않고 정규화만 한다.
+def check_duplicate_inputs(parsed):
+    seen = {}
+    pairs = {}
+
+    for index, (path, original, record) in enumerate(parsed):
+        keys = (
+            ('경로', str(Path(path).resolve())),
+            ('원본 해시', hashlib.sha256(original).hexdigest()),
+            ('측정 내용', measurement_key(record)),
+        )
+
+        for basis, key in keys:
+            first = seen.setdefault((basis, key), index)
+
+            if first != index:
+                pairs.setdefault((first, index), []).append(basis)
+
+    if pairs:
+        details = '; '.join(
+            f'{parsed[first][0]} ↔ {parsed[second][0]} (일치: {"·".join(bases)})'
+            for (first, second), bases in sorted(pairs.items())
+        )
+        raise ValueError(f'중복 회차 입력: {details}')
+
+
 # 여러 회차 결과를 묶어 판정한다. 입력은 (경로, 원본 바이트, 종류 또는 None) 목록이며 원본은 바꾸지 않는다.
+# 같은 회차가 두 번 이상 들어오면 반복·부하·coverage 계산 전에 묶음 전체를 거부한다(ValueError).
 def judge_batch(inputs, criteria, source):
+    inputs = list(inputs)
+    parsed = [(path, original, json.loads(original.decode('utf-8'))) for path, original, _ in inputs]
+    check_duplicate_inputs(parsed)
+
     entries = []
 
-    for path, original, kind in inputs:
-        record = json.loads(original.decode('utf-8'))
+    for (path, original, kind), (_, _, record) in zip(inputs, parsed):
         kind = kind or detect_kind(record)
         judged = JUDGES[kind](copy.deepcopy(record), criteria, source)
         entries.append({

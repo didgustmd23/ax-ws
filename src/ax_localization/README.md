@@ -11,9 +11,9 @@ B2 지도 작성·위치 추정 패키지다. 이 패키지가 제공하는 것�
 
 설계 기준은 [상세설계 6.1절](../../docs/design/DETAILED_DESIGN.md#61-기준-지도-작성검증전달-b2)과 [공통 인터페이스 계약](../../docs/design/INTERFACE_CONTRACT.md) 2.2·4.2절이다.
 
-## 두 창고 월드 지도 작성 — 개발용, revision 1 채택(2026-11-12, 개발용 기준 PASS)
+## 두 창고 월드 지도 작성 — 개발용, revision 2 채택(2026-11-15, 사용자 채택 지시)
 
-- **채택 지도:** `maps/ax_warehouse/map.yaml` revision 1(`judgment: PASS`, 개발용 기준 `acceptance_criteria_dev.yaml`, 운영·실물 기준 아님). 앞·뒤 병합 스캔 2026-11-12 회차로 만들었다. 판정 값·한계·AMCL 회귀는 [두 창고 지도 안내](maps/ax_warehouse/README.md)에 있다. 아래 2026-11-11 실행은 채택하지 않은 이전 후보 기록이다.
+- **채택 지도:** `maps/ax_warehouse/map.yaml` revision 2(도구 `judgment: PASS`, 개발용 기준 `acceptance_criteria_dev.yaml`, 운영·실물 기준 아님). 최신 기준 월드(상자 141개 제거 뒤, 낮은 상자 2개는 LiDAR 평면 아래)에서 앞·뒤 병합 스캔 2026-11-15 회차로 만들었다. 별도 검사 '큰 도약 0'은 0.1072 m 보정 1건으로 불통과였고, 이 이력을 알고 사용자가 채택을 지시했다. revision 2 지도로 한 AMCL 회귀는 아직 없다. 판정 값·한계·revision 1 이력은 [두 창고 지도 안내](maps/ax_warehouse/README.md)에 있다. 아래 2026-11-11 실행은 채택하지 않은 이전 후보 기록이다.
 - **경로:** `config/routes/ax_warehouse_center.yaml`(robot_2 무부하). 출발 world (-6.8, 0) → 서쪽 입구 앞 관문 P1(world x -5.4, 통로 밖) → 중앙 통로 직진 → 동쪽 출구 뒤 관문 P2(world x 5.6, 통로 밖). 통로 안 회전·경유점은 없다.
 - **전체 경로:** `config/routes/ax_warehouse_full.yaml`(20경유점, 회전 정렬 모드, 관문 P1~P6 = 세 통로의 입구·출구). 2026-11-11 실행 1회:
   - 주행: completed. 보호·입력·진척 정지 0, 접촉 없음. 입구 관문 P1·P3·P5의 odom 정렬은 측면 ≤ 0.026 m, 방향 ≤ 0.00185 rad. 실제(평가 전용) 측면은 +0.008·−0.074·−0.047 m.
@@ -51,7 +51,7 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 
 ## 위치 추정(AMCL) — 개발용
 
-- **현재 상태:** 운영 지도는 없다. 현재 지도는 두 창고 기준 월드의 채택 지도 revision 1(`maps/ax_warehouse`, 개발용 기준 PASS)이다. 이 지도로 한 AMCL 회귀는 robot_2 단독이며 지도 안내에 있다. 아래 2026-11-08·11-09 결과는 과거 단순화 월드·AWS 개발용 지도(미채택) 조건이다. A1이 운영 모델을 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.
+- **현재 상태:** 운영 지도는 없다. 현재 지도는 두 창고 기준 월드의 채택 지도 revision 2(`maps/ax_warehouse`, 2026-11-15, 도구 PASS·별도 검사 큰 도약 1건 불통과 이력)이다. 아래 위치 추정 결과는 모두 revision 1 지도(또는 그 이전 지도)에서 한 것이며 revision 2 회귀는 아직 없다. 아래 2026-11-08·11-09 결과는 과거 단순화 월드·AWS 개발용 지도(미채택) 조건이다. A1이 운영 모델을 확정하면 지도를 다시 만들고 위치 추정도 다시 검증한다.
 - **정확도 판정:** 개발용 기준 파일 [`config/localization_criteria_dev.yaml`](config/localization_criteria_dev.yaml)(소비자 합의 전)을 `check_localization.py --criteria`로 읽어 정지·주행 오차와 스캔 입력, 주행 중 health OK 비율(B2-L3), 벽시계 제한 회차(LD-3), 과신·도약 감지·재위치(B2-L4~L7)를 판정한다. 사건 시험(B2-L5~L7)이 노출되지 않은 회차와 반복·부하 비교(B2-L8·LD-2)가 남은 묶음은 PASS가 될 수 없다([평가 도구](#평가-도구)).
 - **구현 범위:** 공통 지도 서버·로봇별 AMCL, 위치 신뢰성 발행(`LocalizationHealth`), 고정 출발 위치 최초 초기화, 같은 세션의 마지막 신뢰 위치 기반 제한 재위치(`localization/reinitialize`).
 - **범위 밖:** 전역 재위치, 표식 인식, 복구 이동, 예비 로봇 배정, 안전 해제, Nav2 연결, 운영 지도 채택, 위치 이상 탐지(Isolation Forest, `anomaly_model_available=false`).
@@ -87,7 +87,7 @@ export ROS_DOMAIN_ID=<번호> GZ_PARTITION=<이름> ROS_AUTOMATIC_DISCOVERY_RANG
 ros2 launch ax_control simulation.launch.py robot_ids:=robot_2 gui:=false
 ros2 launch ax_perception sensors.launch.py robot_ids:=robot_2
 
-# 2. 위치 추정: 채택 지도 revision 1. map 원점 = robot_2 출발 자세라 initial pose는 (0, 0, 0)
+# 2. 위치 추정: 채택 지도 revision 2. map 원점 = robot_2 출발 자세라 initial pose는 (0, 0, 0)
 ros2 launch ax_localization localization.launch.py \
     map:="$PWD/src/ax_localization/maps/ax_warehouse/map.yaml" robot_ids:=robot_2 \
     initial_poses:="robot_2=0,0,0"
@@ -304,7 +304,7 @@ python3 src/ax_localization/scripts/check_localization.py --robot-ids robot_1,ro
 | `status: incomplete` | 기록 시간이 부족하거나 한 로봇이라도 필수 입력·연결이 없다. `problems`와 로봇별 `problems`에 사유를 남기고 종료 코드 1로 끝난다. 확보한 기록·계산 결과는 그대로 남는다 |
 | `judgment: not_judged` | `--criteria` 없이 실행했거나, 기준 항목 중 판정하지 못한 항목이 남았다(아래). 수치·판정한 항목은 기록한다 |
 
-개발용 위치 추정 판정 기준은 [`config/localization_criteria_dev.yaml`](config/localization_criteria_dev.yaml)이다(개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님, 대상: 두 창고 기준 월드·채택 지도 revision 1). `--criteria <기준 파일>`을 주면 결과에 `criteria_items`·`judgment`가 더해진다(판정 값 PASS·FAIL·not_judged·not_applicable·recorded). 과거 결과는 ROS 없이 `--rejudge <localization_result.json> --criteria <기준 파일>`(같은 폴더에 `*.judged.json`), 여러 회차는 `--batch <결과...> --criteria <기준 파일> --output <묶음.json>`(이미 있는 파일·입력 경로에는 쓰지 않음)으로 판정한다. 사건 시험 B2-L5~L7이 모두 `not_applicable`(사건·요청 없음)인 회차는 다른 항목이 모두 PASS여도 회차 전체를 `not_judged`(사건 시험 미노출)로 두고, 묶음 coverage는 B2-L5~L7의 지표마다 어느 유효 회차에서든 PASS·FAIL 근거를 요구한다(한 조건만 시험한 묶음은 미충족). 판정한 항목의 결과는 `judged_subset`으로 남는다.
+개발용 위치 추정 판정 기준은 [`config/localization_criteria_dev.yaml`](config/localization_criteria_dev.yaml)이다(개발용, 2026-11-14 담당(2번) 승인, 소비자 합의 전, 운영·실물 기준 아님, 대상: 두 창고 기준 월드·채택 지도 revision 2(2026-11-15 변경, 판정 값 불변. 아래 11-12~11-14 판정 결과는 revision 1 지도 회차다)). `--criteria <기준 파일>`을 주면 결과에 `criteria_items`·`judgment`가 더해진다(판정 값 PASS·FAIL·not_judged·not_applicable·recorded). 과거 결과는 ROS 없이 `--rejudge <localization_result.json> --criteria <기준 파일>`(같은 폴더에 `*.judged.json`), 여러 회차는 `--batch <결과...> --criteria <기준 파일> --output <묶음.json>`(이미 있는 파일·입력 경로에는 쓰지 않음)으로 판정한다. 사건 시험 B2-L5~L7이 모두 `not_applicable`(사건·요청 없음)인 회차는 다른 항목이 모두 PASS여도 회차 전체를 `not_judged`(사건 시험 미노출)로 두고, 묶음 coverage는 B2-L5~L7의 지표마다 어느 유효 회차에서든 PASS·FAIL 근거를 요구한다(한 조건만 시험한 묶음은 미충족). 판정한 항목의 결과는 `judged_subset`으로 남는다.
 - **B2-L3(2026-11-14 연결):** 원시 기록(`raw/<robot>/health.jsonl`·`odom.jsonl`)에서 정상 주행 시간 중 `state=OK`·`valid=true` 시간의 비율(sim time)을 낸다. 주행은 odom 속도가 D-06 경계를 넘는 구간이고 odom 공백 0.5 s 초과는 주행 여부 미확인이다. health는 stamp부터 다음 갱신까지 최대 1.0 s(D-05 만료) 유지하며, 메시지 개수·정지 포함 비율로 대신하지 않는다. 확인할 수 없는 주행 시간(공백·세션 변경·비유한·시각 역행)이 있으면 분모에서 빼지 않고 `not_judged`, 정지만 한 회차는 `not_applicable`이다. 오류 주입·재위치 구간은 원시 폴더의 `health_exclusions.json`(`schema: ax_b2_health_exclusions/1`, 구간마다 `start_sim`·`end_sim`·`reason`·`source`, 선택 `robot_id`)에 명시된 것만 뺀다. Gazebo 실제 자세는 쓰지 않는다. 원시 폴더는 `--rejudge`의 `--raw-dir`(명시) → 결과 옆 회차 폴더 → 결과의 `raw.dir` 순으로 읽기만 하고 출처·sha256을 `criteria_method.raw_evidence_source`에 남긴다.
 - **LD-3(2026-11-14 연결):** 회차마다 벽시계 제한 사건 유무와 확인 수준을 남기고, `--batch`에서 고유 회차 수(같은 원시 폴더·같은 결과 sha256은 한 번)를 상한과 비교한다. 대상은 수집기 `--wall-limit`(결과 `recording.termination`), 감독 노드 재위치 `timeout_wall_s`·의도 추적 `intent_timeout_wall_s`(감독 진단 `reinit_finished`·`INTENT_CLOSED`의 `timeout` 세부)다. sim 시간초과만·Ctrl+C·종료 파일은 세지 않고, `clock_stall_wall_s`(CLOCK_INVALID)도 세지 않는다. 확인된 제한 회차는 회차 판정을 `not_judged`(incomplete 취급)로 두되 LD-3 집계에는 넣어 묶음을 FAIL로 만든다. 세부가 없는 옛 기록의 `TIMEOUT`·`REINIT_FAILED_TIMEOUT`·`REINIT_FAILED_AMCL_UNAVAILABLE`과 감독 진단 연속성이 확인되지 않은 회차는 확인 불가(`not_judged`)이며 0으로 메우지 않는다. 연속성은 수집 구간(mono)에 걸친 tick 간격 ≤ 1.0 s(STEADY 5 Hz의 5배, 실제 최대 0.5 s), 끝 근처 tick, mono 유한·비역행, 시작(첫 tick ≤ 시작 + 1.0 s, 또는 감독 노드가 늦게 켜졌으면 health 첫 수신이 첫 tick 이후이고 health 세션이 모두 진단 세션)으로 본다. 확인된 벽시계 시간초과는 공백과 관계없이 FAIL 근거다.
 - **B2-L4~L7(2026-11-14 연결):** 원시 기록(`health`·`odom`·`tf_map_odom`·`truth`, 있으면 `amcl_lifecycle`·`actuation`)과 감독 진단에서 계산한다. 실시간 `--criteria`·`--rejudge`·`--batch`가 같은 순수 함수(`event_evidence`)를 쓰고 원시 파일은 읽기만 한다. Gazebo 실제 자세는 오프라인 정확도 판정에만 쓴다.
@@ -395,7 +395,7 @@ python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_healt
 
 ### 개발용 지도 제한
 
-- **현재 지도:** `maps/ax_warehouse/map.yaml` revision 1(두 창고 기준 월드, 2026-11-12 개발용 기준 PASS로 채택, [두 창고 지도 안내](maps/ax_warehouse/README.md)). 위치 추정 정확도는 판정 기준이 없어 `not_judged`다.
+- **현재 지도:** `maps/ax_warehouse/map.yaml` revision 2(두 창고 최신 기준 월드, 2026-11-15 사용자 채택 지시, 도구 PASS·별도 검사 큰 도약 1건 불통과 이력, [두 창고 지도 안내](maps/ax_warehouse/README.md)). revision 2로 한 위치 추정 회귀는 아직 없다.
   - launch는 `map_info.yaml` 채택 기록이 없는 지도를 "개발용 지도"로 표시한다.
 - **과거 AWS 시험 지도(기록):** `log/b2_mapping/20261109_085358/run/slam_map.yaml`(Git 제외, 미채택). 원본 AWS 월드·S005 반영 개발 모델(바퀴 `slip1 0.05`)·robot_2 선반 포함 외곽 경로로 만들었고 정확도는 `not_judged`다([AWS 지도 안내](maps/aws_warehouse/README.md)). 현재 창고에 적용할 수 없으며, 아래 2026-11-09 결과와 AWS 실행 예시·`aws_warehouse_dev.yaml`은 이 지도 조건이다.
 - **이전 시험 지도:** `log/b2_mapping/20261108_131510`은 단순화 월드(`light_collision`)·바퀴 임시 사본에서 만든 개발용 결과다([S005 자료](../../docs/evidence/wheel_slip/)). 아래 2026-11-08 결과는 그 지도·단순화 월드·이전 출발 위치 조건이다.

@@ -383,6 +383,8 @@ B2는 기준 월드에 맞는 점유 지도를 만들고 검증해 팀원이 쓸
 - 정확도 기준이 미확정이면 `judgment: not_judged`로 둔다. 지표가 좋아도 PASS로 표시하지 않는다.
 - 두 창고 기준 월드(`planned/ax_warehouse.world`)의 지도는 개발용 판정 기준 `acceptance_criteria_dev.yaml`
   (2026-11-12 사용자 승인, 운영·실물 기준 아님)로 판정하며, 같은 날 revision 1을 `judgment: PASS`로 채택했다.
+  2026-11-15 상자 141개를 제거한 최신 월드에서 다시 만든 지도를 revision 2로 채택했다(도구 PASS, 별도 검사 '큰 도약 0'은
+  0.1072 m 보정 1건으로 불통과였고 사용자가 이 이력을 알고 채택을 지시했다). revision 1은 최신 월드에서 상자 잔상 때문에 부적합하다.
   판정 값·별도 검사·한계는 [두 창고 지도 안내](../../src/ax_localization/maps/ax_warehouse/README.md)를 따른다.
 - 바퀴 마찰 후보(S005)를 넣은 임시 사본이나 충돌을 단순화한 월드에서 만든 지도는 개발용 결과로
   유지하며 채택하지 않는다([S005 검증 자료](../evidence/wheel_slip/)). 운영 모델·기준 월드가 확정되면

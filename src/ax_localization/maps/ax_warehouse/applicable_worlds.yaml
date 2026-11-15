@@ -1,35 +1,33 @@
-# 채택 지도 revision 1을 쓸 수 있는 월드 목록 (손으로 관리하는 파일, 생성 파일 아님)
+# 채택 지도 revision 2를 쓸 수 있는 월드 목록 (손으로 관리하는 파일, 생성 파일 아님)
 #
 # map_info.yaml은 check_map_accuracy.py --adopt가 만든 생성 파일이라 그대로 둔다.
-# 그 world 절(world_sha256 9b5bb281…)은 지도를 만든 회차의 월드, 즉 지금의 단색 보존 월드를 가리킨다.
-# 2026-11-12 기준 월드를 질감 버전으로 교체하면서(사용자 결정, 선택지 C1) 같은 경로
-# planned/ax_warehouse.world에 질감 월드가 놓였으므로, 지도를 적용할 월드를 여기 따로 적는다.
+# revision 2는 2026-11-15 최신 기준(질감) 월드 planned/ax_warehouse.world(6c78d56c…)에서 만든 지도다.
+# 이 월드에는 이동 상자 2개(sample_fit_medium_01·sample_reject_wide_01, 높이 0.24·0.25 m)가 실제로 있으며
+# 두 LiDAR 평면(robot_2 앞 0.409 m·뒤 0.289 m) 아래라 지도에 점유가 없다. 상자가 없는 월드에서 수집한 지도가 아니다.
 #
-# 지도 이미지(map.pgm·map.yaml)는 바꾸지 않았으므로 map_revision은 1로 유지한다.
-# revision을 올리면 등록 지점·재고 좌표 무효 신호가 되므로 지도 내용이 바뀔 때만 올린다.
+# 적용 근거가 확보된 월드만 applicable_worlds에 둔다. 근거가 부족한 월드는 pending_worlds에 사유와 함께 둔다.
+# 이전 상자 143개 월드(0e88885, 35a8c0ef…·9b5bb281…)는 이 지도와 동등하다고 등록하지 않는다(rev1 근거 월드, 상자 배치 다름).
 #
 # 아래 sha256은 tools/tests/test_map_applicable_worlds.py가 실제 월드 파일과 대조한다.
 # 월드가 바뀌어 시험이 실패하면 LiDAR 동등성을 다시 확인한 뒤에만 해시를 고친다.
-map_revision: 1
+map_revision: 2
 authored_world:
   # 지도를 작성한 월드(map_info.yaml world 절과 같은 바이트)
-  launch_name: planned/ax_warehouse_plain.world
-  source: src/ax_description/worlds/planned/ax_warehouse_plain.world
-  sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
-  mapping_session: log/b2_mapping/20261112_083635  # 작성 PC 기록, Git 제외
-  note: 작성 당시 이름은 planned/ax_warehouse.world였고, 교체 때 내용 그대로 이 이름으로 옮겼다.
+  launch_name: planned/ax_warehouse.world
+  source: src/ax_description/worlds/planned/ax_warehouse.world
+  sha256: 6c78d56ceacea586469b224813a2c990fd5ff81328d5db089eb8a075895c33f3
+  mapping_session: log/b2_map_current/20261115_083857/run_d141/session_base_dir  # 작성 PC 기록, Git 제외
+  note: 최신 main(c365b03) 기준 월드. 이동 상자 2개는 LiDAR 평면 아래라 점유 없음(실재).
 applicable_worlds:
-  - launch_name: planned/ax_warehouse_plain.world
-    sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
-    basis: 지도를 작성한 월드
   - launch_name: planned/ax_warehouse.world
-    sha256: 35a8c0eff4199c32adf97ca3b75b65b12355d30d2f1759be5c59e7cc319ef807
-    basis: 단색 월드의 재질 240개에 시각 질감(pbr albedo_map)만 더했고 geometry·collision·pose는 같다.
-    evidence:
-      # 근거 폴더는 작성 PC 기록이며 Git에 넣지 않는다.
-      - 구조 동일 - python3 tools/make_textured_world.py --check (구조 차이 0, 재생성 일치)
-      - LiDAR 동일 - log/b2_textured_world/20261112_074753/runs/20261112_093103/REPORT.md
-        (5자세 x 앞·뒤 x 5스캔, 거리 차이 0.0000 m, 유한/무한 불일치 0)
-      - LiDAR 동일 - log/b2_custom_warehouse/20261112_100617/option_c/REPORT.md
-        (RTAB-Map 비교 회차 1·2 같은 자세 86·92쌍, 최대 차이 0.0·0.055 mm)
-    limits: 카메라 영상은 다르다(바닥 약 21 % 어두움). 영상 기반 위치 추정·RTAB-Map 결과는 이 지도와 별도로 확인한다.
+    sha256: 6c78d56ceacea586469b224813a2c990fd5ff81328d5db089eb8a075895c33f3
+    basis: 지도를 작성하고 평가한 월드
+pending_worlds:
+  # 선택 가능하지만 이 지도 적용 근거가 아직 부족한 월드(적용하지 않음)
+  - launch_name: planned/ax_warehouse_plain.world
+    sha256: 6cd3d46358ab8dd0d8a22773f75613793df813d85e6484b1275cd83aeeb8ba5c
+    reason: >-
+      revision 2 지도와의 LiDAR 관측 동등성을 직접 측정하지 않았다. 간접 근거만 있다:
+      make_textured_world.py --check 구조 차이 0(2026-11-15), 시설 101모델 collision·visual XML이 2026-11-12 LiDAR 동일
+      실측 쌍(35a8c0ef…·9b5bb281…)과 바이트 같음(log/b2_map_baseline_prep/20261115_093443/results/signature_*.json).
+      실측(같은 자세 앞·뒤 LiDAR 거리 대조) 뒤 applicable_worlds로 옮긴다.

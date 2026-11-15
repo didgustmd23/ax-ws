@@ -2,6 +2,7 @@
 
 기준 월드나 단색 보존 월드가 바뀌면 이 시험이 실패한다.
 그때는 LiDAR 동등성을 다시 확인한 뒤에만 목록의 해시를 고친다.
+적용 근거가 부족한 선택 가능 월드는 pending_worlds에 사유와 함께 둔다(2026-11-15 revision 2부터).
 """
 import hashlib
 from pathlib import Path
@@ -34,13 +35,34 @@ class MapApplicableWorlds(unittest.TestCase):
             with self.subTest(world=entry['launch_name']):
                 self.assertEqual(sha256(WORLDS / entry['launch_name']), entry['sha256'])
 
-    # 선택 가능한 두 창고 월드가 모두 목록에 있다
+    # 선택 가능한 두 창고 월드가 모두 적용 목록 또는 미적용(사유 필수) 목록에 한 번씩 있다
     def test_both_selectable_worlds_listed(self):
         data = load('applicable_worlds.yaml')
 
-        names = {entry['launch_name'] for entry in data['applicable_worlds']}
+        applied = [entry['launch_name'] for entry in data['applicable_worlds']]
+        pending = [entry['launch_name'] for entry in data.get('pending_worlds') or []]
 
-        self.assertEqual(names, {'planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'})
+        self.assertEqual(sorted(applied + pending), ['planned/ax_warehouse.world', 'planned/ax_warehouse_plain.world'])
+
+        for entry in data.get('pending_worlds') or []:
+            with self.subTest(world=entry['launch_name']):
+                self.assertTrue(str(entry.get('reason') or '').strip())
+
+    # 미적용 목록의 월드 해시도 실제 파일과 같다(근거 확보 전 월드가 바뀌면 다시 확인)
+    def test_pending_world_hashes_match_files(self):
+        data = load('applicable_worlds.yaml')
+
+        for entry in data.get('pending_worlds') or []:
+            with self.subTest(world=entry['launch_name']):
+                self.assertEqual(sha256(WORLDS / entry['launch_name']), entry['sha256'])
+
+    # 작성 월드는 적용 목록에 있다
+    def test_authored_world_is_applicable(self):
+        data = load('applicable_worlds.yaml')
+
+        applied = {entry['launch_name']: entry['sha256'] for entry in data['applicable_worlds']}
+
+        self.assertEqual(applied.get(data['authored_world']['launch_name']), data['authored_world']['sha256'])
 
     # 작성 월드는 map_info.yaml(생성 파일)의 월드 기록과 같은 바이트이고, revision도 같다
     def test_authored_world_matches_map_info(self):

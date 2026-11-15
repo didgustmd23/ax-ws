@@ -1,50 +1,50 @@
 # B2 지도 메타데이터. 지도가 바뀌면 map_revision이 오르며 등록 지점·재고 좌표는 revision을 대조해 재검증한다.
-created: '2026-11-13T00:44:52+09:00'
+created: '2026-11-15T09:44:37+09:00'
 map:
   frame: map
   origin:
-  - -15.231
-  - -8.125
+  - -15.251
+  - -8.061
   - 0.0
   origin_note: map.yaml origin = 이미지 왼쪽 아래 셀 모서리의 map 좌표(x, y, yaw)
   resolution_m: 0.05
   size_cells:
-  - 881
+  - 883
   - 324
   size_m:
-  - 44.050000000000004
+  - 44.150000000000006
   - 16.2
   thresholds:
     occupied: 0.65
     free: 0.196
     mode: trinary
   cells:
-    free: 229825
-    occupied: 7274
-    unknown: 48345
+    free: 234057
+    occupied: 5656
+    unknown: 46379
   area_m2:
-    free: 574.5625000000001
-    occupied: 18.185000000000002
-    unknown: 120.86250000000003
-  observed_ratio: 0.8306322781351159
+    free: 585.1425000000002
+    occupied: 14.140000000000002
+    unknown: 115.94750000000002
+  observed_ratio: 0.8378878123121234
   observed_bounds_map_m:
-  - -15.231
-  - -8.075
-  - 28.819000000000003
-  - 8.075
+  - -15.251
+  - -8.061
+  - 28.899000000000008
+  - 8.139
 world:
   launch_name: planned/ax_warehouse.world
   gz_world: ax_test
   format: session_world
   world_condition: original
   world_file: install/ax_description/share/ax_description/worlds/planned/ax_warehouse.world
-  world_sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
+  world_sha256: 6c78d56ceacea586469b224813a2c990fd5ff81328d5db089eb8a075895c33f3
   reference_assets: null
   source_note: src/ax_description/worlds/planned/ax_warehouse.world (프로젝트 월드, 외부 출처
     없음)
   world_copy:
     file: session/world.world
-    sha256: 9b5bb2815ee7bdb8c7fb2583eeaa98c897818f1f4d9991303f9b1560fdc227bc
+    sha256: 6c78d56ceacea586469b224813a2c990fd5ff81328d5db089eb8a075895c33f3
     matches: true
   route_world: planned/ax_warehouse.world
 robot:
@@ -116,21 +116,21 @@ wheel_friction:
   override_file: null
   override_sha256: null
 code:
-  git_commit: f7c56fef6ca567f1218371815c75fa19488d3216
+  git_commit: c365b037ce2dc9d6b52cbcf6792f8f694f4f3610
   git_dirty: true
 slam:
   package: slam_toolbox (async, mapping)
   config: install/ax_localization/share/ax_localization/config/slam_mapping.yaml
   config_copy: session/config/slam_mapping.yaml
-  config_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
+  config_sha256: 8507bb641fe8a5681d49f450ace178abd4c77706e09d2ccf3ac62331c57477b8
   resolution_m: 0.05
 config_files:
   slam_mapping.yaml:
     package: ax_localization
     source: install/ax_localization/share/ax_localization/config/slam_mapping.yaml
     copy: session/config/slam_mapping.yaml
-    recorded_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
-    copy_sha256: 4cd2c5bfe64ad2a3ba7b88b9ab69f5a2b63d3c4332c77e1bdeded505755e48e5
+    recorded_sha256: 8507bb641fe8a5681d49f450ace178abd4c77706e09d2ccf3ac62331c57477b8
+    copy_sha256: 8507bb641fe8a5681d49f450ace178abd4c77706e09d2ccf3ac62331c57477b8
     copy_matches: true
   ax2_controllers.yaml:
     package: ax_control
@@ -161,8 +161,8 @@ config_files:
     copy_sha256: 83c781a62c821cc4d01ac087892fe5f74791a5ff7cc110be42cdba97c3bf3c6b
     copy_matches: true
 route:
-  file: log/b2_custom_warehouse/20261112_074010/merged_default/routes/route_full_rotation_align.yaml
-  sha256: 704b72412e2a8b4f666aedbcc34b0f0d8b8a83cf0b5bdc2bda39db286051375c
+  file: src/ax_localization/config/routes/ax_warehouse_full.yaml
+  sha256: f1236f6809d908ba6e3dab334d14fed8fa13a3e1ad2bc242df02a147d07b80ba
 pose_graph:
   files:
   - pose_graph.posegraph
@@ -173,7 +173,7 @@ stop_gate:
     confirmed: true
     stop:
       reason: 저장 전
-      requested_sim_s: 737.596
+      requested_sim_s: 774.676
       confirmed: true
       confirm_sim_s: 0.5049999999999955
       odom_received: true
@@ -184,47 +184,47 @@ verification:
   judgment_reason: null
   metrics:
     tolerance_cells: 1
-    obstacle_detection_ratio: 0.9912597950572634
-    reverse_match_ratio: 0.8583803107383473
-    reference_occupied_cells: 6636
-    compared_occupied_cells: 7273
+    obstacle_detection_ratio: 0.9993236388231316
+    reverse_match_ratio: 0.85997171145686
+    reference_occupied_cells: 5914
+    compared_occupied_cells: 5656
     wall_error_reference_to_compared:
-      mean_m: 0.018508099019527435
+      mean_m: 0.019615376368165016
       p95_m: 0.05000000074505806
-      max_m: 0.30000001192092896
-      cells: 6636
+      max_m: 0.11180340498685837
+      cells: 5914
     wall_error_compared_to_reference:
-      mean_m: 0.09034127742052078
-      p95_m: 0.699999988079071
-      max_m: 1.2539936304092407
-      cells: 7273
+      mean_m: 0.08478384464979172
+      p95_m: 0.6500000357627869
+      max_m: 1.2509996891021729
+      cells: 5656
     coverage:
-      comparable_area_m2: 588.9075000000001
-      reference_only_area_m2: 29.967500000000005
-      compared_only_area_m2: 3.8400000000000007
-      unobserved_by_both_area_m2: 1468.3700000000003
-  result: log/b2_map_info_portable/20261113_004431/copy/run/accuracy.json
-  drive_result: log/b2_map_info_portable/20261113_004431/copy/run/drive_result.json
+      comparable_area_m2: 596.8000000000001
+      reference_only_area_m2: 26.510000000000005
+      compared_only_area_m2: 2.4825000000000004
+      unobserved_by_both_area_m2: 1465.2925000000002
+  result: log/b2_map_adopt/20261115_094242/copy/run/accuracy.json
+  drive_result: log/b2_map_adopt/20261115_094242/copy/run/drive_result.json
 T_world_map:
   use: 검증 전용. 운영 위치 추정·주행에 쓰지 않는다
   initial:
     x_m: -6.799999999925755
     y_m: 7.380227927081808e-13
-    yaw_rad: 1.1887104655529383e-18
+    yaw_rad: 3.1841056363057415e-18
   optimal:
-    x_m: -6.821875376854324
-    y_m: 0.0058745013878379465
-    yaw_rad: 0.0002975063753656073
+    x_m: -6.807393918514372
+    y_m: -0.04254310015395747
+    yaw_rad: -0.00041907571943175807
   method: T_world_odom(실제 자세·odom 같은 시각) · T_map_odom⁻¹(그 시각 이후 첫 map→odom) → 참조 지도와
     ICP 정렬
 missing: []
 consistency_problems: []
-map_revision: 1
+map_revision: 2
 files:
-  map.yaml: 22a284457b1b194dc2eb6e813d2850d9da23925149d42adfc256ca1c90c05ec9
-  map.pgm: e62cac44131c7199d123a999bda8fcb161973ab302f8b15dde1d1eea39bbaa31
-  pose_graph.posegraph: 6e024528eb0235799938cf81507ad7e0dbf51f2f7c04f3192b8df54879f3d764
-  pose_graph.data: 10015da39277115a54faf262f9cb1f9ecb077db22390d2a69704ff4fea43d597
+  map.yaml: 1e7be7232d3b0ff7cce61da5c7103a7ebb70b1710e3edfdf2008cdc8724b3e34
+  map.pgm: 16a5d72473409f093de9d0eb8ca89fac3ae2362c5c205d7556d92cb9beeb8c62
+  pose_graph.posegraph: c39a2d45e6425bb05e133b987a120a1138ab14d8f50cccad7aec61f3e8d86c9c
+  pose_graph.data: 2de5dbd4e60e051dd7d401348d806f0a5a1a83b0033db1a5803a1d5a38e378c0
 reload_check:
   match: true
   grid: true

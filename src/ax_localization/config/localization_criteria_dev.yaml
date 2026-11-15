@@ -13,11 +13,12 @@
 # 시간 기준: 물리 판정 값은 sim time이다. 부하 단계(L0~L2)와 관계없이 같은 값을 적용한다.
 # status가 incomplete인 회차는 판정하지 않는다.
 
-# 대상: 두 창고 기준 월드의 채택 지도 revision 1.
+# 대상: 두 창고 기준 월드의 채택 지도 revision 2(2026-11-15 채택, 최신 월드 6c78d56c…). 판정 값은 바꾸지 않았다.
+# 이 파일의 근거 주석에 나오는 11-12~11-14 실측은 revision 1 지도에서 한 결과이며, revision 2 지도로 한 위치 추정 회귀는 아직 없다.
 target:
   world: "planned/ax_warehouse.world"
   map: "src/ax_localization/maps/ax_warehouse/map.yaml"
-  map_revision: 1
+  map_revision: 2
 
 # B2-L1 정지 위치 오차 상한(AMCL 추정 대 Gazebo 실제, T_world_map은 평가 전용).
 stationary:

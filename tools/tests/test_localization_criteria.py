@@ -279,7 +279,7 @@ class TargetCheck(unittest.TestCase):
     # 기준 revision과 map_info revision이 다르면 대상 불일치다.
     def test_revision_mismatch(self):
         criteria = load_criteria()
-        criteria['target']['map_revision'] = 2
+        criteria['target']['map_revision'] = matching_context()['map_info']['map_revision'] + 1
         judged = CHECK.judge_localization(good_result(), criteria, REF, matching_context())
 
         self.assertTrue(judged['judgment_reason'].startswith('대상 불일치'))
@@ -298,7 +298,7 @@ class TargetCheck(unittest.TestCase):
     def test_target_context_reads_map_info(self):
         context = CHECK.target_context(load_criteria(), CRITERIA_PATH, None)
 
-        self.assertEqual(context['map_info']['map_revision'], 1)
+        self.assertEqual(context['map_info']['map_revision'], 2)  # 2026-11-15 채택 지도 revision 2
         self.assertIsNone(context['recorded_map'])
 
 
@@ -743,13 +743,12 @@ class LoadStageRecord(unittest.TestCase):
 
     # 결과 conditions.world_sha256을 지도 적용 월드 목록(applicable_worlds.yaml)과 대조한다.
     # 2026-11-14 사용자 결정: 목록의 단색(작성)·질감(기준) 월드 모두 대상으로 인정하고 실제 쓴 월드를 기록한다.
-    # 목록에 없는 해시는 불일치다.
+    # 2026-11-15 revision 2: 적용 목록(applicable_worlds)에 있는 월드만 인정하고, 미적용 목록(pending_worlds)·미등록 해시는 불일치다.
     def test_target_uses_result_world(self):
         worlds = yaml.safe_load((MAP_INFO_PATH.parent / 'applicable_worlds.yaml').read_text(encoding='utf-8'))
-        sha = {entry['launch_name']: entry['sha256'] for entry in worlds['applicable_worlds']}
-        cases = ((sha['planned/ax_warehouse.world'], 'planned/ax_warehouse.world'),
-                 (sha['planned/ax_warehouse_plain.world'], 'planned/ax_warehouse_plain.world'),
-                 ('e' * 64, None))
+        cases = tuple((entry['sha256'], entry['launch_name']) for entry in worlds['applicable_worlds'])
+        cases += tuple((entry['sha256'], None) for entry in worlds.get('pending_worlds') or [])
+        cases += (('e' * 64, None),)
 
         for world_sha, used in cases:
             result = good_result()
@@ -965,9 +964,11 @@ class WorldPolicy(unittest.TestCase):
 
         return CHECK.judge_localization(good_result(), criteria, REF, context)
 
-    # 단색(작성)·질감(기준) 두 등록 월드 모두 인정하고 실제 출처를 남긴다.
+    # 등록(적용 목록) 월드를 모두 인정하고 실제 출처를 남긴다(revision 1: 단색·질감 2개, revision 2: 질감 1개·단색 미적용).
     def test_both_registered_worlds_accepted(self):
-        for entry in self.worlds()['applicable_worlds']:
+        worlds = self.worlds()
+
+        for entry in worlds['applicable_worlds']:
             judged = self.judge(entry['sha256'])
             method = judged['criteria_method']
 
@@ -975,11 +976,11 @@ class WorldPolicy(unittest.TestCase):
             self.assertEqual(method['target_world_used'], entry['launch_name'])
             self.assertEqual(method['target_world_source']['registered']['sha256'], entry['sha256'])
             self.assertEqual(method['target_world_source']['registered']['basis'], entry['basis'])
-            self.assertEqual(method['target_world_source']['applicable_revision'], 1)
-            self.assertEqual(method['target_world_source']['authored_world'], 'planned/ax_warehouse_plain.world')
+            self.assertEqual(method['target_world_source']['applicable_revision'], worlds['map_revision'])
+            self.assertEqual(method['target_world_source']['authored_world'], worlds['authored_world']['launch_name'])
             self.assertEqual(judged['judged_subset'], 'PASS')
 
-        self.assertEqual(len(self.worlds()['applicable_worlds']), 2)
+        self.assertEqual(len(worlds['applicable_worlds']) + len(worlds.get('pending_worlds') or []), 2)
 
     # 미등록 해시는 대상 불일치로 거절한다.
     def test_unregistered_world_rejected(self):
@@ -991,13 +992,14 @@ class WorldPolicy(unittest.TestCase):
     # 기준 revision이 지도 적용 목록 revision과 다르면 등록 해시여도 거절한다.
     def test_revision_mismatch_rejected(self):
         criteria = load_criteria()
-        criteria['target']['map_revision'] = 2
+        revision = self.worlds()['map_revision']
+        criteria['target']['map_revision'] = revision + 1
         texture = next(entry['sha256'] for entry in self.worlds()['applicable_worlds']
                        if entry['launch_name'] == 'planned/ax_warehouse.world')
         judged = self.judge(texture, criteria)
 
         self.assertTrue(judged['judgment_reason'].startswith('대상 불일치'))
-        self.assertTrue(any('applicable_worlds revision 1 ≠ 기준 2' in text
+        self.assertTrue(any(f'applicable_worlds revision {revision} ≠ 기준 {revision + 1}' in text
                             for text in judged['criteria_method']['target_mismatch']))
 
 

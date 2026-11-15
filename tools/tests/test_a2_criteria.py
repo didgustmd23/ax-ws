@@ -885,6 +885,291 @@ class StopToolWithoutCriteria(unittest.TestCase):
         names = [item[0] for item in a2_criteria.drive_scenarios(0.67, 0.5)]
         self.assertEqual(list(a2_criteria.recorded_commands(stop_record())), names)
 
+    def test_rtf_window_shared_and_stop_path_unchanged(self):
+        # 정지 도구는 판정기와 같은 RTF 계측을 쓰며, 계측은 시계만 읽는다(명령·대기 함수는 그대로).
+        self.assertIs(self.tool.RtfWindow, a2_criteria.RtfWindow)
+        source = (SCRIPTS / 'check_stop_feedback.py').read_text(encoding='utf-8')
+        self.assertEqual(source.count('rtf_window.start()'), 1)
+        self.assertEqual(source.count('rtf_window.finish()'), 1)
+
+
+# 바퀴 도구도 같은 RTF 계측을 쓰는지. rclpy가 없으면 건너뛴다.
+class WheelToolRtf(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('check_wheel_calibration',
+                                                      SCRIPTS / 'check_wheel_calibration.py')
+
+        try:
+            self.tool = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self.tool)
+        except ImportError as error:
+            self.skipTest(f'ROS 환경 필요: {error}')
+
+    def test_rtf_window_shared(self):
+        self.assertIs(self.tool.RtfWindow, a2_criteria.RtfWindow)
+        source = (SCRIPTS / 'check_wheel_calibration.py').read_text(encoding='utf-8')
+        self.assertEqual(source.count('rtf_window.start()'), 1)
+        self.assertEqual(source.count('rtf_window.finish()'), 1)
+
+
+# 정해 둔 값을 차례로 돌려주는 가짜 시계를 만든다
+def fake_clock(values):
+    values = list(values)
+
+    return lambda: values.pop(0)
+
+
+# A2-D2: 측정 도구의 RTF 계측(sim 경과 / 벽시계 경과)과 판정기 기록
+class RtfWindowRecord(unittest.TestCase):
+    def setUp(self):
+        self.criteria, self.source = a2_criteria.load_criteria(CRITERIA)
+
+    # 시작·끝 시각 쌍(sim, wall)으로 계측 결과를 만든다
+    def measure(self, sim, wall):
+        window = a2_criteria.RtfWindow(fake_clock(sim), fake_clock(wall), interval='시험 구간')
+        window.start()
+
+        return window.finish()
+
+    def test_normal_ratio_and_sources(self):
+        measured = self.measure([10.0, 14.0], [100.0, 120.0])
+        self.assertAlmostEqual(measured['value'], 0.2)
+        self.assertIsNone(measured['reason'])
+        self.assertEqual(measured['interval'], '시험 구간')
+        self.assertAlmostEqual(measured['numerator']['elapsed_s'], 4.0)
+        self.assertAlmostEqual(measured['denominator']['elapsed_s'], 20.0)
+        self.assertEqual((measured['numerator']['start_s'], measured['numerator']['end_s']), (10.0, 14.0))
+        self.assertIn('/clock', measured['numerator']['source'])
+        self.assertIn('monotonic', measured['denominator']['source'])
+
+    def test_stalled_sim_is_zero_not_null(self):
+        # sim이 멈춘 구간은 실제 측정값 0이다(값을 지어내지 않고 그대로 남긴다).
+        measured = self.measure([10.0, 10.0], [100.0, 105.0])
+        self.assertEqual(measured['value'], 0.0)
+        self.assertIsNone(measured['reason'])
+
+    def test_invalid_intervals_are_null_with_reason(self):
+        cases = {
+            '역행': ([10.0, 9.0], [100.0, 105.0]),
+            '/clock': ([0.0, 5.0], [100.0, 105.0]),
+            '벽시계': ([10.0, 12.0], [100.0, 100.0]),
+            '비유한': ([10.0, float('nan')], [100.0, 105.0]),
+        }
+
+        for word, (sim, wall) in cases.items():
+            measured = self.measure(sim, wall)
+            self.assertIsNone(measured['value'], word)
+            self.assertIn(word, measured['reason'])
+
+        # 벽시계가 거꾸로 가도 계산하지 않는다.
+        self.assertIsNone(self.measure([10.0, 12.0], [100.0, 99.0])['value'])
+
+    def test_finish_without_start_or_clock_error(self):
+        window = a2_criteria.RtfWindow(fake_clock([1.0]), fake_clock([1.0]))
+        measured = window.finish()
+        self.assertIsNone(measured['value'])
+        self.assertIn('시작', measured['reason'])
+
+        # 종료 시각을 읽지 못하면 사유를 남긴다(예외를 올리지 않는다).
+        def broken():
+            raise RuntimeError('context closed')
+
+        window = a2_criteria.RtfWindow(fake_clock([1.0, None]), fake_clock([1.0, 2.0]))
+        window.start()
+        window.sim_clock = broken
+        measured = window.finish()
+        self.assertIsNone(measured['value'])
+        self.assertIn('RuntimeError', measured['reason'])
+
+    def test_record_keeps_measurement_and_explains_missing(self):
+        record = stop_record()
+        record['rtf'] = self.measure([10.0, 14.0], [100.0, 120.0])
+        judged = a2_criteria.judge_stop(copy.deepcopy(record), self.criteria, self.source)
+        self.assertAlmostEqual(judged['rtf']['value']['value'], 0.2)
+        self.assertIsNone(judged['rtf']['reason'])
+        self.assertIn('기록만', judged['rtf']['use'])
+
+        # 과거 결과(rtf 없음)는 현재 값으로 채우지 않고 사유를 남긴다. 판정은 RTF로 바뀌지 않는다.
+        old = a2_criteria.judge_stop(stop_record(), self.criteria, self.source)
+        self.assertIsNone(old['rtf']['value'])
+        self.assertIn('기록 없음', old['rtf']['reason'])
+        self.assertEqual(old['judgment'], judged['judgment'])
+
+        # 계산하지 못한 계측은 그 사유를 옮긴다.
+        record['rtf'] = self.measure([10.0, 9.0], [100.0, 105.0])
+        judged = a2_criteria.judge_wheel(dict(wheel_record(), rtf=record['rtf']), self.criteria, self.source)
+        self.assertIn('역행', judged['rtf']['reason'])
+
+    def test_measurement_dict_survives_rejudge_chain(self):
+        with tempfile.TemporaryDirectory() as folder:
+            keys = []
+
+            for name, measured in (('a', self.measure([10.0, 14.0], [100.0, 120.0])),
+                                   ('b', self.measure([10.0, 15.0], [100.0, 120.0]))):
+                path = Path(folder) / name / 'result.json'
+                path.parent.mkdir()
+                path.write_text(json.dumps(dict(stop_record(), rtf=measured), ensure_ascii=False), encoding='utf-8')
+                first, _ = a2_criteria.rejudge(None, path, CRITERIA)
+                second, _ = a2_criteria.rejudge(None, first, CRITERIA)
+                chain = [json.loads(item.read_text(encoding='utf-8')) for item in (path, first, second)]
+                self.assertEqual(len({a2_criteria.measurement_key(record) for record in chain}), 1)
+                keys.append(a2_criteria.measurement_key(chain[0]))
+
+        self.assertNotEqual(keys[0], keys[1])
+
+
+# A2-D3: record_only 사유가 값의 실제 상태(없음·무효·구조화 값)를 구분하는지
+class RecordOnlyReason(unittest.TestCase):
+    def setUp(self):
+        self.criteria, self.source = a2_criteria.load_criteria(CRITERIA)
+
+    # 항목 하나에 record_only를 적용하고 결과 항목을 돌려준다
+    def apply(self, value, result='PASS', reason=''):
+        item = a2_criteria.make_item('X-1', '지표', value, 1.0, result, reason)
+
+        return a2_criteria.apply_record_only([item], ['X-1'])[0]
+
+    def test_structured_valid_value_is_not_missing(self):
+        for value in ({'min': 0.99, 'max': 1.01, 'count': 6}, [0.1, 0.2],
+                      [{'robot_id': 'robot_2', 'runs': 3}]):
+            item = self.apply(value)
+            self.assertEqual(item['result'], 'recorded')
+            self.assertNotIn('값 없음', item['reason'])
+            self.assertNotIn('무효', item['reason'])
+
+    def test_missing_and_invalid_are_distinguished(self):
+        self.assertIn('값 없음', self.apply(None)['reason'])
+        self.assertIn('값 없음', self.apply([])['reason'])
+        self.assertIn('비유한', self.apply(float('nan'))['reason'])
+        self.assertNotIn('값 없음', self.apply(float('inf'))['reason'])
+        self.assertIn('숫자가 아닌 값', self.apply('abc')['reason'])
+
+        # 중첩된 누락·비유한 값은 정상으로 선언하지 않고 개수를 남긴다.
+        item = self.apply({'min': 0.1, 'values': [0.2, float('nan'), None]})
+        self.assertIn('비유한 1개', item['reason'])
+        self.assertIn('누락 1개', item['reason'])
+        self.assertEqual(item['result'], 'recorded')
+
+    def test_finite_scalar_has_no_note_and_fail_is_not_fail(self):
+        item = self.apply(2.0, result='FAIL', reason='2 > 1')
+        self.assertEqual(item['result'], 'recorded')
+        self.assertNotIn('값 없음', item['reason'])
+
+    def test_not_applicable_untouched_and_prior_reason_kept(self):
+        item = self.apply(None, result='not_applicable', reason='팔 없음')
+        self.assertEqual((item['result'], item['reason']), ('not_applicable', '팔 없음'))
+
+        item = self.apply(None, result='not_judged', reason='조건 불일치: x')
+        self.assertEqual(item['result'], 'recorded')
+        self.assertIn('조건 불일치: x', item['reason'])
+
+    def test_slide_with_invalid_run_value_is_not_reported_missing(self):
+        record = stop_record()
+        record['runs']['호 주행'][1]['slide_after_odom_stop_m'] = float('nan')
+        judged = a2_criteria.judge_stop(record, self.criteria, self.source)
+        item = find(judged, 'A2-S5', '호 주행')
+        self.assertEqual(item['result'], 'recorded')
+        self.assertIn('비유한', item['reason'])
+        self.assertNotIn('값 없음', item['reason'])
+        self.assertNotEqual(judged['judgment'], 'FAIL')
+
+        # 정상 시나리오의 기록 값에는 사유 덧붙임이 없다.
+        self.assertNotIn('값 없음', find(judged, 'A2-S5', '직진 0.3')['reason'])
+
+
+# 반복 근거: 시도 수와 유효 측정 반복 수를 나누고, 측정은 됐지만 기준을 넘은 회차의 FAIL은 지키는지
+class RepeatEvidence(unittest.TestCase):
+    def setUp(self):
+        self.criteria, self.source = a2_criteria.load_criteria(CRITERIA)
+
+    def judge(self, records):
+        return a2_criteria.judge_batch(batch_inputs(records), self.criteria, self.source)
+
+    # 묶음 반복 항목에서 시나리오 하나의 묶음 값을 찾는다
+    def group(self, result, scenario):
+        return next(item for item in result['batch_items'][0]['value'] if item['scenario'] == scenario)
+
+    def test_failed_run_is_attempt_not_repeat_and_batch_fails(self):
+        record = staged_record(1)
+        record['runs']['호 주행'][1] = None
+        result = self.judge([record])
+        group = self.group(result, '호 주행')
+
+        self.assertEqual((group['attempts'], group['runs']), (3, 2))
+        self.assertEqual(len(group['excluded']), 1)
+        self.assertIn('정지 미확인', group['excluded'][0]['reason'])
+        self.assertEqual(result['batch_items'][0]['result'], 'not_judged')
+        self.assertIn('반복 수 부족', result['batch_items'][0]['reason'])
+
+        # 회차 단독 FAIL(A2-S7·S3)은 묶음 FAIL로 남는다.
+        self.assertEqual(result['judgment'], 'FAIL')
+        self.assertIn('A2-S7', result['failures'][0]['items'])
+
+    def test_measured_over_limit_run_still_counts_and_fails(self):
+        # 끝까지 측정했지만 정지 시간이 기준을 넘은 회차는 자료 없음과 다르다. 반복 수에 들어가고 FAIL은 남는다.
+        record = staged_record(1)
+        record['runs']['직진 0.3 m/s'][0]['truth_stop_s'] = 50.0
+        result = self.judge([record])
+        group = self.group(result, '직진 0.3 m/s')
+
+        self.assertEqual((group['attempts'], group['runs'], group['excluded']), (3, 3, []))
+        self.assertEqual(result['batch_items'][0]['result'], 'PASS')
+        self.assertEqual(result['judgment'], 'FAIL')
+        self.assertIn('A2-S1', result['failures'][0]['items'])
+
+    def test_run_without_required_evidence_is_excluded(self):
+        record = staged_record(1)
+        del record['runs']['호 주행'][0]['truth_hold_confirmed_s']
+        group = self.group(self.judge([record]), '호 주행')
+        self.assertEqual(group['runs'], 2)
+        self.assertIn('truth_hold_confirmed_s', group['excluded'][0]['reason'])
+
+    def test_missing_gap_record_makes_run_unverifiable(self):
+        # 과거 결과처럼 표본 간격 기록이 없으면 유효성을 확인할 수 없다. 근거로 추정해 채우지 않는다.
+        record = staged_record(1)
+        del record['runs']['호 주행'][0]['max_sample_gap_s']
+        result = self.judge([record])
+
+        self.assertFalse(result['runs'][0]['valid'])
+        self.assertIn('표본 간격', result['runs'][0]['invalid_reason'])
+        self.assertEqual(result['batch_items'][0]['result'], 'not_applicable')
+        self.assertEqual(next(item for item in result['coverage'] if item['id'] == 'A2-S1')['evidence'], [])
+
+        # 바퀴 결과도 같다(회차 끝 정지 확인 구간 간격 기록 없음).
+        wheel = wheel_record()
+        del wheel['turns'][0]['end_speed']['max_gap_s']
+        result = self.judge([wheel])
+        self.assertFalse(result['runs'][0]['valid'])
+
+    def test_one_missing_gap_does_not_hide_another_sample_gap(self):
+        record = stop_record()
+        del record['runs']['호 주행'][0]['max_sample_gap_s']
+        record['runs']['호 주행'][1]['max_sample_gap_s'] = 0.051
+        judged = a2_criteria.judge_stop(record, self.criteria, self.source)
+        self.assertEqual(judged['judgment'], 'not_judged')
+        self.assertIn('SAMPLE_GAP', judged['judgment_reason'])
+        self.assertEqual(judged['sample_gap']['missing_count'], 1)
+
+    def test_load_invariance_ignores_unmeasured_runs(self):
+        limit = self.criteria['load']['max_stop_time_difference_from_l0_s']
+        loaded = staged_record(2, truth_offset=limit / 2)
+        loaded['runs']['직진 0.3 m/s'].append(None)
+        result = self.judge([staged_record(1), loaded])
+        item = result['batch_items'][1]
+        self.assertEqual(item['result'], 'PASS')
+        self.assertIn('제외 1회', item['reason'])
+
+        # 정지 미확인 회차는 회차 단독 FAIL로 남는다.
+        self.assertEqual(result['judgment'], 'FAIL')
+
+    def test_duplicates_and_independent_sum_unchanged(self):
+        first = measured_at(staged_record(1, repeats=1), '20261115_100000')
+        second = measured_at(staged_record(1, repeats=2), '20261115_110000')
+        self.assertEqual(self.judge([first, second])['batch_items'][0]['result'], 'PASS')
+
+        with self.assertRaises(ValueError):
+            self.judge([first, copy.deepcopy(first)])
+
 
 if __name__ == '__main__':
     unittest.main()

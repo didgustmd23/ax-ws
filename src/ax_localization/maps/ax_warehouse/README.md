@@ -6,7 +6,7 @@
 - **월드:** 최신 main(c365b03)의 기준(질감) 월드 `6c78d56c…`.
   - 이동 상자 2개(`sample_fit_medium_01` 0.30×0.25×0.24 m, `sample_reject_wide_01` 0.85×0.85×0.25 m)가 실제로 있다.
   - 두 상자는 두 LiDAR 평면(robot_2 앞 0.409 m·뒤 0.289 m) 아래라 지도에 점유가 없고, 그 자리는 free다. 상자가 없는 월드에서 수집한 지도가 아니다.
-- **AMCL 회귀:** revision 2 지도로는 아직 하지 않았다. 아래 revision 1 이력의 회귀 결과를 이 지도에 적용하지 않는다.
+- **AMCL 회귀:** robot_2 단독 무부하 중앙 경로 1회(2026-11-15, `log/b2_health/20261115_100907_rev2_center/REPORT.md`): 판정 항목 모두 PASS(정지 최대 0.043 m·yaw 0.0024 rad, 주행 p95 0.052 m·최대 0.058 m, OK 비율 1.0, 과신 0, scan 수신 1.0), 사건 시험 미노출로 회차 전체 not_judged. 평가 변환은 채택 기록 최적 정합(초기 변환으로도 기준 안). 반복·부하·두 로봇·A4는 미실시. 아래 revision 1 이력의 회귀 결과를 이 지도에 적용하지 않는다.
 - **원 회차:** `log/b2_map_current/20261115_083857/run_d141/session_base_dir/`(Git 제외). 평가 보고는 `log/b2_map_current/20261115_083857/REPORT.md`다.
   - robot_2 무부하, SLAM 입력은 B1 앞·뒤 `scan_filtered` 병합 스캔(`slam_mapping.yaml` `8507bb64…`, `scan_merge.py` `bb7754ce…`), slam_toolbox async.
   - 경로 `config/routes/ax_warehouse_full.yaml`(`f1236f68…`) 20경유점 completed, 관문 6개 자동 통과, RTF 1.00.
@@ -82,7 +82,7 @@
 - **2D로 표현할 수 없는 영역:** 선반판 아래와 두 LiDAR 평면 밖의 물체는 지도에서 비어 보여도 차체가 충돌할 수 있다. 별도 collision 제약으로 다룬다.
 - **관측 높이 차:** 지도에는 뒤 LiDAR(0.289 m)가 본 낮은 구조가 들어 있고, AMCL은 앞 0.409 m 스캔만 쓴다. revision 2에서 그 영향은 확인하지 않았다.
 - **배치 물체:** 지도 작성 시점의 상자 배치를 기준으로 한다. 상자를 추가·이동하면 실시간 장애물 층(관측 가능한 높이일 때만)이 반영해야 하며, 지도는 바꾸지 않는다. 시설(벽·기둥·선반) 변경은 지도 갱신 대상이다.
-- **미완료(채택과 무관하게 남음):** revision 2 AMCL 회귀, Nav2 keepout, 낮은 물체 관측(RGB-D 장애물 출처), A4 주행 허가 경로, D1 목표 관리, 두 로봇 동시.
+- **미완료(채택과 무관하게 남음):** revision 2 AMCL 반복·부하·사건 시험·두 로봇(단독 1회만 실시), Nav2 keepout, 낮은 물체 관측(RGB-D 장애물 출처), A4 주행 허가 경로, D1 목표 관리, 두 로봇 동시.
 - **시뮬레이션 조건:** 바퀴 odom이 매우 정확하다(odom 단독 위치 최대 0.104 m). 실물 odom 오차나 마찰 변경 조건에서의 지도 품질은 알 수 없다.
 - **회차 간 편차:** 같은 설정이라도 회차마다 SLAM 결과가 다를 수 있다(revision 1 때 d105 0.222 m). 재생성하면 같은 품질을 보장하지 않는다.
 - **소비자:** B3 영역 장부(`src/ax_environment/config/ax_warehouse_regions.json`)는 아직 `map_revision: 1`이다.
@@ -119,7 +119,7 @@ python3 src/ax_localization/scripts/check_map_accuracy.py <평가 폴더>/run \
 - `--adopt`는 judgment가 PASS일 때만 채택한다. 별도 검사 항목은 도구가 판정하지 않으므로 채택 전에 따로 확인하고, 불통과가 있으면 채택 여부를 사용자가 정한다(revision 2 사례).
 
 ## 남은 일
-- revision 2 AMCL 회귀(robot_2 단독부터), 단색 월드 LiDAR 동등성 실측(적용 목록 이동 여부).
+- revision 2 AMCL 반복(B2-L8)·부하(LD-2)·사건 시험(L5~L7)·두 로봇, 단색 월드 LiDAR 동등성 실측(적용 목록 이동 여부).
 - B3 영역 장부 revision 정합(B3 담당).
 - slam_toolbox map→odom TF 주기 공백의 원인 확인.
 - 별도 검사 항목(도약 등)을 `check_map_accuracy.py` 판정에 넣을지 결정.

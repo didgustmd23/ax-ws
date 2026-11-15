@@ -124,6 +124,12 @@ python3 src/ax_control/scripts/check_payload_tracking.py --robot-id robot_1 [--m
 
 `--world-file <월드 파일>`을 주면 결과 `conditions`에 `world_file`·`world_sha256`이 남는다. 같은 `GZ_PARTITION`의 `gz sim` 서버 명령줄 월드와 sha256이 같은지도 `world_check`에 남긴다. 서버 명령줄을 찾지 못하면 "인자 기준"으로 남는다. 측정 시작 시 같은 ROS domain에서 `/ax/<id>/joint_states` 발행자가 있는 로봇이 `active_robot_ids`·`active_robot_count`로, 도구 프로세스의 렌더러 환경값이 `renderer`로 기록된다. 묶음 판정의 반복 수(A2-S7)와 부하 불변성(LD-1)은 이 필드를 쓰며, 필드가 없는 옛 결과에서는 `not_judged`다.
 
+두 도구는 결과에 `rtf`를 남긴다. 같은 관측 구간(정지 피드백은 첫 표본 수신 뒤, 바퀴 보정은 회전·직진 반복 시작 뒤 ~ 종료)의 sim 경과(노드 시계, `/clock`) / 벽시계 경과(`time.monotonic()`)이며, 구간 시작·끝·경과·출처·단위를 함께 적는다. 시계만 읽으며 명령·대기·보호 동작은 바꾸지 않는다. 첫 `/clock` 전, sim 역행, 비유한 시각, 벽시계 경과 0 이하면 값을 만들지 않고 `value: null`과 `reason`을 남긴다. sim이 멈춘 구간은 0이다. 기준 `rtf_min`이 null이므로 기록 전용이며 판정을 바꾸지 않는다. 계측 도입 전 결과는 재판정해도 현재 환경 값으로 채우지 않고 판정 기록 `rtf.reason`에 "기록 없음"을 적는다.
+
+`record_only` 항목(현재 A2-S5)의 사유는 값 상태를 구분한다. 값 없음, 비유한·숫자 아닌 값, 구조화 값(사전·목록) 안의 누락·비유한 개수를 적고, 문제없는 구조화 값에는 덧붙이지 않는다. 판정 전 not_judged 사유(조건 불일치 등)는 함께 남긴다. 기준 초과는 FAIL로 바꾸지 않는다.
+
+묶음 A2-S7은 묶음별 시도 수(`attempts`)와 유효 측정 반복 수(`runs`)를 나눈다. 정지 미확인(null) 회차, 필수 근거(`truth_stop_s`·`stop_time_difference_s`·`truth_hold_confirmed_s`)나 표본 간격 기록이 없는 회차, 표본 간격 한계를 넘은 회차는 반복 수에서 빼고 `excluded`에 경로·순번·사유를 남긴다. 끝까지 측정했지만 성능 기준을 넘은 회차는 자료 없음과 달리 유효 반복으로 세며, 그 FAIL은 회차 판정과 묶음 FAIL에 그대로 남는다. 반복 수는 노출 횟수이고 성능 판정이 아니다. 제외 회차도 회차 단독 판정(A2-S7 실패 회차·A2-S3)에서는 FAIL로 남는다. LD-1도 같은 유효 측정 회차만 쓰고 제외 수를 사유에 적는다. 표본 간격 기록이 빠진 회차가 있는 결과(11-09 이전 옛 정지 결과·옛 바퀴 결과 등)는 유효성을 확인할 수 없어 묶음 근거로 쓰지 않으며 `runs[*].invalid_reason`에 적는다. 회차 표본 간격은 기록이 빠진 회차가 있어도 다른 회차의 간격 초과를 숨기지 않는다(`sample_gap.missing_count`).
+
 정지 피드백·바퀴 보정·부착·하중 시험 도구는 시뮬레이션과 같은 `ROS_DOMAIN_ID`·`GZ_PARTITION`·`ROS_AUTOMATIC_DISCOVERY_RANGE`에서 실행해야 한다. 대상(robot_description·제어기 서비스·Gazebo 월드)을 찾지 못하면 현재 환경 변수, 다른 노드가 발행 중인 로봇 ID, 발행자가 있는 Gazebo 월드와 원인 추정을 함께 출력한다. 정지 피드백·바퀴 보정·부착 결과의 `status`는 `completed`·`failed`·`interrupted`(Ctrl+C, 종료 코드 130)이며, 중단돼도 `result.json`을 남긴다. 정지 피드백은 시나리오마다, 부착 시험은 판정마다 중간 저장하므로 `last_scenario`·`last_check`까지의 결과가 보존된다.
 
 `check_command_paths.py`는 시뮬레이션 실행 중 제어기를 A4 없이 직접 구동해 관절 상태, 바퀴 구동·정지, 팔 궤적, 잘못된 관절 거부, TF 접두사를 점검한다.
@@ -230,7 +236,7 @@ A1의 S005 시험과는 조건이 다르다. A1 도구는 두 로봇 동시 spaw
 - 한계: 1회 실행 조건(robot_2 2 kg, robot_1)은 반복 편차가 없다. 0.5·1 kg `zero_command`와 두 로봇 동시 주행(1세트)은 11-13에 다시 쟀다([아래 절](#s005ax_2-갱신-뒤-재확인-2026-11-13)). A4 게이트 경유 정지는 재지 않았다. `zero_command`는 도구가 0을 직접 보내는 시험 방식이며 A4 최종 구동 차단 방식이 아니다.
 
 TCP 정렬(흡착판 장착 원점 13.04 mm 이동, PR #37) 뒤 격리 시뮬레이션 robot_1·다중 흡착판으로 다시 잰 기록이다(2026-11-06, 기본 인자).
-부착 시험(2 kg)은 14개 판정, 하중 시험(0·0.5·1·2 kg, 자세 5개 × 3회, 취소 정지 3회)은 284개 판정 모두 통과했다.
+부착 시험(2 kg)은 14개 판정, 하중 시험(`check_payload_tracking.py`, robot_1 팔 흡착 상자 0·0.5·1·2 kg, 자세 5개 × 3회, 취소 정지 3회)은 284개 판정 모두 통과했다(원자료 `log/a2_payload/20261106_092811/`, 단계 파일 4개 판정 284·실패 0). 위 robot_2 적재함 하중 정지 시험(`check_stop_feedback.py --payload-kg`, `cargo_link` 수동 적재, 주행 정지 시간)과는 다른 시험이다.
 
 | 2 kg 유지 자세 | 어깨 effort | 팔꿈치 effort | 손목 effort |
 |---|---|---|---|
@@ -248,7 +254,7 @@ TCP 정렬(흡착판 장착 원점 13.04 mm 이동, PR #37) 뒤 격리 시뮬레
 
 조건: 커밋 `e4dbaaa`, 격리 headless(domain 211~216, 실행마다 새 시뮬레이션), 공구 `epick`, 센서 켬. `ax_test.world`가 3dd8948에서 삭제돼 `tools/empty_test_fixture.py`의 빈 바닥(현 창고 월드 physics 1 ms, 바닥 마찰은 SDF 기본값, 이전 월드는 `mu 1.0` 명시)을 `test_fixture_world`로 썼다. robot_2는 11-11 갱신 모델(3dd8948·32e1031)이라 11-09 robot_2 값과는 다른 모델 사이의 비교다. 측정 중 RTF(Δsim/Δreal)는 0.40~0.91, load1 평균 8~12였다. 결과는 `log/a2_payload/20261113_*`, `log/a2_stop_feedback/20261113_*`, `log/a2_tcp_drift_20261113/`(Git 제외). 판정 기준이 없는 수치는 기록만 했다.
 
-robot_1 하중 시험(0·0.5·1·2 kg, 자세 5개 × 3회, 취소 정지 3회)은 284개 판정 모두 통과했고, 2 kg effort는 위 표와 같다(차이 1%p 이하, 3회 반복값 같음). 운반 중 취소 뒤 정지 시간은 `joint_states` 0.09~0.10 s, Gazebo 0.14~0.16 s로 11-06과 같다. 정지 뒤 TCP 이동은 3.9~5.4 mm(0 kg 3.9~4.0, 2 kg 5.3~5.4)로 11-06(0.33~0.45 mm)보다 크고, 1 s 유지 구간의 TCP 이동도 최대 5.4 mm(11-06 0.13 mm 이하)였다.
+robot_1 하중 시험(`check_payload_tracking.py`, 팔 흡착 상자 0·0.5·1·2 kg, 자세 5개 × 3회, 취소 정지 3회, 원자료 `log/a2_payload/20261113_075221_s005_recheck/` 판정 284·실패 0. robot_2 적재함 하중 정지 시험과 별개)은 284개 판정 모두 통과했고, 2 kg effort는 위 표와 같다(차이 1%p 이하, 3회 반복값 같음). 운반 중 취소 뒤 정지 시간은 `joint_states` 0.09~0.10 s, Gazebo 0.14~0.16 s로 11-06과 같다. 정지 뒤 TCP 이동은 3.9~5.4 mm(0 kg 3.9~4.0, 2 kg 5.3~5.4)로 11-06(0.33~0.45 mm)보다 크고, 1 s 유지 구간의 TCP 이동도 최대 5.4 mm(11-06 0.13 mm 이하)였다.
 
 정지 피드백 `zero_command`(odom / 실제, 기준 시각부터 D-06 진입까지):
 

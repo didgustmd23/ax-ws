@@ -16,12 +16,21 @@ check_stop_feedback.py·check_wheel_calibration.py가 --criteria·--rejudge에�
   FAIL 항목이 하나라도 있으면 FAIL. not_judged 항목이 없으면(not_applicable·recorded 제외) PASS.
   그 밖은 not_judged이며 judged_subset으로 판정한 항목만의 결과를 따로 적는다.
   rtf_min이 null이면 RTF로 판정·무효 처리하지 않는다(기록만).
+  RTF 값은 측정 도구가 같은 관측 구간의 sim 경과 / 벽시계(time.monotonic) 경과로 rtf에 남긴다(RtfWindow).
+  첫 /clock 전·시계 역행·비유한·벽시계 경과 0 이하면 값을 만들지 않고 null과 사유를 남긴다.
+  record_only 항목 사유는 값 상태를 구분한다: 값 없음 / 비유한·숫자 아님 / 구조화 값(누락·비유한 개수).
 
 묶음 판정(여러 회차)
   각 회차를 위 규칙으로 판정한 뒤, 기준 항목 ID마다 PASS·FAIL로 판정된 회차가 하나 이상 있으면 충족이다.
   같은 ID의 세부 지표 중 어느 회차에서도 판정되지 않은 것이 있으면 미충족이다(not_applicable로만 나온 세부 지표는 뺌).
   모든 회차에서 recorded뿐인 ID는 판정 대상이 아니다. not_applicable뿐인 ID는 판정된 적이 없으므로 미충족이다.
   A2-S7 반복 수는 로봇·정지 방식·하중·동시 로봇 수·시나리오 묶음별로 센다. 이 조건을 결과에서 읽을 수 없으면 not_judged.
+    시도 수(attempts)와 유효 측정 반복 수(runs)를 나눈다. 정지 미확인(null) 회차, 필수 근거(truth_stop_s·
+    stop_time_difference_s·truth_hold_confirmed_s)나 표본 간격 기록이 없는 회차, 표본 간격 한계를 넘은 회차는
+    반복 수에서 빼고 excluded에 사유를 남긴다. 끝까지 측정했지만 성능 기준을 넘은 회차는 유효 반복으로 세며,
+    그 FAIL은 회차 판정과 묶음 FAIL에 그대로 남는다(반복 노출 수와 성능 판정은 따로다).
+  LD-1도 같은 유효 측정 회차만 쓴다.
+  표본 간격 기록이 빠진 회차가 있는 결과(옛 결과)는 유효성을 확인할 수 없어 묶음 근거로 쓰지 않는다(invalid_reason).
   LD-1은 결과에 부하 단계(active_robot_count·world_sha256)가 없으면 not_judged "부하 단계 정보 없음(3단계)".
   두 묶음 항목은 coverage에서 같은 ID의 세부 지표로 합쳐 ID 하나로 나온다(미충족 목록에도 한 번).
   부하 단계 정보는 측정 도구가 conditions에 남긴다(active_robot_ids·active_robot_count·world_file·world_sha256·renderer).
@@ -43,6 +52,7 @@ import math
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -80,6 +90,75 @@ def drive_scenarios(maximum_linear, maximum_angular):
         (f'제자리 회전 상한 {maximum_angular:g} rad/s', 0.0, maximum_angular, 3.0),
         ('호 주행', 0.3, 0.3, 3.0),
     ]
+
+
+# RTF 정의·단위·시각 출처(측정 도구 기록용)
+RTF_DEFINITION = 'sim 경과 / 벽시계 경과(같은 관측 구간)'
+RTF_UNIT = '무차원(sim s / wall s)'
+RTF_SIM_SOURCE = '측정 노드 ROS 시계(use_sim_time, /clock)'
+RTF_WALL_SOURCE = 'time.monotonic()(측정 도구 프로세스)'
+
+
+# 같은 관측 구간의 sim 경과 / 벽시계 경과를 기록한다. 시계만 읽으며 명령·대기·보호 동작은 바꾸지 않는다.
+# sim_clock·wall_clock은 초 단위 값을 돌려주는 함수다(시험에서는 가짜 시계를 넣는다).
+class RtfWindow:
+    def __init__(self, sim_clock, wall_clock=time.monotonic, interval=''):
+        self.sim_clock = sim_clock
+        self.wall_clock = wall_clock
+        self.interval = interval
+        self.begin = None
+        self.begin_error = None
+
+    # 구간 시작 시각 (sim, wall)을 남긴다. 읽기 실패는 사유로 남기고 예외를 올리지 않는다
+    def start(self):
+        try:
+            self.begin = (self.sim_clock(), self.wall_clock())
+        except Exception as error:
+            self.begin_error = f'시작 시각 읽기 실패: {type(error).__name__}: {error}'
+
+    # 구간 끝 시각을 읽어 계측 기록 사전을 돌려준다
+    def finish(self):
+        if self.begin is None:
+            return rtf_measurement(None, None, self.interval, self.begin_error or '측정 구간 시작 전 종료')
+
+        try:
+            end = (self.sim_clock(), self.wall_clock())
+        except Exception as error:
+            return rtf_measurement(self.begin, None, self.interval,
+                                   f'종료 시각 읽기 실패: {type(error).__name__}: {error}')
+
+        return rtf_measurement(self.begin, end, self.interval)
+
+
+# 시작·끝 (sim, wall) 시각으로 RTF 계측 기록을 만든다. 계산할 수 없는 구간이면 value None과 사유를 남긴다
+def rtf_measurement(begin, end, interval, reason=None):
+    sim = [None if begin is None else begin[0], None if end is None else end[0]]
+    wall = [None if begin is None else begin[1], None if end is None else end[1]]
+    sim_elapsed = sim[1] - sim[0] if finite(sim[0]) and finite(sim[1]) else None
+    wall_elapsed = wall[1] - wall[0] if finite(wall[0]) and finite(wall[1]) else None
+    value = None
+
+    if reason is None:
+        if sim_elapsed is None or wall_elapsed is None:
+            reason = '비유한 시각(sim 또는 벽시계)'
+        elif sim[0] <= 0:
+            reason = '첫 /clock 수신 전(시작 sim 시각 0 이하)'
+        elif sim_elapsed < 0:
+            reason = f'sim 시계 역행({sim_elapsed:.6g} s)'
+        elif wall_elapsed <= 0:
+            reason = f'벽시계 경과 0 이하({wall_elapsed:.6g} s)'
+        else:
+            value = sim_elapsed / wall_elapsed
+
+    return {
+        'value': value,
+        'reason': reason,
+        'definition': RTF_DEFINITION,
+        'unit': RTF_UNIT,
+        'interval': interval,
+        'numerator': {'source': RTF_SIM_SOURCE, 'start_s': sim[0], 'end_s': sim[1], 'elapsed_s': sim_elapsed},
+        'denominator': {'source': RTF_WALL_SOURCE, 'start_s': wall[0], 'end_s': wall[1], 'elapsed_s': wall_elapsed},
+    }
 
 
 # 파일 내용의 sha256을 구한다
@@ -169,16 +248,60 @@ def range_item(item_id, metric, values, minimum, maximum):
     return make_item(item_id, metric, value, limit, PASS)
 
 
+# 구조화 값(사전·목록) 안의 누락(None)·비유한 숫자 개수를 센다. 문자열·bool·정수는 정상 값으로 본다
+def nested_problems(value):
+    if value is None:
+        return 1, 0
+
+    if isinstance(value, dict):
+        value = list(value.values())
+
+    if isinstance(value, (list, tuple)):
+        counts = [nested_problems(item) for item in value]
+
+        return sum(item[0] for item in counts), sum(item[1] for item in counts)
+
+    if isinstance(value, float) and not math.isfinite(value):
+        return 0, 1
+
+    return 0, 0
+
+
+# record_only 값의 상태를 사유 문구로 만든다. 유한한 숫자·문제없는 구조화 값이면 빈 문자열이다
+def record_value_note(value):
+    if value is None:
+        return '값 없음'
+
+    if isinstance(value, (dict, list, tuple)):
+        if not value:
+            return '값 없음(빈 구조)'
+
+        missing, invalid = nested_problems(value)
+        parts = [text for count, text in ((missing, f'누락 {missing}개'), (invalid, f'비유한 {invalid}개')) if count]
+
+        return '구조화 값 중 ' + '·'.join(parts) if parts else ''
+
+    if finite(value):
+        return ''
+
+    if isinstance(value, float):
+        return '비유한 값'
+
+    return f'숫자가 아닌 값({type(value).__name__})'
+
+
 # record_only 항목을 recorded로 바꾼다. 값은 남기고, 원래 기준 값은 참고로 limit에 둔다.
 # not_applicable 항목은 그대로 둔다(대상이 아닌 항목은 기록 대상도 아니다).
+# 기준 초과(FAIL)는 FAIL로 처리하지 않는다. 판정 전 not_judged·recorded 사유(조건 불일치 등)는 덧붙여 남긴다.
 def apply_record_only(items, record_only):
     for item in items:
         if item['id'] not in record_only or item['result'] == NOT_APPLICABLE:
             continue
 
+        prior = item['reason'] if item['result'] in (NOT_JUDGED, RECORDED) else ''
         note = '판정 안 함(기준 파일 record_only, limit은 참고 값)'
         item['result'] = RECORDED
-        item['reason'] = note + ('' if finite(item['value']) else '; 값 없음')
+        item['reason'] = '; '.join(filter(None, [note, record_value_note(item['value']), prior]))
 
     return items
 
@@ -384,11 +507,15 @@ def stop_scenario_items(name, runs, commands, stop_mode, criteria, record, misma
     # A2-S5 odom 정지 뒤 차체 실제 추가 이동(odom 정지 시점 위치 → 기록 끝 위치의 수평 거리).
     # record_only면 시나리오 종류와 관계없이 값을 남긴다.
     metric = f'{label}: slide_after_odom_stop_m 최대'
-    slide = worst(run_values(runs, 'slide_after_odom_stop_m'))
+    slides = run_values(runs, 'slide_after_odom_stop_m')
+    slide = worst(slides)
     limit = stop['max_post_stop_body_motion_m']
 
     if 'A2-S5' in (criteria.get('record_only') or []):
-        items.append(make_item('A2-S5', metric, slide, limit, RECORDED, ''))
+        # 무효 값이 섞이면 최댓값을 만들지 않고 회차 값 목록을 그대로 남긴다(값 없음과 구분).
+        value = slide if slide is not None or not slides else slides
+        items.append(make_item('A2-S5', metric, value, limit, RECORDED,
+                               scope_reason if scope == NOT_JUDGED else ''))
     elif scope is not None:
         items.append(make_item('A2-S5', metric, None, None, scope, scope_reason))
     else:
@@ -482,26 +609,61 @@ def judge_stop(record, criteria, source):
     apply_record_only(items, criteria.get('record_only') or [])
 
     # 기록 표본 최대 간격(회차 유효 조건). 정지 확인 회차의 max_sample_gap_s 최댓값이다.
-    sample_gap = worst(run_values(all_runs, 'max_sample_gap_s')) if any(all_runs) else None
+    # 기록이 빠진 회차가 있어도 다른 회차의 간격 초과를 숨기지 않으며, 빠진 수를 따로 남긴다.
     gap_limit = load['max_sample_interval_s']
+    sample_gap = gap_summary(run_values(all_runs, 'max_sample_gap_s'), gap_limit,
+                             'runs[*].max_sample_gap_s(정지 확인 회차, 기준 시각 뒤)')
     result = {
         'criteria': source,
         'criteria_items': items,
-        'sample_gap': {'max_sample_gap_s': sample_gap, 'limit_s': gap_limit,
-                       'source': 'runs[*].max_sample_gap_s(정지 확인 회차, 기준 시각 뒤)'},
+        'sample_gap': sample_gap,
         'rtf': rtf_record(record, load),
     }
-    result.update(overall(items, record.get('status'), sample_gap, gap_limit))
+    result.update(overall(items, record.get('status'), sample_gap['max_sample_gap_s'], gap_limit))
 
     return result
 
 
-# RTF 기록. rtf_min이 null이면 판정·무효 처리 없이 기록만 한다
+# 표본 간격 기록 요약. 유한한 값의 최댓값, 확인한 수, 빠진(없음·비유한) 수를 남긴다
+def gap_summary(values, limit, source):
+    present = [value for value in values if finite(value)]
+
+    return {
+        'max_sample_gap_s': max(present) if present else None,
+        'limit_s': limit,
+        'source': source,
+        'checked_count': len(present),
+        'missing_count': len(values) - len(present),
+    }
+
+
+# 판정기 RTF 기록 사전의 키 집합(이전 형식 포함). 재판정을 거듭하면 value 안에 겹친다
+RTF_RECORD_KEY_SETS = (frozenset({'rtf_min', 'value', 'use'}), frozenset({'rtf_min', 'value', 'use', 'reason'}))
+
+
+# 판정기 기록 사전 겹을 벗긴 측정값(측정 도구 계측 사전·숫자·None)
+def rtf_measured(value):
+    while isinstance(value, dict) and frozenset(value) in RTF_RECORD_KEY_SETS:
+        value = value['value']
+
+    return value
+
+
+# RTF 기록. rtf_min이 null이면 판정·무효 처리 없이 기록만 한다. 값이 없으면 현재 환경 값으로 채우지 않고 사유를 남긴다
 def rtf_record(record, load):
+    measured = rtf_measured(record.get('rtf'))
+    reason = None
+
+    if measured is None:
+        reason = '결과에 rtf 기록 없음(계측 도입 전 결과 또는 미기록, 현재 환경 값으로 채우지 않음)'
+    elif isinstance(measured, dict) and measured.get('value') is None:
+        reason = f'계산 안 함: {measured.get("reason")}'
+
     return {
         'rtf_min': load.get('rtf_min'),
         'value': record.get('rtf'),
         'use': '기록만(판정·무효 처리 안 함)' if load.get('rtf_min') is None else '하한 판정 미구현',
+        'reason': reason,
     }
 
 
@@ -586,16 +748,15 @@ def judge_wheel(record, criteria, source):
         (trial.get('end_speed') or {}).get('max_gap_s')
         for trial in (record.get('turns') or []) + (record.get('drives') or [])
     ]
-    sample_gap = worst([value for value in gaps if value is not None])
     gap_limit = load['max_sample_interval_s']
+    sample_gap = gap_summary(gaps, gap_limit, 'turns·drives[*].end_speed.max_gap_s(회차 끝 정지 확인 구간만)')
     result = {
         'criteria': source,
         'criteria_items': items,
-        'sample_gap': {'max_sample_gap_s': sample_gap, 'limit_s': gap_limit,
-                       'source': 'turns·drives[*].end_speed.max_gap_s(회차 끝 정지 확인 구간만)'},
+        'sample_gap': sample_gap,
         'rtf': rtf_record(record, load),
     }
-    result.update(overall(items, record.get('status'), sample_gap, gap_limit))
+    result.update(overall(items, record.get('status'), sample_gap['max_sample_gap_s'], gap_limit))
 
     return result
 
@@ -779,11 +940,41 @@ def run_conditions(kind, record):
     return summary
 
 
-# 회차 판정이 묶음 근거로 유효한지 본다(status incomplete·SAMPLE_GAP 회차는 근거로 쓰지 않음)
+# 회차 판정이 묶음 근거로 유효한지 본다. (유효 여부, 무효 사유)를 돌려준다.
+# status incomplete·SAMPLE_GAP 회차, 표본 간격 기록이 빠진 회차가 있는 결과(유효성 확인 불가)는 근거로 쓰지 않는다
 def run_valid(judged):
     reason = judged.get('judgment_reason') or ''
 
-    return not reason.startswith(('status incomplete', 'SAMPLE_GAP'))
+    if reason.startswith(('status incomplete', 'SAMPLE_GAP')):
+        return False, reason
+
+    missing = (judged.get('sample_gap') or {}).get('missing_count') or 0
+
+    if missing:
+        return False, f'표본 간격 기록 없음·비유한 {missing}회차(유효성 확인 불가, 추정해 채우지 않음)'
+
+    return True, None
+
+
+# 정지 회차 하나가 유효 측정 반복인지 본다. 유효하면 None, 아니면 제외 사유.
+# 회차 판정이 요구하는 필수 근거와 표본 간격 한계만 본다(성능 기준 초과는 유효 반복이다)
+def run_exclusion(run, gap_limit):
+    if run is None:
+        return '정지 미확인 회차(실패, failure_details 참조)'
+
+    for key in ('truth_stop_s', 'stop_time_difference_s', 'truth_hold_confirmed_s'):
+        if not finite(run.get(key)):
+            return f'필수 근거 {key} 없음·비유한'
+
+    gap = run.get('max_sample_gap_s')
+
+    if not finite(gap):
+        return '표본 간격 기록 없음(유효성 확인 불가)'
+
+    if gap > gap_limit:
+        return f'SAMPLE_GAP: {gap:.4f} s > {gap_limit} s'
+
+    return None
 
 
 # A2-S7 반복 수를 로봇·정지 방식·하중·동시 로봇 수·시나리오 묶음별로 센다(유효 회차만)
@@ -795,6 +986,7 @@ def repeat_coverage(entries, criteria):
     if not stop_entries:
         return make_item('A2-S7', metric, None, {'repeats_min': required}, NOT_APPLICABLE, '정지 결과 없음')
 
+    gap_limit = criteria['load']['max_sample_interval_s']
     groups = {}
     missing = set()
 
@@ -804,13 +996,23 @@ def repeat_coverage(entries, criteria):
         key = tuple(conditions.get(field) for field in REPEAT_GROUP_FIELDS)
 
         for scenario, runs in (entry['record'].get('runs') or {}).items():
-            groups[key + (scenario,)] = groups.get(key + (scenario,), 0) + len(runs)
+            group = groups.setdefault(key + (scenario,), {'attempts': 0, 'runs': 0, 'excluded': []})
 
+            for index, run in enumerate(runs):
+                group['attempts'] += 1
+                reason = run_exclusion(run, gap_limit)
+
+                if reason is None:
+                    group['runs'] += 1
+                else:
+                    group['excluded'].append({'path': entry['path'], 'index': index, 'reason': reason})
+
+    # runs는 유효 측정 반복 수, attempts는 시도 수다. 제외 회차의 실패 판정은 회차 판정에 남는다.
     value = [
-        dict(zip(REPEAT_GROUP_FIELDS + ('scenario',), key), runs=count)
-        for key, count in groups.items()
+        dict(zip(REPEAT_GROUP_FIELDS + ('scenario',), key), **group)
+        for key, group in groups.items()
     ]
-    limit = {'repeats_min': required}
+    limit = {'repeats_min': required, 'counted': '유효 측정 반복(runs), 시도 수는 attempts'}
 
     if missing:
         return make_item('A2-S7', metric, value, limit, NOT_JUDGED,
@@ -819,7 +1021,10 @@ def repeat_coverage(entries, criteria):
     short = [item for item in value if item['runs'] < required]
 
     if short:
-        return make_item('A2-S7', metric, value, limit, NOT_JUDGED, f'반복 수 부족 묶음 {len(short)}개')
+        excluded = sum(len(item['excluded']) for item in value)
+
+        return make_item('A2-S7', metric, value, limit, NOT_JUDGED,
+                         f'반복 수 부족 묶음 {len(short)}개(유효 측정 반복 기준, 제외 {excluded}회)')
 
     return make_item('A2-S7', metric, value, limit, PASS)
 
@@ -837,15 +1042,19 @@ def load_invariance(entries, criteria):
            for entry in stop_entries for field in ('active_robot_count', 'world_sha256')):
         return make_item('LD-1', metric, None, limit, NOT_JUDGED, NO_LOAD_STAGE)
 
-    # (월드, 로봇, 정지 방식, 하중, 시나리오) → 부하 단계(동시 로봇 수)별 정지 시간 목록
+    # (월드, 로봇, 정지 방식, 하중, 시나리오) → 부하 단계(동시 로봇 수)별 정지 시간 목록. 유효 측정 회차만 쓴다
+    gap_limit = criteria['load']['max_sample_interval_s']
     table = {}
+    excluded = 0
 
     for entry in stop_entries:
         conditions = entry['conditions']
         base = tuple(conditions[field] for field in ('world_sha256', 'robot_id', 'stop_mode', 'payload_kg'))
 
         for scenario, runs in (entry['record'].get('runs') or {}).items():
-            values = [value for value in run_values(runs, 'truth_stop_s') if finite(value)]
+            measured = [run for run in runs if run_exclusion(run, gap_limit) is None]
+            excluded += len(runs) - len(measured)
+            values = [run['truth_stop_s'] for run in measured]
             stages = table.setdefault(base + (scenario,), {})
             stages.setdefault(conditions['active_robot_count'], []).extend(values)
 
@@ -861,10 +1070,16 @@ def load_invariance(entries, criteria):
             if count != 1 and values:
                 differences.append(abs(sum(values) / len(values) - sum(baseline) / len(baseline)))
 
-    if not differences:
-        return make_item('LD-1', metric, None, limit, NOT_JUDGED, 'L0와 비교할 같은 조건의 부하 회차 없음')
+    note = f'유효 측정 회차만 사용(제외 {excluded}회)' if excluded else ''
 
-    return upper_item('LD-1', metric, max(differences), limit)
+    if not differences:
+        return make_item('LD-1', metric, None, limit, NOT_JUDGED,
+                         '; '.join(filter(None, ['L0와 비교할 같은 조건의 부하 회차 없음', note])))
+
+    item = upper_item('LD-1', metric, max(differences), limit)
+    item['reason'] = '; '.join(filter(None, [item['reason'], note]))
+
+    return item
 
 
 # 항목 ID별 충족 여부를 정한다. 같은 ID의 세부 지표(metric)마다 유효 회차의 PASS·FAIL 근거를 찾는다.
@@ -930,7 +1145,7 @@ def item_coverage(entries, batch_items=()):
 
 # 묶음 출력의 회차 요약(경로·해시·종류·유효 여부·조건·회차 판정)
 def run_summary(entry):
-    summary = {key: entry[key] for key in ('path', 'sha256', 'kind', 'valid', 'conditions')}
+    summary = {key: entry[key] for key in ('path', 'sha256', 'kind', 'valid', 'invalid_reason', 'conditions')}
     summary['judgment'] = entry['judged']['judgment']
     summary['judgment_reason'] = entry['judged']['judgment_reason']
 
@@ -941,7 +1156,6 @@ def run_summary(entry):
 # sample_gap은 runs 등 측정값과 기준 한계로 다시 계산되는 판정 기록이다. rtf는 measurement_key에서 측정값만 남긴다.
 JUDGED_FIELDS = ('criteria', 'criteria_items', 'judgment', 'judgment_reason', 'judged_subset', 'rejudged_from',
                  'sample_gap')
-RTF_RECORD_KEYS = {'rtf_min', 'value', 'use'}
 
 
 # 판정 부가 필드를 뺀 측정 내용의 SHA-256. 원본·재판정본·서식만 다른 사본이 같은 값을 낸다.
@@ -951,8 +1165,7 @@ def measurement_key(record):
 
     # 판정기가 rtf를 기록 사전(rtf_record)으로 바꾼 경우 측정값만 남긴다. 재판정을 거듭하면 사전이 value 안에
     # 겹겹이 쌓이므로, 키 집합이 정확히 기록 사전인 겹만 연속으로 벗긴다(그 밖의 사전은 측정값으로 그대로 둔다).
-    while isinstance(rtf, dict) and set(rtf) == RTF_RECORD_KEYS:
-        rtf = rtf['value']
+    rtf = rtf_measured(rtf)
 
     # 값이 없으면(None) 원본에 rtf가 없던 것과 같다.
     if rtf is None:
@@ -1004,13 +1217,15 @@ def judge_batch(inputs, criteria, source):
     for (path, original, kind), (_, _, record) in zip(inputs, parsed):
         kind = kind or detect_kind(record)
         judged = JUDGES[kind](copy.deepcopy(record), criteria, source)
+        valid, invalid_reason = run_valid(judged)
         entries.append({
             'path': str(path),
             'sha256': hashlib.sha256(original).hexdigest(),
             'kind': kind,
             'record': record,
             'judged': judged,
-            'valid': run_valid(judged),
+            'valid': valid,
+            'invalid_reason': invalid_reason,
             'conditions': run_conditions(kind, record),
         })
 

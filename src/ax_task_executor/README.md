@@ -340,7 +340,8 @@ ros2 launch ax_task_executor team_handoff.launch.py robot_ids:=robot_2 robot_mod
 - 기본 조합은 `robot_1,robot_2` / `AX_1,AX_2`이며 모델을 로봇 ID로 추측하지 않고 명시한다.
 - 각 `/ax/<robot_id>` namespace에서 `local_task_executor`와 `corridor_observer`만 실행한다.
 - A3는 `operational`, 시각은 팀 시뮬레이션과 같은 `use_sim_time=true`다.
-- `regions_file`과 `map_revision`(기본 1)을 지정할 수 있다. B2 채택 지도와 실제 영역 계약을 확인한다.
+- `regions_file`과 `map_revision`(기본 2)을 지정할 수 있다. B2 채택 지도와 B3 영역 번호를 맞췄으며,
+  지도 교체 전 번호의 관측은 계속 UNKNOWN으로 차단한다. 영역 운영 승인은 별도다.
 - 기존 같은 로봇의 A3·B3 노드는 먼저 종료한다. 중복 ID·모델 개수 불일치는 시작 전에 거절한다.
 - 실행만으로 실제 배정·Goal·lease가 등록되거나, 모의 Action이 실제 조작으로 바뀌지 않는다.
   D4 배정 미확인은 거절, 미승인 B3 영역은 UNKNOWN을 유지한다.

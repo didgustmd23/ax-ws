@@ -7,7 +7,7 @@
 - 접근 구역: 각 통로 양 입구 바깥에 통로 폭과 같은 폭, 깊이 APPROACH_DEPTH_M(개발값)으로 둔다.
 - 작업대: source_pickup_zone·destination_unload_zone 모델의 바닥 표시 상자.
 - 대기 지점: 개발용 제안 사각형. 접근 구역·통로·작업대·충돌 형상과 떨어져 있어야 한다(시험에서 확인).
-- world→map: 채택 지도 revision 1의 T_world_map 초기값 (−6.8, 0, 0)(map 원점 = robot_2 출발 자세). map = world − (−6.8, 0).
+- world→map: 채택 지도 revision 2의 검증용 초기값 (−6.8, 0, 0). 운영 정합 승인은 별도다.
 """
 import argparse
 import json
@@ -16,14 +16,30 @@ from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / 'src/ax_description/worlds/planned/ax_warehouse.world'
 OUTPUT = ROOT / 'src/ax_environment/config/ax_warehouse_regions.json'
 MAP_README = 'src/ax_localization/maps/ax_warehouse/README.md'
 
-# 채택 지도 revision 1 README의 T_world_map 초기값(world 기준 map 원점, yaw 0).
+# revision 2도 초기 변환은 같다. 최적 정합값이나 지도 이미지 원점을 영역 좌표에 대신 넣지 않는다.
 T_WORLD_MAP = (-6.8, 0.0, 0.0)
-MAP_REVISION = 1
+MAP_REVISION = 2
+
+
+def check_map_basis():
+    """B2 지도가 다시 바뀌면 오래된 B3 좌표를 새 지도용으로 조용히 생성하지 않습니다."""
+    directory = ROOT / 'src/ax_localization/maps/ax_warehouse'
+    info = yaml.safe_load((directory / 'map_info.yaml').read_text(encoding='utf-8'))
+    applicable = yaml.safe_load((directory / 'applicable_worlds.yaml').read_text(encoding='utf-8'))
+    if info['map_revision'] != MAP_REVISION or applicable['map_revision'] != MAP_REVISION:
+        raise ValueError('B2 채택 지도 revision 변경: B3 영역 근거를 재검증하세요.')
+    initial = info['T_world_map']['initial']
+    if not all(math.isclose(value, initial[key], rel_tol=0, abs_tol=1e-6)
+               for value, key in zip(T_WORLD_MAP, ('x_m', 'y_m', 'yaw_rad'))):
+        raise ValueError('B2 초기 좌표 변환 변경: B3 경계를 재검증하세요.')
+
 
 # 접근 구역 깊이(개발값): AX_1 이동 자세 외곽 길이 1.60 m(a1_validation.yaml footprint)와 비슷하게 잡아
 # 입구 바로 앞에서 통로를 향한 로봇 한 대가 들어가는 깊이로 둔다. 운영 합의값이 아니다.
@@ -99,6 +115,8 @@ def region(region_id, kind, world_bounds, basis, **extra):
 
 # 전체 영역 파일 내용을 만든다.
 def build(world=WORLD):
+    # 지도 번호만 올려 통과시키지 않고, 기존 경계의 기준 변환도 현재 B2 근거와 대조한다.
+    check_map_basis()
     boxes = model_boxes(world)
     regions = []
 
@@ -144,8 +162,8 @@ def build(world=WORLD):
         'transform': {
             'T_world_map': list(T_WORLD_MAP),
             'rule': 'map = world − (T_world_map.x, T_world_map.y), yaw 0',
-            'basis': f'{MAP_README} 채택 지도 revision 1 T_world_map 초기값(map 원점 = robot_2 출발 자세). '
-                     '참조 지도 최적 정합(−6.822, +0.006, +0.0003 rad)과의 차 약 0.02 m는 반영하지 않음',
+            'basis': f'{MAP_README} 채택 지도 revision {MAP_REVISION}의 검증용 T_world_map 초기값 '
+                     '(map 원점 = robot_2 출발 자세). 최적 정합값·이미지 원점은 사용하지 않으며 운영 승인은 별도',
         },
         'approach_depth_m': APPROACH_DEPTH_M,
         'regions': regions,

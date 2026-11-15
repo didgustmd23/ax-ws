@@ -44,6 +44,7 @@ def generate_launch_description():
         DeclareLaunchArgument('robot_ids', default_value='robot_1,robot_2'),
         DeclareLaunchArgument('robot_models', default_value='AX_1,AX_2'),
         DeclareLaunchArgument('regions_file', default_value=''),
-        DeclareLaunchArgument('map_revision', default_value='1'),
+        # B2 채택 지도와 B3 영역의 번호를 맞춘다. 운영 영역 승인이나 배정을 대신 허용하지 않는다.
+        DeclareLaunchArgument('map_revision', default_value='2'),
         OpaqueFunction(function=setup_nodes),
     ])

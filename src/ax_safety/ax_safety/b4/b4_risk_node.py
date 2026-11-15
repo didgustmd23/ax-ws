@@ -74,26 +74,28 @@ class B4RiskNode(Node):
         self.session = str(uuid.uuid4())
         self.revision = 0
         base = f'/ax/{self.robot_id}'
-        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE,
-                         durability=DurabilityPolicy.VOLATILE)
-        self.publisher = self.create_publisher(SafetyState, base + '/safety/state', qos)
-        self.create_subscription(LocalizationHealth, base + '/localization/health', self.on_loc, qos)
-        self.create_subscription(CorridorObservationList, base + '/perception/corridor_observation', self.on_corridor, qos)
+        state_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                               durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        sensor_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT,
+                                durability=DurabilityPolicy.VOLATILE)
+        self.publisher = self.create_publisher(SafetyState, base + '/safety/state', state_qos)
+        self.create_subscription(LocalizationHealth, base + '/localization/health', self.on_loc, state_qos)
+        self.create_subscription(CorridorObservationList, base + '/perception/corridor_observation', self.on_corridor, state_qos)
         if self.scan_topic:
             self.create_subscription(LaserScan, self.scan_topic, self.on_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.front_scan_topic:
             self.create_subscription(LaserScan, self.front_scan_topic, self.on_front_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.rear_scan_topic:
             self.create_subscription(LaserScan, self.rear_scan_topic, self.on_rear_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.front_topic:
             self.create_subscription(Range, self.front_topic, self.on_front,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.rear_topic:
             self.create_subscription(Range, self.rear_topic, self.on_rear,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         self.create_timer(0.1, self.publish_state)
         self.get_logger().info('B4 initialized: sensor subscriptions only on explicitly configured topics')
 
@@ -173,7 +175,9 @@ class B4RiskNode(Node):
 
     def meta_ok(self, msg, ttl):
         # 공통 메타데이터가 유효하고 revision/session이 있으며 최근 timestamp인지 확인한다.
-        if msg is None or not msg.meta.valid or not msg.meta.revision or not msg.meta.source_session_id:
+        if (msg is None or not msg.meta.valid or msg.meta.schema_version != 1 or
+                not msg.meta.source_id or not msg.meta.revision or
+                not msg.meta.source_session_id):
             return False
         return self.recent_stamp(msg.meta.header.stamp, ttl)
 

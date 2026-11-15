@@ -8,8 +8,6 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
-
-
 def generate_launch_description():
     # 설정 파일은 B4 임계값과 A4 기본 잠금 상태를 함께 제공한다.
     config = str(Path(get_package_share_directory('ax_safety')) / 'config' / 'safety_limits.yaml')
@@ -33,10 +31,14 @@ def generate_launch_description():
         # 로봇별 namespace로 감싸 여러 로봇의 B4 노드 이름이 겹치지 않게 한다.
         Node(package='ax_safety', executable='b4_risk_node', namespace=['/ax/', robot_id], output='screen',
              parameters=[config, {'robot_id': robot_id,
+                                  # 시뮬레이션에서는 StateMeta 시각도 ROS 시뮬레이션
+                                  # 시각을 사용하므로 launch에서 명시적으로 전달한다.
+                                  'use_sim_time': True,
                                   'front_scan_topic': ['/ax/', robot_id,
                                                        '/sensors/front_lidar/scan_filtered'],
                                   'rear_scan_topic': ['/ax/', robot_id,
-                                                      '/sensors/rear_lidar/scan_filtered']}]),
+                                                       '/sensors/rear_lidar/scan_filtered']}]),
+
         # A4 주행 게이트는 SafetyState·odom·joint state·D2/D3 허가를 모두 확인한다.
         # 로봇별 namespace로 감싸 여러 로봇의 A4 안전 게이트를 구분한다.
         Node(package='ax_safety', executable='a4_safety_gate', namespace=['/ax/', robot_id], output='screen',
@@ -51,11 +53,12 @@ def generate_launch_description():
                                   'travel_envelope_verified': ParameterValue(
                                       travel_envelope_verified, value_type=bool),
                                   'arm_operation_verified': ParameterValue(
-                                      arm_operation_verified, value_type=bool)}]),
+                                       arm_operation_verified, value_type=bool)}]),
+
         # 팔 action은 A3 lease를 확인하는 별도 서버를 거쳐 A2 controller로 전달된다.
         # 로봇별 namespace로 감싸 보호 팔 서버의 이름 충돌을 막는다.
         Node(package='ax_safety', executable='a4_protected_arm_server', namespace=['/ax/', robot_id], output='screen',
-             parameters=[{'robot_id': robot_id,
+             parameters=[config, {'robot_id': robot_id,
                                   'use_sim_time': True,
                                   'enable_simulation_arm': ParameterValue(
                                       enable_simulation_arm, value_type=bool)}]),

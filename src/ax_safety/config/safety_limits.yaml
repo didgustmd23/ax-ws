@@ -24,6 +24,14 @@ a4_safety_gate:
     max_angular_rad_s: 0.50
     max_linear_accel_m_s2: 0.67
     max_angular_accel_rad_s2: 0.20
+    # D-06 실제 정지 확인에 사용할 odom·관절 피드백 기준이다.
+    # 명령을 정지로 보냈다는 사실만으로 STOPPED를 판정하지 않고,
+    # 실제 속도가 아래 기준 이하로 유지되는지 확인한다.
+    stop_linear_threshold_m_s: 0.01
+    stop_angular_threshold_rad_s: 0.02
+    stop_joint_threshold_rad_s: 0.01
+    stop_hold_s: 0.5
+
 a4_protected_arm_server:
   ros__parameters:
     # 보호 팔 서버도 동일한 로봇 namespace를 사용하고 기본값은 잠금 상태이다.
@@ -37,6 +45,10 @@ a4_protected_arm_server:
     arm_position_max_rad: []
     arm_max_velocity_rad_s: []
     arm_max_acceleration_rad_s2: []
+    stop_joint_threshold_rad_s: 0.01
+    stop_hold_s: 0.5
+    arm_stop_confirm_timeout_s: 1.0
+    arm_pose_tolerance_rad: 0.04
     # controller_action: /ax/robot_1/arm_controller/follow_joint_trajectory
 
 

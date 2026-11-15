@@ -13,22 +13,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_safety'))
 from ax_safety.b4.b4_risk_node import B4RiskNode
 
 
-def valid_meta(message):
+def valid_meta(message, schema_version=1, source_id='test'):
     message.meta.valid = True
-    message.meta.schema_version = 1
+    message.meta.schema_version = schema_version
     message.meta.revision = 1
-    message.meta.source_id = 'test'
+    message.meta.source_id = source_id
     message.meta.source_session_id = 'test-session'
     message.meta.header.stamp = Time(sec=100)
     message.robot_id = 'robot_1'
 
 
-def publish(observations):
+def publish(observations, health_schema=1, health_source='test',
+            corridor_schema=1, corridor_source='test'):
     health = LocalizationHealth()
-    valid_meta(health)
+    valid_meta(health, health_schema, health_source)
     health.state = health.OK
     corridors = CorridorObservationList()
-    valid_meta(corridors)
+    valid_meta(corridors, corridor_schema, corridor_source)
     corridors.observations = observations
     received = time.monotonic()
     node = SimpleNamespace(robot_id='robot_1', localization=health, corridor=corridors,
@@ -77,6 +78,15 @@ class B4ObservationValidation(unittest.TestCase):
     def test_invalid_position_blocks(self):
         item = observation()
         item.position_valid = False
+        self.assert_blocked(publish([item]))
+
+    def test_invalid_parent_metadata_blocks(self):
+        self.assert_blocked(publish([observation()], health_schema=2))
+        self.assert_blocked(publish([observation()], corridor_source=''))
+
+    def test_invalid_observation_metadata_blocks(self):
+        item = observation()
+        item.meta.schema_version = 2
         self.assert_blocked(publish([item]))
 
 

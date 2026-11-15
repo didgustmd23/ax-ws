@@ -1,4 +1,9 @@
-"""An empty or uncertain corridor list must never authorize clear travel."""
+"""B4 통로 관측 유효성에 따른 안전 차단 동작을 검증한다.
+
+빈 관측 목록, UNKNOWN 관측, 잘못된 위치와 메타데이터는
+통행 허가로 해석되지 않고 UNKNOWN 상태로 차단되어야 한다.
+"""
+
 from pathlib import Path
 import sys
 import time
@@ -9,11 +14,15 @@ from unittest.mock import Mock
 from ax_interfaces.msg import CorridorObservation, CorridorObservationList, LocalizationHealth, SafetyState
 from builtin_interfaces.msg import Time
 
+
+# 테스트 실행 위치와 관계없이 작업 공간의 B4 구현을 직접 가져온다.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_safety'))
 from ax_safety.b4.b4_risk_node import B4RiskNode
 
 
 def valid_meta(message, schema_version=1, source_id='test'):
+    """테스트 메시지가 공통 StateMeta 계약을 만족하도록 기본값을 채운다."""
+
     message.meta.valid = True
     message.meta.schema_version = schema_version
     message.meta.revision = 1
@@ -25,6 +34,8 @@ def valid_meta(message, schema_version=1, source_id='test'):
 
 def publish(observations, health_schema=1, health_source='test',
             corridor_schema=1, corridor_source='test'):
+    """B4의 입력 상태를 구성하고 발행될 SafetyState를 반환한다."""
+
     health = LocalizationHealth()
     valid_meta(health, health_schema, health_source)
     health.state = health.OK
@@ -47,6 +58,8 @@ def publish(observations, health_schema=1, health_source='test',
 
 
 def observation():
+    """정상적인 OUTSIDE 통로 관측 하나를 만든다."""
+
     message = CorridorObservation()
     valid_meta(message)
     message.corridor_id = 'corridor_1'
@@ -56,35 +69,51 @@ def observation():
 
 
 class B4ObservationValidation(unittest.TestCase):
+    """유효하지 않은 통로 관측이 항상 안전 차단으로 이어지는지 확인한다."""
+
     def assert_blocked(self, message):
+        """차단 결과가 UNKNOWN이고 모든 이동 허가가 꺼졌는지 확인한다."""
+
         self.assertEqual(message.level, SafetyState.UNKNOWN)
         self.assertFalse(message.meta.valid)
         self.assertFalse(message.allow_forward or message.allow_backward or message.allow_rotate)
         self.assertEqual(message.max_linear_speed, 0.)
 
     def test_empty_list_is_unknown(self):
+        """통로 관측이 없으면 B4가 통행을 허가하지 않아야 한다."""
+
         self.assert_blocked(publish([]))
 
     def test_known_observation_preserves_clear_path(self):
+        """정상 관측은 기존의 CLEAR 판단과 전진 허가를 유지해야 한다."""
+
         result = publish([observation()])
         self.assertEqual(result.level, SafetyState.CLEAR)
         self.assertTrue(result.meta.valid and result.allow_forward)
 
     def test_unknown_observation_blocks(self):
+        """관측 상태가 UNKNOWN이면 이동을 차단해야 한다."""
+
         item = observation()
         item.observation = item.UNKNOWN
         self.assert_blocked(publish([item]))
 
     def test_invalid_position_blocks(self):
+        """위치가 검증되지 않은 관측은 안전 입력으로 사용할 수 없어야 한다."""
+
         item = observation()
         item.position_valid = False
         self.assert_blocked(publish([item]))
 
     def test_invalid_parent_metadata_blocks(self):
+        """LocalizationHealth와 통로 목록의 메타데이터 오류를 차단해야 한다."""
+
         self.assert_blocked(publish([observation()], health_schema=2))
         self.assert_blocked(publish([observation()], corridor_source=''))
 
     def test_invalid_observation_metadata_blocks(self):
+        """개별 관측의 schema_version 오류도 전체 판단을 차단해야 한다."""
+
         item = observation()
         item.meta.schema_version = 2
         self.assert_blocked(publish([item]))

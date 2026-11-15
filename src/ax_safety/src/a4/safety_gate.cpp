@@ -26,22 +26,28 @@ using sensor_msgs::msg::JointState;
 class A4SafetyGate : public rclcpp::Node {
 public:
   A4SafetyGate() : Node("a4_safety_gate") {
+    // 안전 게이트는 필요한 검증값이 모두 준비되기 전까지 잠긴 상태로 시작한다.
+
     // 기본값은 잠금 상태이며, A1 자세·D2/D3 허가·시뮬레이션 시험 조건을 각각 확인해야 연다.
     robot_ = declare_parameter<std::string>("robot_id", "robot_1");
     enable_ = declare_parameter<bool>("enable_simulation_drive", false);
+
     // D2/D3의 작업·통로 허가 계약이 완전히 구현되어야 true로 설정 가능.
     permits_verified_ = declare_parameter<bool>("operational_permits_verified", false);
     pose_approved_ = declare_parameter<bool>("travel_envelope_verified", false);
     arm_approved_ = declare_parameter<bool>("arm_operation_verified", false);
+
     joint_names_ = declare_parameter<std::vector<std::string>>(
         "travel_joint_names", std::vector<std::string>{});
     joint_positions_ = declare_parameter<std::vector<double>>(
         "travel_joint_positions", std::vector<double>{});
     pose_tolerance_ = declare_parameter<double>("travel_pose_tolerance_rad", 0.04);
+
     max_linear_ = declare_parameter<double>("max_linear_m_s", 0.67);
     max_angular_ = declare_parameter<double>("max_angular_rad_s", 0.50);
     max_linear_accel_ = declare_parameter<double>("max_linear_accel_m_s2", 0.67);
     max_angular_accel_ = declare_parameter<double>("max_angular_accel_rad_s2", 0.20);
+
     // D-06 실제 정지 확인 기준은 명령 제한값이 아니라 피드백 기준값이다.
     // 정지 명령을 보냈다는 사실만으로 STOPPED를 판정하지 않는다.
     stop_linear_threshold_ = declare_parameter<double>("stop_linear_threshold_m_s", 0.01);
@@ -49,13 +55,17 @@ public:
     stop_joint_threshold_ = declare_parameter<double>("stop_joint_threshold_rad_s", 0.01);
     stop_hold_s_ = declare_parameter<double>("stop_hold_s", 0.5);
     session_ = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+
     const auto base = "/ax/" + robot_;
+
     // nav 입력은 A4가 받고, 출력은 A2 diff_drive_controller로 보낸다.
     auto cmd_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
     auto state_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
     auto feedback_qos = rclcpp::SensorDataQoS();
+
     pub_cmd_ = create_publisher<TwistStamped>(base + "/diff_drive_controller/cmd_vel", cmd_qos);
     pub_state_ = create_publisher<ActuationState>(base + "/safety/actuation_state", state_qos);
+
     sub_safety_ = create_subscription<SafetyState>(base + "/safety/state", state_qos,
         [this](SafetyState::SharedPtr m) { safety_ = *m; received_safety_ = steady(); got_safety_ = true; });
     sub_odom_ = create_subscription<Odometry>(base + "/diff_drive_controller/odom", feedback_qos,
@@ -64,16 +74,20 @@ public:
         [this](JointState::SharedPtr m) { joints_ = *m; received_joints_ = steady(); got_joints_ = true; });
     sub_cmd_ = create_subscription<TwistStamped>(base + "/nav/cmd_vel", cmd_qos,
         [this](TwistStamped::SharedPtr m) { on_command(*m); });
+
     timer_ = create_wall_timer(50ms, [this]() { tick(); });
     RCLCPP_WARN(get_logger(), "A4 gate started locked. A1 pose envelope and D2/D3 permits must be explicitly verified.");
   }
 private:
+  // 통신 수신 시각은 steady clock으로 기록해 시스템 시간 변경의 영향을 받지 않게 한다.
   // steady clock은 시스템 시간이 바뀌어도 통신 timeout을 일정하게 계산하게 한다.
   static std::chrono::steady_clock::time_point steady() { return std::chrono::steady_clock::now(); }
 
   static double elapsed(std::chrono::steady_clock::time_point t) {
     return std::chrono::duration<double>(steady()-t).count();
   }
+
+  // ROS timestamp는 메시지 자체의 시간 유효성을 확인할 때만 사용한다.
   bool stamp_fresh(const builtin_interfaces::msg::Time &stamp, double timeout) const {
     // zero timestamp와 미래/오래된 ROS timestamp는 현재 상태로 인정하지 않는다.
     if (stamp.sec == 0 && stamp.nanosec == 0) return false;
@@ -81,6 +95,7 @@ private:
     return std::isfinite(age) && age >= 0 && age <= timeout;
   }
 
+  // 주행 허용 여부를 판단하려면 odom과 joint_states가 모두 최신이고 서로 일관되어야 한다.
   bool state_fresh() const {
     // odom과 joint state가 모두 최근 수신되며 finite이고, joint name/position 배열이 맞아야 한다.
     if (!got_odom_ || !got_joints_ || elapsed(received_odom_) > 0.3 ||
@@ -97,6 +112,7 @@ private:
     return true;
   }
 
+  // A1에서 승인한 주행 자세와 현재 관절 피드백이 일치하는지 확인한다.
   bool travel_pose_valid() const {
     // 주행 중 허용된 관절 자세가 실제 joint state와 tolerance 안에서 일치하는지 확인한다.
     if (!pose_approved_ || !state_fresh() || joint_names_.empty() ||
@@ -110,6 +126,7 @@ private:
     return true;
   }
 
+  // 각 입력 메시지를 순수 게이트 함수가 사용할 최소한의 안전 입력으로 변환한다.
   ax_safety::GateInput gates() const {
     // ROS 메시지들을 순수 게이트 함수의 입력 계약으로 변환한다.
     // 하나라도 stale/invalid이면 GateInput의 기본 차단값을 유지한다.
@@ -137,6 +154,7 @@ private:
     return g;
   }
 
+  // 게이트가 허용한 속도만 A2 제어기로 전달하고, 다음 가속도 제한 계산을 위해 기억한다.
   void command(double linear, double angular) {
     // A4가 허용한 최종 속도만 A2 controller topic으로 전달하고 마지막 출력도 기록한다.
     TwistStamped msg;
@@ -147,6 +165,8 @@ private:
     previous_linear_ = linear; previous_angular_ = angular;
     previous_sent_ = steady();
   }
+
+  // 안전 조건이 하나라도 충족되지 않으면 사용할 공통 정지 명령이다.
   void stop() { command(0,0); }
 
 
@@ -158,6 +178,7 @@ private:
         msg.twist.angular.x!=0 || msg.twist.angular.y!=0) { stop(); return; }
     const auto output = ax_safety::evaluate_drive_gate(gates(),msg.twist.linear.x,msg.twist.angular.z);
     if (!output.drive_allowed) { stop(); return; }
+
     // A2 설정의 가속 상한을 초과하는 양의 명령 증가를 제한한다.
     double dt = std::clamp(elapsed(previous_sent_), 0.0, 0.2);
     auto bounded_linear = std::clamp(output.linear, previous_linear_-max_linear_accel_*dt,
@@ -172,9 +193,12 @@ private:
     // 명령·안전·상태의 신선도를 주기적으로 다시 확인해 통신이 끊기면 정지한다.
     auto gate = gates();
     bool cmd_fresh = got_cmd_ && elapsed(received_cmd_) <= 0.2;
+
     // stop_required와 미검증 조건은 새 명령이 없어도 계속 정지 출력을 유지해야 한다.
     if (!cmd_fresh || !gate.enabled || !gate.safety_fresh || !gate.state_fresh ||
         !gate.travel_pose_valid || !gate.operational_permits_valid || gate.stop_required) stop();
+
+    // ActuationState는 다른 파트가 현재 주행 가능 여부와 차단 원인을 확인하는 공통 결과다.
     ActuationState m;
     m.robot_id = robot_;
     m.meta.header.stamp = now();
@@ -188,11 +212,14 @@ private:
                       gate.travel_pose_valid && gate.operational_permits_valid && !gate.stop_required;
     m.arm_allowed = arm_approved_ && gate.enabled && gate.state_fresh &&
                     gate.safety_fresh && !gate.stop_required; // 이후 A3 lease 검사는 팔 서버 책임
+
     m.state = ActuationState::UNKNOWN;
     if (gate.state_fresh) {
       m.linear_speed = static_cast<float>(std::abs(odom_.twist.twist.linear.x));
       m.angular_speed = static_cast<float>(std::abs(odom_.twist.twist.angular.z));
       for (auto x: joints_.velocity) m.max_joint_speed=std::max(m.max_joint_speed,static_cast<float>(std::abs(x)));
+
+      // 세 가지 피드백 속도가 모두 기준 이하일 때만 정지 유지 시간을 누적한다.
       bool low = std::isfinite(m.linear_speed) && std::isfinite(m.angular_speed) &&
                  std::isfinite(m.max_joint_speed) &&
                  m.linear_speed<=stop_linear_threshold_ &&
@@ -209,6 +236,7 @@ private:
         m.state = ActuationState::STOPPED;
       } else m.state=ActuationState::STOPPING;
     } else stable_stop_since_.reset();
+
     // ActuationState는 왜 주행이 막혔는지 후속 A3/D4 관측자가 확인할 수 있도록 원인을 남긴다.
     if (!gate.safety_fresh) m.block_reasons.push_back("SAFETY_STOP");
     if (!gate.state_fresh) m.block_reasons.push_back("STATE_STALE");
@@ -218,6 +246,7 @@ private:
     pub_state_->publish(m);
   }
 
+  // 파라미터와 마지막으로 받은 안전·구동 피드백을 보관한다.
   std::string robot_,session_;
   bool enable_{false}, permits_verified_{false}, pose_approved_{false}, arm_approved_{false};
   bool got_safety_{false},got_odom_{false},got_joints_{false},got_cmd_{false};
@@ -234,6 +263,8 @@ private:
   std::optional<std::chrono::steady_clock::time_point> stable_stop_since_;
   std::chrono::steady_clock::time_point received_safety_{},received_odom_{},received_joints_{},
       received_cmd_{},previous_sent_{steady()};
+
+  // 입력과 상태를 연결하는 ROS publisher/subscription/timer 핸들이다.
   rclcpp::Publisher<TwistStamped>::SharedPtr pub_cmd_;
   rclcpp::Publisher<ActuationState>::SharedPtr pub_state_;
   rclcpp::Subscription<SafetyState>::SharedPtr sub_safety_;
@@ -242,6 +273,7 @@ private:
   rclcpp::Subscription<TwistStamped>::SharedPtr sub_cmd_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
+
 int main(int argc,char **argv) {
   // A4 게이트 하나만 ROS executor에 올려 입력·출력·상태 발행을 처리한다.
   rclcpp::init(argc,argv);

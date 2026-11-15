@@ -50,7 +50,14 @@ from rclpy.parameter_client import AsyncParameterClient
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from a2_criteria import judge_wheel, load_criteria, measurement_load_conditions, print_judgment, run_rejudge
+from a2_criteria import (
+    RtfWindow,
+    judge_wheel,
+    load_criteria,
+    measurement_load_conditions,
+    print_judgment,
+    run_rejudge,
+)
 
 from gazebo_observer import (
     ModelPoseTracker,
@@ -575,6 +582,10 @@ def run(node, arguments, checks):
 
     turns = []
 
+    # RTF 계측 구간 시작(회전·직진 반복 직전). 시계만 읽고 명령·대기에는 쓰지 않는다.
+    if getattr(node, "rtf_window", None) is not None:
+        node.rtf_window.start()
+
     # 제자리 회전: 왼쪽(+)·오른쪽(-)을 번갈아 같은 횟수 반복한다.
     for repeat in range(1, arguments.repeats + 1):
         for direction in (1.0, -1.0):
@@ -776,6 +787,7 @@ def main():
     rclpy.init()
 
     node = WheelCalibrator(arguments.robot_id)
+    node.rtf_window = RtfWindow(node.sim_now, interval="회전·직진 반복 시작 ~ 측정 종료(finally 진입)")
 
     # 콜백은 별도 스레드 하나에서 처리한다(/clock 1 kHz 부하로 다중 스레드 executor가 밀리는 것을 피함).
     executor = SingleThreadedExecutor()
@@ -810,6 +822,9 @@ def main():
         status = "interrupted"
 
     finally:
+        # RTF 계측 구간 끝. 중단·실패여도 측정한 구간까지 남기며, 시작 전 종료면 null과 사유다.
+        rtf = node.rtf_window.finish()
+
         # 정지 명령을 남기고 Gazebo 구독을 먼저 해제한다.
         # Ctrl+C로 rclpy 컨텍스트가 이미 닫혔으면 발행이 실패하므로 제어기의 cmd_vel 시간 초과 정지에 맡긴다.
         try:
@@ -824,6 +839,7 @@ def main():
 
     result["status"] = status
     result["checks"] = checks
+    result["rtf"] = rtf
 
     # 기준 파일을 받았으면 최종 상태로 판정해 결과에 더한다.
     judged = None

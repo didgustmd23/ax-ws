@@ -86,6 +86,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 # 공통 주행 시나리오 목록은 재판정(a2_criteria.py)과 같은 정의를 쓴다.
 from a2_criteria import (
+    RtfWindow,
     drive_scenarios,
     judge_stop,
     load_criteria,
@@ -1221,6 +1222,10 @@ def run_checks(node, record, save, repeats=1, urdf=None, payload=None, stop_mode
         missing = [name for name in required_inputs(node.has_arm) if name not in node.input_stamps]
         raise RuntimeError(f"측정값 수신 없음({', '.join(missing) or '최근 입력'})")
 
+    # RTF 계측 구간 시작(첫 표본 수신 뒤). 시계만 읽고 명령·대기에는 쓰지 않는다.
+    if getattr(node, "rtf_window", None) is not None:
+        node.rtf_window.start()
+
     node.joint_meter.reset()
     node.odom_meter.reset()
     node.max_joint_age = 0.0
@@ -1421,6 +1426,7 @@ def main():
     node = StopFeedbackRecorder(arguments.robot_id, truth_poses, arguments.tilt_abort)
     node.payload_spawned = False
     node.world_file = arguments.world_file
+    node.rtf_window = RtfWindow(node.now_seconds, interval="run_checks 첫 표본 수신 뒤 ~ 측정 종료(finally 진입)")
 
     try:
         urdf = fetch_robot_description(
@@ -1469,6 +1475,9 @@ def main():
         record["error"] = f"{type(error).__name__}: {error}"
 
     finally:
+        # RTF 계측 구간 끝. 중단·실패여도 측정한 구간까지 남기며, 시작 전 종료면 null과 사유다.
+        record["rtf"] = node.rtf_window.finish()
+
         # 중단·실패에도 바퀴 정지 명령을 보낸다.
         if rclpy.ok():
             node.stop_drive()

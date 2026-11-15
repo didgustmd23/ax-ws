@@ -72,7 +72,8 @@ class CorridorObserver(Node):
         regions_file = self.declare_parameter('regions_file', '').value
         description_config = self.declare_parameter('description_config_dir', '').value
         margin = float(self.declare_parameter('outline_margin_m', 0.0).value)
-        self.map_revision = int(self.declare_parameter('map_revision', 1).value)
+        # B2 채택 지도 revision 2와 맞춘다. 옛 revision의 명시적 입력은 영역 판정에서 계속 차단한다.
+        self.map_revision = int(self.declare_parameter('map_revision', 2).value)
         rate = float(self.declare_parameter('publish_rate_hz', 5.0).value)
         self.max_pose_age_s = float(self.declare_parameter('max_pose_age_s', 1.0).value)
         self.future_tolerance_s = float(self.declare_parameter('future_tolerance_s', 1.0).value)

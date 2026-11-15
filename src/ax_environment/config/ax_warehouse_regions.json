@@ -6,7 +6,7 @@
     "planned/ax_warehouse_plain.world"
   ],
   "frame_id": "map",
-  "map_revision": 1,
+  "map_revision": 2,
   "approved": false,
   "reason": "DEVELOPMENT_ONLY; B3 개발용 좌표. 통로·접근·대기 경계와 로봇 외곽 팀 합의(B3/D1/D3/A4/D2) 전",
   "source": "tools/generate_b3_regions.py",
@@ -17,7 +17,7 @@
       0.0
     ],
     "rule": "map = world − (T_world_map.x, T_world_map.y), yaw 0",
-    "basis": "src/ax_localization/maps/ax_warehouse/README.md 채택 지도 revision 1 T_world_map 초기값(map 원점 = robot_2 출발 자세). 참조 지도 최적 정합(−6.822, +0.006, +0.0003 rad)과의 차 약 0.02 m는 반영하지 않음"
+    "basis": "src/ax_localization/maps/ax_warehouse/README.md 채택 지도 revision 2의 검증용 T_world_map 초기값 (map 원점 = robot_2 출발 자세). 최적 정합값·이미지 원점은 사용하지 않으며 운영 승인은 별도"
   },
   "approach_depth_m": 1.5,
   "regions": [

@@ -3,18 +3,23 @@
 B3 김성민 담당의 통로·접근·작업대·대기 영역 장부와 통로 관측 발행 노드다. 다른 담당자의 지도·제어·허가 코드는 바꾸지 않는다.
 통로 허가·해제·정지 명령은 하지 않는다(D3·A4 소유). 이 패키지의 관측은 그 판단의 입력일 뿐이다.
 
+지도 교체에 따른 수정과 검증 한계는 [revision 2 연동 점검](../../docs/guides/KIM_REVISION2_INTEGRATION_2026-11-15.md)을 본다.
+
 ## 파일과 의미
 
 - `config/ax_warehouse_regions.json`: 현재 기준 월드 `planned/ax_warehouse.world`(단색 보존 월드 `ax_warehouse_plain.world`와 구조 동일)의
-  개발용 영역이다. `frame_id` map, `map_revision` 1, **`approved=false`**(팀 확인 전).
+  개발용 영역이다. `frame_id` map, `map_revision` 2, **`approved=false`**(팀 확인 전).
+  두 월드의 영역 형상은 같지만 지도 revision 2 적용 근거는 현재 질감 월드만 있다.
+  단색 월드는 B2 `applicable_worlds.yaml`에서 미확인 상태이므로 운영 적용을 주장하지 않는다.
   - `tools/generate_b3_regions.py`가 world SDF 형상에서 계산해 만든다(손으로 고치지 않는다. `--check`로 일치 확인).
   - 통로 `corridor_1~3`: SDF `corridor_<n>_wall_north/south` 안쪽 면(y)과 문 벽 `wall_*_door_section` 바깥 면(x ±4.2) 사이.
   - 접근 구역(`kind: approach`): 각 통로 양 입구 바깥, 통로 폭, 깊이 1.5 m(개발값, AX_1 이동 외곽 길이 수준).
     `corridor_id`(소속 통로)와 `entry_heading_rad`(진입 방향: 서쪽 입구 0, 동쪽 입구 π)를 가진다.
   - 작업대 `station_src`·`station_dst`: SDF `source_pickup_zone`·`destination_unload_zone` 바닥 표시 상자.
   - 대기 지점 `wait_src`·`wait_dst`: B3 개발 제안 빈 바닥(접근 구역에서 0.8 m 이상). 안전 주차 승인이 아니다.
-  - world→map: 채택 지도 revision 1 README의 `T_world_map` 초기값 (−6.8, 0, 0)(map 원점 = robot_2 출발 자세).
-    `bounds`는 map, `world_bounds`는 world 좌표다. 참조 지도 최적 정합과의 약 0.02 m 차는 반영하지 않았다.
+  - world→map: 채택 지도 revision 2의 검증용 `T_world_map` 초기값 (−6.8, 0, 0)(map 원점 = robot_2 출발 자세).
+    `bounds`는 map, `world_bounds`는 world 좌표다. 최적 정합이나 지도 이미지 원점을 대신 사용하지 않았다.
+    생성기는 B2 번호·초기 변환 변경을 검사해 불일치하면 재검증을 요구한다. 실제 TF·오차 검증과 승인은 별도다.
 - `config/ax_test_regions.json`: 빈 시험 월드의 논리 영역(실제 작업대 없음).
 - `config/aws_warehouse_regions.json`: 이전 AWS 월드용. 월드·채택 지도가 저장소에 없어 좌표가 비어 있고 미승인이다.
   판정은 항상 UNKNOWN이다. 시험(`test_unadopted_aws_cannot_be_used_for_release`)만 이 성질을 확인하며 파일은 보존한다.

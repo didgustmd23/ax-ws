@@ -123,11 +123,11 @@ class WarehouseRegionTests(unittest.TestCase):
         self.assertEqual(json.loads(WAREHOUSE.read_text(encoding='utf-8')), gen.build())
         self.assertEqual(gen.build(PLAIN_WORLD)['regions'], gen.build()['regions'])
 
-    # 미승인·개발용 표시, map revision 1, 기준 월드 이름
+    # 미승인·개발용 표시, 현재 채택 지도 번호, 기준 월드 이름
     def test_development_flags(self):
         self.assertFalse(self.catalog['approved'])
         self.assertIn('DEVELOPMENT_ONLY', self.catalog['reason'])
-        self.assertEqual((self.catalog['frame_id'], self.catalog['map_revision']), ('map', 1))
+        self.assertEqual((self.catalog['frame_id'], self.catalog['map_revision']), ('map', 2))
         self.assertEqual(self.catalog['world'], 'planned/ax_warehouse.world')
 
     # world→map 변환이 채택 지도 README의 T_world_map 초기값과 같고, 모든 영역이 그 규칙을 따른다.
@@ -218,7 +218,7 @@ class WarehouseRegionTests(unittest.TestCase):
                   'robot_3': ('AX_1', -17.0, -2.4), 'robot_4': ('AX_2', -13.0, -2.4)}
         for robot_id, (model, x, y) in spawns.items():
             outline, _ = model_outline(model, DESCRIPTION_CONFIG)
-            result = observe_robot(catalog, outline, (x + 6.8, y, 0.0), frame_id='map', map_revision=1,
+            result = observe_robot(catalog, outline, (x + 6.8, y, 0.0), frame_id='map', map_revision=self.catalog['map_revision'],
                                    position_valid=True, outline_complete=True, age_s=0.1, uncertainty_m=0.1)
             with self.subTest(robot=robot_id):
                 self.assertEqual({o.state for o in result.values()}, {'OUTSIDE'})
@@ -240,7 +240,7 @@ class WarehouseRegionTests(unittest.TestCase):
     # 미승인 파일은 모든 통로 UNKNOWN(REGIONS_NOT_APPROVED)
     def test_unapproved_file_is_unknown(self):
         outline, _ = model_outline('AX_2', DESCRIPTION_CONFIG)
-        result = observe_robot(self.catalog, outline, (5.0, 0.0, 0.0), frame_id='map', map_revision=1,
+        result = observe_robot(self.catalog, outline, (5.0, 0.0, 0.0), frame_id='map', map_revision=self.catalog['map_revision'],
                                position_valid=True, outline_complete=True, age_s=0.1)
         self.assertEqual({(o.state, o.reason, o.position_valid) for o in result.values()},
                          {('UNKNOWN', 'REGIONS_NOT_APPROVED', False)})
@@ -258,7 +258,7 @@ class RotatedOutlineTests(unittest.TestCase):
 
     # 한 자세의 corridor_2 판정
     def state(self, pose, **changes):
-        arguments = dict(frame_id='map', map_revision=1, position_valid=True, outline_complete=True, age_s=0.1)
+        arguments = dict(frame_id='map', map_revision=self.catalog['map_revision'], position_valid=True, outline_complete=True, age_s=0.1)
         arguments.update(changes)
         return observe_robot(self.catalog, self.outline, pose, **arguments)['corridor_2']
 
@@ -276,7 +276,7 @@ class RotatedOutlineTests(unittest.TestCase):
         # 같은 경우 축 정렬 근사(observe_corridor)는 INSIDE로 과대 판정한다.
         legacy = deepcopy(self.catalog)
         legacy['regions'] = [dict(r, id='corridor_main') if r['id'] == 'corridor_2' else r for r in legacy['regions']]
-        old = observe_corridor(legacy, 'corridor_main', aabb, frame_id='map', map_revision=1, position_valid=True,
+        old = observe_corridor(legacy, 'corridor_main', aabb, frame_id='map', map_revision=self.catalog['map_revision'], position_valid=True,
                                outline_complete=True, age_s=0.1)
         self.assertEqual(old.state, 'INSIDE')
 
@@ -313,7 +313,7 @@ class RotatedOutlineTests(unittest.TestCase):
         pose = (5.0, 0.0, 0.0)
         self.assertEqual(self.state(pose, age_s=-0.5, future_tolerance_s=1.0).state, 'INSIDE')
         for changes in (dict(age_s=-1.5, future_tolerance_s=1.0), dict(age_s=1.5), dict(position_valid=False),
-                        dict(outline_complete=False), dict(map_revision=2), dict(frame_id='world'),
+                        dict(outline_complete=False), dict(map_revision=1), dict(frame_id='world'),
                         dict(uncertainty_m=-0.1), dict(age_s=float('nan'))):
             with self.subTest(changes=changes):
                 result = self.state(pose, **changes)
@@ -323,7 +323,7 @@ class RotatedOutlineTests(unittest.TestCase):
 
     # 통로 하나만 INSIDE이고 나머지 통로는 OUTSIDE(모든 통로를 판정)
     def test_all_corridors_reported(self):
-        result = observe_robot(self.catalog, self.outline, (5.0, 0.0, 0.0), frame_id='map', map_revision=1,
+        result = observe_robot(self.catalog, self.outline, (5.0, 0.0, 0.0), frame_id='map', map_revision=self.catalog['map_revision'],
                                position_valid=True, outline_complete=True, age_s=0.1)
         self.assertEqual({k: v.state for k, v in result.items()},
                          {'corridor_1': 'OUTSIDE', 'corridor_2': 'INSIDE', 'corridor_3': 'OUTSIDE'})
@@ -334,7 +334,7 @@ class RotatedOutlineTests(unittest.TestCase):
         margin = 0.04 + 0.5                                # k·std + degraded_margin_m(노드 기본값 기준)
 
         def degraded(pose):
-            return observe_robot(self.catalog, self.outline, pose, frame_id='map', map_revision=1, position_valid=True,
+            return observe_robot(self.catalog, self.outline, pose, frame_id='map', map_revision=self.catalog['map_revision'], position_valid=True,
                                  outline_complete=True, age_s=0.1, uncertainty_m=margin, degraded=True)
 
         far = degraded((-2.0, 0.0, 0.0))
@@ -351,7 +351,7 @@ class RotatedOutlineTests(unittest.TestCase):
         self.assertEqual(self.state((1.6, 0.0, 0.0)).state, 'APPROACHING')
         self.assertEqual(self.state((5.0, 0.0, 0.0)).state, 'INSIDE')
         # 공통 판정 불가는 DEGRADED여도 UNKNOWN
-        result = observe_robot(self.catalog, self.outline, (-2.0, 0.0, 0.0), frame_id='map', map_revision=1,
+        result = observe_robot(self.catalog, self.outline, (-2.0, 0.0, 0.0), frame_id='map', map_revision=self.catalog['map_revision'],
                                position_valid=True, outline_complete=True, age_s=5.0, uncertainty_m=margin, degraded=True)
         self.assertEqual({o.state for o in result.values()}, {'UNKNOWN'})
 

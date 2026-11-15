@@ -4,6 +4,7 @@
 #   지도 작성 주행(mapping_drive.py) → 정확도 비교(check_map_accuracy.py)를 실행하고 자기 프로세스만 정리한다.
 #
 # 사용: bash src/ax_localization/scripts/run_mapping_session.sh [옵션]
+#   --install-base DIR  colcon 설치 폴더(기본: 작업공간/install). 별도 --install-base·--merge-install 빌드도 지원
 #   --world FILE     실행 월드(ax_description worlds 기준). 지원 목록은 ax_description/config/worlds.yaml
 #                    (planned/ax_warehouse.world 기준 질감, planned/ax_warehouse_plain.world 단색 보존, Gazebo 내부 이름 ax_test).
 #                    이 옵션과 같은 world를 적은 --route가 함께 필요하다. 없으면 삭제된 AWS 월드 시험기로 보고 거절한다
@@ -33,11 +34,16 @@ set -uo pipefail
 
 # ── 인자 ─────────────────────────────────────────────────────────────
 LIGHT=0; GUI=false; SOFTWARE=0; ROBOT=robot_2; SCAN=merged; DOMAIN=66; KEEP=0; WAYPOINTS=''; SLIP1=''; SAVE_PARTIAL=0
-ROUTE=''; WAIT_BEFORE_DRIVE=0; GATE_DIR=; WORLD=''
+ROUTE=''; WAIT_BEFORE_DRIVE=0; GATE_DIR=; WORLD=''; INSTALL_BASE=''
 GZ_WORLD=ax_test
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --install-base)
+      if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
+        echo "--install-base에 설치 폴더가 필요함" >&2; exit 2
+      fi
+      INSTALL_BASE="$2"; shift ;;
     --light) LIGHT=1 ;;
     --gui) GUI=true ;;
     --software) SOFTWARE=1 ;;
@@ -58,7 +64,7 @@ while [ $# -gt 0 ]; do
     --gate-dir)
       [ -n "${2:-}" ] || { echo "--gate-dir에 폴더가 필요함" >&2; exit 2; }
       GATE_DIR="$2"; shift ;;
-    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,/^$/p' "$0"; exit 0 ;;
     *) echo "알 수 없는 인자: $1" >&2; exit 2 ;;
   esac
   shift
@@ -104,14 +110,51 @@ if [ "$WAIT_BEFORE_DRIVE" = 1 ] && ! [ -t 0 ]; then
   exit 2
 fi
 
+# 상대 경로는 호출한 디렉터리 기준이다. 지정한 설치본이 없으면 기본 install로 우회하지 않는다.
+INSTALL_BASE="${INSTALL_BASE:-$WS/install}"
+if [ ! -f "$INSTALL_BASE/setup.bash" ]; then
+  echo "설치 환경 설정 파일이 없음: $INSTALL_BASE/setup.bash (--install-base 또는 colcon 빌드 경로 확인)" >&2
+  exit 2
+fi
+INSTALL_BASE="$(cd -- "$INSTALL_BASE" && pwd)" || exit 2
 set +u
-source /opt/ros/jazzy/setup.bash
-source "$WS/install/setup.bash"
+if ! source /opt/ros/jazzy/setup.bash || ! source "$INSTALL_BASE/setup.bash"; then
+  echo "설치 환경 설정 실패: $INSTALL_BASE/setup.bash" >&2
+  exit 2
+fi
 set -u
+
+# launch와 같은 ament 탐색으로 패키지 share 폴더를 찾는다(isolated/merged 레이아웃을 직접 조합하지 않는다).
+# 호출한 셸에 이미 다른 설치본(기본 install 등)이 source돼 있으면 ament가 그쪽으로 넘어갈 수 있으므로,
+# 찾은 share가 선택한 설치 폴더 안(실제 경로 기준)에 있을 때만 받아들인다.
+installed_share() {
+  python3 - "$INSTALL_BASE" "$1" <<'PY'
+import os
+import sys
+
+from ament_index_python.packages import get_package_share_directory
+
+base, name = sys.argv[1], sys.argv[2]
+
+try:
+    share = get_package_share_directory(name)
+except Exception as error:
+    sys.exit(f"설치된 {name} 패키지를 찾지 못함({type(error).__name__}): {base}")
+
+real_base, real_share = os.path.realpath(base), os.path.realpath(share)
+
+if os.path.commonpath([real_base, real_share]) != real_base:
+    sys.exit(f"선택한 설치 폴더 밖의 {name}을(를) 찾음(다른 설치본이 source된 셸?): {share} (설치 폴더 {base})")
+
+print(share)
+PY
+}
+
+DESCRIPTION_SHARE="$(installed_share ax_description)" || exit 2
 
 # 새 월드: 설치된 월드 파일과 경로의 world·gz_world·robot_id 일치를 시뮬레이션 전에 확인한다.
 if [ -n "$WORLD" ]; then
-  WORLD_FILE="$WS/install/ax_description/share/ax_description/worlds/$WORLD"
+  WORLD_FILE="$DESCRIPTION_SHARE/worlds/$WORLD"
   [ -f "$WORLD_FILE" ] || { echo "설치된 월드 파일이 없음(ax_description 빌드 필요): $WORLD_FILE" >&2; exit 2; }
   ROUTE_CHECK="$(python3 "$WS/src/ax_localization/scripts/mapping_drive.py" --route "$ROUTE" --world "$WORLD" \
     --gz-world "$GZ_WORLD" --robot-id "$ROBOT" --check-only 2>&1)" || {
@@ -120,6 +163,14 @@ if [ -n "$WORLD" ]; then
     exit 2
   }
 fi
+
+# 세션이 launch로 쓰는 나머지 패키지도 선택한 설치본에서 오는지 시뮬레이션 전에 확인한다(B1은 raw 입력이면 쓰지 않음).
+SESSION_PACKAGES=(ax_control ax_localization)
+[ "$SCAN" != raw ] && SESSION_PACKAGES+=(ax_perception)
+
+for package in "${SESSION_PACKAGES[@]}"; do
+  installed_share "$package" > /dev/null || exit 2
+done
 
 STAMP="$(TZ=Asia/Seoul date +%Y%m%d_%H%M%S)"
 BASE="$WS/log/b2_mapping/$STAMP"
@@ -213,7 +264,7 @@ OV="$SESSION/overlay"
 
 if [ "$LIGHT" = 1 ] || [ -n "$SLIP1" ]; then
   mkdir -p "$OV/share/ament_index/resource_index/packages"
-  cp -rL "$WS/install/ax_description/share/ax_description" "$OV/share/" 2>/dev/null
+  cp -rL "$DESCRIPTION_SHARE" "$OV/share/" 2>/dev/null
   touch "$OV/share/ament_index/resource_index/packages/ax_description"
   export AMENT_PREFIX_PATH="$OV:$AMENT_PREFIX_PATH"
 fi
@@ -258,11 +309,11 @@ fi
 # 실제 실행에 쓰는 월드·바퀴 사본 파일과 해시, 코드 버전을 기록한다(map_info.yaml 근거).
 if [ -n "$WORLD" ]; then
   # 새 월드는 설치 사본 그대로 실행한다(사본 옵션은 위에서 거절). 실행 조건 사본을 session에 남긴다.
-  WORLD_RECORD="install/ax_description/share/ax_description/worlds/$WORLD"
+  WORLD_RECORD="${WORLD_FILE#"$WS/"}"
   cp "$WORLD_FILE" "$SESSION/world.world"
 elif [ "$WORLD_CONDITION" = original ]; then
-  WORLD_FILE="$WS/install/ax_description/share/ax_description/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
-  WORLD_RECORD="install/ax_description/share/ax_description/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
+  WORLD_FILE="$DESCRIPTION_SHARE/world_assets/aws_small_warehouse/aws_warehouse_harmonic.world"
+  WORLD_RECORD="${WORLD_FILE#"$WS/"}"
 else
   WORLD_FILE="$SESSION/world_light.world"
   WORLD_RECORD="session/world_light.world"
@@ -309,8 +360,12 @@ if [ "$SCAN" = merged ]; then
   SCAN_MERGE_RECORD="{\"file\": \"$MERGE_FILE\", \"sha256\": \"$MERGE_SHA\"}"
 fi
 
+# 외부 설치 위치는 실행 조건에 남긴다. 경로의 공백·따옴표도 올바른 JSON으로 기록한다.
+INSTALL_BASE_JSON="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$INSTALL_BASE")"
+WORLD_RECORD_JSON="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$WORLD_RECORD")"
 cat > "$SESSION/session.json" <<EOF
 {
+  "install_base": $INSTALL_BASE_JSON,
   "world": "${WORLD:-aws_warehouse.world}",
   "gz_world": "$GZ_WORLD",
   "route_file": "$ROUTE",
@@ -320,7 +375,7 @@ cat > "$SESSION/session.json" <<EOF
   "session_owner": "$AX_SESSION_OWNER",
   "config_files": $(cat "$SESSION/config_files.json"),
   "world_condition": "$WORLD_CONDITION",
-  "world_file": "$WORLD_RECORD",
+  "world_file": $WORLD_RECORD_JSON,
   "world_sha256": "$WORLD_SHA",
   "wheel_condition": "$WHEEL_CONDITION",
   "wheel_override_file": "$WHEEL_FILE",

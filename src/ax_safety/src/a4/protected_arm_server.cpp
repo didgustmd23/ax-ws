@@ -59,6 +59,10 @@ ProtectedArmServer::ProtectedArmServer() : Node("a4_protected_arm_server") {
       "arm_max_velocity_rad_s", std::vector<double>{});
   max_accelerations_ = declare_parameter<std::vector<double>>(
       "arm_max_acceleration_rad_s2", std::vector<double>{});
+  stop_joint_threshold_ = declare_parameter<double>("stop_joint_threshold_rad_s", 0.01);
+  stop_hold_s_ = declare_parameter<double>("stop_hold_s", 0.5);
+  stop_confirm_timeout_ = declare_parameter<double>("arm_stop_confirm_timeout_s", 1.0);
+  pose_tolerance_ = declare_parameter<double>("arm_pose_tolerance_rad", 0.04);
   const auto base = "/ax/" + robot_;
   // A2 controller action, A3 lease service, A4 상태 토픽은 같은 robot namespace를 사용한다.
 
@@ -66,12 +70,14 @@ ProtectedArmServer::ProtectedArmServer() : Node("a4_protected_arm_server") {
   action_path_ = declare_parameter<std::string>("controller_action",base+"/arm_controller/follow_joint_trajectory");
   controller_ = rclcpp_action::create_client<Controller>(this,action_path_);
   lease_ = create_client<Lease>(base+"/executor/lease/check_command");
-  auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
-  auto state_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().transient_local();
-  safety_sub_ = create_subscription<ax_interfaces::msg::SafetyState>(base+"/safety/state",qos,
+  auto state_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
+  auto feedback_qos = rclcpp::SensorDataQoS();
+  safety_sub_ = create_subscription<ax_interfaces::msg::SafetyState>(base+"/safety/state",state_qos,
       std::bind(&ProtectedArmServer::on_safety,this,_1));
   actuation_sub_ = create_subscription<ax_interfaces::msg::ActuationState>(base+"/safety/actuation_state",state_qos,
       std::bind(&ProtectedArmServer::on_actuation,this,_1));
+  joints_sub_ = create_subscription<sensor_msgs::msg::JointState>(base+"/joint_states",feedback_qos,
+      std::bind(&ProtectedArmServer::on_joint_state,this,_1));
   server_ = rclcpp_action::create_server<Action>(this,base+"/arm/execute_trajectory",
       std::bind(&ProtectedArmServer::on_goal,this,_1,_2),
       std::bind(&ProtectedArmServer::on_cancel,this,_1),
@@ -91,6 +97,9 @@ void ProtectedArmServer::on_safety(ax_interfaces::msg::SafetyState::SharedPtr m)
 void ProtectedArmServer::on_actuation(ax_interfaces::msg::ActuationState::SharedPtr m) {
   actuation_=*m; actuation_received_=Clock::now(); got_actuation_=true;
 }
+void ProtectedArmServer::on_joint_state(sensor_msgs::msg::JointState::SharedPtr m) {
+  joints_=*m; joints_received_=Clock::now(); got_joints_=true;
+}
 bool ProtectedArmServer::safety_ready() const {
   // 안전·구동 상태는 메시지 내용뿐 아니라 robot id, schema, revision, session,
   // 수신 경과 시간과 ROS timestamp를 모두 통과해야 최신 권한으로 인정한다.
@@ -98,10 +107,12 @@ bool ProtectedArmServer::safety_ready() const {
 
   if (!enabled_ || !got_safety_ || !got_actuation_ || seconds(safety_received_) > 0.5 ||
       seconds(actuation_received_) > 0.3 || !actuation_.meta.valid ||
-      actuation_.meta.schema_version != 1 || !actuation_.meta.revision ||
+       actuation_.meta.schema_version != 1 || actuation_.meta.source_id.empty() ||
+       !actuation_.meta.revision ||
       actuation_.meta.source_session_id.empty() || actuation_.robot_id!=robot_ ||
       !actuation_.arm_allowed ||
-      !safety_.meta.valid || safety_.meta.schema_version!=1 || !safety_.meta.revision ||
+       !safety_.meta.valid || safety_.meta.schema_version!=1 || safety_.meta.source_id.empty() ||
+       !safety_.meta.revision ||
       safety_.meta.source_session_id.empty() || safety_.robot_id!=robot_ ||
       safety_.level >= ax_interfaces::msg::SafetyState::STOP_REQUIRED) return false;
   const auto stamp = safety_.meta.header.stamp;
@@ -112,6 +123,27 @@ bool ProtectedArmServer::safety_ready() const {
   double act_age = (now()-rclcpp::Time(act_stamp,RCL_ROS_TIME)).seconds();
   return std::isfinite(age) && age>=0 && age<=0.5 &&
          std::isfinite(act_age) && act_age>=0 && act_age<=0.3;
+}
+bool ProtectedArmServer::actual_stop_confirmed() const {
+  if (!got_joints_ || seconds(joints_received_) > 0.3 ||
+      (joints_.header.stamp.sec == 0 && joints_.header.stamp.nanosec == 0)) return false;
+  const double age = (now() - rclcpp::Time(joints_.header.stamp, RCL_ROS_TIME)).seconds();
+  if (!std::isfinite(age) || age < 0 || age > 0.3 ||
+      joints_.name.empty() || joints_.position.size() != joints_.name.size() ||
+      joints_.velocity.size() != joints_.name.size() || target_positions_.size() != joint_names_.size() ||
+      !std::isfinite(pose_tolerance_) || pose_tolerance_ <= 0 ||
+      !std::isfinite(stop_joint_threshold_) || stop_joint_threshold_ < 0) return false;
+
+  for (std::size_t i = 0; i < joint_names_.size(); ++i) {
+    const auto it = std::find(joints_.name.begin(), joints_.name.end(), joint_names_[i]);
+    if (it == joints_.name.end()) return false;
+    const auto index = static_cast<std::size_t>(it - joints_.name.begin());
+    if (!std::isfinite(joints_.position[index]) || !std::isfinite(joints_.velocity[index]) ||
+        !std::isfinite(target_positions_[i]) ||
+        std::abs(joints_.position[index] - target_positions_[i]) > pose_tolerance_ ||
+        std::abs(joints_.velocity[index]) > stop_joint_threshold_) return false;
+  }
+  return true;
 }
 bool ProtectedArmServer::verify_trajectory(const Action::Goal &g, std::string &why) const {
   // 입력 vector 길이와 관절 계약을 먼저 맞춘 뒤 authority별 식별자 규칙을 검사한다.
@@ -251,6 +283,7 @@ void ProtectedArmServer::start_controller() {
   if (!controller_->action_server_is_ready()) {finish(false,"A2_CONTROLLER_UNAVAILABLE");return;}
   Controller::Goal goal;
   goal.trajectory=current_->trajectory;
+  target_positions_=goal.trajectory.points.back().positions;
   controller_future_=controller_->async_send_goal(goal);
   phase_=Phase::WAIT_CONTROLLER;
 }
@@ -270,6 +303,7 @@ void ProtectedArmServer::finish(bool success,const std::string& reason,bool canc
   else active_->abort(result);
   active_.reset(); current_.reset(); controller_goal_.reset();
   phase_=Phase::IDLE; lease_pending_=false; cancel_requested_=false;
+  stable_stop_since_.reset(); target_positions_.clear();
 }
 void ProtectedArmServer::tick() {
   // 20 ms timer에서 취소·안전 상태·lease·A2 future를 짧게 확인한다.
@@ -319,7 +353,11 @@ void ProtectedArmServer::tick() {
       const auto wrapped=result_future_.get();
       bool succeeded=wrapped.code==rclcpp_action::ResultCode::SUCCEEDED &&
                      wrapped.result && wrapped.result->error_code==control_msgs::action::FollowJointTrajectory::Result::SUCCESSFUL;
-      finish(succeeded,succeeded?"":"ARM_CONTROLLER_FAILED");return;
+      if (!succeeded) { finish(false,"ARM_CONTROLLER_FAILED");return; }
+      phase_=Phase::WAIT_STOP_CONFIRM;
+      stable_stop_since_.reset();
+      stop_confirm_start_=Clock::now();
+      return;
     }
     if (lease_pending_) {
       if (seconds(continue_start_)>service_timeout_) {finish(false,"A3_CONTINUE_TIMEOUT");return;}
@@ -335,6 +373,20 @@ void ProtectedArmServer::tick() {
     } else if (seconds(last_renew_)>=renewal_period_) {
       ask_lease(Lease::Request::CONTINUE);
       continue_start_=request_start_;
+    }
+  }
+  if (phase_==Phase::WAIT_STOP_CONFIRM) {
+    if (!safety_ready()) { finish(false,"SAFETY_STOP");return; }
+    if (seconds(stop_confirm_start_) > stop_confirm_timeout_) {
+      finish(false,"ACTUATION_STOP_UNCONFIRMED");return;
+    }
+    if (actual_stop_confirmed()) {
+      if (!stable_stop_since_) stable_stop_since_=Clock::now();
+      if (seconds(*stable_stop_since_) >= stop_hold_s_) {
+        finish(true,"");
+      }
+    } else {
+      stable_stop_since_.reset();
     }
   }
 }

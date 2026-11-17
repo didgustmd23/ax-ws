@@ -9,12 +9,14 @@
 #include <ax_interfaces/msg/safety_state.hpp>
 #include <ax_interfaces/msg/actuation_state.hpp>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <chrono>
 #include <cstdint>
 #include <future>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -39,6 +41,7 @@ private:
   void on_accept(std::shared_ptr<Handle> handle);
   void on_safety(ax_interfaces::msg::SafetyState::SharedPtr msg);
   void on_actuation(ax_interfaces::msg::ActuationState::SharedPtr msg);
+  void on_joint_state(sensor_msgs::msg::JointState::SharedPtr msg);
   void tick();
   // 목표의 authority, 관절 배열, 시간 순서, 위치·속도·가속도 한계를 검사한다.
   // 실패 이유는 action 결과와 로그에 남겨 후속 담당자가 원인을 구분할 수 있게 한다.
@@ -47,6 +50,7 @@ private:
   bool verify_trajectory(const Action::Goal &goal, std::string &why) const;
   // SafetyState와 ActuationState가 같은 로봇·schema·session·시간 창을 만족하는지 확인한다.
   bool safety_ready() const;
+  bool actual_stop_confirmed() const;
   // A3 CheckCommandLease에 ACCEPT/CONTINUE 권한 확인을 요청한다.
   void ask_lease(uint8_t phase);
   // lease가 허용된 뒤에만 A2 팔 action을 시작한다.
@@ -60,22 +64,28 @@ private:
   std::string robot_, action_path_, session_;
   bool enabled_{false}, pending_goal_{false}, cancel_requested_{false}, lease_pending_{false};
   double service_timeout_{0.45}, renewal_period_{0.5};
+  double stop_joint_threshold_{0.01}, stop_hold_s_{0.5}, stop_confirm_timeout_{1.0}, pose_tolerance_{0.04};
   std::vector<std::string> joint_names_;
   std::vector<double> mins_, maxs_, max_velocities_, max_accelerations_;
   ax_interfaces::msg::SafetyState safety_;
   ax_interfaces::msg::ActuationState actuation_;
-  bool got_safety_{false}, got_actuation_{false};
+  sensor_msgs::msg::JointState joints_;
+  bool got_safety_{false}, got_actuation_{false}, got_joints_{false};
   std::chrono::steady_clock::time_point safety_received_{}, actuation_received_{}, request_start_{},
-      continue_start_{}, last_renew_{}, permission_deadline_{};
+      continue_start_{}, last_renew_{}, permission_deadline_{}, joints_received_{},
+      stop_confirm_start_{};
+  std::optional<std::chrono::steady_clock::time_point> stable_stop_since_;
   // lease 응답과 A2 action future를 비동기로 기다리기 위한 실행 단계이다.
-  enum class Phase {IDLE, WAIT_ACCEPT, WAIT_CONTROLLER, EXECUTING};
+  enum class Phase {IDLE, WAIT_ACCEPT, WAIT_CONTROLLER, EXECUTING, WAIT_STOP_CONFIRM};
   Phase phase_{Phase::IDLE};
   std::string command_digest_, command_id_;
+  std::vector<double> target_positions_;
   rclcpp_action::Server<Action>::SharedPtr server_;
   rclcpp_action::Client<Controller>::SharedPtr controller_;
   rclcpp::Client<Lease>::SharedPtr lease_;
   rclcpp::Subscription<ax_interfaces::msg::SafetyState>::SharedPtr safety_sub_;
   rclcpp::Subscription<ax_interfaces::msg::ActuationState>::SharedPtr actuation_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joints_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::shared_ptr<Handle> active_;
   std::shared_ptr<const Action::Goal> current_;

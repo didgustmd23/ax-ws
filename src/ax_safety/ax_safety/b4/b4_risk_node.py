@@ -18,13 +18,9 @@ from ax_interfaces.msg import SafetyState, LocalizationHealth, CorridorObservati
 from ax_safety.b4.risk_rules import RiskInputs, assess_risk, UNKNOWN
 
 
-
-
 # ROS Time 메시지를 초 단위 실수로 바꿔 센서 timestamp 신선도를 계산한다.
 def stamp_seconds(stamp):
     return stamp.sec + stamp.nanosec / 1e9
-
-
 
 
 def minimum_sector(scan, target, half_width):
@@ -54,6 +50,7 @@ class B4RiskNode(Node):
         # 파라미터는 로봇별 namespace와 A1/B1에서 전달하는 토픽 경로를 결정한다.
         super().__init__('b4_risk_node')
         p = self.declare_parameter
+
         self.robot_id = str(p('robot_id', 'robot_1').value)
         self.scan_topic = str(p('scan_topic', '').value)
         self.front_scan_topic = str(p('front_scan_topic', '').value)
@@ -69,34 +66,38 @@ class B4RiskNode(Node):
         self.corridor_ttl = float(p('corridor_stale_s', 1.0).value)
         self.sector_width = math.radians(float(p('sector_half_width_deg', 30.0).value))
         self.front = self.rear = self.localization = self.corridor = None
+
         # 값 자체와 수신 시각을 함께 저장해 메시지 내용과 wall-clock 신선도를 모두 확인한다.
         self.front_time = self.rear_time = self.loc_time = self.corridor_time = None
         self.session = str(uuid.uuid4())
         self.revision = 0
         base = f'/ax/{self.robot_id}'
-        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE,
-                         durability=DurabilityPolicy.VOLATILE)
-        self.publisher = self.create_publisher(SafetyState, base + '/safety/state', qos)
-        self.create_subscription(LocalizationHealth, base + '/localization/health', self.on_loc, qos)
-        self.create_subscription(CorridorObservationList, base + '/perception/corridor_observation', self.on_corridor, qos)
+        state_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                               durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        sensor_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT,
+                                durability=DurabilityPolicy.VOLATILE)
+
+        # 상태 입력은 최신 한 건을 안정적으로 받고, 센서 입력은 SensorData에 맞춰 처리한다.
+        self.publisher = self.create_publisher(SafetyState, base + '/safety/state', state_qos)
+        self.create_subscription(LocalizationHealth, base + '/localization/health', self.on_loc, state_qos)
+        self.create_subscription(CorridorObservationList, base + '/perception/corridor_observation', self.on_corridor, state_qos)
         if self.scan_topic:
             self.create_subscription(LaserScan, self.scan_topic, self.on_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.front_scan_topic:
             self.create_subscription(LaserScan, self.front_scan_topic, self.on_front_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.rear_scan_topic:
             self.create_subscription(LaserScan, self.rear_scan_topic, self.on_rear_scan,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.front_topic:
             self.create_subscription(Range, self.front_topic, self.on_front,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         if self.rear_topic:
             self.create_subscription(Range, self.rear_topic, self.on_rear,
-                                     QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT))
+                                     sensor_qos)
         self.create_timer(0.1, self.publish_state)
         self.get_logger().info('B4 initialized: sensor subscriptions only on explicitly configured topics')
-
 
 
     def fresh(self, received, ttl):
@@ -104,13 +105,11 @@ class B4RiskNode(Node):
         return received is not None and 0.0 <= time.monotonic() - received <= ttl
 
 
-
     def recent_stamp(self, stamp, limit):
         # ROS timestamp도 별도로 확인해 지연된 메시지가 새로 도착한 것처럼 보이지 않게 한다.
         stamp_value = stamp_seconds(stamp)
         current = self.get_clock().now().nanoseconds / 1e9
         return stamp_value > 0 and math.isfinite(current) and 0 <= current - stamp_value <= limit
-
 
 
     def on_scan(self, msg):
@@ -122,14 +121,12 @@ class B4RiskNode(Node):
         self.front_time = self.rear_time = time.monotonic()
 
 
-
     def on_front_scan(self, msg):
         # 분리된 전방 LaserScan은 전방 거리만 갱신한다.
         if not self.recent_stamp(msg.header.stamp, self.sensor_ttl):
             return
         self.front = minimum_sector(msg, 0.0, self.sector_width)
         self.front_time = time.monotonic()
-
 
 
     def on_rear_scan(self, msg):
@@ -140,14 +137,12 @@ class B4RiskNode(Node):
         self.rear_time = time.monotonic()
 
 
-
     def on_front(self, msg):
         # Range 센서는 유한하고 min/max 범위 안에 있는 값만 안전 입력으로 저장한다.
         if not self.recent_stamp(msg.header.stamp, self.sensor_ttl):
             return
         self.front = float(msg.range) if math.isfinite(msg.range) and msg.min_range <= msg.range <= msg.max_range else None
         self.front_time = time.monotonic()
-
 
 
     def on_rear(self, msg):
@@ -158,11 +153,9 @@ class B4RiskNode(Node):
         self.rear_time = time.monotonic()
 
 
-
     def on_loc(self, msg):
         # 위치 상태와 수신 시각을 저장하며, 실제 유효성 판정은 publish_state에서 수행한다.
         self.localization, self.loc_time = msg, time.monotonic()
-
 
 
     def on_corridor(self, msg):
@@ -170,13 +163,13 @@ class B4RiskNode(Node):
         self.corridor, self.corridor_time = msg, time.monotonic()
 
 
-
     def meta_ok(self, msg, ttl):
         # 공통 메타데이터가 유효하고 revision/session이 있으며 최근 timestamp인지 확인한다.
-        if msg is None or not msg.meta.valid or not msg.meta.revision or not msg.meta.source_session_id:
+        if (msg is None or not msg.meta.valid or msg.meta.schema_version != 1 or
+                not msg.meta.source_id or not msg.meta.revision or
+                not msg.meta.source_session_id):
             return False
         return self.recent_stamp(msg.meta.header.stamp, ttl)
-
 
 
     def publish_state(self):
@@ -191,6 +184,8 @@ class B4RiskNode(Node):
                           and all(self.meta_ok(obs, self.corridor_ttl)
                                   and obs.robot_id == self.robot_id and obs.position_valid
                                   and obs.observation != obs.UNKNOWN for obs in self.corridor.observations))
+
+        # 수신 시각과 ROS timestamp를 모두 확인해 늦게 도착한 입력이 유효해지지 않게 한다.
         front_fresh = self.fresh(self.front_time, self.sensor_ttl)
         rear_fresh = self.fresh(self.rear_time, self.sensor_ttl)
         inputs = RiskInputs(front_sensor_valid=front_fresh and self.front is not None,
@@ -204,6 +199,7 @@ class B4RiskNode(Node):
                             stop_distance_m=self.stop_distance,
                             slowdown_distance_m=self.slowdown_distance)
         result = assess_risk(inputs)
+
         # 매 발행마다 session/revision을 갱신해 A4가 오래된 상태와 새 상태를 구분한다.
         msg = SafetyState()
         msg.meta.header.stamp = self.get_clock().now().to_msg()
@@ -212,6 +208,7 @@ class B4RiskNode(Node):
         msg.meta.source_session_id = self.session
         self.revision += 1
         msg.meta.revision = self.revision
+
         # 위험 신호라도 판단 결과는 발행. 센서 결손이면 meta.valid=false로 추가 차단.
         msg.meta.valid = result.level != UNKNOWN
         msg.meta.validity_reason = '' if msg.meta.valid else result.reason_code
@@ -237,6 +234,7 @@ def main(args=None):
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

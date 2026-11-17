@@ -3,9 +3,16 @@
 # 이 파일은 A4/B4 노드의 개발용 기본값을 제공한다.
 # false·빈 배열은 실제 A1~A3 측정, D2/D3 permit, 팀 검토가 끝나기 전까지
 # 안전 경로를 열지 않도록 하는 보수적인 기본 상태이다.
+#
+# 키 형식: 노드는 /ax/<robot_id> namespace에서 실행되므로 bare 이름(a4_safety_gate:)은
+# 적용되지 않는다(2026-11-17 param get 재현: 파일 값 대신 코드 기본값). /**/<노드> 형식으로 둔다.
+# 이 파일은 로봇 공통값만 둔다. 로봇별 주행 자세·팔 한계 배열은 launch의 robot_params_file로
+# 그 로봇 launch에만 넘긴다(로봇끼리 값이 섞이지 않게).
+# 빈 배열([])은 쓰지 않는다: 적용되면 C++ 노드가 "No parameter value set"으로 즉시 종료한다
+# (2026-11-17 재현). 배열을 두지 않으면 코드의 타입 지정 빈 기본값 = 미검증·잠금이다.
 
 
-a4_safety_gate:
+/**/a4_safety_gate:
   ros__parameters:
     # robot_id는 토픽 namespace와 SafetyState의 대상 로봇을 함께 결정한다.
     robot_id: robot_1
@@ -16,8 +23,7 @@ a4_safety_gate:
     travel_envelope_verified: false     # A1 자세/외곽 검증 전 false
     arm_operation_verified: false        # 실제 A4 팔 보호 경로 검증 전 false
     # A1 자세 외곽과 wheel joint 기준 자세가 검증되기 전에는 주행 허가를 만들지 않는다.
-    travel_joint_names: []
-    travel_joint_positions: []
+    # travel_joint_names·travel_joint_positions는 로봇별 robot_params_file에서만 준다(여기 없음 = 빈 기본값 = 잠금).
     travel_pose_tolerance_rad: 0.04
     # 속도·가속도는 개발 기본 상한이며, 실제 안전 한계로 확정된 값이 아니다.
     max_linear_m_s: 0.67
@@ -31,20 +37,20 @@ a4_safety_gate:
     stop_angular_threshold_rad_s: 0.02
     stop_joint_threshold_rad_s: 0.01
     stop_hold_s: 0.5
+    # 팔 정지 조건 역할은 공통 파일에 두지 않는다(기본 unconfirmed = STOPPED 미확인).
+    # 모델별 stop_evidence_ax1.yaml(팔 있음·필수 5축)·stop_evidence_ax2.yaml(팔 없음)을 launch stop_evidence_file로 준다.
+    # stop_joint_threshold_rad_s는 필수 팔 관절에만 적용한다(바퀴 제외, 차체 정지는 odom).
 
-a4_protected_arm_server:
+/**/a4_protected_arm_server:
   ros__parameters:
     # 보호 팔 서버도 동일한 로봇 namespace를 사용하고 기본값은 잠금 상태이다.
     robot_id: robot_1
     use_sim_time: true
     enable_simulation_arm: false
     # A2 FollowJointTrajectory로 전달할 팔 관절 범위·속도·가속도 검증 자료이다.
-    # 비어 있으면 서버가 ARM_LIMITS_NOT_VERIFIED로 모든 목표를 거절한다.
-    arm_joint_names: []
-    arm_position_min_rad: []
-    arm_position_max_rad: []
-    arm_max_velocity_rad_s: []
-    arm_max_acceleration_rad_s2: []
+    # arm_joint_names·arm_position_min_rad·arm_position_max_rad·arm_max_velocity_rad_s·
+    # arm_max_acceleration_rad_s2는 로봇별 robot_params_file에서만 준다.
+    # 없으면 빈 기본값이라 서버가 ARM_LIMITS_NOT_VERIFIED로 모든 목표를 거절한다.
     stop_joint_threshold_rad_s: 0.01
     stop_hold_s: 0.5
     arm_stop_confirm_timeout_s: 1.0
@@ -52,7 +58,7 @@ a4_protected_arm_server:
     # controller_action: /ax/robot_1/arm_controller/follow_joint_trajectory
 
 
-b4_risk_node:
+/**/b4_risk_node:
   ros__parameters:
     # B4는 명시적으로 설정된 센서 토픽만 구독한다. 빈 값은 해당 입력이 없음을 뜻한다.
     robot_id: robot_1

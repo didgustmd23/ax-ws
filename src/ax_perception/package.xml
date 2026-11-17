@@ -2,7 +2,7 @@
 <package format="3">
   <name>ax_perception</name>
   <version>0.1.0</version>
-  <description>B1 sensor validation, RGB-D synchronization and diagnostics.</description>
+  <description>B1 sensor validation, RGB-D synchronization and diagnostics; C2 surface observation input node.</description>
   <maintainer email="didgustmd23@gmail.com">AX Team</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>

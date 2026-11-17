@@ -143,3 +143,72 @@ robot_1 팔 RGB-D 10·15 cm 및 ToF 8·15 cm 각 3표본, 격리 domain의 합�
 
 [전체 결과·실행 조건](../../docs/evidence/w2_complete_2026-11-13/)과
 [B2/B3/B4·A4·C2/C4 인계 자료](../../docs/evidence/w2_complete_2026-11-13/HANDOFF.md)를 참조한다.
+
+## C2 표면 관측 입력 노드(개발 중)
+
+`scripts/c2_surface_node.py`는 같은 RGB-D 카메라의 B1 출력
+`sensors/<camera>/processed/{image,depth_image,camera_info}`와 명시한 검출 토픽(`vision_msgs/Detection2DArray`)을
+SENSOR QoS로 구독해, 정확히 같은 stamp의 깊이로 bbox 안 보이는 평면 1개를 계산한다.
+계산은 `surface_estimation.py`·`c2_detection_link.py`를 쓰며 두 모듈은 실행 스크립트와 같은 `lib/ax_perception`에 설치된다.
+`c2_surface_adapter.py`(C3 Surface 변환)는 노드가 쓰지 않아 설치하지 않는다(설치 미지원, C3 소스 경로 import).
+
+- 출력은 `record_path`의 JSON Lines 로컬 기록뿐이다. 공개 Surface 메시지·토픽은 확정하지 않았다.
+- 기록의 `VALID`/`LINKED`는 plane_fit 유효일 뿐 목표 물체 일치가 아니다. object_id·대상 대응·confidence·질량·흡착 적합성을 만들지 않는다.
+- 시각: 권위 시각은 header 정수 `stamp_ns`(sec×10^9 + nanosec)다. 관측 ID·변환 계보·대응 판정(`TargetAssociation.observation_stamp_ns`)·
+  조립·버퍼·만료·중복·순서·TF 조회와 응답 대조를 정수로 한다. `stamp_s`는 표시·기하·C3 float API 전달용 파생값이며,
+  C3 `Surface.stamp_s` 이후로는 ns 정밀성이 보존되지 않는다.
+  float 초만 남은 기록은 `legacy_stamp_ns()`의 명시적 비정확 경로(`stamp_origin='legacy_float'`, 관측 ID 접두어 `obsL-`)로만 다루며
+  원래 ns라고 주장하지 않는다. 비정확 관측은 정확 관측으로 바꿀 수 없고, 어댑터는 MATCH가 있어도 `STAMP_NOT_EXACT`로 보류한다.
+- 최신 깊이로 대체하거나 stamp를 다시 쓰지 않는다. 다른 frame(예: `front_rgb`) 검출·부품은 받지 않고 정상 stamp 조립을 바꾸지 않는다.
+  부품 도착 순서는 상관없고, 미완성 부품·검출 선도착·TF 대기는 감독 시계(CLOCK_BOOTTIME) 상한 뒤 사유와 함께 거부한다.
+  sim 시각 0이면 입력을 받지 않고, 역행하면 버퍼를 비운다. 변환은 `target_frame`을 줄 때만 관측 stamp_ns TF로 한다.
+- 입력 경계(보존·복사 전 검사): 영상 해상도(`expected_width/height`)·정확한 step(행 패딩 미지원)·data 길이·`max_image_bytes`,
+  CameraInfo `d` 길이(`max_distortion_len`)·문자열 길이(`max_text_len`), 검출 수(`max_detections_per_array`)·가설 수·class_id 길이.
+  검출 수 등 크기 상한은 frame·stamp·미래·만료·중복·역행 검사를 통과한 배열에만 적용하고 배열 전체를 거부한다(결과 0개).
+  정확 stamp 묶음이 있을 때만 그 배열을 처리 완료로 표시하고 묶음을 해제한다.
+- 보존 상한: 미완성 부품(`part_capacity`)·묶음(`bundle_capacity`)·검출 대기(`detection_capacity`)·TF 대기(`tf_pending_capacity`,
+  배열 결과가 다 들어가지 않으면 그 배열 결과 전부 `TF_QUEUE_FULL`)·조립 결과 이력(`outcome_history`)·사유별 상세 진단 행
+  (`diagnostic_rows_per_reason`, 이후는 카운터만)·기록 파일(`max_record_bytes`). 큐별 크기·최대치(high-water)·축출·거부를 state 기록에 남긴다.
+- 늦게 온 부품(이미 조립·사용된 stamp)은 내용 지문으로 동일·상충·이력 축출(판단 불가)·거부 뒤 도착을 나눠 센다.
+  이미 낸 결과를 철회·재계산하지 않으며 상충은 진단일 뿐이다.
+- 모든 설정에 기본 운영값이 없다. 빠지거나 범위·상호관계(예: `tf_pending_capacity ≥ max_detections_per_array`)가 맞지 않으면
+  시작 시 `CONFIG_INVALID`로 종료(코드 2)한다. `record_path`는 절대 경로이며 이미 있으면 덮어쓰지 않고 시작을 거부한다.
+- 종료 코드: 0 정상, 2 시작 거부, 3 기록 쓰기 실패, 4 기록 바이트 상한 도달(표식 1행을 남기고 멈춤, 정상 완료 아님). 같은 실패를 반복 기록하지 않는다.
+- C1 기본 구성(`front_rgb` 입력, `perception/detections` 출력)은 이 노드 입력이 아니다. 실제 C1 연결에는 RGB-D 컬러용 가중치·추론 환경·
+  `front_rgbd` 입력/출력 토픽 구성·stamp 보존 확인이 먼저 필요하다. 검출이 없으면 기록에 결과가 없을 뿐 성공으로 처리하지 않는다.
+
+```bash
+source /opt/ros/jazzy/setup.bash && source install/setup.bash
+ros2 run ax_perception c2_surface_node.py --ros-args -r __ns:=/ax/robot_1 --params-file <설정 YAML>
+```
+
+검사: `tools/tests/test_c2_surface_node.py`(실제 ROS 메시지·콜백 직접 호출),
+`AX_C2_NODE_PREFIX=<격리 install> tools/tests/test_c2_surface_node_process.py`(설치본 ros2 run·DDS·종료 코드·정리).
+두 검사의 설정값은 시험값이며 운영 승인값이 아니다.
+
+### C2 검증 범위와 한계 — 2026-11-17
+
+| 구분 | 방식 | 결과 |
+|---|---|---|
+| 계산·연결 라이브러리 | 합성 깊이·합성 검출, 순수 함수 시험(`test_c2_surface.py`, `test_c2_detection_link.py`) | 통과 |
+| 입력 노드 | 실제 ROS 메시지 객체로 구독 콜백을 직접 호출(`test_c2_surface_node.py`, 같은 프로세스, DDS 아님). 무작위 1000회 입력의 큐 상한 확인 포함 | 통과 |
+| 설치본 실행 | 격리 install을 `ros2 run`으로 실행, 격리 domain의 실제 DDS로 합성 입력(`test_c2_surface_node_process.py`) | 통과. `AX_C2_NODE_PREFIX`가 없으면 생략(skip)되며, 생략은 통과가 아니다 |
+| 기록 fixture 재생(1회, 정수 ns 보완 전 코드) | 고정 RGB-D 기록의 깊이·CameraInfo로 재생. 컬러는 대표 프레임 1장을 반복, 검출은 사람이 고정한 ROI로 만든 fixture bbox | 발행 30프레임·검출 90건 중 첫 프레임은 4개 토픽 모두 미수신. 노드가 받은 29프레임·검출 87건만 오프라인 계산과 상태·사유·관측 ID가 일치 |
+
+재생에서 수신분 87건이 일치했다고 해서 입력 30/90 전체가 성공한 것은 아니다.
+실제 C1 검출도, 프레임별 원 컬러와 깊이의 동기화도 검증하지 않았다(프레임별 원 컬러는 보존돼 있지 않다).
+정지 장면 프레임은 독립 반복이 아니며 정확도·성공률 판정은 하지 않았다.
+재생 결과는 보완 전 코드의 결과다. 관측 ID 규칙이 정수 ns로 바뀌었으므로 그 기록의 ID를 새 ID와 비교하지 않으며, 재생은 반복하지 않았다.
+
+남은 한계(정책 미정, 이번에 임의로 정하지 않음)
+
+- 서로 다른 stamp의 묶음이 역순으로 완성되면 앞 stamp는 연결기 정책에 따라 `OUT_OF_ORDER_BUNDLE`로 버려진다.
+- rclpy가 콜백 전에 메시지 하나를 역직렬화하는 메모리와 DDS 계층 메시지 크기는 이 노드가 제한하지 못한다. 상한은 그 뒤의 보존·복사·계산에 적용된다.
+- tf2 캐시는 `tf_cache_s` 시간 상한만 있고 다른 발행자의 frame 수·발행률에 따른 개수 상한은 없다.
+- 기록 파일 상한·쓰기 오류는 모의(쓰기 실패 주입·작은 상한)로만 시험했다. 실제 디스크 가득 참·네트워크 파일시스템 지연은 시험하지 않았다.
+  상한 도달 뒤 산출물이 끊기는 동작(종료 코드 4)을 운영에서 어떻게 다룰지는 정하지 않았다.
+- `max_image_bytes` 검사는 해상도·step 정확 일치와 `max_image_bytes ≥ 4×width×height` 설정 조건 아래에서는 실제로 걸리지 않는 방어 검사다.
+- 어댑터 `accepted_frames` 목록 개수는 상한을 두지 않았다(호출자 설정 값). 각 문자열 길이만 본다.
+- C2 `VALID`는 plane_fit 유효일 뿐이다. C3 Surface 어댑터는 외부 대상 대응 판정(TargetAssociation MATCH)이 없으면 Surface를 보류한다.
+  외부 판정의 정확성은 검증하지 않았다(판정 주체 C4 미구현).
+- 시험 설정(`TEST_SETTINGS`, 용량·대기·만료·개수·길이 상한)은 시험값이며 운영 기본값이 아니다.

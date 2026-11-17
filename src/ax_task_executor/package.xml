@@ -14,6 +14,8 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ax_environment</exec_depend>
+  <exec_depend>ax_corridor_manager</exec_depend>
+  <exec_depend>ax_grasp_planner</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

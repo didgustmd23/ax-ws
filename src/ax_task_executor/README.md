@@ -346,6 +346,19 @@ ros2 launch ax_task_executor team_handoff.launch.py robot_ids:=robot_2 robot_mod
 - 실행만으로 실제 배정·Goal·lease가 등록되거나, 모의 Action이 실제 조작으로 바뀌지 않는다.
   D4 배정 미확인은 거절, 미승인 B3 영역은 UNKNOWN을 유지한다.
 
+선택적으로 내 C3·D3까지 함께 시작할 수 있다. 상대 노드는 별도로 준비하고, 팀에서 정한
+ROS_DOMAIN_ID와 같은 /clock을 사용한다. 기존 실행 중인 내 노드와 중복해서 켜지 않는다.
+
+```bash
+ros2 launch ax_task_executor team_handoff.launch.py with_w3:=true
+```
+
+AX_1으로 명시한 로봇마다 C3 후보 게시 노드, 전체 로봇 목록을 받는 D3 노드 하나를 추가한다.
+`corridor_database`로 D3 원장 경로를 지정할 수 있다. 기본 실행은 기존 A3/B3만 유지한다.
+이 옵션은 C2/C4 입력·IK 검증기·D4 배정을 만들거나 B3/D3 승인값을 켜지 않는다.
+현재 상대 구현에서 필요한 기능과 연결 한계는
+[전체 연결 점검](../../docs/guides/KIM_TEAM_INTEGRATION_2026-11-17.md)에 기록했다.
+
 현재 팀 소스의 연결 지점:
 
 | 상대 코드 | A3/B3 제공 경로 | 현재 확인 범위 |
@@ -491,6 +504,10 @@ ros2 run ax_task_executor lease_check --ros-args -p robot_id:=robot_1           
   시험마다 새 ID를 쓰고, 새로 시작하려면 `-p lease_db:=<다른 경로>`를 지정한다.
 
 ## 모의 통과와 운영 완료의 구분 · 다음 작업 (미구현·예정)
+
+2026-11-17의 배정·lease 검증 범위, 실제 D4 연결의 선행 조건과 기록 양식은
+[B3/A3 공동 검증 기록](../../docs/guides/KIM_B3_A3_VALIDATION_2026-11-17.md)을 본다.
+현재 모의·함수 시험 결과를 실제 D4 배정 승인 완료로 기록하지 않는다.
 
 이 패키지의 모의 실행기와 lease 서버를 통과해도 운영 기능이 완료된 것은 아니다.
 현재 모의 실행기는 `CONFIRM_LOAD`만 받고, 결과는 시험 입력(`mock_load`)이다.

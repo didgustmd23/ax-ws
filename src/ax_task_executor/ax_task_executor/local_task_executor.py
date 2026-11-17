@@ -142,6 +142,7 @@ class LocalTaskExecutor(MockExecutor):
 
     def request_assignment_check(self, execution):
         """상위 배정 확인 요청을 기록한 뒤 계약 토픽으로 보냅니다."""
+        # 요청 발행 자체는 승인이 아니다. 실제 D4 응답의 세션·세대·기한 검사를 통과해야 권한이 생긴다.
         import uuid
 
         if not isinstance(self.authority, RuntimeAuthority):
@@ -160,6 +161,7 @@ class LocalTaskExecutor(MockExecutor):
     def start_task_authority(self, execution):
         """실제 작업의 배정 확인과 권한 추적을 시작합니다."""
         # 실제 dispatcher의 시작 입구입니다. 함수가 있다고 현재 모의 Action과 연결된 것은 아닙니다.
+        # 실제 연결 시험에서는 접수·영속화한 실행을 넣는다. 시험용 배정/Goal을 운영 승인 근거로 쓰지 않는다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
         self.assignment_monitor.start(execution)

@@ -210,6 +210,7 @@ class CorridorObserver(Node):
         if self.catalog is None or not self.corridor_ids:
             return {}, 'REGIONS_INVALID'
         if not self.catalog.get('approved'):
+            # 정적 계산 통과는 실제 경계 승인이 아니다. 공동 관측 근거 없이 정상 비점유를 내보내지 않는다.
             return {c: ('UNKNOWN', False) for c in self.corridor_ids}, 'REGIONS_NOT_APPROVED'
         if not math.isfinite(now) or now <= 0.0:
             return {c: ('UNKNOWN', False) for c in self.corridor_ids}, 'CLOCK_INVALID'

@@ -1,0 +1,15 @@
+# A4 정지 판정(STOPPED) 전용 역할: AX_1 모델(팔 있음). 주행·팔 허가를 열지 않는다(허가 플래그는 launch 인자).
+# launch: stop_evidence_file:=<share>/config/stop_evidence_ax1.yaml (robot_id를 보고 자동 선택하지 않는다)
+# 필수 팔 관절 출처:
+# - ax_control/config/ax1_controllers.yaml arm_controller.joints(5축)
+# - ax_description/urdf/ax.urdf.xacro의 같은 이름 revolute 관절(column_yaw·shoulder·elbow·wrist·gripper_rotation)
+# 바퀴(*_wheel_joint)와 집게 손가락 관절은 넣지 않는다(차체 정지는 odom, 손가락은 공구별 미정).
+/**/a4_safety_gate:
+  ros__parameters:
+    stop_arm_presence: present
+    stop_arm_joint_names:
+      - column_yaw_joint
+      - shoulder_joint
+      - elbow_joint
+      - wrist_joint
+      - gripper_rotation_joint

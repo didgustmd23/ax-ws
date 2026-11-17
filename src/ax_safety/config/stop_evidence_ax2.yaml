@@ -1,0 +1,9 @@
+# A4 정지 판정(STOPPED) 전용 역할: AX_2 모델(적재함, 팔 없음). 주행·팔 허가를 열지 않는다.
+# launch: stop_evidence_file:=<share>/config/stop_evidence_ax2.yaml (robot_id를 보고 자동 선택하지 않는다)
+# 팔 없음 출처:
+# - ax_description/urdf/ax_2.urdf.xacro: 가동 관절은 ${name}_wheel_joint(continuous)뿐이고 나머지는 fixed
+# - ax_control/config/ax2_controllers.yaml: 팔 제어기 없음
+# 차체 정지는 odom으로만 확인한다. robot_2의 주행 허가·주행 자세 계약은 별도 미해결이다.
+/**/a4_safety_gate:
+  ros__parameters:
+    stop_arm_presence: absent

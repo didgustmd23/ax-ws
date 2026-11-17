@@ -10,6 +10,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <chrono>
 #include <algorithm>
+#include <cstring>
+#include <limits>
+#include <iomanip>
+#include <sstream>
 #include <cmath>
 #include <memory>
 #include <optional>
@@ -54,6 +58,18 @@ public:
     stop_angular_threshold_ = declare_parameter<double>("stop_angular_threshold_rad_s", 0.02);
     stop_joint_threshold_ = declare_parameter<double>("stop_joint_threshold_rad_s", 0.01);
     stop_hold_s_ = declare_parameter<double>("stop_hold_s", 0.5);
+
+    // 팔 정지 조건 역할과 필수 팔 관절(정지 판정 전용, 허가와 무관). 기본은 역할 미정 = 정지 미확인.
+    // 값은 모델별 파일(config/stop_evidence_*.yaml)을 launch stop_evidence_file로 명시해 준다.
+    const auto presence = declare_parameter<std::string>("stop_arm_presence", "unconfirmed");
+    stop_arm_joints_ = declare_parameter<std::vector<std::string>>("stop_arm_joint_names", std::vector<std::string>{});
+    arm_presence_ = ax_safety::parse_arm_presence(presence, stop_arm_joints_);
+    if (arm_presence_ == ax_safety::ArmPresence::UNCONFIRMED)
+      RCLCPP_WARN(get_logger(), "stop_arm_presence unconfirmed: STOPPED will not be confirmed.");
+    if (arm_presence_ == ax_safety::ArmPresence::INVALID)
+      RCLCPP_ERROR(get_logger(), "stop_arm_presence/stop_arm_joint_names invalid: STOPPED will not be confirmed.");
+    // 진단 로그(기본 false). 판정·발행 내용은 바꾸지 않는다.
+    diagnostics_ = declare_parameter<bool>("stop_diagnostics", false);
     session_ = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
 
     const auto base = "/ax/" + robot_;
@@ -68,10 +84,11 @@ public:
 
     sub_safety_ = create_subscription<SafetyState>(base + "/safety/state", state_qos,
         [this](SafetyState::SharedPtr m) { safety_ = *m; received_safety_ = steady(); got_safety_ = true; });
+    // 피드백은 표본마다 바로 정지 근거를 갱신한다(on_odom·on_joints). 수용한 표본만 상태·수신 시각을 바꾼다.
     sub_odom_ = create_subscription<Odometry>(base + "/diff_drive_controller/odom", feedback_qos,
-        [this](Odometry::SharedPtr m) { odom_ = *m; received_odom_ = steady(); got_odom_ = true; });
+        [this](Odometry::SharedPtr m) { on_odom(*m); });
     sub_joints_ = create_subscription<JointState>(base + "/joint_states", feedback_qos,
-        [this](JointState::SharedPtr m) { joints_ = *m; received_joints_ = steady(); got_joints_ = true; });
+        [this](JointState::SharedPtr m) { on_joints(*m); });
     sub_cmd_ = create_subscription<TwistStamped>(base + "/nav/cmd_vel", cmd_qos,
         [this](TwistStamped::SharedPtr m) { on_command(*m); });
 
@@ -87,6 +104,101 @@ private:
     return std::chrono::duration<double>(steady()-t).count();
   }
 
+  // 피드백 정지 근거의 시간 한계.
+  // - 0.3 s(kFeedbackTtlS): 표본 나이·무수신 한계는 이 게이트의 기존 state_fresh 값(계약 D-05 구동 상태 만료 0.3 s)이다.
+  //   같은 수치를 "연속 표본 간격 상한"(연속성)에도 쓰는데, 이 적용은 새 개발 규칙이다(실측·운영 승인 전).
+  // - 미래 stamp(현재 ROS 시각보다 뒤)는 허용하지 않는다(정지 근거·신선도 모두).
+  // - /clock 정체 3.0 s(벽시계): 계약 D-09 "/clock이 3 s 진행하지 않으면 PAUSED".
+  static constexpr double kFeedbackTtlS = 0.3;
+  static constexpr double kClockPauseS = 3.0;
+
+  static double stamp_seconds(const builtin_interfaces::msg::Time &stamp) {
+    return static_cast<double>(stamp.sec) + static_cast<double>(stamp.nanosec) * 1e-9;
+  }
+
+  // odom 표본 하나: D-06 선·각속도 저속 여부를 판정하고 채널 구간을 갱신한다.
+  // 같은 stamp 비교 대상은 정지 판정에 쓰는 linear.x·angular.z와 frame_id·child_frame_id다.
+  // pose·공분산 등 다른 필드는 비교하지 않는다. frame 이름 자체의 옳고 그름은 검증하지 않는다.
+  void on_odom(const Odometry &m) {
+    const auto &tw = m.twist.twist;
+    const bool finite = std::isfinite(tw.linear.x) && std::isfinite(tw.angular.z);
+    const bool low = finite && std::abs(tw.linear.x) <= stop_linear_threshold_ &&
+                     std::abs(tw.angular.z) <= stop_angular_threshold_;
+    ax_safety::SampleContent content{{m.header.frame_id, m.child_frame_id}, {tw.linear.x, tw.angular.z}};
+    // 시계는 한 번만 읽어 판정과 진단 카운터에 같은 값을 쓴다
+    const double stamp_s = stamp_seconds(m.header.stamp);
+    const double now_s = now().seconds();
+    const auto r = odom_channel_.add(stamp_s, now_s, low, content, kFeedbackTtlS);
+    odom_counts_.count(r, stamp_s, now_s);
+
+    if (r == ax_safety::LowChannel::ACCEPTED) { odom_ = m; received_odom_ = steady(); got_odom_ = true; }
+  }
+
+  // joint_states 표본 하나.
+  // - 구조: 이름·위치·속도 길이 일치, 이름 중복 없음. 아니면 근거 상실(저속 아님).
+  // - 팔 있음: 필수 팔 관절이 모두 있고 위치·속도가 유한하며 속도가 모두 기준 이하일 때만 저속.
+  //   필수가 아닌 관절(바퀴 등) 속도는 팔 기준에 넣지 않는다(차체 정지는 odom으로 확인).
+  // - 팔 없음: 팔 조건은 해당 없음. 구조가 맞으면 저속으로 둔다(정지 판정은 odom 구간만 쓴다).
+  // - 역할 미정·무효: 저속으로 보지 않는다.
+  // 같은 stamp 비교는 이름 정렬 후 (이름, 위치, 속도) 대응을 원 값으로 직접 비교한다(배열 순서만 다르면 같음).
+  void on_joints(const JointState &m) {
+    const std::size_t n = m.name.size();
+    bool valid = n > 0 && m.position.size() == n && m.velocity.size() == n;
+
+    std::vector<std::size_t> order(n);
+    for (std::size_t i = 0; i < n; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&m](std::size_t a, std::size_t b) { return m.name[a] < m.name[b]; });
+    for (std::size_t k = 1; valid && k < n; ++k) valid = m.name[order[k]] != m.name[order[k - 1]];
+
+    ax_safety::SampleContent content;
+    for (std::size_t k = 0; k < n; ++k) {
+      const std::size_t i = order[k];
+      content.names.push_back(m.name[i]);
+      content.values.push_back(i < m.position.size() ? m.position[i] : std::numeric_limits<double>::quiet_NaN());
+      content.values.push_back(i < m.velocity.size() ? m.velocity[i] : std::numeric_limits<double>::quiet_NaN());
+    }
+
+    bool low = false;
+    if (valid && arm_presence_ == ax_safety::ArmPresence::ABSENT) {
+      low = true;
+    } else if (valid && arm_presence_ == ax_safety::ArmPresence::PRESENT) {
+      low = true;
+      for (const auto &required : stop_arm_joints_) {
+        const auto it = std::find(m.name.begin(), m.name.end(), required);
+        if (it == m.name.end()) { low = false; break; }
+        const auto i = static_cast<std::size_t>(it - m.name.begin());
+        if (!std::isfinite(m.position[i]) || !std::isfinite(m.velocity[i]) ||
+            std::abs(m.velocity[i]) > stop_joint_threshold_) { low = false; break; }
+      }
+    }
+
+    const double stamp_s = stamp_seconds(m.header.stamp);
+    const double now_s = now().seconds();
+    const auto r = joint_channel_.add(stamp_s, now_s, low, content, kFeedbackTtlS);
+    joint_counts_.count(r, stamp_s, now_s);
+    if (r == ax_safety::LowChannel::ACCEPTED) { joints_ = m; received_joints_ = steady(); got_joints_ = true; }
+  }
+
+  // 필수 팔 관절의 최대 |속도|(보고용). 팔 없음·역할 미정이면 0, 필수 관절이 없거나 비유한이면 NaN.
+  float required_joint_speed() const {
+    if (arm_presence_ != ax_safety::ArmPresence::PRESENT) return 0.0f;
+    float out = 0.0f;
+    for (const auto &required : stop_arm_joints_) {
+      const auto it = std::find(joints_.name.begin(), joints_.name.end(), required);
+      const auto i = static_cast<std::size_t>(it - joints_.name.begin());
+      if (it == joints_.name.end() || i >= joints_.velocity.size()) return std::numeric_limits<float>::quiet_NaN();
+      out = std::max(out, static_cast<float>(std::abs(joints_.velocity[i])));
+    }
+    return out;
+  }
+
+  // 피드백 표본 나이: 기존 0.3 s 상한, 미래 stamp는 신선으로 보지 않는다(수용 규칙과 같게)
+  bool feedback_stamp_fresh(const builtin_interfaces::msg::Time &stamp) const {
+    if (stamp.sec == 0 && stamp.nanosec == 0) return false;
+    double age = (now() - rclcpp::Time(stamp, RCL_ROS_TIME)).seconds();
+    return std::isfinite(age) && age >= 0.0 && age <= kFeedbackTtlS;
+  }
+
   // ROS timestamp는 메시지 자체의 시간 유효성을 확인할 때만 사용한다.
   bool stamp_fresh(const builtin_interfaces::msg::Time &stamp, double timeout) const {
     // zero timestamp와 미래/오래된 ROS timestamp는 현재 상태로 인정하지 않는다.
@@ -98,10 +210,11 @@ private:
   // 주행 허용 여부를 판단하려면 odom과 joint_states가 모두 최신이고 서로 일관되어야 한다.
   bool state_fresh() const {
     // odom과 joint state가 모두 최근 수신되며 finite이고, joint name/position 배열이 맞아야 한다.
-    if (!got_odom_ || !got_joints_ || elapsed(received_odom_) > 0.3 ||
-        elapsed(received_joints_) > 0.3 ||
-        !stamp_fresh(odom_.header.stamp, 0.3) ||
-        !stamp_fresh(joints_.header.stamp, 0.3)) return false;
+    // received_*는 새 stamp로 수용한 표본에서만 갱신되므로, 같은 stamp 재수신은 무수신 만료를 늦추지 못한다.
+    if (!got_odom_ || !got_joints_ || elapsed(received_odom_) > kFeedbackTtlS ||
+        elapsed(received_joints_) > kFeedbackTtlS ||
+        !feedback_stamp_fresh(odom_.header.stamp) ||
+        !feedback_stamp_fresh(joints_.header.stamp)) return false;
     if (!std::isfinite(odom_.twist.twist.linear.x) || !std::isfinite(odom_.twist.twist.angular.z)) return false;
     // 관절 이름·위치·속도 배열이 모두 같은 관절을 가리켜야 보호 판단에 사용한다.
     if (joints_.name.empty() || joints_.position.size() != joints_.name.size() ||
@@ -206,44 +319,115 @@ private:
     m.meta.source_id="a4_safety_gate";
     m.meta.source_session_id=session_;
     m.meta.revision=++revision_;
-    m.meta.valid=gate.state_fresh && gate.safety_fresh;
-    m.meta.validity_reason=m.meta.valid ? "" : "STATE_OR_SAFETY_STALE";
-    m.drive_allowed = gate.enabled && gate.safety_fresh && gate.state_fresh &&
+    // 시간 유효성: 계약상 판정 주체는 A 공용 감독기(/ax/fleet/time_validity, D-09)지만 아직 발행자가 없다.
+    // gate는 최소한으로 /clock 무효(0)·역행(리셋)·D-09 정체(3 s 벽시계 동안 미진행)만 직접 본다.
+    // RTF 범위(0.5~1.5) 판정과 TimeValidity 소비는 하지 않는다(감독기 구현 뒤 연결).
+    const double t_now = now().seconds();
+    bool clock_ok = std::isfinite(t_now) && t_now > 0.0;
+    if (clock_ok && has_prev_tick_time_ && t_now < prev_tick_time_) {
+      // 시계 역행은 리셋으로 보고 채널 상태를 모두 비운다(이후 작은 stamp 표본을 '늦은 표본'으로 버리지 않게).
+      odom_channel_.reset_all();
+      joint_channel_.reset_all();
+      clock_ok = false;
+    }
+    if (clock_ok && (!has_prev_tick_time_ || t_now > prev_tick_time_)) last_clock_advance_ = steady();
+    if (clock_ok) { prev_tick_time_ = t_now; has_prev_tick_time_ = true; }
+    if (clock_ok && elapsed(last_clock_advance_) > kClockPauseS) clock_ok = false;   // D-09 PAUSED
+
+    // 정지 근거 전제가 깨지면 채널 구간을 버린다. 회복 뒤 이전 유지 시간을 재사용하지 않는다.
+    if (!clock_ok || !gate.safety_fresh || !gate.state_fresh) {
+      odom_channel_.reset_interval();
+      joint_channel_.reset_interval();
+    }
+
+    m.meta.valid = clock_ok && gate.state_fresh && gate.safety_fresh;
+    m.meta.validity_reason = m.meta.valid ? "" : (!clock_ok ? "CLOCK_INVALID" : "STATE_OR_SAFETY_STALE");
+    m.drive_allowed = clock_ok && gate.enabled && gate.safety_fresh && gate.state_fresh &&
                       gate.travel_pose_valid && gate.operational_permits_valid && !gate.stop_required;
-    m.arm_allowed = arm_approved_ && gate.enabled && gate.state_fresh &&
+    m.arm_allowed = arm_approved_ && clock_ok && gate.enabled && gate.state_fresh &&
                     gate.safety_fresh && !gate.stop_required; // 이후 A3 lease 검사는 팔 서버 책임
 
     m.state = ActuationState::UNKNOWN;
-    if (gate.state_fresh) {
+    // 진단 스냅샷용(판정에는 아래 블록 안의 값만 쓴다)
+    double diag_held = -1.0;
+    bool diag_low = false;
+    if (clock_ok && gate.state_fresh) {
       m.linear_speed = static_cast<float>(std::abs(odom_.twist.twist.linear.x));
       m.angular_speed = static_cast<float>(std::abs(odom_.twist.twist.angular.z));
-      for (auto x: joints_.velocity) m.max_joint_speed=std::max(m.max_joint_speed,static_cast<float>(std::abs(x)));
+      // 필수 팔 관절만 보고한다(바퀴 등 제외). 팔 없음이면 0.
+      m.max_joint_speed = required_joint_speed();
 
-      // 세 가지 피드백 속도가 모두 기준 이하일 때만 정지 유지 시간을 누적한다.
-      bool low = std::isfinite(m.linear_speed) && std::isfinite(m.angular_speed) &&
-                 std::isfinite(m.max_joint_speed) &&
-                 m.linear_speed<=stop_linear_threshold_ &&
-                 m.angular_speed<=stop_angular_threshold_ &&
-                 m.max_joint_speed<=stop_joint_threshold_;
-      if (low) {
-        if (!stable_stop_since_) stable_stop_since_ = steady();
-      } else stable_stop_since_.reset();
+      // 역할이 확인된 경우에만 정지를 확인한다(미정·무효면 STOPPED 없음).
+      const bool role_ok = arm_presence_ == ax_safety::ArmPresence::PRESENT ||
+                           arm_presence_ == ax_safety::ArmPresence::ABSENT;
+      const bool arm_absent = arm_presence_ == ax_safety::ArmPresence::ABSENT;
+      // 최신 수용 표본이 저속이어야 정지 진행으로 본다(팔 없음이면 odom만).
+      const bool low = role_ok && odom_channel_.latest_low && (arm_absent || joint_channel_.latest_low);
+      // D-06 유지 시간: 각 채널이 관측한 연속 저속 구간(팔 있음이면 두 채널 교집합) 길이, 끝은 현재 시각 이하.
+      // wall tick 반복·같은 stamp 재수신·/clock 진행·미래 표본만으로는 늘지 않는다.
+      const double held = arm_absent ? ax_safety::low_span(odom_channel_, t_now)
+                                     : ax_safety::common_low_span(odom_channel_, joint_channel_, t_now);
+      diag_held = held;
+      diag_low = low;
       if (!low) m.state = m.drive_allowed ? ActuationState::RUNNING : ActuationState::STOPPING;
-      else if (stable_stop_since_ && gate.safety_fresh &&
-               elapsed(*stable_stop_since_)>=stop_hold_s_) {
+      else if (gate.safety_fresh && held >= stop_hold_s_) {
         // D-06은 정지 명령과 독립적으로 최신 odom·관절 피드백으로 확인한다.
-        // 안전 상태가 만료되면 실제 속도가 낮아도 보수적으로 차단 상태를 유지한다.
+        // 주행 잠금(drive_allowed=false)과 무관하게 정지 확인은 할 수 있고, STOPPED가 주행 허가를 대신하지 않는다.
         m.state = ActuationState::STOPPED;
       } else m.state=ActuationState::STOPPING;
-    } else stable_stop_since_.reset();
+    }
 
     // ActuationState는 왜 주행이 막혔는지 후속 A3/D4 관측자가 확인할 수 있도록 원인을 남긴다.
+    if (!clock_ok) m.block_reasons.push_back("TIME_INVALID");   // 계약 D-12 구동 차단 사유
     if (!gate.safety_fresh) m.block_reasons.push_back("SAFETY_STOP");
     if (!gate.state_fresh) m.block_reasons.push_back("STATE_STALE");
     if (!gate.travel_pose_valid) m.block_reasons.push_back("TRAVEL_POSE_UNVERIFIED");
     if (!gate.operational_permits_valid) m.block_reasons.push_back("HANDOFF_LOCK");
     if (!gate.enabled) m.block_reasons.push_back("SIMULATION_DRIVE_DISABLED");
     pub_state_->publish(m);
+
+    if (diagnostics_) diagnose(m, gate, clock_ok, t_now, diag_held, diag_low);
+  }
+
+  // 진단(기본 비활성, 판정 불변): STOPPED 진입·이탈 때 판정 근거 스냅샷, 1 s(벽시계)마다 카운터.
+  // 판정이 끝난 뒤 이미 계산한 값만 기록한다. 무수신 나이(age)는 진단 시점에 따로 읽은 steady 값이다.
+  // 출력은 노드 로그 한 줄 JSON(A4_STOP_DIAG). 공개 토픽·메시지를 추가하지 않는다.
+  void diagnose(const ActuationState &m, const ax_safety::GateInput &gate, bool clock_ok, double t_now,
+                double held, bool low) {
+    const bool stopped = m.state == ActuationState::STOPPED;
+    const bool transition = stopped != last_diag_stopped_;
+    const bool periodic = elapsed(last_diag_counters_) >= 1.0;
+    if (!transition && !periodic) return;
+
+    const auto channel = [](const ax_safety::LowChannel &ch, const ax_safety::ChannelCounters &k) {
+      std::ostringstream o;
+      o << std::setprecision(12) << "{\"latest\":" << (ch.has_latest ? ch.latest_stamp : -1.0)
+        << ",\"latest_low\":" << (ch.latest_low ? "true" : "false")
+        << ",\"has_interval\":" << (ch.has_interval ? "true" : "false")
+        << ",\"start\":" << (ch.has_interval ? ch.start : -1.0) << ",\"end\":" << (ch.has_interval ? ch.end : -1.0)
+        << ",\"accepted\":" << k.result[0] << ",\"duplicate\":" << k.result[1] << ",\"conflict\":" << k.result[2]
+        << ",\"late\":" << k.result[3] << ",\"rejected\":" << k.result[4]
+        << ",\"rej_clock\":" << k.reject[0] << ",\"rej_stamp\":" << k.reject[1] << ",\"rej_future\":" << k.reject[2] << "}";
+      return o.str();
+    };
+    const bool absent = arm_presence_ == ax_safety::ArmPresence::ABSENT;
+    const char *presence = arm_presence_ == ax_safety::ArmPresence::PRESENT ? "present" :
+                           absent ? "absent" : arm_presence_ == ax_safety::ArmPresence::UNCONFIRMED ? "unconfirmed" : "invalid";
+    std::ostringstream o;
+    o << std::setprecision(12) << "A4_STOP_DIAG {\"kind\":\"" << (transition ? (stopped ? "enter_stopped" : "leave_stopped") : "counters")
+      << "\",\"now\":" << t_now << ",\"state\":" << static_cast<int>(m.state) << ",\"valid\":" << (m.meta.valid ? "true" : "false")
+      << ",\"clock_ok\":" << (clock_ok ? "true" : "false") << ",\"state_fresh\":" << (gate.state_fresh ? "true" : "false")
+      << ",\"safety_fresh\":" << (gate.safety_fresh ? "true" : "false") << ",\"low\":" << (low ? "true" : "false")
+      << ",\"held\":" << held << ",\"hold_s\":" << stop_hold_s_ << ",\"presence\":\"" << presence
+      << "\",\"joint_used_for_hold\":" << (absent ? "false" : "true") << ",\"required\":" << stop_arm_joints_.size()
+      << ",\"odom\":" << channel(odom_channel_, odom_counts_) << ",\"joint\":" << channel(joint_channel_, joint_counts_)
+      << ",\"age_odom\":" << (got_odom_ ? elapsed(received_odom_) : -1.0)
+      << ",\"age_joint\":" << (got_joints_ ? elapsed(received_joints_) : -1.0)
+      << ",\"age_safety\":" << (got_safety_ ? elapsed(received_safety_) : -1.0) << "}";
+    RCLCPP_INFO(get_logger(), "%s", o.str().c_str());
+
+    if (transition) last_diag_stopped_ = stopped;
+    if (periodic) last_diag_counters_ = steady();
   }
 
   // 파라미터와 마지막으로 받은 안전·구동 피드백을 보관한다.
@@ -260,7 +444,17 @@ private:
   SafetyState safety_;
   Odometry odom_;
   JointState joints_;
-  std::optional<std::chrono::steady_clock::time_point> stable_stop_since_;
+  // D-06 표본 기반 정지 근거(채널별 연속 저속 구간), 기준 관절 집합, tick 시계 감시
+  ax_safety::LowChannel odom_channel_, joint_channel_;
+  // 진단 전용 카운터·상태(판정에 쓰지 않음)
+  ax_safety::ChannelCounters odom_counts_, joint_counts_;
+  bool diagnostics_{false}, last_diag_stopped_{false};
+  std::chrono::steady_clock::time_point last_diag_counters_{steady()};
+  std::vector<std::string> stop_arm_joints_;
+  ax_safety::ArmPresence arm_presence_{ax_safety::ArmPresence::UNCONFIRMED};
+  bool has_prev_tick_time_{false};
+  double prev_tick_time_{0.0};
+  std::chrono::steady_clock::time_point last_clock_advance_{steady()};
   std::chrono::steady_clock::time_point received_safety_{},received_odom_{},received_joints_{},
       received_cmd_{},previous_sent_{steady()};
 

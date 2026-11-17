@@ -60,7 +60,9 @@ class A4StopConfirmationRosTest(unittest.TestCase):
         executable = ROOT / 'install' / 'ax_safety' / 'lib' / 'ax_safety' / 'a4_safety_gate'
         self.process = subprocess.Popen([
             str(executable), '--ros-args', '-p', f'robot_id:={ROBOT}',
-            '-p', 'use_sim_time:=false', '-p', 'stop_hold_s:=0.5'],
+            '-p', 'use_sim_time:=false', '-p', 'stop_hold_s:=0.5',
+            # 이 fixture의 joint_states는 바퀴 관절 하나뿐이라 팔 없음 역할을 명시한다(역할 미정이면 STOPPED 미확인).
+            '-p', 'stop_arm_presence:=absent'],
             env=os.environ.copy())
         self.addCleanup(self.cleanup)
         deadline = time.monotonic() + 3.0

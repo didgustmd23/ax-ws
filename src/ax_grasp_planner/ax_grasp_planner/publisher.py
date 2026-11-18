@@ -7,6 +7,7 @@ import sqlite3
 import threading
 import uuid
 
+from ax_grasp_planner.c2_handoff import prepare_c2_candidates
 from ax_interfaces.msg import CandidateSet, CandidateSetList, GraspCandidate
 import rclpy
 from rclpy.clock import Clock, ClockType
@@ -44,6 +45,18 @@ class CandidatePublisher(Node):
         # 버전 확인과 저장을 묶어, 동시에 도착한 결과가 최신 후보를 덮어쓰지 않게 합니다.
         with self._plan_lock:
             self._accept_plan(plan)
+
+    def publish_c2_result(self, adapted, constraints, now_ns, *,
+                          reachability=None, collision=None):
+        """C2 어댑터 결과를 검사하고 실행 가능한 후보만 기존 게시 경로에 전달합니다."""
+        # 내부 호출 입구다. 노드 실행만으로 C2 결과를 구독하거나 실제 IK 검증기가 연결되지는 않는다.
+        result = prepare_c2_candidates(
+            adapted, constraints, now_ns, robot_id=self.robot_id,
+            reachability=reachability, collision=collision)
+        if result.ready:
+            # 보류 입력은 새 후보나 성공 상태를 만들지 않는다. 기존 후보의 TTL·역순 방어는 유지한다.
+            self.publish_plan(result.plan)
+        return result
 
     def _accept_plan(self, plan):
         # 실제 연결부가 계산한 Plan만 받습니다. 다른 로봇의 후보와 관측 시각이 잘못된 자료는 거절합니다.

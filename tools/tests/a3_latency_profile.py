@@ -91,5 +91,22 @@ class LeaseProfiler:
                 stages[key] = {'p50_s': values[len(values) // 2],
                                'p99_s': values[max(0, int(len(values) * .99) - 1)],
                                'max_s': values[-1]}
+        # 같은 느린 요청의 구간을 비교한다. 서로 다른 요청의 p99를 더하면 원인을 오판한다.
+        timed_rows = [row for row in rows if row.get('roundtrip_s') is not None]
+        slowest = sorted(timed_rows, key=lambda row: row['roundtrip_s'], reverse=True)[:10]
+        breakdown = []
+        for row in slowest:
+            parts = {
+                'ledger_wait': row.get('ledger_lock_wait_s', 0.0),
+                'sqlite': sum(row.get(key, 0.0) for key in (
+                    'begin_s', 'select_s', 'write_s', 'commit_s', 'rollback_s')),
+                'other_inside_server': row['inside_without_sql_or_ledger_wait_s'],
+                'outside_server': row['outside_server_s'],
+            }
+            breakdown.append({'request_id': row['request_id'],
+                              'roundtrip_s': row['roundtrip_s'], 'parts_s': parts,
+                              'largest_measured_part': max(parts, key=parts.get)})
         return {'scope': '시험 전용 계측; 각 구간 p99끼리는 더할 수 없음',
-                'stages': stages, 'requests': rows}
+                'interpretation': 'SQLite 시간에는 CPU 실행 대기가 포함될 수 있음; '
+                    'outside_server는 ROS 전송·콜백 대기·클라이언트 대기를 구분하지 않음',
+                'slowest_requests': breakdown, 'stages': stages, 'requests': rows}

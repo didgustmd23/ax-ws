@@ -63,6 +63,20 @@ python3 tools/tests/test_w3_contracts_ros.py
 
 현재 C2 표면 snapshot의 공통 ROS 타입/Topic과 C4 내부 호출부가 아직 없으므로 새로운 입력 Topic을
 발명하지 않았다. 노드를 단독 실행하면 NO_VALID_CANDIDATES이며 가짜 좌표를 생성하지 않는다.
+
+2026-11-18 main 776773c의 C2 어댑터 결과는 내 `c2_handoff.prepare_c2_candidates` 또는
+`CandidatePublisher.publish_c2_result`로 전달할 수 있다. 상대 C2 어댑터가 만든 `AdapterResult`와
+명시적 제약·현재 ROS 정수 ns·도달/충돌 검증기를 받는다. C2 보류 사유·물체 ID·frame·원본 ns·출처를
+보존하며 메타정보나 대상 대응 MATCH를 기본값으로 만들지 않는다. 내부 handoff 사유는 공개 계약 코드를 추가한 것이 아니다.
+준비된 유효 후보만 기존 `publish_plan` 경로로 보내므로 버전·digest·용량·만료 검사를 우회하지 않는다.
+보류 결과는 새 후보를 게시하지 않으며 기존 후보는 원래 TTL로 만료된다. 호출자는 보류를 성공으로 보거나
+옛 후보의 재실행 근거로 쓰면 안 된다.
+정수 ns로 수신 시점의 미래·만료를 먼저 검사하고 원본 ns는 결과에 남기지만 기존 Surface/Plan 및 후보 게시
+경계는 여전히 float 초다. 이후 전체 버전 순서·출력 stamp까지 ns 정밀도를 보장하는 변경은 아니다.
+C2 노드는 아직 로컬 JSONL 기록만 출력하고 어댑터는 설치되지 않으므로 이 내부 함수가 실제 DDS 연결을
+자동 생성하지 않는다. 실제 C4 대응 판정과 호출·IK/충돌 연결은 여전히 별도다.
+검사·최신 A4 변경과의 연동 상태는 [main 776773c 점검](../../docs/guides/KIM_MAIN_776773C_REVIEW_2026-11-18.md)을 본다.
+
 시험의 도달·충돌 검증기는 모의 함수다. 실제 IK·MoveIt·Gazebo 집기 성공을 검증한 것이 아니다.
 손가락 집게 전략, XGBoost 학습·확률 보정, 실제 장애물 지도 연계는 이번 규칙 기반 흡착 범위 밖이다.
 Gazebo에서는 `/clock`과 `use_sim_time:=true`를 함께 사용한다. 실제 시계를 쓰려면 입력 노드와

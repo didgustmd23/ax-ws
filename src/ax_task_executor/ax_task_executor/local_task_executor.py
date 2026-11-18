@@ -29,7 +29,8 @@ from ax_interfaces.srv import CheckCommandLease
 from ax_task_executor.assignment_monitor import AssignmentMonitor
 from ax_task_executor.executor_state import ExecutorState
 from ax_task_executor.lease_check import (
-    default_lease_db, DevPolicyAuthority, LEASE_SERVICE_QOS, LeaseChecker, LeaseLedger)
+    default_lease_db, DevPolicyAuthority, fill_lease_reply,
+    LEASE_SERVICE_QOS, LeaseChecker, LeaseLedger)
 from ax_task_executor.mock_executor import execute_action_name, MockExecutor
 from ax_task_executor.runtime_authority import RuntimeAuthority
 import rclpy
@@ -233,14 +234,7 @@ class LocalTaskExecutor(MockExecutor):
     def on_check(self, request, reply):
         # 승연님 A4·양현승님 A2의 명령 확인에 답합니다. 요청자가 자기 권한을 등록하지 못하게 합니다.
         # 역할: 명령 확인 요청을 판정하고 서비스 응답 필드를 채웁니다.
-        result = self.checker.check(request)
-
-        reply.allowed = result['allowed']
-        reply.reason_code = result['reason_code']
-        reply.accept_record_id = result['accept_record_id']
-        reply.valid_for_s = result['valid_for_s']
-
-        return reply
+        return fill_lease_reply(self.checker, request, reply)
 
     # lease 원장을 닫고 모의 실행기 정리를 이어 한다
     def destroy_node(self):

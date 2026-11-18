@@ -17,8 +17,8 @@ ros2 launch ax_control simulation.launch.py                         # robot_1(�
 ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false
 ```
 
-인자는 `ax_description robot_test.launch.py`와 같다: `world`(`ax_test.world`), `robots`(1·2·4), `robot_ids`,
-`gui`, `sensors`, `tool`(기본 `epick`), `payload_mass`. 로봇 ID `robot_<n>`이 namespace `/ax/robot_<n>`과 TF 접두사 `robot_<n>/`를 정한다.
+월드·모델 인자는 `ax_description robot_test.launch.py`에 그대로 넘긴다: `world`, `test_fixture_world`, `robots`(1·2·4), `robot_ids`,
+`gui`, `sensors`, `tool`(기본 `epick`), `payload_mass`. A4/B4 인자는 아래 `safety:=true` 절을 따른다. 로봇 ID `robot_<n>`이 namespace `/ax/robot_<n>`과 TF 접두사 `robot_<n>/`를 정한다.
 
 | 구성 | 소유 | 내용 |
 |---|---|---|
@@ -28,6 +28,34 @@ ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false
 | 공구 | A2 | `tool:=epick`·`suction`일 때 팔 로봇에 흡착 플러그인(모델 `ax_tool_attach` 매크로)·공구 브리지·`suction_tool_node` |
 
 `robot_test.launch.py`를 직접 실행하면 제어기 없이 모델·센서만 뜬다.
+
+### A4/B4 함께 실행(`safety:=true`)
+
+`safety:=true`이면 선택한 로봇마다 `ax_safety safety.launch.py`를 따로 포함한다(기본 `false`). safety 인자는 A1 `robot_test.launch.py`에 넘기지 않는다.
+
+```bash
+S=$(ros2 pkg prefix --share ax_safety)/config
+# 두 로봇: 정지 판정 역할을 로봇별로 준다. robot_params는 검증된 파일이 있을 때만 준다.
+ros2 launch ax_control simulation.launch.py gui:=false safety:=true \
+  safety_stop_evidence_files:=robot_1=$S/stop_evidence_ax1.yaml,robot_2=$S/stop_evidence_ax2.yaml
+# 한 로봇
+ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false safety:=true \
+  safety_stop_evidence_files:=robot_1=$S/stop_evidence_ax1.yaml \
+  safety_robot_params_files:="robot_1=/경로/robot 1 params.yaml"
+```
+
+| 인자 | 형식·기본 | 하위 `safety.launch.py` 인자 |
+|---|---|---|
+| `safety_params_file` | 경로. 비우면 선택된 ax_safety 설치본의 `config/safety_limits.yaml` | `params_file`(모든 로봇 공통) |
+| `safety_stop_evidence_files` | `robot_<n>=<경로>,...`. 기본 빈 값 | `stop_evidence_file`(로봇별) |
+| `safety_robot_params_files` | `robot_<n>=<경로>,...`. 기본 빈 값 | `robot_params_file`(로봇별) |
+| `safety_enable_simulation_drive`·`safety_enable_simulation_arm`·`safety_operational_permits_verified`·`safety_travel_envelope_verified`·`safety_arm_operation_verified` | 기본 `false` | 접두사를 뗀 같은 이름(파일 값보다 나중에 적용) |
+
+- 매핑에 없는 로봇은 빈 값으로 넘어가 역할 미정(STOPPED 미확인)·주행 자세/팔 한계 미설정(잠금)이 된다. 다른 로봇 값으로 채우지 않으며, 로봇 include마다 scope를 나눠 값이 옆 로봇으로 새지 않는다. `robot_id`로 역할 파일을 추측하지 않는다.
+- 쉼표로 항목을 나누고 각 항목의 첫 `=`만 구분자로 본다. 항목 앞뒤 공백은 지우고 경로 내부 공백은 보존한다(셸 따옴표 필요). 쉼표가 든 경로는 지원하지 않는다.
+- 시작 전에 거부: 선택되지 않은 로봇·중복 로봇·형식 오류·없는 파일, `safety:=false`에서 파일 인자 지정, 하위 단일 로봇 인자(`params_file`·`stop_evidence_file`·`robot_params_file`·접두사 없는 허가 플래그)를 이 진입점에 직접 준 경우. 단일 로봇 인자는 `safety.launch.py`를 직접 실행할 때 쓴다.
+- 파일 존재만 확인한다. 역할 파일이 그 로봇 모델과 맞는지(AX_1 팔 있음 `stop_evidence_ax1`, AX_2 팔 없음 `stop_evidence_ax2`), 주행 자세·팔 한계 값이 검증됐는지는 호출자 책임이다. 특히 팔 있는 로봇에 `stop_evidence_ax2`를 주면 팔 움직임을 보지 않고 STOPPED가 날 수 있다.
+- 이 전달만으로 주행 허가·B3/B4 경로·W2 전체가 해결되지 않는다. 허가 플래그는 모두 기본 `false`다.
 
 ### 바퀴 보정값
 
@@ -46,7 +74,7 @@ ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false
 | 팔 입력 | `/ax/<robot_id>/arm_controller/follow_joint_trajectory` (`FollowJointTrajectory`) | A4 팔 보호 서버 |
 | 상태 출력 | `/ax/<robot_id>/joint_states`, `diff_drive_controller/odom`, TF `odom→base_link` | 소비자 전체 |
 
-A4 게이트는 아직 없다. 지금은 제어기를 누구나 직접 호출할 수 있으므로 이 패키지만으로는 구동 차단이 되지 않는다.
+기본 `safety:=false`에서는 A4 게이트가 뜨지 않는다. `safety:=true`여도 제어기 자체는 누구나 직접 호출할 수 있으므로 이 패키지만으로는 구동 차단이 되지 않는다.
 팔 제어기의 `joint_trajectory` 토픽은 개발 시험에만 쓰고 운영 경로로 쓰지 않는다.
 
 ## 명령 끊김

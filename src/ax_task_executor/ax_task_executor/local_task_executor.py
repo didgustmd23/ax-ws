@@ -156,6 +156,7 @@ class LocalTaskExecutor(MockExecutor):
         request.assignment_generation = execution.assignment_generation
         self.authority.begin_assignment_check(
             request.request_id, request.assignment_id, request.assignment_generation)
+        # 응답을 기다릴 요청만 등록한다. 상대 D4가 준비되지 않았다고 여기서 허용 응답을 만들지 않는다.
         self.assignment_requests.publish(request)
         return request.request_id
 

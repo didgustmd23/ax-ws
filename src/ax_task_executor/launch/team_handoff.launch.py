@@ -29,6 +29,7 @@ def setup_nodes(context):
     for robot, model in zip(robot_ids, models):
         # 기본은 로봇별 A3·B3다. 상대 파트 노드나 안전 허용 설정은 변경하지 않는다.
         common = {'robot_id': robot, 'use_sim_time': True}
+        # 상대가 Gazebo 시각으로 보낸 stamp를 벽시계와 비교하지 않도록 내 노드의 시계를 맞춘다.
         nodes.extend([
             Node(package='ax_task_executor', executable='local_task_executor',
                  namespace=f'/ax/{robot}', name='local_task_executor', output='screen',
@@ -48,6 +49,7 @@ def setup_nodes(context):
         # D3는 전체 로봇을 받는 단일 원장이다. 두 번 시작하거나 미합의 정책을 켜지 않는다.
         database = LaunchConfiguration('corridor_database', default='').perform(context)
         parameters = {'use_sim_time': True, 'robot_ids': robot_ids, 'regions_file': regions}
+        # B3와 D3는 같은 영역 파일을 읽는다. 관측 경계와 허가 대상이 서로 달라지지 않게 한다.
         if database:
             parameters['database'] = database
         nodes.append(Node(

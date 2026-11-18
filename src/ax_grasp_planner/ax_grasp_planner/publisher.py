@@ -49,6 +49,7 @@ class CandidatePublisher(Node):
     def publish_c2_result(self, adapted, constraints, now_ns, *,
                           reachability=None, collision=None):
         """C2 어댑터 결과를 검사하고 실행 가능한 후보만 기존 게시 경로에 전달합니다."""
+        # 내부 호출 입구다. 노드 실행만으로 C2 결과를 구독하거나 실제 IK 검증기가 연결되지는 않는다.
         result = prepare_c2_candidates(
             adapted, constraints, now_ns, robot_id=self.robot_id,
             reachability=reachability, collision=collision)

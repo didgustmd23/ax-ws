@@ -124,6 +124,7 @@ class CorridorObserver(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.create_subscription(LocalizationHealth, 'localization/health', self.on_health, STATE_QOS)
+        # team_handoff의 /ax/<robot_id> namespace를 통해 B2 입력과 B4/D3 출력 경로를 로봇별로 분리한다.
         self.publisher = self.create_publisher(CorridorObservationList, 'perception/corridor_observation', STATE_QOS)
         self.create_timer(1.0 / rate, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
 

@@ -175,10 +175,6 @@ def distribute(mass, boxes):
 # 링크별 가상 설계 질량 배분(모터·배터리·튜브·하우징)을 정한다. 실측·제조사 사양이 아니다.
 def virtual_mass_parts(name, boxes):
     # 명시적 설계 가정이다. 모터 질량은 제조사 사양이 아니다.
-    if name == 'base_link':
-        return [
-            mass_box(5.6, [0, 0, -.15], [.55, .35, .12], label='low_battery_ballast_budget')
-        ] + distribute(2.4, boxes)
     if name == 'arm_mount_link':
         return [
             mass_box(1.8, [-.005, 0, .084], [.23, .29, .168], label='fixed_base_budget')
@@ -231,6 +227,25 @@ def aggregate(parts):
     return mass, center, inertia
 
 
+def add_battery(robot, pose, mass, size, inertia):
+    """Add a fixed internal pack to the generated chassis model."""
+    macro = ET.SubElement(robot, '{'+XACRO+'}macro', name='ax_battery_pack')
+    link = ET.SubElement(macro, 'link', name='battery_link')
+    visual = ET.SubElement(link, 'visual', name='battery_pack')
+    ET.SubElement(ET.SubElement(visual, 'geometry'), 'box', size=numbers(size))
+    material = ET.SubElement(visual, 'material', name='battery_blue')
+    ET.SubElement(material, 'color', rgba='0.05 0.55 0.8 1')
+    inertial = ET.SubElement(link, 'inertial')
+    ET.SubElement(inertial, 'mass', value=f'{mass:.12g}')
+    ET.SubElement(inertial, 'inertia', ixx=f'{inertia[0, 0]:.12g}',
+                  iyy=f'{inertia[1, 1]:.12g}', izz=f'{inertia[2, 2]:.12g}',
+                  ixy='0', ixz='0', iyz='0')
+    joint = ET.SubElement(macro, 'joint', name='battery_joint', type='fixed')
+    ET.SubElement(joint, 'parent', link='base_link')
+    ET.SubElement(joint, 'child', link='battery_link')
+    ET.SubElement(joint, 'origin', xyz=numbers(pose), rpy='0 0 0')
+
+
 # 로봇 하나의 충돌 근사 상자와 전체 질량 텐서를 계산해 physical_properties Xacro와 JSON을
 # 같은 결과에서 생성한다.
 def generate(
@@ -264,10 +279,20 @@ def generate(
         boxes = remove_contained_boxes([box_for_points(c) for c in components])
 
         # AX_1의 명시적 가상 부품 배치와 AX_2의 독립 질량 예산을 구분한다.
-        parts = (
-            virtual_mass_parts(name, boxes)
-            if macro_prefix == 'ax_physics_' else distribute(budget, boxes)
-        )
+        if name == 'base_link':
+            # Split the pack out of the existing chassis mass budget.
+            pose = (0, 0, -.15 if macro_prefix == 'ax_physics_' else -.10)
+            pack = mass_box(5.6, pose, (.55, .35, .12), label='battery_pack')
+            pack_mass, _, pack_inertia = aggregate([pack])
+            add_battery(robot, pose, pack_mass, pack['size'], pack_inertia)
+            report['battery_pack'] = dict(
+                mass_kg=pack_mass, size_m=pack['size'], center_in_base_m=pack['center'],
+                inertia_kg_m2=pack_inertia.tolist())
+            budget -= pack_mass
+            parts = distribute(budget, boxes)
+        else:
+            parts = (virtual_mass_parts(name, boxes) if macro_prefix == 'ax_physics_'
+                     else distribute(budget, boxes))
         mass, center, inertia = aggregate(parts)
         assert abs(mass - budget) < 1e-10
 

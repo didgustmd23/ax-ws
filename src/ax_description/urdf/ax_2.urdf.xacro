@@ -38,6 +38,7 @@
     <xacro:ax2_visual file="ax_body" pivot="${ax2_body_pivot}"/>
     <xacro:ax2_physics_base_link/>
   </link>
+  <xacro:ax_battery_pack/>
   <!-- 고정 부품 장착: 차체 CAD 중심과 부품 CAD 중심의 차이를 관절 위치로 사용한다. -->
   <xacro:macro name="ax2_fixed_joint" params="name child pivot">
     <joint name="${name}" type="fixed">

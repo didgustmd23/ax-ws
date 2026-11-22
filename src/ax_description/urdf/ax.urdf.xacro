@@ -150,6 +150,7 @@
         <!-- Component collision boxes and virtual motor/housing mass distribution. -->
         <xacro:ax_physics_base_link/>
     </link>
+    <xacro:ax_battery_pack/>
 
     <!-- 앞쪽 왼쪽 바퀴 -->
     <link name="front_left_wheel">

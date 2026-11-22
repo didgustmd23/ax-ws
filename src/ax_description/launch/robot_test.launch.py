@@ -117,6 +117,17 @@ def setup(context):
         Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py')),
         launch_arguments={'gz_args': ('-r ' if gui else '-r -s --headless-rendering ') + shlex.quote(str(world)),
                           'on_exit_shutdown': 'true'}.items()))
+    station_xy = []
+    if not test_fixture_world:
+        world_name = WORLD_CATALOG['worlds'][selected_world]['gz_world']
+        pad = package_share / 'worlds' / 'planned' / 'charging_pad.sdf'
+        for name, x, y in (('source', -15.0, -6.5), ('destination', 18.0, -6.5)):
+            station_xy.extend((x, y))
+            actions.append(Node(package='ros_gz_sim', executable='create',
+                arguments=['-world', world_name, '-file', str(pad),
+                           '-name', 'charging_station_' + name,
+                           '-x', str(x), '-y', str(y), '-z', '0.005'],
+                output='screen'))
     all_bridges = [{'ros_topic_name': '/clock', 'gz_topic_name': '/clock',
                     'ros_type_name': 'rosgraph_msgs/msg/Clock', 'gz_type_name': 'gz.msgs.Clock',
                     'direction': 'GZ_TO_ROS'}]
@@ -152,6 +163,11 @@ def setup(context):
                        '-x', str(spawn_x), '-y', str(spawn_y), '-z', '.42' if manipulator else '.30'],
             output='screen')
         actions.append(spawn_robot)
+        if station_xy:
+            actions.append(Node(package='ax_description', executable='sim_battery.py',
+                namespace=robot_namespace, parameters=[{'use_sim_time': True,
+                    'robot_id': robot_id, 'world_name': world_name,
+                    'station_xy': station_xy}], output='screen'))
         if sensors_enabled:
             all_bridges.extend(bridges(robot_id, manipulator, tool))
         if manipulator and sensors_enabled and tool in ('epick', 'suction'):

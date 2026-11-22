@@ -63,6 +63,18 @@
     # B4는 명시적으로 설정된 센서 토픽만 구독한다. 빈 값은 해당 입력이 없음을 뜻한다.
     robot_id: robot_1
     use_sim_time: true
+    # Battery enforcement is opt-in. When enabled, missing/invalid/stale data
+    # follows the existing UNKNOWN safety path.
+    battery_required: false
+    battery_topic: battery_state
+    battery_stale_s: 0.5
+    # 종수님 시뮬레이터의 RESERVE=0.22와 맞춘 확정 LOW 경계입니다.
+    battery_low_percent: 22.0
+    battery_critical_percent: -1.0
+    # Action levels remain disabled until the team approves LOW/CRITICAL
+    # behavior. Values, when explicitly configured, use SafetyState levels.
+    battery_low_action_level: -1
+    battery_critical_action_level: -1
     scan_topic: ''            # A1/B1 실제 LaserScan 경로 확인 후 설정
     front_scan_topic: ''      # launch가 B1의 sensors/front_lidar/scan_filtered를 지정
     rear_scan_topic: ''       # launch가 B1의 sensors/rear_lidar/scan_filtered를 지정

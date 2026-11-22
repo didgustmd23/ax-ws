@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 class ProtectedArmServer : public rclcpp::Node {
 public:
@@ -71,6 +72,14 @@ private:
   ax_interfaces::msg::ActuationState actuation_;
   sensor_msgs::msg::JointState joints_;
   bool got_safety_{false}, got_actuation_{false}, got_joints_{false};
+  std::string actuation_session_;
+  uint64_t actuation_revision_{0};
+  double actuation_stamp_{0.0};
+  std::string safety_session_;
+  uint64_t safety_revision_{0};
+  double safety_stamp_{0.0};
+  std::unordered_set<std::string> retired_safety_sessions_;
+  std::unordered_set<std::string> retired_actuation_sessions_;
   std::chrono::steady_clock::time_point safety_received_{}, actuation_received_{}, request_start_{},
       continue_start_{}, last_renew_{}, permission_deadline_{}, joints_received_{},
       stop_confirm_start_{};

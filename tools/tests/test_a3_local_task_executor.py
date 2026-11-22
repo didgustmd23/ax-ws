@@ -31,6 +31,7 @@ TESTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TESTS.parents[1] / 'src/ax_task_executor'))
 sys.path.insert(0, str(TESTS))
 import ros_test_domain  # noqa: E402
+from a3_test_helpers import confirm_load_goal as goal  # noqa: E402
 from ax_task_executor.local_task_executor import LocalTaskExecutor, lease_service_name  # noqa: E402
 from ax_task_executor.lease_check import LeaseCheckServer  # noqa: E402
 from ax_task_executor.mock_executor import execute_action_name  # noqa: E402
@@ -71,17 +72,6 @@ def wait_future(future, timeout=10.0):
         raise TimeoutError('ROS 응답 시간 초과')
 
     return future.result()
-
-
-# CONFIRM_LOAD Goal을 만든다
-def goal(execution_id):
-    request = ExecuteLocalTask.Goal()
-    request.execution.execution_id = execution_id
-    request.execution.operation = 'CONFIRM_LOAD'
-    request.task_kind = ExecuteLocalTask.Goal.CONFIRM_LOAD
-    request.object_id = 'test_box'
-
-    return request
 
 
 class ClientThread:
@@ -373,6 +363,9 @@ class LocalTaskExecutorTests(unittest.TestCase):
         busy.join(timeout=10)
 
         ordered = sorted(times)
+        # 실패 보고에 원장 위치·실제 저장 설정을 남긴다. 측정 종료 뒤 조회해 왕복 표본은 바꾸지 않는다.
+        with node.ledger.lock:
+            synchronous = node.ledger.db.execute('PRAGMA synchronous').fetchone()[0]
         summary = {
             'n': len(ordered),
             'p50_s': statistics.median(ordered),
@@ -383,6 +376,11 @@ class LocalTaskExecutorTests(unittest.TestCase):
             'clients': len(workers),
             'threads': node.thread_count(),
             'sqlite_synchronous': 'FULL',
+            'sqlite_synchronous_value': synchronous,
+            'lease_journal_mode': node.ledger.journal_mode,
+            'lease_db': node.ledger.path,
+            'execution_db': node.get_parameter('execution_db').value,
+            'cpu_affinity': sorted(os.sched_getaffinity(0)),
             'loadavg_before': load_before,
             'loadavg_after': os.getloadavg(),
             'accept_records': node.ledger.accept_count(),

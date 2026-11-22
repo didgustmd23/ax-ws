@@ -23,6 +23,36 @@ Python의 `ax_safety/b4/`와 C++의 `include/ax_safety/`는 모듈·헤더 names
 `test_a4_safety_gate.cpp`, `test_b4_risk_rules.py`, `mock_check_command_lease.py`를 사용한다.
 마지막 파일은 시험용 서버이며 운영 launch에서 실행하지 않는다.
 
+## Schema 1과 Schema 2
+
+Schema 1은 `ActuationState.state`와 `drive_allowed`·`arm_allowed`를 함께
+해석하던 기존 계약이다. Schema 2에서는 의미가 분리된다. `STOPPED`는 허가
+여부가 아니라 최신 odom과 필요한 관절 피드백이 실제 저속 상태로 0.5초 이상
+유지되었는지를 나타낸다. `drive_allowed`와 `arm_allowed`는 다음 동작의
+시작 허가이며, B4 `SafetyState`가 무효·stale·STOP_REQUIRED이면 별도로 false가
+된다. 따라서 배터리 때문에 허가가 차단되어도 실제 피드백이 멈추면 STOPPED는
+독립적으로 보고할 수 있다.
+
+`meta.valid`는 동작 허가를 뜻하지 않는다. Schema 2에서는 metadata, clock,
+state freshness가 계약상 유효한지를 뜻하며, 소비자는 `robot_id`,
+`source_session_id`, 증가하는 `revision`, 미래가 아닌 `timestamp`와 stale
+조건을 함께 검증해야 한다. 보호 팔 서버는 Schema 1을 거부하고 Schema 2만
+수락한다. A2·B2·D3 소비자는 `drive_allowed`/`arm_allowed`와 `STOPPED`를
+서로 대체하지 않도록 전환이 필요하다. 상세 규칙은
+[`INTERFACE_CONTRACT.md`](../../docs/design/INTERFACE_CONTRACT.md)를 따른다.
+
+## 배터리 입력
+
+B4는 종수님 시뮬레이터의 표준 `sensor_msgs/BatteryState`와 상대 토픽
+`battery_state`를 사용한다. `/ax/robot_<n>` namespace에서 실행하면 로봇별
+토픽이 분리된다. `battery_required=false`는 기존 B4 동작을 유지하고,
+`true`일 때만 timestamp, `present`, 잔량 `[0, 1]`, 충전 상태와 stale를
+검증한다. LOW는 22% 이하에서 경고만 남기며, CRITICAL과 LOW의 감속·정지
+정책은 아직 활성화하지 않았다. 누락·무효·stale 입력은 기존 UNKNOWN 안전
+차단 경로를 따른다. 원격 시뮬레이터가 현재 브랜치에 병합되지 않았다면
+Gazebo 실제 연동 완료로 간주하지 않는다. 상세 계약은
+[`BATTERY_CONTRACT_AND_PLAN.md`](../../docs/design/BATTERY_CONTRACT_AND_PLAN.md)를 따른다.
+
 ## 빌드·실행
 
 Ubuntu 24.04 / ROS Jazzy 작업공간 루트에서 실행한다.
@@ -83,6 +113,7 @@ A2 시뮬레이션에서 함께 시작하려면 `simulation.launch.py safety:=tr
 
 ```bash
 python3 -m unittest discover -s tools/tests -p test_b4_risk_rules.py
+python3 -m unittest tools/tests/test_b4_battery_rules.py
 mkdir -p /tmp/ax_w1_test
 g++ -std=c++17 -Wall -Wextra -Wpedantic -I src/ax_safety/include \
   tools/tests/test_a4_safety_gate.cpp -o /tmp/ax_w1_test/test_a4

@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import sys
-import tempfile
 import time
 import sqlite3
 from types import SimpleNamespace
@@ -24,6 +23,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_task_executor'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ros_test_domain  # noqa: E402
+from a3_test_helpers import confirm_load_goal, isolated_ros_home  # noqa: E402
 from ax_task_executor.mock_executor import MockExecutor
 from ax_task_executor.gazebo_mock_display import MockDisplay
 from ax_task_executor.task_state_machine import ConfirmLoadStateMachine, TaskPhase
@@ -47,25 +47,13 @@ def tearDownModule():
 
 class MockRobotTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        # 기본 보존 경로를 쓰는 시험도 사용자 ~/.ros를 건드리지 않게 ROS_HOME을 임시 폴더로 둔다.
-        patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.temp = isolated_ros_home(self)
 
     def init_ros(self, robot):
         rclpy.init(args=['--ros-args', '-p', f'robot_id:={robot}', '-p',
                         f'execution_db:={self.temp.name}/executions.sqlite3'])
 
-    @staticmethod
-    def request(execution_id):
-        request = ExecuteLocalTask.Goal()
-        request.execution.execution_id = execution_id
-        request.execution.operation = 'CONFIRM_LOAD'
-        request.task_kind = ExecuteLocalTask.Goal.CONFIRM_LOAD
-        request.object_id = 'test_box'
-        return request
+    request = staticmethod(confirm_load_goal)
 
     def test_state_machine_blocks_skipped_and_terminal_transitions(self):
         # [핵심] 확인 단계를 건너뛰거나 끝난 결과를 다시 바꾸는 잘못된 전환을 막아야 합니다.
@@ -373,12 +361,7 @@ class MockExecutorRegressionTests(unittest.TestCase):
     """중복 Goal·Goal 단위 취소·작업 끼어들기 회귀 시험(2026-11-12 A3 수정)."""
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        # 기본 보존 경로를 쓰는 시험도 사용자 ~/.ros를 건드리지 않게 ROS_HOME을 임시 폴더로 둔다.
-        patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.temp = isolated_ros_home(self)
 
     # 격리 DB로 ROS를 초기화한다
     def init_ros(self, robot):

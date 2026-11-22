@@ -126,12 +126,44 @@
 |---|---|---|---|---|
 | `/ax/robot_<n>/safety/state` | Topic · `SafetyState` | B4 → A4·D | STATE · 10 Hz · 0.5 s | B4 |
 | `/ax/robot_<n>/safety/actuation_state` | Topic · `ActuationState` | A4 → A2(`arm_allowed`)·B4·D·**상대 로봇 A4**·B2(재위치 전 실제 정지 확인) | STATE · 20 Hz · 0.3 s | A4 |
+
 | `/tf`·`/tf_static` | Topic · `tf2_msgs/TFMessage` | B2(`map→odom`)·A2(`odom→base_link`, 관절·고정 frame) → 전체(인계 상대 로봇 C4 포함) | ROS 2 TF 기본 QoS | B2, A2 |
 | `/map` | Topic · `nav_msgs/OccupancyGrid`, frame `map` | B2 공통 지도 서버(`/map_server`, 1개) → B2 로봇별 AMCL(`/ax/robot_<n>/amcl`). 다른 기능의 소비(D1 Nav2 등)는 연결 시 이 행에 추가 | reliable · transient_local(map_server 발행 QoS 실측. history 깊이는 확인하지 않음) · 활성화 시 발행, 주기 재발행 없음 | B2 |
 | `/ax/robot_<n>/safety/clear_fault` | Service · `ClearFault` | 시험 하네스·사후 조치 경로 → A4. D는 본설계 14절 리셋 범위 확정 전 자동 호출하지 않음 | 실제 정지·SAFE_STOP 아님·원인 해소·진행 중 작업 없음일 때만 수락. 다른 차단 사유는 유지 | A4 |
 | `/ax/robot_<n>/localization/health` | Topic · `LocalizationHealth` | B2 → B3·B4·D(D1·D4 snapshot)·인계 상대 로봇 C4 | STATE · 5 Hz · 1.0 s | B2 |
 | `/ax/robot_<n>/localization/reinitialize` | Service · `std_srvs/Trigger` | D → B2 | 접수만 응답(`success`=접수 여부, `message`=접수·거절 코드), 진행·완료·실패는 `localization/health`로 확인(아래 재위치 규칙). request_id가 없으므로 진행 중 재요청은 같은 재초기화로 처리(멱등) | B2 |
 | `/ax/robot_<n>/perception/corridor_observation` | Topic · `CorridorObservationList` | B3 → D3·A4 | STATE · 5 Hz · 1.0 s | B3 |
+
+#### ActuationState Schema 2 (W2 A4 전환)
+
+`ActuationState`만 Schema 2로 전환한다. 다른 상태·서비스·Action의 schema 버전은 유지한다.
+
+- Schema 1의 `state`와 `drive_allowed`·`arm_allowed`가 사실상 함께 해석되던 위험을 제거한다. Schema 2에서 `state=STOPPED`는 명령이 허가되었는지와 무관하게 odom 및 필요한 관절 속도 표본이 D-06 기준 이하인 상태가 0.5초 이상 지속되었음을 뜻한다.
+- `drive_allowed`와 `arm_allowed`는 별도의 현재 허가 결과다. B4 `SafetyState`가 무효·만료·누락이거나 시뮬레이션 시간이 무효이면 둘 다 false여야 한다. 이 경우에도 유효한 구동 표본과 정상 시계가 있으면 `STOPPED`는 보고할 수 있다.
+- A4 `safety_gate`만 Schema 2를 발행한다. 보호 팔 서버는 Schema 2만 수락하며, Schema 1은 거절한다. A2·B2·B4·D 및 상대 로봇 소비자는 이 정책에 맞춰 전환해야 한다.
+
+#### Schema 2 구현 상태와 배터리 연동 (W2 후속)
+
+기존 Schema 1의 의미는 보존하되, 현재 A4 구현은 Schema 2를 발행하고 보호
+팔 서버는 Schema 1을 거부한다. `STOPPED`는 odom·필수 관절의 실제 정지
+증거를 0.5초 확인한 결과이며, `drive_allowed`·`arm_allowed`는 다음 명령의
+허가다. `meta.valid`는 권한 자체가 아니라 metadata·clock·상태 freshness의
+유효성을 뜻한다. 모든 소비자는 `robot_id`, `source_session_id`, 단조 증가
+`revision`, 유효하고 미래가 아닌 timestamp와 stale를 함께 검증해야 한다.
+
+A2·B2·D3는 Schema 2 소비자 전환 시 STOPPED를 허가 신호로 재사용하지 말고
+두 허가 필드를 별도로 확인해야 한다. 이번 A4/B4 작업에서 A4 게이트의
+분리 판정과 보호 팔의 Schema 2 수락은 반영했지만, 타 담당 소비자 전환과
+실제 Gazebo 검증은 별도 연동 작업이다.
+
+B4 배터리는 기존 `SafetyState` 경로를 재사용한다. 표준
+`sensor_msgs/BatteryState`의 `battery_state` 입력을 검증하고 LOW 22% 이하를
+경고로 분류한다. 신규 공통 BatteryState 필드나 신규 공개 reason code는
+추가하지 않았다. 누락·stale·NaN·범위 오류·`present=false`는 기존 UNKNOWN
+안전 차단으로 연결하며, CRITICAL 기준과 LOW의 감속·정지 정책은 팀 합의
+전까지 비활성이다. 자세한 상태는
+[`BATTERY_CONTRACT_AND_PLAN.md`](./BATTERY_CONTRACT_AND_PLAN.md)에 기록한다.
+- 소비자는 `robot_id`, `source_session_id`, 단조 증가 `revision`, sim-time `header.stamp`의 최신성을 함께 검사한다. 세션이 같을 때 revision 또는 timestamp가 감소한 메시지는 폐기한다. 시계가 0·정체·역행하면 이동·팔 명령은 차단한다.
 
 - **`/map`과 `/ax/robot_<n>/map`의 구분:**
   - `/map`은 위치 추정용 공통 지도다. 모든 로봇의 AMCL이 같은 지도를 쓴다. 지도 서버와 `/map` 발행자는 하나뿐이고, B2가 소유한다.

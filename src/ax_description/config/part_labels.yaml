@@ -1,5 +1,6 @@
 # UI·부품 미리보기·스펙 문서에 공통으로 사용하는 활성 URDF 링크 명칭.
 base_link: 차체
+battery_link: 배터리 팩
 front_left_wheel: 왼쪽 앞바퀴
 front_right_wheel: 오른쪽 앞바퀴
 rear_left_wheel: 왼쪽 뒷바퀴

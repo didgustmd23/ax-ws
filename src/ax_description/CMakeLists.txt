@@ -29,7 +29,7 @@ install(
 
 # ROS 실행 파일로 등록한다: ToF 거리 변환. 적재 높이 감시는 현재 설치·실행하지 않는다.
 # ros2 run ax_description <파일명> 및 launch의 Node에서 사용한다.
-install(PROGRAMS scripts/tof_range.py DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/tof_range.py scripts/sim_battery.py DESTINATION lib/${PROJECT_NAME})
 
 # ament 인덱스에 등록하여 ros2와 다른 패키지가 설치 결과를 찾도록 한다.
 ament_package()

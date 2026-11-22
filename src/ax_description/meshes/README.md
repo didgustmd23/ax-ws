@@ -13,6 +13,7 @@
 | 부품 설명 | 실제 링크 이름 | 형상 파일·설정 |
 |---|---|---|
 | 차체 | `base_link` | [base_link.obj](versions/AX_1_v2/base_link.obj) |
+| 배터리 팩 | `battery_link` | 기본 도형: URDF visual |
 | 왼쪽 앞바퀴 | `front_left_wheel` | [front_left_wheel.obj](versions/AX_1_v2/front_left_wheel.obj) |
 | 오른쪽 앞바퀴 | `front_right_wheel` | [front_right_wheel.obj](versions/AX_1_v2/front_right_wheel.obj) |
 | 왼쪽 뒷바퀴 | `rear_left_wheel` | [rear_left_wheel.obj](versions/AX_1_v2/rear_left_wheel.obj) |
@@ -43,6 +44,7 @@
 | 부품 설명 | 실제 링크 이름 | 형상 파일·설정 |
 |---|---|---|
 | 차체 | `base_link` | [ax_body.obj](parts/AX_2/ax_body.obj) |
+| 배터리 팩 | `battery_link` | 기본 도형: URDF visual |
 | 적재함 골격 | `shelf_link` | [ax_shelf.obj](parts/AX_2/ax_shelf.obj) |
 | 전방 보조 외장 | `front_trim_link` | [ax_right.obj](parts/AX_2/ax_right.obj) |
 | 왼쪽 앞바퀴 | `front_left_wheel` | [ax_tire_left_front.obj](parts/AX_2/ax_tire_left_front.obj) |

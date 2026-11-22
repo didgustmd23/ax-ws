@@ -78,7 +78,7 @@ ros2 launch ax_localization mapping_rtabmap.launch.py robot_id:=robot_2 [scan:=f
 | TF | `<robot_id>/odom → <robot_id>/base_link` | TF 기본 | A2 `diff_drive_controller` |
 | 위치 신뢰성 | `/ax/<robot_id>/localization/health` · `ax_interfaces/LocalizationHealth` | STATE(reliable · transient_local · 1) · 5 Hz 재발행 | `/ax/<robot_id>/localization_supervisor` |
 | 재위치 요청 | `/ax/<robot_id>/localization/reinitialize` · `std_srvs/Trigger` | Service | D → 감독 노드 |
-| 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` | STATE | A4 `a4_safety_gate`. 재위치 접수는 시험 스텁으로만 확인했고, 실제 A4 연결(2026-11-14)에서는 접수되지 않았다 |
+| 정지 상태 입력 | `/ax/<robot_id>/safety/actuation_state` · `ax_interfaces/ActuationState` **Schema 2** | STATE | A4 `a4_safety_gate`. Schema 2만 받는다(아래 요청 처리의 수신 검사). 재위치 접수는 시험 스텁으로만 확인했고, 실제 A4 연결(2026-11-14, 당시 Schema 1)에서는 접수되지 않았다. Schema 2 실제 A4 경로는 아직 측정하지 않았다 |
 
 - AMCL TF의 stamp는 처리한 스캔 시각에 `transform_tolerance`(1.0 s)를 더한 값이다(Nav2 동작).
 - `/map`은 [공통 인터페이스 계약 4.2절](../../docs/design/INTERFACE_CONTRACT.md#42-로봇-안전위치-ab)에 등록돼 있다(K0, 2026-11-08 승인). 지도 작성 중 slam_toolbox가 내는 `/ax/<robot_id>/map`은 저장 도구용이며 위치 추정에 쓰지 않는다.
@@ -263,6 +263,10 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
 - **요청 처리** (`ros2 service call /ax/<robot_id>/localization/reinitialize std_srvs/srv/Trigger`):
   1. 접수 조건을 확인한다.
      - A4 `ActuationState`가 최신(0.3 s)·유효·`STOPPED`
+       - 수신 검사(`localization_health.ActuationGate`, Schema 2): 같은 `robot_id`, `schema_version == 2`, 비어 있지 않은 `source_id`·`source_session_id`, `revision > 0`, 유한·양수 stamp만 받는다. 같은 세션에서 revision이나 stamp가 줄면 버리고(같은 revision 재발행은 받음), 새 세션을 받으면 이전 세션은 다시 받지 않는다. 거부한 메시지는 이전 값의 수명을 늘리지 않아 이전 값은 0.3 s 뒤 만료된다. 사유별 횟수는 감독 진단 `gates.actuation`에 남는다.
+       - 검사를 통과한 `meta.valid=false`는 무효 상태로 바로 반영한다(직전 `STOPPED`를 남기지 않음, `REINIT_REJECTED_ACTUATION_STALE`).
+       - 미래 stamp는 수신에서 버리지 않고 판단 시점에 아직 미래면 `ACTUATION_STALE`로 본다(프로세스 사이 `/clock` 지연으로 정상 메시지를 잃지 않게). 그런 tick 수는 감독 진단 `actuation_future_ticks`에 남는다.
+       - Schema 2 `STOPPED`는 허가와 독립된 실제 정지다. B2는 로봇을 움직이지 않으므로 `drive_allowed`·`arm_allowed`를 재위치 조건으로 쓰지 않고, 허가를 `STOPPED` 대신 쓰지도 않는다. Schema 1은 `ACTUATION_STALE`로 거절된다.
      - 마지막 신뢰 위치가 있고, 그 뒤 60 s 이내·odom **누적** 이동 1.0 m·0.8 rad 이하(순변위가 아님)
      - 이미 `OK`가 아님
   2. 후보 = 마지막 신뢰 `map → odom` · 현재 odom. 표준편차는 누적 이동량에 따라 키운다.
@@ -499,7 +503,7 @@ python3 src/ax_localization/scripts/check_localization.py --analyze log/b2_healt
 | 진행 중 정지 상실 | 정지 상태에서 접수한 뒤 로봇이 움직이자 `REINIT_FAILED_NOT_STOPPED` |
 
 재위치 시험은 다음 조건에서 했다.
-- A4: odom 속도로 `STOPPED`를 정하는 시험 스텁(`tools/tests/stub_actuation_state.py`)
+- A4: odom 속도로 `STOPPED`를 정하는 시험 스텁(`tools/tests/stub_actuation_state.py`. 당시 Schema 1이었고 2026-11-22부터 Schema 2·허가 필드 false로 낸다)
 - D: 시험자가 서비스를 직접 호출
 - 위치 상실: AMCL lifecycle을 deactivate → cleanup → configure → activate로 다시 시작해 만들었다. 재시작 뒤 AMCL은 지도 원점 근처에서 큰 공분산(약 0.46 m)으로 다시 시작해 `LOST` 대신 `DEGRADED`(`COVARIANCE_HIGH`)가 됐다(두 로봇 시험). 당시 로봇이 원점 근처라 위치가 크게 틀리지 않았다(2026-11-09 시험 참조).
 

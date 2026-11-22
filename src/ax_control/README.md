@@ -123,6 +123,8 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 | 내부 | `tool/gz_command`, `tool/gz_state` | 공구 노드와 플러그인 사이 전용. 다른 노드는 쓰지 않는다 |
 
 수락에는 `arm_allowed`가 유효·최신이고 A3 `CheckCommandLease`가 허용해야 한다. A3·A4가 없으면 모든 요청을 거절한다.
+
+A4 `actuation_state`는 Schema 2만 받는다([인터페이스 계약](../../docs/design/INTERFACE_CONTRACT.md#actuationstate-schema-2-w2-a4-전환)). 수신 단계에서 자기 `robot_id`, `schema_version` 2, 비어 있지 않은 `source_id`·`source_session_id`, `revision` > 0, 0이 아닌 stamp를 확인한다. 같은 세션에서 revision이나 stamp가 줄어든 메시지와 이미 교체된 이전 세션의 메시지는 버린다. 거부한 메시지는 수신 시각을 갱신하지 않아 0.3 s 만료를 늦추지 않는다. `valid=false`는 받아서 바로 거절 상태로 만든다. 허가 판단은 `arm_allowed`만 보고 `STOPPED`를 허가로 쓰지 않는다. sim time 기준 표본 나이가 0.3 s를 넘거나 미래 stamp(나이 < 0)이면 그 평가만 거절하고 메시지는 버리지 않는다. 거부 사유는 바뀔 때만 로그에 남긴다. 시험은 `tools/tests/test_a2_tool_actuation_schema2.py`, `check_tool_attach.py`의 모의 A4도 Schema 2로 발행한다.
 안전 정지나 A3 무응답으로 물체를 자동 해제하지 않으며, 해제는 명시적 `RELEASE`로만 한다.
 
 - 부착 조건은 `epick_tcp`와 물체 링크 중심의 거리 0.12 m 이하다. 계약에 값이 없어 정한 개발용 잠정값이고 `ax_description/urdf/ros2_control.xacro`의 `ax_tool_attach` 매크로에 있다.

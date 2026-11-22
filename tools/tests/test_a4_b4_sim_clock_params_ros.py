@@ -240,7 +240,7 @@ class SimClockGateTest(GateTestBase):
         self.assertEqual(stopped(self.peer.run(0.35, rtf=1.0)), [])
         self.assertTrue(stopped(self.peer.run(0.5, rtf=1.0)))
 
-    # 이동·관절 이동·SafetyState 만료는 유지 조건을 초기화한다
+    # 이동·관절 이동·피드백 끊김은 유지 조건을 초기화하고, SafetyState 만료는 허가만 막는다(Schema 2)
     def test_motion_and_validity_reset(self):
         self.assertTrue(stopped(self.peer.run(0.9, rtf=1.0)))
         for kwargs in ({'linear': 0.05}, {'joint_velocity': 0.05}):
@@ -248,9 +248,38 @@ class SimClockGateTest(GateTestBase):
             self.assertFalse(moving[-1].state == ActuationState.STOPPED)
             self.assertEqual(stopped(self.peer.run(0.3, rtf=1.0)), [])
             self.assertTrue(stopped(self.peer.run(0.45, rtf=1.0)))
+
+        # Schema 2: SafetyState 만료(0.5 s 초과 무수신)는 drive_allowed·arm_allowed만 끄고
+        # SAFETY_STOP을 남긴다. odom·관절 표본이 유효·저속이면 STOPPED와 meta.valid는 유지된다
+        # (INTERFACE_CONTRACT.md 141~142행, ax_safety/README.md 28~33행, safety_gate.cpp 372·376~379·413행).
         stale = self.peer.run(0.8, rtf=1.0, safety=False)
-        self.assertFalse(stale[-1].state == ActuationState.STOPPED and stale[-1].meta.valid)
-        self.assertEqual(stopped(self.peer.run(0.3, rtf=1.0)), [])               # 회복 뒤 이전 유지 시간 재사용 안 함
+        self.assertTrue(stale)
+        self.assertFalse(stale[-1].drive_allowed)
+        self.assertFalse(stale[-1].arm_allowed)
+        self.assertIn('SAFETY_STOP', stale[-1].block_reasons)
+        self.assertEqual(stale[-1].state, ActuationState.STOPPED)
+        self.assertTrue(stale[-1].meta.valid)
+        # Schema 2: safety 만료는 정지 구간을 reset하지 않는다(reset은 clock 무효·state stale만,
+        # safety_gate.cpp 363~366행). 만료 구간 내내 STOPPED가 끊기지 않아야 한다.
+        self.assertEqual(len(stopped(stale)), len(stale))
+
+        # Schema 2: 회복 뒤에는 새 0.5 s 유지 없이 STOPPED가 이어지고 SAFETY_STOP 사유가 사라진다.
+        # 이 게이트는 주행 자세 미검증으로 잠긴 채 시작하므로 drive_allowed 자체는 TRAVEL_POSE_UNVERIFIED로
+        # false가 유지된다. 허가 복귀는 SAFETY_STOP 해제로 확인한다(safety_gate.cpp 376~379·413·415행).
+        recovered = self.peer.run(0.3, rtf=1.0)
+        self.assertTrue(recovered)
+        self.assertEqual(len(stopped(recovered)), len(recovered))
+        self.assertNotIn('SAFETY_STOP', recovered[-1].block_reasons)
+        self.assertIn('TRAVEL_POSE_UNVERIFIED', recovered[-1].block_reasons)
+
+        # 피드백 끊김(odom·관절 무수신 0.3 s 초과)은 state stale이라 구간을 reset한다
+        # (safety_gate.cpp 230~240·363~366행). Schema 2에서도 회복 뒤 이전 유지 시간을 재사용하지 않는다.
+        lost = self.peer.run(0.6, rtf=1.0, feedback=False)
+        self.assertTrue(lost)
+        self.assertFalse(lost[-1].meta.valid)
+        self.assertEqual(lost[-1].meta.validity_reason, 'STATE_STALE')
+        self.assertIn('STATE_STALE', lost[-1].block_reasons)
+        self.assertEqual(stopped(self.peer.run(0.3, rtf=1.0)), [])
         self.assertTrue(stopped(self.peer.run(0.45, rtf=1.0)))
 
     # 정지 확인은 주행 잠금(drive_allowed=false)과 별개다

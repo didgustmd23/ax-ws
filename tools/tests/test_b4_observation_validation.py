@@ -48,6 +48,11 @@ def publish(observations, health_schema=1, health_source='test',
         loc_time=received, corridor_time=received,
         sensor_ttl=.25, loc_ttl=1., corridor_ttl=1., max_linear=.67, max_angular=.5,
         stop_distance=.5, slowdown_distance=1., session='test', revision=0, publisher=Mock(),
+        # fbde940 B4가 __init__에서 만드는 배터리 속성. 기본값(b4_risk_node.py 75~91행)으로
+        # 배터리 검사를 끈 상태(battery_required=False)라 통로 관측 판정 기대값은 그대로다.
+        battery=None, battery_time=None, battery_required=False, battery_topic='battery_state',
+        battery_ttl=.5, battery_low_percent=22.0, battery_critical_percent=-1.0,
+        battery_low_action_level=-1, battery_critical_action_level=-1, last_battery_risk=None,
         get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(
             nanoseconds=100_000_000_000, to_msg=lambda: Time(sec=100))))
     node.fresh = lambda *args: B4RiskNode.fresh(node, *args)

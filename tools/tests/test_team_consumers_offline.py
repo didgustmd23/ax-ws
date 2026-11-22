@@ -59,6 +59,11 @@ class B3B4ConsumerTests(unittest.TestCase):
             front_time=now, rear_time=now, sensor_ttl=0.5, loc_ttl=1.0, corridor_ttl=1.0,
             max_linear=0.67, max_angular=0.5, stop_distance=0.5, slowdown_distance=1.0,
             slowdown_linear=0.2, session='offline-b4', revision=1, publisher=Mock(),
+            # fbde940 B4가 __init__에서 만드는 배터리 속성. 기본값(b4_risk_node.py 75~91행)으로
+            # 배터리 검사를 끈 상태(battery_required=False)라 B3 소비 판정 기대값은 그대로다.
+            battery=None, battery_time=None, battery_required=False, battery_topic='battery_state',
+            battery_ttl=0.5, battery_low_percent=22.0, battery_critical_percent=-1.0,
+            battery_low_action_level=-1, battery_critical_action_level=-1, last_battery_risk=None,
             get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=100)))
         for name in ('recent_stamp', 'meta_ok', 'fresh'):
             setattr(node, name, MethodType(getattr(B4RiskNode, name), node))

@@ -13,9 +13,10 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
-from sensor_msgs.msg import LaserScan, Range
+from sensor_msgs.msg import BatteryState, LaserScan, Range
 from ax_interfaces.msg import SafetyState, LocalizationHealth, CorridorObservationList
 from ax_safety.b4.risk_rules import RiskInputs, assess_risk, UNKNOWN
+from ax_safety.b4.battery_rules import assess_battery
 
 
 # ROS Time 메시지를 초 단위 실수로 바꿔 센서 timestamp 신선도를 계산한다.
@@ -46,6 +47,13 @@ def minimum_sector(scan, target, half_width):
 # B4 센서·위치·통로 관측을 받아 10 Hz SafetyState를 발행하는 ROS 노드이다.
 # 실제 센서 토픽 이름은 launch/config에서 주입하고, A4는 이 노드의 결과를 최종 게이트 입력으로 사용한다.
 class B4RiskNode(Node):
+    """한 로봇의 센서 입력을 B4 위험 판단과 SafetyState로 연결한다.
+
+    배터리 상태는 상대 토픽을 사용하므로 launch가 부여한 namespace가
+    robot_1과 robot_2의 상태 캐시를 분리한다. 배터리 검사는 선택 기능이며
+    기본값은 기존 B4 동작을 보존하는 ``battery_required=false``이다.
+    """
+
     def __init__(self):
         # 파라미터는 로봇별 namespace와 A1/B1에서 전달하는 토픽 경로를 결정한다.
         super().__init__('b4_risk_node')
@@ -64,11 +72,23 @@ class B4RiskNode(Node):
         self.sensor_ttl = float(p('sensor_stale_s', 0.25).value)
         self.loc_ttl = float(p('localization_stale_s', 1.0).value)
         self.corridor_ttl = float(p('corridor_stale_s', 1.0).value)
+        self.battery_required = bool(p('battery_required', False).value)
+        self.battery_topic = str(p('battery_topic', 'battery_state').value)
+        self.battery_ttl = float(p('battery_stale_s', 0.5).value)
+        # LOW는 22% 이하로 확정되었지만 YAML에서 조정할 수 있도록
+        # 파라미터로 읽는다. CRITICAL은 팀 정책이 정해지지 않아 비활성화한다.
+        self.battery_low_percent = float(p('battery_low_percent', 22.0).value)
+        self.battery_critical_percent = float(p('battery_critical_percent', -1.0).value)
+        self.battery_low_action_level = int(p('battery_low_action_level', -1).value)
+        self.battery_critical_action_level = int(p('battery_critical_action_level', -1).value)
         self.sector_width = math.radians(float(p('sector_half_width_deg', 30.0).value))
         self.front = self.rear = self.localization = self.corridor = None
+        self.battery = None
+        self.last_battery_risk = None
 
         # 값 자체와 수신 시각을 함께 저장해 메시지 내용과 wall-clock 신선도를 모두 확인한다.
         self.front_time = self.rear_time = self.loc_time = self.corridor_time = None
+        self.battery_time = None
         self.session = str(uuid.uuid4())
         self.revision = 0
         base = f'/ax/{self.robot_id}'
@@ -81,6 +101,7 @@ class B4RiskNode(Node):
         self.publisher = self.create_publisher(SafetyState, base + '/safety/state', state_qos)
         self.create_subscription(LocalizationHealth, base + '/localization/health', self.on_loc, state_qos)
         self.create_subscription(CorridorObservationList, base + '/perception/corridor_observation', self.on_corridor, state_qos)
+        self.create_subscription(BatteryState, self.battery_topic, self.on_battery, sensor_qos)
         if self.scan_topic:
             self.create_subscription(LaserScan, self.scan_topic, self.on_scan,
                                      sensor_qos)
@@ -163,6 +184,19 @@ class B4RiskNode(Node):
         self.corridor, self.corridor_time = msg, time.monotonic()
 
 
+    def on_battery(self, msg):
+        """가장 최근 BatteryState를 저장한다.
+
+        수신 즉시 허가로 바꾸지 않고 publish_state에서 timestamp, present,
+        잔량과 충전 상태를 검증한다. 따라서 오래된 메시지가 남아 있어도
+        안전 허가가 자동으로 유지되지 않는다.
+        """
+
+        # 상대 토픽은 launch namespace 안에서 해석된다.
+        # 예를 들어 /ax/robot_1 노드는 robot_2 배터리를 받지 않는다.
+        self.battery, self.battery_time = msg, time.monotonic()
+
+
     def meta_ok(self, msg, ttl):
         # 공통 메타데이터가 유효하고 revision/session이 있으며 최근 timestamp인지 확인한다.
         if (msg is None or not msg.meta.valid or msg.meta.schema_version != 1 or
@@ -173,7 +207,14 @@ class B4RiskNode(Node):
 
 
     def publish_state(self):
-        # 1) 위치·통로·센서 입력을 검증하고 2) 순수 규칙 엔진에 전달한 뒤
+        """센서 스냅샷을 검증하고 B4 결정과 SafetyState를 발행한다.
+
+        LOW는 현재 정책상 경고만 기록한다. 반면 누락, stale, NaN, 범위
+        오류는 기존 UNKNOWN 안전 경로를 유지한다. 감속·정지 동작은
+        팀 정책이 확정되기 전까지 action level을 통해 자동 적용하지 않는다.
+        """
+
+        # 1) 입력을 검증하고 2) 순수 규칙 엔진에 전달한 뒤
         # 3) A4가 사용할 SafetyState와 차단 사유를 발행한다.
         loc_valid = (self.localization is not None and self.localization.robot_id == self.robot_id
                      and self.meta_ok(self.localization, self.loc_ttl)
@@ -188,6 +229,30 @@ class B4RiskNode(Node):
         # 수신 시각과 ROS timestamp를 모두 확인해 늦게 도착한 입력이 유효해지지 않게 한다.
         front_fresh = self.fresh(self.front_time, self.sensor_ttl)
         rear_fresh = self.fresh(self.rear_time, self.sensor_ttl)
+        now_s = self.get_clock().now().nanoseconds / 1e9
+        battery = assess_battery(
+            self.battery, now_s, self.battery_ttl,
+            # A missing/stale receive record must not silently become the
+            # policy-neutral NORMAL result used when battery enforcement is
+            # disabled.
+            required=self.battery_required,
+            low_percent=self.battery_low_percent,
+            critical_percent=self.battery_critical_percent)
+        battery_action_level = -1
+        if battery.risk == 'LOW':
+            battery_action_level = self.battery_low_action_level
+        elif battery.risk == 'CRITICAL':
+            battery_action_level = self.battery_critical_action_level
+
+        # LOW는 공통 reason code를 임의로 확장하지 않는 경고 상태다.
+        # 상태가 바뀌는 순간에만 로그를 남겨 운영자가 변화를 확인한다.
+        if battery.risk != self.last_battery_risk:
+            if battery.risk == 'LOW':
+                self.get_logger().warning(
+                    'Battery LOW warning: state of charge is at or below 22%')
+            elif self.last_battery_risk == 'LOW' and battery.risk == 'NORMAL':
+                self.get_logger().info('Battery LOW warning cleared')
+            self.last_battery_risk = battery.risk
         inputs = RiskInputs(front_sensor_valid=front_fresh and self.front is not None,
                             rear_sensor_valid=rear_fresh and self.rear is not None,
                             sensor_fresh=front_fresh,
@@ -197,7 +262,12 @@ class B4RiskNode(Node):
                             obstacle_distance_m=self.front, rear_distance_m=self.rear,
                             max_linear_m_s=self.max_linear, max_angular_rad_s=self.max_angular,
                             stop_distance_m=self.stop_distance,
-                            slowdown_distance_m=self.slowdown_distance)
+                            slowdown_distance_m=self.slowdown_distance,
+                            battery_required=self.battery_required,
+                            battery_valid=battery.valid and battery.fresh,
+                            battery_risk=battery.risk,
+                            battery_reason_code=battery.reason_code,
+                            battery_action_level=battery_action_level)
         result = assess_risk(inputs)
 
         # 매 발행마다 session/revision을 갱신해 A4가 오래된 상태와 새 상태를 구분한다.

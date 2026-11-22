@@ -51,11 +51,16 @@
 
 ## 설계·일정·관리
 
+Schema 2와 배터리 연동을 확인할 때는
+[인터페이스 계약](design/INTERFACE_CONTRACT.md)과
+[배터리 계약·구현 계획](design/BATTERY_CONTRACT_AND_PLAN.md)을 함께 읽는다.
+
 | 문서 | 내용 | 상태 |
 |---|---|---|
 | [DETAILED_DESIGN](design/DETAILED_DESIGN.md) | 조작·운송 역할 협업 그룹, A~E 기능, 상태 머신·통신·검증 목표 | 운영 무인·자동 입고·중앙 전체 계획·D 실행·역할별 예비·인증/관제 목표. 구현 완료 아님 |
 | [TEAM_SCHEDULE](management/TEAM_SCHEDULE.md) | 팀 공통 일정, A1~E4·공통 계약·통합/장시간 시험·완료 관문 | 1 이종수·2 양현승·3 김성민·4 엄승연. 2026-10-28 ~ 2027-01-28, 주차 계획은 초안 |
 | [INTERFACE_CONTRACT](design/INTERFACE_CONTRACT.md) | A~E 공유 Topic·Service·Action 이름·QoS·최신성·소유 작업, `src/ax_interfaces` 타입 | K0 계약, 2026-11-08 승인 |
+| [BATTERY_CONTRACT_AND_PLAN](design/BATTERY_CONTRACT_AND_PLAN.md) | 표준 BatteryState 입력, B4 검증·LOW 경고, A4 연결과 미확정 정책 | W2 후속 구현·팀 합의 대기 |
 | [GIT_UPLOAD_POLICY](management/GIT_UPLOAD_POLICY.md) | 포함·제외 파일과 확인 방법 | build/install/log 제외, 모델 자산·외부 LICENSE 포함 |
 | [plan.pdf · Git 이력 원문](https://github.com/didgustmd23/ax-ws/blob/560e57e38afae17e1e29b2387b63f60b2ddee219/docs/design/plan.pdf) | 최초 통합 상세설계 원문 | 현재 작업트리에서 삭제 상태, 저장된 커밋 참조 |
 

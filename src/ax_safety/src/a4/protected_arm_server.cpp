@@ -14,6 +14,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -90,12 +91,42 @@ void ProtectedArmServer::on_safety(ax_interfaces::msg::SafetyState::SharedPtr m)
   // 수신 시각은 ROS timestamp와 별개로 기록해 통신 단절 timeout도 감지한다.
 
 
-  safety_=*m; safety_received_=Clock::now(); got_safety_=true;
+  const auto &meta = m->meta;
+  const double stamp = rclcpp::Time(meta.header.stamp, RCL_ROS_TIME).seconds();
+  if (m->robot_id != robot_ || meta.schema_version != 1 || !meta.valid ||
+      meta.source_id.empty() || meta.source_session_id.empty() || meta.revision == 0 ||
+      !std::isfinite(stamp) || stamp <= 0.0) return;
+  if (retired_safety_sessions_.count(meta.source_session_id) != 0) return;
+  if (got_safety_ && meta.source_session_id != safety_session_)
+    retired_safety_sessions_.insert(safety_session_);
+  if (got_safety_ && meta.source_session_id == safety_session_ &&
+      (meta.revision < safety_revision_ || stamp < safety_stamp_)) return;
+  safety_=*m;
+  safety_session_ = meta.source_session_id;
+  safety_revision_ = meta.revision;
+  safety_stamp_ = stamp;
+  safety_received_=Clock::now(); got_safety_=true;
 }
 
 
 void ProtectedArmServer::on_actuation(ax_interfaces::msg::ActuationState::SharedPtr m) {
-  actuation_=*m; actuation_received_=Clock::now(); got_actuation_=true;
+  // 보호 팔은 Schema 2만 소비한다. Schema 1을 받아 arm_allowed를
+  // 잘못 해석하지 않도록 robot/session/revision/timestamp도 함께 검증한다.
+  const auto &meta = m->meta;
+  const double stamp = rclcpp::Time(meta.header.stamp, RCL_ROS_TIME).seconds();
+  if (m->robot_id != robot_ || meta.schema_version != 2 || !meta.valid ||
+      meta.source_id.empty() || meta.source_session_id.empty() || meta.revision == 0 ||
+      !std::isfinite(stamp) || stamp <= 0.0) return;
+  if (retired_actuation_sessions_.count(meta.source_session_id) != 0) return;
+  if (got_actuation_ && meta.source_session_id != actuation_session_)
+    retired_actuation_sessions_.insert(actuation_session_);
+  if (got_actuation_ && meta.source_session_id == actuation_session_ &&
+      (meta.revision < actuation_revision_ || stamp < actuation_stamp_)) return;
+  actuation_=*m;
+  actuation_session_ = meta.source_session_id;
+  actuation_revision_ = meta.revision;
+  actuation_stamp_ = stamp;
+  actuation_received_=Clock::now(); got_actuation_=true;
 }
 void ProtectedArmServer::on_joint_state(sensor_msgs::msg::JointState::SharedPtr m) {
   joints_=*m; joints_received_=Clock::now(); got_joints_=true;
@@ -103,11 +134,13 @@ void ProtectedArmServer::on_joint_state(sensor_msgs::msg::JointState::SharedPtr 
 bool ProtectedArmServer::safety_ready() const {
   // 안전·구동 상태는 메시지 내용뿐 아니라 robot id, schema, revision, session,
   // 수신 경과 시간과 ROS timestamp를 모두 통과해야 최신 권한으로 인정한다.
+  // arm_allowed가 false이면 실제 정지 여부와 무관하게 팔 명령을 거부한다.
+  // 반대로 STOPPED 판정은 ActuationState를 만든 A4 게이트의 별도 상태다.
 
 
   if (!enabled_ || !got_safety_ || !got_actuation_ || seconds(safety_received_) > 0.5 ||
       seconds(actuation_received_) > 0.3 || !actuation_.meta.valid ||
-       actuation_.meta.schema_version != 1 || actuation_.meta.source_id.empty() ||
+       actuation_.meta.schema_version != 2 || actuation_.meta.source_id.empty() ||
        !actuation_.meta.revision ||
       actuation_.meta.source_session_id.empty() || actuation_.robot_id!=robot_ ||
       !actuation_.arm_allowed ||

@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 using ax_interfaces::msg::SafetyState;
@@ -83,7 +84,25 @@ public:
     pub_state_ = create_publisher<ActuationState>(base + "/safety/actuation_state", state_qos);
 
     sub_safety_ = create_subscription<SafetyState>(base + "/safety/state", state_qos,
-        [this](SafetyState::SharedPtr m) { safety_ = *m; received_safety_ = steady(); got_safety_ = true; });
+        [this](SafetyState::SharedPtr m) {
+          const auto &meta = m->meta;
+          const double stamp = stamp_seconds(meta.header.stamp);
+          const bool identity_ok = m->robot_id == robot_ && meta.schema_version == 1 &&
+              meta.valid && !meta.source_id.empty() && !meta.source_session_id.empty() &&
+              meta.revision != 0 && std::isfinite(stamp) && stamp > 0.0;
+          if (!identity_ok) return;
+          if (retired_safety_sessions_.count(meta.source_session_id) != 0) return;
+          if (got_safety_ && meta.source_session_id != safety_session_)
+            retired_safety_sessions_.insert(safety_session_);
+          if (got_safety_ && meta.source_session_id == safety_session_ &&
+              (meta.revision < safety_revision_ || stamp < safety_stamp_)) return;
+          safety_ = *m;
+          safety_session_ = meta.source_session_id;
+          safety_revision_ = meta.revision;
+          safety_stamp_ = stamp;
+          received_safety_ = steady();
+          got_safety_ = true;
+        });
     // 피드백은 표본마다 바로 정지 근거를 갱신한다(on_odom·on_joints). 수용한 표본만 상태·수신 시각을 바꾼다.
     sub_odom_ = create_subscription<Odometry>(base + "/diff_drive_controller/odom", feedback_qos,
         [this](Odometry::SharedPtr m) { on_odom(*m); });
@@ -211,11 +230,14 @@ private:
   bool state_fresh() const {
     // odom과 joint state가 모두 최근 수신되며 finite이고, joint name/position 배열이 맞아야 한다.
     // received_*는 새 stamp로 수용한 표본에서만 갱신되므로, 같은 stamp 재수신은 무수신 만료를 늦추지 못한다.
-    if (!got_odom_ || !got_joints_ || elapsed(received_odom_) > kFeedbackTtlS ||
-        elapsed(received_joints_) > kFeedbackTtlS ||
+    if (!got_odom_ || elapsed(received_odom_) > kFeedbackTtlS ||
         !feedback_stamp_fresh(odom_.header.stamp) ||
+        !std::isfinite(odom_.twist.twist.linear.x) ||
+        !std::isfinite(odom_.twist.twist.angular.z)) return false;
+    if (arm_presence_ == ax_safety::ArmPresence::ABSENT) return true;
+
+    if (!got_joints_ || elapsed(received_joints_) > kFeedbackTtlS ||
         !feedback_stamp_fresh(joints_.header.stamp)) return false;
-    if (!std::isfinite(odom_.twist.twist.linear.x) || !std::isfinite(odom_.twist.twist.angular.z)) return false;
     // 관절 이름·위치·속도 배열이 모두 같은 관절을 가리켜야 보호 판단에 사용한다.
     if (joints_.name.empty() || joints_.position.size() != joints_.name.size() ||
         joints_.velocity.size() != joints_.name.size()) return false;
@@ -243,6 +265,9 @@ private:
   ax_safety::GateInput gates() const {
     // ROS 메시지들을 순수 게이트 함수의 입력 계약으로 변환한다.
     // 하나라도 stale/invalid이면 GateInput의 기본 차단값을 유지한다.
+    // B4 SafetyState는 '동작을 허가할 수 있는가'를 나타내는 입력이다.
+    // 이 검증이 실패하면 A4는 명령을 전달하지 않지만, 아래 tick()의
+    // 실제 odom/joint 정지 확인은 별도로 계속 수행한다.
     ax_safety::GateInput g;
     g.enabled = enable_;
     g.state_fresh = state_fresh();
@@ -315,7 +340,7 @@ private:
     ActuationState m;
     m.robot_id = robot_;
     m.meta.header.stamp = now();
-    m.meta.schema_version=1;
+    m.meta.schema_version=2;
     m.meta.source_id="a4_safety_gate";
     m.meta.source_session_id=session_;
     m.meta.revision=++revision_;
@@ -335,13 +360,19 @@ private:
     if (clock_ok && elapsed(last_clock_advance_) > kClockPauseS) clock_ok = false;   // D-09 PAUSED
 
     // 정지 근거 전제가 깨지면 채널 구간을 버린다. 회복 뒤 이전 유지 시간을 재사용하지 않는다.
-    if (!clock_ok || !gate.safety_fresh || !gate.state_fresh) {
+    if (!clock_ok || !gate.state_fresh) {
       odom_channel_.reset_interval();
       joint_channel_.reset_interval();
     }
 
-    m.meta.valid = clock_ok && gate.state_fresh && gate.safety_fresh;
-    m.meta.validity_reason = m.meta.valid ? "" : (!clock_ok ? "CLOCK_INVALID" : "STATE_OR_SAFETY_STALE");
+    // Schema 2: 실제 정지 확인은 B4 안전 상태와 분리한다. 안전 정보가 무효여도
+    // 신뢰할 수 있는 odom/joint 표본과 유효한 시계만 있으면 STOPPED를 보고할 수 있다.
+    // STOPPED는 '현재 실제로 멈췄는가'이고 drive_allowed/arm_allowed는
+    // '다음 동작을 시작해도 되는가'이므로 서로 대체하지 않는다.
+    m.meta.valid = clock_ok && gate.state_fresh;
+    m.meta.validity_reason = m.meta.valid ? "" : (!clock_ok ? "CLOCK_INVALID" : "STATE_STALE");
+    // 배터리 UNKNOWN이나 B4 STOP_REQUIRED는 gate.safety_fresh/stop_required를
+    // 통해 여기서 허가를 차단한다. 실제 정지 판정은 다음 블록에서 독립적으로 한다.
     m.drive_allowed = clock_ok && gate.enabled && gate.safety_fresh && gate.state_fresh &&
                       gate.travel_pose_valid && gate.operational_permits_valid && !gate.stop_required;
     m.arm_allowed = arm_approved_ && clock_ok && gate.enabled && gate.state_fresh &&
@@ -370,7 +401,7 @@ private:
       diag_held = held;
       diag_low = low;
       if (!low) m.state = m.drive_allowed ? ActuationState::RUNNING : ActuationState::STOPPING;
-      else if (gate.safety_fresh && held >= stop_hold_s_) {
+      else if (held >= stop_hold_s_) {
         // D-06은 정지 명령과 독립적으로 최신 odom·관절 피드백으로 확인한다.
         // 주행 잠금(drive_allowed=false)과 무관하게 정지 확인은 할 수 있고, STOPPED가 주행 허가를 대신하지 않는다.
         m.state = ActuationState::STOPPED;
@@ -439,6 +470,10 @@ private:
       stop_joint_threshold_{0.01}, stop_hold_s_{0.5};
   double previous_linear_{0},previous_angular_{0};
   uint64_t revision_{0};
+  std::string safety_session_;
+  uint64_t safety_revision_{0};
+  double safety_stamp_{0.0};
+  std::unordered_set<std::string> retired_safety_sessions_;
   std::vector<std::string> joint_names_;
   std::vector<double> joint_positions_;
   SafetyState safety_;

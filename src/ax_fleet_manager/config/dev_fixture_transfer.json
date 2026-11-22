@@ -1,0 +1,222 @@
+{
+  "fixture_id": "dev_fixture_transfer",
+  "map_revision": 1,
+  "locations": {
+    "station_src": 1,
+    "station_dst": 1
+  },
+  "tasks": [
+    {
+      "team_id": "team_dev",
+      "task_id": "task_dev_1",
+      "object_id": "box_dev_1",
+      "inventory_revision": 1,
+      "source_location_id": "station_src",
+      "source_location_revision": 1,
+      "destination_location_id": "station_dst",
+      "destination_location_revision": 1,
+      "map_revision": 1,
+      "root_execution_id": "root_task_dev_1",
+      "task_revision": 1,
+      "schedule_revision": 0,
+      "priority": 5,
+      "source_transfer_id": "task_dev_1_xfer_src",
+      "destination_transfer_id": "task_dev_1_xfer_dst",
+      "input_source_id": "d2_dev_fixture",
+      "steps": [
+        {
+          "step_key": "src_nav_manipulator",
+          "operation": "NAVIGATE_TO",
+          "robot_role": "MANIPULATOR",
+          "location": "SOURCE",
+          "depends_on": [],
+          "terminal": false
+        },
+        {
+          "step_key": "src_nav_transporter",
+          "operation": "NAVIGATE_TO",
+          "robot_role": "TRANSPORTER",
+          "location": "SOURCE",
+          "depends_on": [],
+          "terminal": false
+        },
+        {
+          "step_key": "src_lock_manipulator",
+          "operation": "LOCK_HANDOFF",
+          "robot_role": "MANIPULATOR",
+          "location": "SOURCE",
+          "depends_on": [
+            "src_nav_manipulator",
+            "src_nav_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "src_lock_transporter",
+          "operation": "LOCK_HANDOFF",
+          "robot_role": "TRANSPORTER",
+          "location": "SOURCE",
+          "depends_on": [
+            "src_nav_manipulator",
+            "src_nav_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "load_pick_and_stow",
+          "operation": "PICK_AND_STOW",
+          "robot_role": "MANIPULATOR",
+          "location": "SOURCE",
+          "depends_on": [
+            "src_lock_manipulator",
+            "src_lock_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "load_confirm",
+          "operation": "CONFIRM_LOAD",
+          "robot_role": "TRANSPORTER",
+          "location": "SOURCE",
+          "depends_on": [
+            "load_pick_and_stow"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "load_retract",
+          "operation": "RETRACT_ARM",
+          "robot_role": "MANIPULATOR",
+          "location": "SOURCE",
+          "depends_on": [
+            "load_confirm"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "src_unlock_manipulator",
+          "operation": "UNLOCK_HANDOFF",
+          "robot_role": "MANIPULATOR",
+          "location": "SOURCE",
+          "depends_on": [
+            "load_retract"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "src_unlock_transporter",
+          "operation": "UNLOCK_HANDOFF",
+          "robot_role": "TRANSPORTER",
+          "location": "SOURCE",
+          "depends_on": [
+            "load_retract"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "dst_nav_manipulator",
+          "operation": "NAVIGATE_TO",
+          "robot_role": "MANIPULATOR",
+          "location": "DESTINATION",
+          "depends_on": [
+            "src_unlock_manipulator",
+            "src_unlock_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "dst_nav_transporter",
+          "operation": "NAVIGATE_TO",
+          "robot_role": "TRANSPORTER",
+          "location": "DESTINATION",
+          "depends_on": [
+            "src_unlock_manipulator",
+            "src_unlock_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "dst_lock_manipulator",
+          "operation": "LOCK_HANDOFF",
+          "robot_role": "MANIPULATOR",
+          "location": "DESTINATION",
+          "depends_on": [
+            "dst_nav_manipulator",
+            "dst_nav_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "dst_lock_transporter",
+          "operation": "LOCK_HANDOFF",
+          "robot_role": "TRANSPORTER",
+          "location": "DESTINATION",
+          "depends_on": [
+            "dst_nav_manipulator",
+            "dst_nav_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "unload_place",
+          "operation": "UNLOAD_AND_PLACE",
+          "robot_role": "MANIPULATOR",
+          "location": "DESTINATION",
+          "depends_on": [
+            "dst_lock_manipulator",
+            "dst_lock_transporter"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "unload_retract",
+          "operation": "RETRACT_ARM",
+          "robot_role": "MANIPULATOR",
+          "location": "DESTINATION",
+          "depends_on": [
+            "unload_place"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "unload_confirm_empty",
+          "operation": "CONFIRM_LOAD",
+          "robot_role": "TRANSPORTER",
+          "location": "DESTINATION",
+          "depends_on": [
+            "unload_retract"
+          ],
+          "terminal": false
+        },
+        {
+          "step_key": "dst_unlock_manipulator",
+          "operation": "UNLOCK_HANDOFF",
+          "robot_role": "MANIPULATOR",
+          "location": "DESTINATION",
+          "depends_on": [
+            "unload_confirm_empty"
+          ],
+          "terminal": true
+        },
+        {
+          "step_key": "dst_unlock_transporter",
+          "operation": "UNLOCK_HANDOFF",
+          "robot_role": "TRANSPORTER",
+          "location": "DESTINATION",
+          "depends_on": [
+            "unload_confirm_empty"
+          ],
+          "terminal": true
+        }
+      ]
+    }
+  ],
+  "assignments": {
+    "task_dev_1": {
+      "assignment_id": "asg_dev_1",
+      "assignment_generation": 1,
+      "manipulator_robot_id": "robot_1",
+      "transporter_robot_id": "robot_2"
+    }
+  }
+}

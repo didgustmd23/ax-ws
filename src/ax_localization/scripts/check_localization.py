@@ -843,13 +843,16 @@ def make_recorder(robot_ids, scan, tf_future_s, raw=None, on_runtime=None):
             if on_runtime is not None and meta.source_session_id:
                 on_runtime(robot_id, "supervisor_sessions", meta.source_session_id)
 
-        # A4(시험 스텁) 구동 상태
+        # A4(또는 시험 스텁) 구동 상태. Schema 2 소비 검사(schema·세션·허가 분리)를 사후 확인할 수 있게 원문 필드를
+        # 함께 남긴다(기존 키 유지, 판정 불변). 감독 노드가 실제로 받아들였는지는 감독 진단 gates.actuation이 기준이다.
         def on_actuation(self, robot_id, message):
             meta = message.meta
             self.log(robot_id, "actuation", {
                 "stamp": meta.header.stamp.sec + meta.header.stamp.nanosec * 1e-9, "state": message.state,
                 "valid": meta.valid, "revision": meta.revision, "source_id": meta.source_id,
-                "robot_id": message.robot_id})
+                "robot_id": message.robot_id, "schema_version": meta.schema_version,
+                "source_session_id": meta.source_session_id, "drive_allowed": message.drive_allowed,
+                "arm_allowed": message.arm_allowed})
 
         # AMCL lifecycle 전이 사건(시각은 사건의 timestamp ns, 수신 시각 따로)
         def on_lifecycle(self, robot_id, message):

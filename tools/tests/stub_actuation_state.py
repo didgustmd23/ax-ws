@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # A4 미구현 동안 B2 재위치 시험용 가짜 ActuationState 발행기. A4 구현이 아니며 운영에 쓰지 않는다.
 # odom 속도가 D-06 값(0.01 m/s·0.02 rad/s) 안에 0.5 s 머물면 STOPPED, 아니면 RUNNING을 20 Hz로 낸다.
+# ActuationState Schema 2로 낸다. STOPPED는 실제 정지만 뜻하며, 스텁은 허가 주체가 아니므로
+# drive_allowed·arm_allowed는 항상 false다(허가와 정지를 섞지 않는 계약을 시험에서도 지킨다).
+# revision은 로봇별로 상태가 바뀔 때만 늘고(단조 증가), 같은 revision 재발행은 stamp가 늦어진다.
 #   stub_actuation_state.py --ros-args -p robot_ids:="robot_1,robot_2" -p use_sim_time:=true
 import uuid
 
@@ -69,7 +72,7 @@ class StubActuation(Node):
                 self.last_state[robot_id] = state
 
             message.meta.header.stamp = now.to_msg()
-            message.meta.schema_version = 1
+            message.meta.schema_version = 2
             message.meta.source_id = 'stub_actuation_state'
             message.meta.source_session_id = self.session
             message.meta.revision = self.revision[robot_id]
@@ -77,6 +80,8 @@ class StubActuation(Node):
             message.meta.validity_reason = '' if valid else 'NO_ODOM'
             message.robot_id = robot_id
             message.state = state
+            message.drive_allowed = False
+            message.arm_allowed = False
             linear, angular = self.speed.get(robot_id, (0.0, 0.0))
             message.linear_speed, message.angular_speed = float(linear), float(angular)
             self.pubs[robot_id].publish(message)

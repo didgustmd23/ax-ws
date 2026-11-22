@@ -190,6 +190,14 @@ class SupervisorWithStubs(unittest.TestCase):
         self.assertAlmostEqual(sent[0]['pose'][0], START['robot_1'][0])
         self.assertFalse((self.folder / 'diag' / 'robot_2_supervisor.jsonl').exists())
 
+        # Schema 2 구동 상태 수신 판정 횟수와 판정 시점 미래 stamp tick 수가 남는다(가짜 A4는 정상 Schema 2만 냄).
+        last = ticks[-1]
+        self.assertGreater(last['gates']['actuation']['ACCEPTED'], 0)
+        self.assertEqual(last['gates']['actuation']['WRONG_SCHEMA'], 0)
+        self.assertIn('actuation_future_ticks', last)
+        print(f"\n[actuation] robot_1 tick {len(ticks)}개 중 판정 시점 미래 stamp tick "
+              f"{last['actuation_future_ticks']}, 수신 판정 {last['gates']['actuation']}", file=sys.stderr)
+
     # 진단 쓰기 실패(/dev/full): 오류를 남기고 진단만 끈다. 노드는 살아 health를 계속 내고 재위치 요청에 응답한다.
     def test_11_diagnostics_failure_keeps_running(self):
         self.assertIsNone(self.processes[1].poll())
@@ -260,6 +268,16 @@ class SupervisorWithStubs(unittest.TestCase):
         self.world.robots['robot_2']['actuation_publish'] = False
         time.sleep(0.6)
         self.assertEqual(self.reinit('robot_2'), (False, 'REINIT_REJECTED_ACTUATION_STALE'))
+
+    # Schema 1 ActuationState는 STOPPED여도 받아들이지 않는다. 직전 Schema 2 값이 만료되면 ACTUATION_STALE로 거절하고,
+    # Schema 2가 다시 오면 접수 조건이 돌아온다(거절 사유만 확인, 재위치는 시작하지 않음).
+    def test_4b_reject_schema1(self):
+        self.lose('robot_2')
+        self.world.robots['robot_2']['actuation_schema'] = 1
+        time.sleep(0.6)
+
+        self.assertEqual(self.reinit('robot_2'), (False, 'REINIT_REJECTED_ACTUATION_STALE'))
+        self.assertNotIn('REINIT', self.world.reason('robot_2'))
 
     # AMCL 무응답: 접수 뒤 새 추정이 없으면 제한시간에 REINIT_FAILED_AMCL_UNAVAILABLE. 다른 로봇은 OK 유지
     def test_5_amcl_silent(self):
@@ -770,6 +788,7 @@ def make_world(robot_ids):
             self.map_pub = self.create_publisher(OccupancyGrid, '/map', state_qos)
             self.pubs = {}
             self.clients_reinit = {}
+            self.actuation_session = uuid.uuid4().hex   # 가짜 A4 세션(이 시험 프로세스 동안 하나)
 
             for robot_id in robot_ids:
                 ns = f'/ax/{robot_id}'
@@ -803,7 +822,7 @@ def make_world(robot_ids):
             with self.lock:
                 for robot in self.robots.values():
                     robot.update(scan=True, tf=robot.get('map_odom') is not None, actuation=4,
-                                 actuation_publish=True, amcl='ok', nomotion_calls=0, odom_override=None,
+                                 actuation_publish=True, actuation_schema=2, amcl='ok', nomotion_calls=0, odom_override=None,
                                  odom_publish=True, repeat_stamp=None)
 
         # 가짜 시계와 입력 발행 스레드를 시작한다(벽시계 1 s = sim 1 s).
@@ -840,7 +859,7 @@ def make_world(robot_ids):
                             self.publish_odom(robot_id, now)
 
                         if tick % 5 == 0 and robot['actuation_publish']:
-                            self.publish_actuation(robot_id, robot['actuation'], now)
+                            self.publish_actuation(robot_id, robot['actuation'], now, robot['actuation_schema'])
 
                         if tick % 10 == 0:
                             if robot['scan']:
@@ -875,14 +894,22 @@ def make_world(robot_ids):
             transform.transform.rotation.z, transform.transform.rotation.w = quaternion(pose[2])
             self.tf_pub.publish(TFMessage(transforms=[transform]))
 
-        # 가짜 A4 ActuationState
-        def publish_actuation(self, robot_id, state, now):
+        # 가짜 A4 ActuationState(Schema 2). 로봇별 세션 하나, revision은 발행마다 증가한다.
+        # schema_version을 바꾸면 Schema 1 메시지 거부를 시험할 수 있다. 허가 필드는 false(정지만 알림).
+        def publish_actuation(self, robot_id, state, now, schema_version=2):
+            robot = self.robots[robot_id]
+            robot['actuation_revision'] = robot.get('actuation_revision', 0) + 1
             message = ActuationState()
             message.meta.header.stamp = stamp(now)
-            message.meta.revision = 1
+            message.meta.schema_version = schema_version
+            message.meta.source_id = 'test_world_actuation'
+            message.meta.source_session_id = self.actuation_session
+            message.meta.revision = robot['actuation_revision']
             message.meta.valid = True
             message.robot_id = robot_id
             message.state = state
+            message.drive_allowed = False
+            message.arm_allowed = False
             self.pubs[robot_id]['actuation'].publish(message)
 
         # 가짜 AMCL: initialpose를 받으면 map→odom을 정하고 입력 공분산 그대로 추정을 낸다(silent면 무시).

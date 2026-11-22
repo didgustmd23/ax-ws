@@ -248,6 +248,91 @@ class StampGate:
         return verdict
 
 
+# A4 ActuationState(Schema 2) 수신 검사. 식별·순서 검사를 통과한 메시지만 상태 입력으로 받아들인다.
+# - 거부: 다른 robot_id, schema 2 아님, 빈 source_id·source_session_id, revision 0, 비유한·0 이하 stamp,
+#   은퇴한(이전) 세션, 같은 세션에서 revision 또는 stamp 감소.
+# - 같은 revision·같거나 늦은 stamp는 재발행으로 받아들인다(A4 보호 팔 서버와 같은 규칙).
+# - 새 세션을 받아들이면 이전 세션은 은퇴시켜 다시 받지 않는다.
+# - meta.valid=false는 거부하지 않는다. 호출자가 '무효 상태'로 반영해 즉시 재위치 근거를 끊는다(fail-closed).
+# - 미래 stamp는 여기서 거부하지 않는다(프로세스 사이 /clock 지연으로 정상 메시지를 잃지 않게).
+#   판정 시점의 미래 검사는 actuation_problem이 한다.
+class ActuationGate:
+    SCHEMA_VERSION = 2
+    VERDICTS = ("ACCEPTED", "WRONG_ROBOT", "WRONG_SCHEMA", "NO_SOURCE", "NO_SESSION", "REVISION_ZERO",
+                "INVALID_STAMP", "RETIRED_SESSION", "REGRESSED")
+
+    # 이 로봇 id로 상태를 비운다.
+    def __init__(self, robot_id):
+        self.robot_id = robot_id
+        self.session = None
+        self.revision = None
+        self.stamp = None
+        self.retired = set()
+        self.counts = {verdict: 0 for verdict in self.VERDICTS}
+
+    # 메시지 필드를 검사해 판정을 돌려준다. ACCEPTED일 때만 세션·revision·stamp 기준을 바꾼다.
+    def check(self, robot_id, schema_version, source_id, session, revision, stamp):
+        verdict = self.verdict(robot_id, schema_version, source_id, session, revision, stamp)
+
+        if verdict == "ACCEPTED":
+            if self.session is not None and session != self.session:
+                self.retired.add(self.session)
+
+            self.session, self.revision, self.stamp = session, revision, stamp
+
+        self.counts[verdict] += 1
+
+        return verdict
+
+    # 판정만 계산한다(기준은 바꾸지 않음).
+    def verdict(self, robot_id, schema_version, source_id, session, revision, stamp):
+        if robot_id != self.robot_id:
+            return "WRONG_ROBOT"
+
+        if schema_version != self.SCHEMA_VERSION:
+            return "WRONG_SCHEMA"
+
+        if not source_id:
+            return "NO_SOURCE"
+
+        if not session:
+            return "NO_SESSION"
+
+        if not revision or revision <= 0:
+            return "REVISION_ZERO"
+
+        if stamp is None or not math.isfinite(stamp) or stamp <= 0.0:
+            return "INVALID_STAMP"
+
+        if session in self.retired:
+            return "RETIRED_SESSION"
+
+        if session == self.session and (revision < self.revision or stamp < self.stamp):
+            return "REGRESSED"
+
+        return "ACCEPTED"
+
+
+# 구동 상태 메시지 한 건을 gate로 검사하고, 받아들였을 때만 inputs의 구동 상태·유효성·stamp를 바꾼다. 판정을 돌려준다.
+# 거부한 메시지는 이전 값의 수명을 늘리지 못하므로 이전 값은 actuation_max_age_s 뒤 ACTUATION_STALE이 된다.
+# 받아들였지만 valid=false면 '무효 상태'로 반영한다(state는 버림: STOPPED로 쓰지 않음, fail-closed).
+def apply_actuation(gate, inputs, robot_id, schema_version, source_id, session, revision, stamp, valid, state):
+    verdict = gate.check(robot_id, schema_version, source_id, session, revision, stamp)
+
+    if verdict == "ACCEPTED":
+        valid = bool(valid)
+        inputs.actuation_valid = valid
+        inputs.actuation_state = state if valid else None
+        inputs.actuation_stamp = stamp
+
+    return verdict
+
+
+# 판정 시점에 마지막으로 받아들인 구동 상태 stamp가 현재 sim time보다 미래인지(진단 계수용, 판정은 actuation_problem).
+def actuation_future(inputs, now):
+    return inputs.actuation_stamp is not None and now < inputs.actuation_stamp
+
+
 # 한 로봇의 최신 입력 기록. 시각은 sim time(s), wall은 단조 벽시계(s)다.
 @dataclass
 class Inputs:
@@ -1079,6 +1164,8 @@ def reinit_candidate(tracker, odom_pose, now, map_id, config):
 
 
 # A4 구동 상태가 최신·유효·STOPPED인지 확인한다. 아니면 사유 코드.
+# Schema 2의 STOPPED는 허가와 독립된 실제 정지다. drive_allowed·arm_allowed는 재위치 조건으로 쓰지 않는다
+# (B2는 로봇을 움직이지 않으므로 허가가 아니라 '멈춰 있음'만 필요하다).
 def actuation_problem(inputs, now, config):
     if inputs.actuation_stamp is None or not inputs.actuation_valid:
         return "ACTUATION_STALE"

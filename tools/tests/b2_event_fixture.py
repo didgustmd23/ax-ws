@@ -55,7 +55,8 @@ def streams():
     truth = [{'stamp': t, 'x': position(t), 'y': 0.0, 'yaw': 0.0} for t in times(0.0, 40.0, 0.05)]
     lifecycle = [{'start_state': 'active', 'goal_state': 'deactivating', 'recv_sim': 15.0, 'recv_mono': 1015.0}]
     actuation = [{'stamp': t, 'state': 4 if not 5.0 <= t < 10.0 else 1, 'valid': True,
-                  'source_id': 'stub_actuation_state', 'robot_id': 'robot_2'} for t in times(0.0, 40.0, 0.1)]
+                  'source_id': 'stub_actuation_state', 'robot_id': 'robot_2', 'schema_version': 2,
+                  'drive_allowed': False, 'arm_allowed': False} for t in times(0.0, 40.0, 0.1)]
     supervisor = [diag('tick', t, *health_state(t)) for t in times(0.0, 40.0, 0.2)]
     supervisor += [
         diag('reinit_request', 3.0, accepted=False, code='REINIT_REJECTED_NOT_NEEDED'),

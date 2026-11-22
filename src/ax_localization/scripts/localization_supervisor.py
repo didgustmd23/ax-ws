@@ -4,7 +4,7 @@
 - 발행: localization/health(LocalizationHealth, STATE QoS, 5 Hz 재발행·변경 시 revision 증가)
 - 서비스: localization/reinitialize(std_srvs/Trigger). 접수 여부만 응답하고 진행·완료·실패는 health로 알린다.
 - 입력: amcl_pose, sensors/front_lidar/scan_filtered, diff_drive_controller/odom, /tf(map→odom), /map,
-  safety/actuation_state(A4, 재위치 전 실제 정지 확인)
+  safety/actuation_state(A4 Schema 2, 재위치 전 실제 정지 확인. robot·schema·source·session·revision·stamp 순서 검사)
 - 고정 출발 위치: start_pose_* 매개변수가 있으면 이 세션에서 AMCL이 처음 active가 됐을 때 한 번만 initialpose로 보낸다.
   위치를 잃었다는 이유로 다시 보내지 않는다.
 - launch initial_poses 산포: AMCL은 매개변수 초기 위치를 공분산 0으로 시작한다. 그 초기 위치가 확인되면 같은 자세를
@@ -114,6 +114,8 @@ class LocalizationSupervisor(Node):
         self.reinit = lh.Reinitializer(self.config)
         self.amcl_gate = lh.StampGate()
         self.tf_gate = lh.StampGate()
+        self.actuation_gate = lh.ActuationGate(self.robot_id)
+        self.actuation_future_ticks = 0   # 판정 시점에 구동 상태 stamp가 미래였던 tick 수(진단 전용)
         self.odom_history = lh.OdomHistory(self.config["estimate_jump"]["odom_history_s"])
         self.monitor = lh.EstimateMonitor(self.config)
         self.reset_detector = lh.AmclResetDetector(self.config)
@@ -273,14 +275,24 @@ class LocalizationSupervisor(Node):
         self.inputs.amcl_odom_pose = lh.estimate_baseline(self.inputs.amcl_odom_pose, pose, self.inputs.amcl_updates,
                                                           problem)
 
-    # A4 구동 상태(이 로봇 것만)
+    # A4 구동 상태(Schema 2). 검사·반영은 lh.apply_actuation(식별·순서 통과분만 반영, valid=false는 무효 상태)이 한다.
+    # 여기서는 거부 사유를 진단에 남긴다.
     def on_actuation(self, message):
-        if message.robot_id != self.robot_id:
-            return
+        meta = message.meta
+        stamp = seconds(meta.header.stamp)
+        verdict = lh.apply_actuation(self.actuation_gate, self.inputs, message.robot_id, meta.schema_version,
+                                     meta.source_id, meta.source_session_id, meta.revision, stamp, meta.valid,
+                                     message.state)
 
-        self.inputs.actuation_state = message.state
-        self.inputs.actuation_valid = bool(message.meta.valid) and message.meta.revision > 0
-        self.inputs.actuation_stamp = seconds(message.meta.header.stamp)
+        if verdict != "ACCEPTED":
+            # 다른 로봇 것은 기록하지 않는다. 나머지 거부는 종류별 첫 건과 100건마다 진단에 남긴다(20 Hz 반복 억제).
+            # 전체 횟수는 tick 진단의 gates.actuation에 있다.
+            count = self.actuation_gate.counts[verdict]
+
+            if verdict != "WRONG_ROBOT" and (count == 1 or count % 100 == 0):
+                self.write_diagnostics("actuation_rejected", self.now(), self.health, verdict=verdict, stamp=stamp,
+                                       schema_version=meta.schema_version, source_id=meta.source_id,
+                                       session=meta.source_session_id, revision=meta.revision, count=count)
 
     # map → base_link TF 조회
     def tf_chain_ok(self):
@@ -308,6 +320,10 @@ class LocalizationSupervisor(Node):
 
         self.inputs.tf_chain_ok = self.tf_chain_ok()
         health = self.judge(now)
+
+        # 교차 프로세스 /clock 지연 관찰용. 판정은 actuation_problem이 그대로 한다.
+        if lh.actuation_future(self.inputs, now):
+            self.actuation_future_ticks += 1
 
         # 재위치 진행: 무이동 갱신 요청과 회복·실패 판정
         if self.reinit.active():
@@ -344,7 +360,9 @@ class LocalizationSupervisor(Node):
         self.publish(health, now)
         self.write_diagnostics("tick", now, health, trust_stored=stored, trust_rejection=rejection,
                                estimate=self.monitor.summary(),
-                               gates={"amcl": self.amcl_gate.counts, "tf": self.tf_gate.counts},
+                               gates={"amcl": self.amcl_gate.counts, "tf": self.tf_gate.counts,
+                                      "actuation": self.actuation_gate.counts},
+                               actuation_future_ticks=self.actuation_future_ticks,
                                covariance_roundoff=self.covariance_roundoff())
 
     # 판정: 이동 거리 비례 std 하한 적용 전 판정으로 '잘 구속됨'을 갱신한 뒤, 하한을 적용해 다시 판정하고 latch·근거

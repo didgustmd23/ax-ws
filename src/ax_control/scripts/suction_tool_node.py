@@ -16,6 +16,11 @@ attached는 원시 신호이며 보유 판정은 C4 담당이다. 압력값을 �
   command_source는 SOURCE_A2_TOOL, command_id는 ToolCommand.request_id로 온다.
 - A4: /ax/<robot_id>/safety/actuation_state를 20 Hz로 발행해야 한다.
   없거나 0.3 s 넘게 끊기면 모든 요청이 거절된다.
+  ActuationState는 Schema 2만 받는다. 자기 robot_id, 비어 있지 않은 source_id·
+  source_session_id, revision > 0, 유한·양수 stamp가 필요하다. 같은 세션에서
+  revision·stamp가 줄면 버리고, 새 세션이 오면 이전 세션은 다시 받지 않는다.
+  valid=false도 받아 즉시 거절 상태로 만든다. 허가는 arm_allowed만 보며
+  STOPPED는 허가로 쓰지 않는다. 미래 stamp는 그 순간의 평가만 거절한다.
 
 수동 호출 예(A3·A4가 있거나 check_tool_attach.py의 모의 상대가 있을 때):
   ros2 service call /ax/robot_1/manipulation/tool_command ax_interfaces/srv/ToolCommand \\
@@ -34,6 +39,7 @@ attached는 원시 신호이며 보유 판정은 C4 담당이다. 압력값을 �
 """
 
 import hashlib
+import math
 import threading
 import time
 import uuid
@@ -54,6 +60,8 @@ LEASE_TIMEOUT_SECONDS = 0.5
 # attach_state 발행 주기(s). 계약의 20 Hz다
 ATTACH_STATE_PERIOD_SECONDS = 0.05
 SCHEMA_VERSION = 1
+# A4 ActuationState가 따라야 하는 schema 버전(W2 Schema 2 전환)
+ACTUATION_SCHEMA_VERSION = 2
 
 # 계약 D-12·D-13에 실패 원인별 코드가 없어 구동 차단 코드 중 가장 보수적인 값을 쓴다.
 REASON_ARM_NOT_ALLOWED = "SAFETY_STOP"
@@ -92,6 +100,59 @@ def state_qos():
     )
 
 
+# A4 ActuationState의 수신 단계 검사를 맡는다(ROS 비의존)
+# 수용 여부만 판단하고 허가 여부(arm_allowed)·신선도는 판단하지 않는다.
+# valid=false는 받아서 무효 상태로 덮어쓴다(fail-closed). 미래 stamp는 여기서 거르지 않는다.
+class ActuationScreen:
+    # 자기 로봇 이름과 세션 추적 상태를 준비한다
+    def __init__(self, robot_id):
+        self.robot_id = robot_id
+        self.session = None
+        self.revision = 0
+        self.stamp = 0.0
+        self.retired_sessions = set()
+
+    # 메시지를 검사해 거부 사유를 돌려준다. 빈 문자열이면 수용이며 추적 상태를 갱신한다
+    def check(self, message):
+        meta = message.meta
+        stamp = meta.header.stamp.sec + meta.header.stamp.nanosec / 1e9
+
+        # 메시지 자체의 식별·형식 검사
+        if message.robot_id != self.robot_id:
+            return "ROBOT_MISMATCH"
+
+        if meta.schema_version != ACTUATION_SCHEMA_VERSION:
+            return "SCHEMA_MISMATCH"
+
+        if meta.source_id == "" or meta.source_session_id == "":
+            return "SOURCE_EMPTY"
+
+        if meta.revision == 0:
+            return "REVISION_ZERO"
+
+        if not math.isfinite(stamp) or stamp <= 0.0:
+            return "STAMP_INVALID"
+
+        # 세션 순서 검사. 은퇴한 세션은 다시 받지 않는다.
+        session = meta.source_session_id
+
+        if session in self.retired_sessions:
+            return "SESSION_RETIRED"
+
+        if session == self.session and (meta.revision < self.revision or stamp < self.stamp):
+            return "REVISION_REGRESSED"
+
+        # 수용: 새 세션이면 이전 세션을 은퇴시키고 기준값을 갱신한다.
+        if self.session is not None and session != self.session:
+            self.retired_sessions.add(self.session)
+
+        self.session = session
+        self.revision = meta.revision
+        self.stamp = stamp
+
+        return ""
+
+
 # 공구 명령 수락 조건 확인과 부착 상태 발행을 맡는 노드
 # 서비스 콜백이 A3 응답을 기다리는 동안 다른 콜백이 돌아야 해서 MultiThreadedExecutor로 실행한다.
 class SuctionToolNode(Node):
@@ -118,6 +179,14 @@ class SuctionToolNode(Node):
 
         self.actuation = None
         self.actuation_received = None
+
+        # Schema 2 수신 검사와 거부 로그 억제용 직전 사유
+        self.actuation_screen = ActuationScreen(self.robot_id)
+        self.actuation_reject_reason = ""
+
+        # arm_allowed 평가 시 미래 stamp로 거절한 횟수(교차 프로세스 /clock 지연 관측용)
+        self.future_stamp_denials = 0
+        self.future_stamp_last = False
 
         # 플러그인이 마지막으로 보고한 값. 플러그인 상태만이 attached의 근거다.
         self.attached = False
@@ -183,13 +252,31 @@ class SuctionToolNode(Node):
             self.object_id = fields[1] if self.attached else ""
             self.plugin_received = boottime_seconds()
 
-    # A4 구동 상태와 수신 시각을 저장한다
+    # A4 구동 상태를 검사해 수용한 메시지만 수신 시각과 함께 저장한다
+    # 거부 메시지는 만료를 늦추지 않는다. 로그는 사유가 바뀔 때만 남긴다.
     def on_actuation(self, message):
         with self.lock:
-            self.actuation = message
-            self.actuation_received = boottime_seconds()
+            reason = self.actuation_screen.check(message)
+            previous = self.actuation_reject_reason
+            self.actuation_reject_reason = reason
+
+            if reason == "":
+                self.actuation = message
+                self.actuation_received = boottime_seconds()
+
+        # 20 Hz 수신이라 사유 변화 시점에만 기록한다.
+        if reason != previous:
+            if reason:
+                self.get_logger().warn(
+                    f"ActuationState 거부: {reason} "
+                    f"(robot_id={message.robot_id}, schema={message.meta.schema_version}, "
+                    f"source={message.meta.source_id}, revision={message.meta.revision})"
+                )
+            else:
+                self.get_logger().info(f"ActuationState 다시 수용 (이전 거부 {previous})")
 
     # 구동 상태가 유효·최신이고 팔 동작을 허용하는지 확인한다
+    # 허가는 arm_allowed만 본다. STOPPED는 정지 상태일 뿐 허가가 아니다.
     def arm_allowed(self):
         with self.lock:
             state = self.actuation
@@ -199,6 +286,9 @@ class SuctionToolNode(Node):
         if state is None or not state.meta.valid:
             return False
 
+        if state.meta.schema_version != ACTUATION_SCHEMA_VERSION:
+            return False
+
         # 무수신 시간은 단조 시각, 표본 나이는 sim time으로 둘 다 본다.
         if boottime_seconds() - received > STATE_EXPIRY_SECONDS:
             return False
@@ -206,8 +296,31 @@ class SuctionToolNode(Node):
         stamp = state.meta.header.stamp
         sample_time = stamp.sec + stamp.nanosec / 1e9
         now = self.get_clock().now().nanoseconds / 1e9
+        age = now - sample_time
 
-        if now - sample_time > STATE_EXPIRY_SECONDS:
+        if not math.isfinite(age) or age > STATE_EXPIRY_SECONDS:
+            return False
+
+        # 미래 stamp는 이 순간만 거절한다. 메시지는 버리지 않아 시계가 따라오면 다시 허가된다.
+        future = age < 0.0
+
+        # 서비스 콜백이 여러 스레드에서 부르므로 집계는 lock 안에서 한다.
+        with self.lock:
+            changed = future != self.future_stamp_last
+            self.future_stamp_last = future
+
+            if future:
+                self.future_stamp_denials += 1
+
+            denials = self.future_stamp_denials
+
+        # 거절 상태로 바뀌는 순간에만 기록한다.
+        if future and changed:
+            self.get_logger().warn(
+                f"ActuationState 미래 stamp로 거절 (나이 {age:.4f} s, 누적 {denials})"
+            )
+
+        if future:
             return False
 
         return state.arm_allowed

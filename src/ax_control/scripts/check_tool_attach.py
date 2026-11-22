@@ -175,6 +175,10 @@ class ToolAttachTester(Node):
         self.lease_allowed = True
         self.lease_reason = "LEASE_EXPIRED"
 
+        # 모의 A4 StateMeta. 시험 실행마다 새 세션이고 발행마다 revision이 오른다.
+        self.actuation_session = uuid.uuid4().hex
+        self.actuation_revision = 0
+
         # 재전송이 A3를 다시 호출하지 않는지 세는 값이다.
         self.lease_calls = 0
         self.attach_state = None
@@ -239,8 +243,13 @@ class ToolAttachTester(Node):
     def publish_actuation(self):
         message = ActuationState()
         message.meta.header.stamp = self.get_clock().now().to_msg()
-        message.meta.schema_version = 1
+        # Schema 2 소비자 검사를 통과하도록 세션과 증가 revision을 채운다.
+        self.actuation_revision += 1
+
+        message.meta.schema_version = 2
         message.meta.source_id = "mock_a4"
+        message.meta.source_session_id = self.actuation_session
+        message.meta.revision = self.actuation_revision
         message.meta.valid = True
         message.robot_id = self.robot_id
         message.state = ActuationState.RUNNING

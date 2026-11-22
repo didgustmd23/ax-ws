@@ -35,6 +35,10 @@ class LatencyProfileTests(unittest.TestCase):
         self.assertEqual(report['requests'][0]['request_id'], request.request_id)
         self.assertIn('ledger_lock_wait_s', report['stages'])
         self.assertIn('commit_s', report['stages'])
+        slow = report['slowest_requests'][0]
+        self.assertAlmostEqual(sum(slow['parts_s'].values()), slow['roundtrip_s'])
+        self.assertEqual(slow['request_id'], request.request_id)
+        self.assertEqual(slow['largest_measured_part'], 'outside_server')
 
     def test_concurrent_requests_have_separate_phase_records(self):
         """서로 다른 스레드의 잠금·SQL 시간을 같은 요청으로 섞지 않습니다."""

@@ -12,11 +12,11 @@ import json
 from pathlib import Path
 import re
 import sqlite3
-import threading
 import uuid
 
 from ax_interfaces.action import ExecuteLocalTask
 from ax_interfaces.srv import CheckCommandLease
+from ax_task_executor.fair_lock import FifoLock
 from ax_task_executor.mock_executor import record_dir
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -141,7 +141,9 @@ class LeaseLedger:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.path = str(path)
         self.robot_id = robot_id
-        self.lock = threading.Lock()
+        # 느린 저장소/CPU 경합에서 새 요청이 오래 기다린 요청을 추월하지 않도록 차례를 보장한다.
+        # SQLite FULL 커밋·멱등 검사·권한 검사 순서는 그대로 유지한다.
+        self.lock = FifoLock()
         self.db = sqlite3.connect(self.path, check_same_thread=False, isolation_level=None)
         # WAL 저널: 커밋마다 WAL만 fsync해 처리 시간을 줄인다(2026-11-12 측정 p50 22.8 → 6.1 ms).
         # synchronous=FULL이라 응답 전에 커밋한 수락 기록은 전원 차단에도 남는다.
@@ -349,6 +351,18 @@ def default_lease_db(robot_id):
     return str(record_dir(robot_id) / 'lease_checks.sqlite3')
 
 
+def fill_lease_reply(checker, request, reply):
+    """두 A3 서버가 같은 판정 결과를 동일한 서비스 응답으로 옮깁니다."""
+    result = checker.check(request)
+
+    reply.allowed = result['allowed']
+    reply.reason_code = result['reason_code']
+    reply.accept_record_id = result['accept_record_id']
+    reply.valid_for_s = result['valid_for_s']
+
+    return reply
+
+
 class LeaseCheckServer(Node):
     """`/ax/<robot_id>/executor/lease/check_command` 개발 정책 서버."""
 
@@ -389,14 +403,7 @@ class LeaseCheckServer(Node):
     # 서비스 요청을 판정기에 넘기고 응답을 채운다
     def on_check(self, request, reply):
         # 역할: 명령 확인 요청을 판정하고 서비스 응답 필드를 채웁니다.
-        result = self.checker.check(request)
-
-        reply.allowed = result['allowed']
-        reply.reason_code = result['reason_code']
-        reply.accept_record_id = result['accept_record_id']
-        reply.valid_for_s = result['valid_for_s']
-
-        return reply
+        return fill_lease_reply(self.checker, request, reply)
 
     # 원장을 닫고 노드를 정리한다
     def destroy_node(self):

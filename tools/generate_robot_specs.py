@@ -2,6 +2,7 @@
 """현재 URDF의 무적재·중립 자세 스펙을 모델별 JSON/Markdown으로 기록한다."""
 import json
 from pathlib import Path
+import runpy
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -12,6 +13,7 @@ from generate_parts_preview import panels, LABELS
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'src/ax_description'
+BATTERY_MODEL = runpy.run_path(str(PACKAGE / 'scripts/sim_battery.py'))
 
 
 def calculate(number):
@@ -86,6 +88,16 @@ def calculate(number):
         unloaded_com_xy_inside_wheel_centers=bool(np.all(com[:2]>=support.min(0)) and np.all(com[:2]<=support.max(0))),
         rated_payload_kg=None, links=pieces, movable_joints=joints,
         sensors=[dict(name=s.get('name'), type=s.get('type'), rate_hz=float(s.findtext('update_rate')), topic=s.findtext('topic')) for s in robot.findall('.//sensor')])
+    battery_link = robot.find("link[@name='battery_link']")
+    pack = next(p for p in pieces if p['link'] == 'battery_link')
+    data['battery'] = dict(
+        mass_kg=pack['mass_kg'], center_in_base_m=pack['com_in_base_m'],
+        size_m=[float(v) for v in battery_link.find('visual/geometry/box').get('size').split()],
+        inertia_kg_m2={k: float(v) for k, v in battery_link.find('inertial/inertia').attrib.items()},
+        full_charge_hours=1 / (3600 * BATTERY_MODEL['CHARGE_PER_SECOND']),
+        continuous_drive_hours=1 / (3600 * BATTERY_MODEL['ACTIVE_DRAIN_PER_SECOND']),
+        standby_power_ratio=BATTERY_MODEL['IDLE_POWER_RATIO'],
+        reserve_ratio=BATTERY_MODEL['RESERVE'])
     for sensor, entry in zip(robot.findall('.//sensor'), data['sensors']):
         camera = sensor.find('camera')
         if camera is not None:
@@ -124,6 +136,19 @@ def markdown(data):
     lines += [vector(row) for row in data['inertia_at_total_com_kg_m2']]
     lines += ['```', '', '자세·공구·적재물 위치가 바뀌면 전체 COM과 관성도 바뀐다. 위 수치는 무적재 중립 자세에만 해당한다.',
         '좌표는 바퀴 접지면이나 월드 원점이 아닌 `base_link` 기준이다.', '']
+    battery = data['battery']
+    battery_inertia = [battery['inertia_kg_m2'][axis] for axis in ('ixx', 'iyy', 'izz')]
+    lines += ['## 배터리', '',
+        '| 항목 | 값 |', '|---|---|',
+        f'| 질량 | {battery["mass_kg"]:g} kg |',
+        f'| 크기 XYZ | {vector(battery["size_m"])} m |',
+        f'| 설치 중심 XYZ (`base_link` 기준) | {vector(battery["center_in_base_m"])} m |',
+        f'| 배터리 중심 기준 관성 Ixx, Iyy, Izz | {vector(battery_inertia)} kg·m² |',
+        f'| 0%에서 완충까지 | {battery["full_charge_hours"]:g}시간 |',
+        f'| 완충 후 연속 주행 | {battery["continuous_drive_hours"]:g}시간 |',
+        f'| 대기전력 / 예비 잔량 | 주행 소비전력의 {battery["standby_power_ratio"]:.0%} / {battery["reserve_ratio"]:.0%} |',
+        '', '배터리는 차체 내부에 고정하며 기존 차체 질량 예산에 포함한다.',
+        f'![{data["model"]} 부품 이미지](../../src/ax_description/meshes/robot_{data["model"][-1]}_parts.png)', '']
     if 'cargo' in data:
         c = data['cargo']
         lines += ['## 적재부', '',

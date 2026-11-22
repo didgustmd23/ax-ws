@@ -22,6 +22,7 @@ from rclpy.node import Node
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src/ax_task_executor'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ros_test_domain  # noqa: E402
+from a3_test_helpers import isolated_ros_home  # noqa: E402
 from ax_task_executor.lease_check import (  # noqa: E402
     ACCEPT_RECORD_PREFIX, LeaseCheckServer, LeaseChecker, LeaseLedger, MAX_VALID_FOR_S)
 
@@ -289,11 +290,7 @@ class LeaseCheckServiceTests(unittest.TestCase):
 
     # 기본 보존 경로를 쓰는 시험도 사용자 ~/.ros를 건드리지 않게 ROS_HOME을 임시 폴더로 둔다
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        patcher = patch.dict(os.environ, {'ROS_HOME': self.temp.name + '/ros_home'})
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.temp = isolated_ros_home(self)
 
     # 지정 파라미터로 ROS를 초기화하고 서버·클라이언트를 만든다
     def start(self, robot, policy, db=None):

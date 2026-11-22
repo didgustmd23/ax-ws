@@ -117,6 +117,7 @@ class CorridorNode(Node):
 
     def on_stop(self, message, robot):
         # 정지 요청이 아니라 A4의 STOPPED와 실제 속도 한계 확인을 사용합니다.
+        # 새 A4의 정지 역할·피드백 검증을 여기서 대신하지 않는다. UNKNOWN을 STOPPED로 바꿔 받지 않는다.
         # 역할: 신선한 정지 상태와 실제 속도 한계를 함께 확인합니다.
         if message.robot_id != robot:
             return

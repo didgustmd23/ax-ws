@@ -114,7 +114,9 @@ class InstalledNode(unittest.TestCase):
         self.assertIn('CONFIG_INVALID: detection_topic', output)
         self.assertFalse(Path(self.record).exists())
 
-    # 시험 발행자(같은 namespace)를 만들고 노드 시작 기록·구독 연결을 기다린다(상한 30 s)
+    # 시험 발행자(같은 namespace)를 만들고 노드 시작 기록·구독 연결·노드 쪽 실제 수신을 확인한다.
+    # 발행자 쪽 구독 수(get_subscription_count)는 노드 쪽 매칭 완료를 뜻하지 않는다. 매칭 직후 첫 영상이
+    # 노드에 닿지 않는 경우가 실측돼(best effort라 재전송 없음), 시계 시작 전 탐침으로 네 입력의 수신을 확인한다.
     def connect(self, process):
         from rclpy.qos import qos_profile_sensor_data as SENSOR
 
@@ -132,9 +134,21 @@ class InstalledNode(unittest.TestCase):
                 publisher.get_subscription_count() >= 1 for publisher in publishers.values())):
             rclpy.spin_once(node, timeout_sec=0.05)
 
-        # sim 시각(정수 ns)을 발행하고 메시지를 보낸다
-        def send(stamp_ns, *messages):
+        unmatched = [topic for topic, publisher in publishers.items() if publisher.get_subscription_count() < 1]
+        self.assertTrue(rows(self.record), '30 s 안에 노드 start 기록 없음')
+        self.assertEqual(unmatched, [], '30 s 안에 노드 구독과 매칭되지 않은 시험 발행자')
+
+        self.wait_node_receives(node, publishers)
+        # 탐침 기록(시계 시작 전 거부)은 시험 판정에서 뺀다
+        self.ready_row = len(rows(self.record))
+
+        # sim 시각(정수 ns)을 발행하고 메시지를 보낸다. confirm_clock이면 노드 시계가 그 시각에 닿은 것을
+        # 기록에서 확인한 뒤 보낸다(/clock과 영상은 다른 토픽이라 도착 순서가 보장되지 않음)
+        def send(stamp_ns, *messages, confirm_clock=False):
             clock.publish(Clock(clock=Time(sec=stamp_ns // NS, nanosec=stamp_ns % NS)))
+
+            if confirm_clock:
+                self.wait_node_clock(node, clock, stamp_ns)
 
             for topic, message in messages:
                 publishers[topic].publish(message)
@@ -143,6 +157,52 @@ class InstalledNode(unittest.TestCase):
                 rclpy.spin_once(node, timeout_sec=0.02)
 
         return send
+
+    # 노드가 네 입력을 실제로 받았는지 state 기록의 received_* 카운터로 확인한다(상한 10 s, 넘으면 실패).
+    # 탐침은 시계 시작 전(sim 0)에 보내므로 노드가 CLOCK_NOT_STARTED로 버리고 조립·연결 상태는 바뀌지 않는다.
+    # 시험 판정용 메시지를 다시 보내는 것이 아니라 준비 확인용 탐침만 일정 간격으로 보낸다.
+    def wait_node_receives(self, node, publishers, limit_s=10.0):
+        probe_stamp = 1 * NS
+        probes = {'image': support.color_message(probe_stamp), 'depth_image': support.depth_message(probe_stamp),
+                  'camera_info': support.info_message(probe_stamp),
+                  'detections': support.detections(probe_stamp, [])}
+        keys = {'image': 'received_image', 'depth_image': 'received_depth_image',
+                'camera_info': 'received_camera_info', 'detections': 'received_detection_arrays'}
+        end = time.monotonic() + limit_s
+        missing = list(keys)
+
+        while time.monotonic() < end:
+            for topic in missing:
+                publishers[topic].publish(probes[topic])
+
+            pause = time.monotonic() + 0.2
+
+            while time.monotonic() < pause:
+                rclpy.spin_once(node, timeout_sec=0.05)
+
+            states = [row for row in rows(self.record) if row['event'] == 'state']
+            counts = states[-1]['counts'] if states else {}
+            missing = [topic for topic, key in keys.items() if counts.get(key, 0) < 1]
+
+            if not missing:
+                return
+
+        self.fail(f'{limit_s} s 안에 노드가 받지 못한 입력: {missing}')
+
+    # 노드 시계가 stamp_ns 이상인 기록이 생길 때까지 /clock을 발행한다(상한 5 s, 넘으면 실패).
+    # 노드는 state 기록(state_period_s)마다 ros_now_ns를 남긴다
+    def wait_node_clock(self, node, clock, stamp_ns, limit_s=5.0):
+        message = Clock(clock=Time(sec=stamp_ns // NS, nanosec=stamp_ns % NS))
+        end = time.monotonic() + limit_s
+
+        while time.monotonic() < end:
+            if any(row.get('ros_now_ns', 0) >= stamp_ns for row in rows(self.record)[self.ready_row:]):
+                return
+
+            clock.publish(message)
+            rclpy.spin_once(node, timeout_sec=0.05)
+
+        self.fail(f'{limit_s} s 안에 노드 시계가 {stamp_ns} ns에 닿지 않음')
 
     # 한 stamp의 세 부품(주어진 순서)
     def frame(self, stamp, order=('image', 'depth_image', 'camera_info')):
@@ -165,22 +225,23 @@ class InstalledNode(unittest.TestCase):
         t0, t1, t2 = 10 * NS, 10 * NS + 100_000_000, 10 * NS + 200_000_000
 
         # 검출 선도착 + 부품 역순, 다중 bbox, 빈 배열, 다른 카메라 검출(시계 0 거부는 프로세스 내부 시험이 검사).
-        send(t0)
-        time.sleep(0.3)
+        # 각 stamp의 메시지는 노드 시계가 그 시각에 닿은 것을 확인한 뒤 보낸다.
+        send(t0, confirm_clock=True)
         send(t0, ('detections', support.detections(t0, boxes)))
         send(t0, *self.frame(t0, ('camera_info', 'depth_image', 'image')))
-        send(t1, *self.frame(t1), ('detections', support.detections(t1, [])))
-        send(t2, ('detections', support.detections(t2, boxes, frame=support.OTHER_FRAME)))
+        send(t1, *self.frame(t1), ('detections', support.detections(t1, [])), confirm_clock=True)
+        send(t2, ('detections', support.detections(t2, boxes, frame=support.OTHER_FRAME)), confirm_clock=True)
 
         end = time.monotonic() + 15
 
-        while time.monotonic() < end and len([row for row in rows(self.record) if row['event'] != 'state']) < 5:
+        while time.monotonic() < end and len([row for row in rows(self.record)[self.ready_row:]
+                                              if row['event'] != 'state']) < 4:
             send(t2)
 
         self.assertEqual(self.stop(process), 0)
         output = process.stdout.read()
         self.assertIn('prefix=' + PREFIX, output)
-        events = [row for row in rows(self.record) if row['event'] != 'state']
+        events = [row for row in rows(self.record)[self.ready_row:] if row['event'] != 'state']
         results = [row for row in events if row['event'] == 'detection_result']
         self.assertEqual([row['link_status'] for row in results], ['LINKED', 'LINKED'], events)
         self.assertEqual([row['stamp_ns'] for row in results], [t0, t0])

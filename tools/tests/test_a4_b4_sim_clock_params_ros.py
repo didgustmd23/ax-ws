@@ -7,6 +7,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -192,7 +193,8 @@ class GateTestBase(unittest.TestCase):
         for item in tuple(params) + tuple(self.DIAG_PARAMS):
             args += ['-p', item]
         out = open(stdout_path, 'w') if stdout_path else None
-        env = dict(os.environ, RCUTILS_LOGGING_BUFFERED_STREAM='0')   # 로그 줄을 바로 파일에 쓰게 한다
+        # 로그 줄을 바로 파일에 쓰고, 셸 설정(RCUTILS_COLORIZED_OUTPUT=1)이 상속돼도 색 코드 없이 쓰게 한다
+        env = dict(os.environ, RCUTILS_LOGGING_BUFFERED_STREAM='0', RCUTILS_COLORIZED_OUTPUT='0')
         self.process = subprocess.Popen(args, env=env, start_new_session=True,
                                         stdout=out, stderr=subprocess.STDOUT if out else None)
         time.sleep(0.3)
@@ -441,12 +443,16 @@ class SimClockGateDiagOnTest(SimClockGateTest):
     DIAG_PARAMS = ('stop_diagnostics:=true',)
 
 
-# 노드 로그에서 A4_STOP_DIAG JSON 줄을 읽는다
+# 터미널 색 제어열(ESC [ ... m)
+ANSI_SGR = re.compile(r'\x1b\[[0-9;]*m')
+
+
+# 노드 로그에서 A4_STOP_DIAG JSON 줄을 읽는다. 색 제어열만 지우고, 남은 내용이 JSON이 아니면 그대로 실패한다
 def diag_lines(path):
     rows = []
     for line in Path(path).read_text().splitlines():
         if 'A4_STOP_DIAG ' in line:
-            rows.append(json.loads(line.split('A4_STOP_DIAG ', 1)[1]))
+            rows.append(json.loads(ANSI_SGR.sub('', line).split('A4_STOP_DIAG ', 1)[1]))
     return rows
 
 

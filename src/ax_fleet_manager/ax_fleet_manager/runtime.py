@@ -12,7 +12,7 @@ from .group_events import (
     Decision, DispatchFailed, DispatchReserved, DispatchSent, GoalResponse, StepResult,
     StoreFault,
 )
-from .group_machine import restore_state
+from .group_machine import mark_lock_reserved, restore_state
 from .ports import PortError
 from .registry import GroupRegistry
 from .task_store import DispatchAlreadyReserved, StoreError
@@ -31,6 +31,21 @@ def _payload(event):
     data = asdict(event)
     return {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v))
             for k, v in data.items()}
+
+
+# 예약·전송 기록과 복원 상태를 맞춘다: 예약됐던 실행은 미확정(재전송 없음). 상태 기록 전에 멈춰
+# 예약 표에만 남은 잠금 요청도 인계 상태를 UNKNOWN으로 둔다
+def reconcile_dispatch_rows(state, rows):
+    for row in rows:
+        run = state.steps[row['step_key']]
+        if (row['status'] in ('SUBMITTING', 'RESERVED', 'SENT')
+                and run.status in ('INTENDED', 'UNCERTAIN')):
+            run.status = 'UNCERTAIN'
+            run.goal_uuid = row['goal_uuid'] or run.goal_uuid
+            run.execution_id = row['execution_id']
+
+        if row['goal_uuid']:
+            mark_lock_reserved(state, row['step_key'])
 
 
 class GroupRuntime:
@@ -54,14 +69,9 @@ class GroupRuntime:
                                   'Restore', {'previous_revision': state.revision})
             self.registry.commit(state.spec.task_id, restored)
 
-    # 원장의 예약·전송 기록과 복원 상태를 맞춘다: 예약됐던 실행은 미확정(재전송 없음)
+    # 원장의 예약·전송 기록과 복원 상태를 맞춘다
     def _reconcile_dispatch_rows(self, state):
-        for row in self.store.dispatch_rows(state.spec.task_id):
-            run = state.steps[row['step_key']]
-            if row['status'] in ('RESERVED', 'SENT') and run.status in ('INTENDED', 'UNCERTAIN'):
-                run.status = 'UNCERTAIN'
-                run.goal_uuid = row['goal_uuid'] or run.goal_uuid
-                run.execution_id = row['execution_id']
+        reconcile_dispatch_rows(state, self.store.dispatch_rows(state.spec.task_id))
 
     # 새 작업 수용: 검사 → 원장 기록 → 등록
     def admit(self, spec):
@@ -156,6 +166,11 @@ class GroupRuntime:
                 self.handle(task_id, DispatchFailed(execution_id, False, 'BLOCKED_BEFORE_SEND'))
             return
 
+        # 주행은 D1이 goal UUID를 만든다(execution_id 결합). 로컬 작업은 D2가 먼저 예약한다
+        if getattr(port, 'generates_goal_uuid', False):
+            self._submit_navigation(task_id, intent, port)
+            return
+
         try:
             goal_uuid = self.store.reserve_dispatch(execution_id)
         except DispatchAlreadyReserved as error:
@@ -179,6 +194,51 @@ class GroupRuntime:
                 self._enter_fault(task_id, f'STORE_WRITE_FAILED:{store_error}')
                 return
             self.handle(task_id, DispatchFailed(execution_id, error.uncertain, error.reason))
+            return
+
+        try:
+            self.store.update_dispatch(execution_id, 'SENT')
+        except StoreError as error:
+            self._enter_fault(task_id, f'STORE_WRITE_FAILED:{error}')
+            return
+
+        self.handle(task_id, DispatchSent(execution_id))
+
+    # 주행 전송: SUBMITTING 기록 → D1 submit(같은 execution_id) → D1 goal UUID 기록 → 상태 반영.
+    # D2는 주행 UUID를 만들지 않는다. UUID 기록 전에 멈추면 재시작에서 재전송 없이 미확정으로 남는다
+    def _submit_navigation(self, task_id, intent, port):
+        execution_id = intent.execution['execution_id']
+
+        try:
+            self.store.begin_submit(execution_id)
+        except DispatchAlreadyReserved as error:
+            self.notes.append(('ALREADY_SUBMITTED_NOT_RESENT', execution_id, str(error)))
+            return
+        except StoreError as error:
+            self._enter_fault(task_id, f'STORE_WRITE_FAILED:{error}')
+            return
+
+        try:
+            goal_uuid = port.dispatch(intent, None)
+        except PortError as error:
+            status = 'UNCERTAIN' if error.uncertain else 'NOT_SENT'
+            try:
+                self.store.update_dispatch(execution_id, status)
+            except StoreError as store_error:
+                self._enter_fault(task_id, f'STORE_WRITE_FAILED:{store_error}')
+                return
+            self.handle(task_id, DispatchFailed(execution_id, error.uncertain, error.reason))
+            return
+
+        # D1이 UUID를 돌려주지 않으면 보냈는지 알 수 없다(미확정)
+        try:
+            self.store.record_submitted(execution_id, goal_uuid)
+        except StoreError as error:
+            self._enter_fault(task_id, f'STORE_WRITE_FAILED:{error}')
+            return
+
+        self.handle(task_id, DispatchReserved(execution_id, goal_uuid))
+        if self.fault:
             return
 
         try:

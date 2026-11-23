@@ -53,7 +53,10 @@ class GoalResponse:
 
 @dataclass(frozen=True)
 class StepResult:
-    """하위 Action 결과. Result에는 ExecutionRef가 없어 goal UUID로만 결합한다."""
+    """하위 Action 결과. 로컬 작업은 goal UUID로 결합한다(Result에 ExecutionRef 없음).
+
+    주행 단계는 goal UUID를 D1이 만들므로 D1 결과를 execution_id로도 결합할 수 있다(W5).
+    """
 
     goal_uuid: str
     robot_id: str
@@ -62,6 +65,7 @@ class StepResult:
     error_code: str = ''
     object_hold_state: int = 0
     load_state: int = 0
+    execution_id: str = ''
 
 
 @dataclass(frozen=True)

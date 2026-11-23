@@ -1,8 +1,8 @@
-# ax_fleet_manager — D2 그룹 단계 머신(W3 개발 기반)
+# ax_fleet_manager — D2 그룹 단계 머신(W3 개발 기반 + W4 인계 잠금·자동 입고 + W5 재고·완료·종단 연결 초안)
 
 명시적으로 주어진 그룹 운반 작업 하나의 단계·실행 식별자·두 역할 결과를 관리하고, 근거가 부족하거나 실패·중복·재시작이 있으면 다음 물리 동작 의도를 내지 않는 **D2 개발 기반**이다. 범위는 순수 엔진, D2 전용 원장, 모의 상대 포트, 개발 이름공간 상태 출력이다.
 
-이 패키지는 **자동 입고·실제 인계 프로토콜·재고 갱신·운영 종단 완료가 아니다.** 실제 Action·주행·팔·공구·안전 해제를 호출하거나 발행하지 않는다. 운영 모드는 시작을 거부하고, `/ax/fleet/tasks` 같은 운영 Topic에는 발행하지 않는다.
+W4에서 입고 관측 → 입고 사건 대조 → 작업 자동 등록(QUEUED)을, W5에서 재고 갱신·완료 판정 결합·목적지 예약·주행 UUID D1 생성·live 어댑터 초안·개발 이름공간 입고 노드를 더했다. 이 패키지는 **실제 인계 프로토콜·자동 배정·운영 종단 완료가 아니며, 운영 이름 ROS 연결과 실제 A3/C4/D1 연결도 없다.** 실제 Action·주행·팔·공구·안전 해제를 호출하거나 발행하지 않는다. 운영 모드는 시작을 거부하고, `/ax/fleet/tasks` 같은 운영 Topic에는 발행하지 않는다.
 
 ## 구성
 
@@ -13,7 +13,12 @@
 | `group_machine.py` | 순수 엔진 `apply_event(state, event, now) -> Decision(next_state, effects, reasons)`, 복원 규칙 `restore_state` |
 | `registry.py` | 작업 간 충돌 검사(작업·물체·로봇·배정·인계·root 실행 ID 중복, 지도·지점 revision 불일치) |
 | `execution_ids.py` | D-03 `derive-v1` 실행 ID 최소 구현 |
-| `task_store.py` | D2 전용 SQLite 원장 |
+| `task_store.py` | D2 전용 SQLite 원장(schema 2: 입고 표 포함) |
+| `receipt.py` | 입고 규칙(순수): 관측 검증·식별·반복/재입고/구역 충돌 판정, 등록 요청 형식·목적지 규칙 |
+| `intake.py` | 입고 접수(`ReceiptIntake`): 관측·사건·등록 요청·재고 항목·목적지 예약·작업 생성을 원장 한 트랜잭션으로 기록 |
+| `inventory.py` | 등록 지점 카탈로그(개발 설정) 검증, 지점 파생 상태, `InventorySnapshot` 필드 |
+| `live_adapters.py` | live 연결 초안(기본 비활성): D1 `NavigationClient` 어댑터, D1 결과 변환, A4 `ActuationState` 관측 변환 |
+| `intake_node.py`·`config/dev_intake.json` | 개발 입고 노드(`d2_dev_intake`)와 개발 설정(입고 규칙·지점 카탈로그, 실환경 값 아님) |
 | `runtime.py` | 평가 → 원장 기록 → goal UUID 예약 → 포트 전송 결합 |
 | `ports.py` | live 포트(전부 미지원), 개발 모의 포트, Goal 필드 변환 |
 | `snapshot.py` | 상태 → `GroupTaskStatus` 필드, 목록 유지 규칙 |
@@ -45,20 +50,119 @@
 
 | 전이 | 필요 근거 |
 |---|---|
-| 출발 인계 `LOCKED` | 두 로봇 주행 성공, 두 `LOCK_HANDOFF` 성공, 두 로봇 실제 정지 |
+| 출발 인계 `UNKNOWN`(잠금 대기) | 출발 `LOCK_HANDOFF` goal UUID 하나라도 원장 예약(W4) |
+| 출발 인계 `LOCKED` | 출발 xfer의 `UNKNOWN`, 두 `LOCK_HANDOFF` 성공, 둘째 결과 뒤 받은 두 로봇 실제 정지 |
 | `PICK_AND_STOW` 의도(→ `IN_PROGRESS`) | `LOCKED`, 두 로봇 정지 |
 | 팔 후퇴 의도 | `CONFIRM_LOAD` 결과 `STOWED`와 적재 관측 `STOWED` |
 | 출발 인계 `UNLOCKED`·운송 의도 | 후퇴 성공, 보유 `RELEASED`, 적재 `STOWED`, 팔 후퇴 관측, 두 로봇 정지. `HELD`와 `STOWED`가 함께 최신이면 `EVIDENCE_CONFLICT` |
-| 목적지 `LOCKED`·하역 | 두 로봇 목적지 주행 성공·정지, 적재 `STOWED` |
+| 목적지 `UNKNOWN`(잠금 대기) | 출발 xfer `UNLOCKED`에서 목적지 `LOCK_HANDOFF` goal UUID 예약(W4) |
+| 목적지 `LOCKED`·하역 | 목적지 xfer의 `UNKNOWN`, 두 로봇 목적지 주행 성공, 두 잠금 성공, 둘째 결과 뒤 정지. 하역은 최신 정지·적재 `STOWED` |
 | `COMPLETED` | 하역·후퇴·`CONFIRM_LOAD` 결과 `EMPTY`, 배치 관측, 보유 `RELEASED`, 적재 `EMPTY`, 팔 후퇴, 두 로봇 정지, 두 `UNLOCK_HANDOFF` 성공 |
+
+### 인계 잠금(W4)
+
+- `transfer_state`는 D2가 두 로봇의 `LOCK_HANDOFF`·`UNLOCK_HANDOFF` 결과로 정한다(계약 509~510행). 잠금 요청 goal UUID를 원장에 예약하는 순간 `TRANSFER_UNKNOWN`과 그 `transfer_id`를 내며, 이는 계약 4.3절에서 두 로봇 주행 금지(`HANDOFF_LOCK`)다. 의도만 기록되고 예약 전에 철회·전송 실패한 경우는 A3에 보낸 것이 없으므로 이전 상태(출발 `NONE`, 목적지 전 출발 xfer `UNLOCKED`)를 유지한다.
+- 예약 뒤에는 한쪽 실패·시간초과·미확정·Goal 거절·실패 종료·취소와 무관하게 `UNKNOWN` 이상을 유지한다. 명시적 인계 중단·잠금 해제·정차 보정(설계 9.7)은 없으며, 잠금이 남은 채 차단·종료된 작업 판정에는 `HANDOFF_RECOVERY_UNSUPPORTED` 사유를 붙인다.
+- `LOCKED`는 같은 xfer의 `UNKNOWN`에서만 가며 다른 xfer의 `UNKNOWN`에서는 가지 않는다. 결과는 goal UUID로 결합한 뒤 단계 기록의 배정 세대(`ASSIGNMENT_STALE`)와 잠금·해제 단계의 `transfer_id`(`TRANSFER_MISMATCH`)를 지금 상태와 대조하고, 다르면 쓰지 않고 억제한다.
+- 재시작 복원(runtime·개발 노드 읽기 전용 복원 모두)은 단계 기록의 goal UUID와 실행 기록 표의 예약 행으로 잠금 요청 예약을 다시 확인해 `UNKNOWN`을 세운다. 상태 기록 전에 멈춘 예약과 W3 원장(예약 뒤 `NONE`)도 포함한다. `LOCKED`·`UNLOCKED`는 되돌리지 않는다.
 
 실패·취소·시간초과·미확정·Goal 거절·원장 오류·sim time 역행·복원은 실행 억제(`inhibit`)로 남고 W3에는 해제 사건이 없다. 실패는 잠금 해제·재시도·`attempt_index` 증가가 아니다. 취소 ACK만으로 `CANCELED`가 되지 않는다. 모든 하위 실행이 확실히 끝나야 하고(미확정이 남으면 완료 불가), 한 번이라도 goal UUID를 예약·전송한 작업은 취소 요청 시각과 마지막 하위 종료 시각보다 **뒤에** 받은 두 로봇의 최신·유효·출처 허용 `STOPPED`가 있어야 `CANCELED`다(같은 시각 수신은 인정하지 않음). 전송이 전혀 없던 작업(QUEUED·ASSIGNED, 또는 의도만 기록되고 예약 전 철회)의 취소는 물리 근거를 요구하지 않는다. 취소 요청 시각은 원장에 남고, 재부팅 등으로 시계가 그보다 앞서면 완료되지 않는다. 취소 완료는 inhibit·hold·인계 상태를 바꾸지 않는다. `FailTerminate`는 개발 운영자의 명시 실패 종료이며 인계 상태를 바꾸지 않는다. `HoldApplied`는 보류 ID를 남기고, 해제는 `HOLD_RELEASE_UNSUPPORTED`다(D4 9.6 절차 미지원). 운영 모드에서는 `MOCK` 출처를 근거로 받지 않는다(`provenance_acceptable`). 다만 운영 모드는 지금 생성 단계에서 거부된다.
 
-Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 goal UUID로 결과를 결합한다. `RobotTaskStatus`는 `task_id`·`assignment_id`·`assignment_generation`·`execution_id`가 맞을 때만 쓴다. 실패 보고는 진행을 막지만, 성공 보고는 Action 결과를 대신하지 않는다.
+Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 goal UUID로 결과를 결합한다(로컬 작업). 주행 단계는 goal UUID를 D1이 만들므로 D1이 돌려준 UUID 또는 `StepResult.execution_id`로 결합한다(W5, 주행 단계에만 허용). `RobotTaskStatus`는 `task_id`·`assignment_id`·`assignment_generation`·`execution_id`가 맞을 때만 쓴다. 실패 보고는 진행을 막지만, 성공 보고는 Action 결과를 대신하지 않는다.
+
+## 자동 입고 등록(W4)
+
+`ReceiptIntake.observe(관측 사전)`과 `ReceiptIntake.register_task(요청 사전)`만 제공한다. 관측 사전 키는 `ReceiptObservation`에서 D 판정에 쓰는 필드(`observation_id`·`zone_id`·`object_id`·`object_class`·`identity_confidence`·`source`·`source_id`·`valid`·`stamp_sim_s`)이고 pose는 받지 않는다. 요청 사전 키는 `RegisterTask` 요청 필드 그대로다. 타입(`ax_interfaces`)은 바꾸지 않았다.
+
+| 관측 판정 | 조건 | 결과 |
+|---|---|---|
+| 거부(`REJECT`, 기록) | `valid=false`(`OBSERVATION_INVALID`), `SOURCE_UNKNOWN`, 입고 구역 아님(`ZONE_NOT_RECEIPT`), stamp 나이 > 2.0 s(`OBSERVATION_STALE`), 미래 stamp(`OBSERVATION_FROM_FUTURE`), 정답 기반인데 개발 모드 아님·비허용(`PROVENANCE_REJECTED`) | 사건·작업 없음 |
+| 거부(기록 안 함) | 형식 오류(`INVALID_*`), 시각 무효(`TIME_INVALID`), runtime 고장 | 회복 뒤 같은 관측을 다시 판정 |
+| 식별 불명(`PENDING`) | `object_id` 빈 값 또는 `identity_confidence` < 0.8 | 입고 구역마다 열린 `PENDING_IDENTIFICATION` 사건 1개(`object_id` 빈 값, 원장 부분 UNIQUE)에 관측 ID를 덧붙인다(최대 64, 초과분은 관측 기록에만). 없을 때만 새로 만든다. 식별 사건·물체 ID와 합치지 않음, 작업 0 |
+| 신규 입고(`TASK_CREATED`) | 식별됨, 같은 물체 사건 없음 | `rcpt-<UUIDv4>` 사건(회차 1) + 내부 `RegisterTask` 한 번 |
+| 반복 관측(`DUPLICATE`) | 같은 물체의 열린 사건이 같은 구역에 있음 | 그 사건에 관측 ID 덧붙임(최대 64), 새 사건·작업 없음 |
+| 구역 충돌(`REJECT`) | 같은 물체의 열린 사건이 다른 구역에 있음 | `RECEIPT_ZONE_CONFLICT`, 사건 불변 |
+| 재입고 미확인(`REJECTED`) | 같은 물체의 이전 사건 작업이 종료(COMPLETED·FAILED·CANCELED) | 새 회차 사건을 `REJECTED`·`RERECEIPT_UNCONFIRMED`로만 남김, 작업 0 |
+
+- **열린 사건**: 작업이 종료 전인 `TASK_CREATED` 사건과, 작업 없이 남은 `REJECTED` 사건이다. `REJECTED`도 열린 것으로 보는 이유는 거절된 물품의 반복 관측이 새 사건·새 재입고 판정을 계속 만들지 않게 하기 위해서다. 확인 절차(식별 불명·재입고·거절 사건 해소)는 범위 밖이다. 대기 사건도 해소 수단이 없으므로 **한 구역에 식별 불명 상자가 여러 개여도 대기 사건은 1개로 보이며**, 사건의 `provenance`는 처음 관측의 출처다.
+- **같은 관측 ID 재전송**: 같은 내용이면 처음 판정을 그대로 돌려주고(`replayed`), 내용이 다르면 `DUPLICATE_REQUEST`로 거부하며 기록을 덮어쓰지 않는다.
+- **작업 등록**: 같은 `request_id`·같은 내용은 저장한 응답, 같은 `request_id`·다른 내용은 `DUPLICATE_REQUEST`(D-13). 입고 사건당 작업 1개: 이미 작업이 있는 사건을 다른 `request_id`로 보내면 `accepted=false`·기존 `task_id`·`DUPLICATE_REQUEST`. 작업 없는 사건은 `RECEIPT_EVENT_NOT_REGISTRABLE`, 없는 사건은 `RECEIPT_EVENT_UNKNOWN`. 거절 응답도 요청 ID에 저장되므로 설정을 바꾼 뒤에는 새 `request_id`가 필요하다.
+- **내부 요청 ID**: `req-<uuid5(RECEIPT_REQUEST_NAMESPACE, receipt_event_id)>`. namespace는 고정 상수 `5f96e85c-52b2-5215-8fd5-4232de1a4c72`(`receipt.py`)이며 바꾸면 같은 사건의 요청 ID가 달라진다.
+- **출발·목적지**: 입고 사건 작업은 출발 = 입고 구역(다르면 `SOURCE_MISMATCH`). 목적지가 비면 설정 표 `{입고 zone_id: destination_location_id}`, 없으면 `NO_DESTINATION_RULE`. 수동 요청(`receipt_event_id` 빈 값)도 같은 경로를 쓰며 출발이 비면 `SOURCE_MISMATCH`다. 목적지의 용량·점유·예약은 검사하지 않는다(W5).
+- **작업 생성**: `task-`·`exec-`·`xfer-` UUIDv4를 발급하고 표준 운반 계획, `task_revision=1`, `inventory_revision`=등록 시점 재고 항목 revision(W5), registry의 지도·지점 revision을 쓴다. `input_source_id`는 `d2_receipt:<receipt_event_id>` 또는 `d2_register:<request_id>`다. 기존 수용 검사를 그대로 거치며, 진행 중이거나 잠금이 남은 작업이 쓰는 물체는 `OBJECT_BUSY`다. 등록은 QUEUED 생성일 뿐 운반 완료가 아니고, 배정은 명시 입력(`AssignRoles`)이다.
+- **원자성**: 관측 기록·사건 생성/갱신·요청 기록·작업 행은 한 SQLite 트랜잭션이다. 실패하면 모두 되돌리고 메모리 registry에도 넣지 않으며 runtime을 고장 상태로 둔다(이후 접수·전송 거부).
+- **개발 가정값(설정 `ReceiptConfig`)**: 식별 신뢰 ≥ 0.8, 관측 나이 ≤ 2.0 s, 사건당 관측 ID 64(식별·대기 사건 공통), 정답 기반 관측은 개발 모드에서만(사건 `provenance`에 `SENSOR`·`GROUND_TRUTH` 기록), `team_id`·`priority` 기본값. 시험 전 고정할 운영 기준이 아니다.
+- **사유 코드**: D-13 `DUPLICATE_REQUEST`와 D2 내부 코드 `RERECEIPT_UNCONFIRMED`·`NO_DESTINATION_RULE`·`SOURCE_MISMATCH`·`ZONE_NOT_RECEIPT`·`OBJECT_BUSY`·`RECEIPT_ZONE_CONFLICT`·`RECEIPT_EVENT_UNKNOWN`·`RECEIPT_EVENT_NOT_REGISTRABLE`, W5 `LOCATION_FULL`·`OBJECT_CLASS_NOT_ALLOWED`·`INVENTORY_MISMATCH`·`LOCATION_INACTIVE`, 관측 검사 코드(`OBSERVATION_*`·`SOURCE_UNKNOWN`·`PROVENANCE_REJECTED`·`TIME_INVALID`). **ROS 연결 시 계약 D-13 목록 갱신이 필요하다.**
+- **범위 밖**: `/ax/fleet/receipt/observations` 구독·`/ax/fleet/tasks/register` 서버·`ReceiptEvent` 발행(필드 변환 `receipt_event_fields`만 있음), 자동 배정·확인 절차, 관측 기록의 보존 상한(입고 관측 표는 계속 커진다).
+
+## 재고 갱신·완료 판정·예약(W5)
+
+그룹 물체 상태는 엔진이 정하고(`GroupState.object_*`), 같은 판정을 기록하는 `record_decision` 트랜잭션에서 그 작업이 소유한 재고 항목에 반영한다. 계획·전송·수락만으로 바꾸지 않는다.
+
+| 재고 상태 | 언제·근거 | location / carrier |
+|---|---|---|
+| `AT_SOURCE` | 등록 수락(입고·수동 공통, 같은 트랜잭션). 집기 요청 예약 전 실패·취소도 유지 | 출발 지점 / '' |
+| `HELD_BY_MANIPULATOR` | 집기(또는 하역) 요청 예약 뒤 받은 조작 로봇 HOLD `HELD`(대상 물체) 최신 관측 | '' / 조작 로봇 |
+| `STOWED_ON_TRANSPORTER` | `CONFIRM_LOAD` 결과 STOWED + 그 결과 뒤 적재 관측 STOWED(보유 관측이 없으면 HELD를 건너뜀). 하역 요청 예약 뒤에는 되돌아가지 않음 | '' / 운송 로봇 |
+| `AT_DESTINATION` | **COMPLETED 판정과 같은 사건·같은 트랜잭션에서만**(E-31) | 도착 지점 / '' |
+| `LOST` | 집기 시작 뒤 적재 감시 `LOAD_LOST` 또는 적재 확인 결과 LOST | '' / 마지막 carrier |
+| `UNKNOWN`(`isolated=true`) | 집기 요청 예약 뒤 실패·시간초과·미확정·Goal 거절·모순·실패 종료·취소 | '' / 마지막 carrier |
+
+- 복원 미대조(`RESTORED_UNRECONCILED`) 중에는 재고를 바꾸지 않는다(승격·강등 없음). 실제 관측과 재대조하는 절차는 없다.
+- 재고 항목 revision은 필드가 바뀔 때마다 +1(원장 영속, 세션 무관). 재고 snapshot revision(`InventorySnapshot.meta.revision`)은 재고·예약·지점 설정이 바뀔 때마다 +1(원장 영속).
+- 재고 항목이 없는 작업(명시 작업 입력 `runtime.admit`, 이전 원장)은 재고를 바꾸지 않는다.
+- **목적지 예약**: 등록과 같은 트랜잭션에서 `rsv-<UUIDv4>`를 만든다. 목적지가 사용 중지면 `LOCATION_INACTIVE`, 물체 종류가 허용 목록(`"*"` 또는 일치, 종류 없는 물체는 `"*"`만)에 없으면 `OBJECT_CLASS_NOT_ALLOWED`, 도착 물품 + 활성 예약 ≥ 용량이면 `LOCATION_FULL`. COMPLETED에서 소진(CONSUMED), **집기 요청 예약 전** 실패 종료·취소만 해제(RELEASED). 그 밖의 실패·미확정은 유지한다(만료로 해제하지 않음). `max_load_kg`는 물품 질량 원천이 없어 검사하지 않는다.
+- 지점 상태는 파생값이다: 사용 중지 INACTIVE, 물품으로 용량 도달 OCCUPIED, 활성 예약 RESERVED, 그 밖 AVAILABLE. `reservation_id`는 최근 활성 예약 1개라 용량 > 1이면 정보가 줄어든다.
+- **수동 등록과 재고(K7)**: 항목이 없으면 `AT_SOURCE`로 만든다. 있으면 격리되지 않았고 `AT_SOURCE`·`AT_DESTINATION`이며 위치가 요청 출발과 같을 때만 수락하고 항목을 새 작업으로 넘긴다. 그 밖은 `INVENTORY_MISMATCH`. 진행 중이거나 잠금이 남은 작업의 물체는 `OBJECT_BUSY`가 먼저다.
+- **완료 판정(E-31)**: AT_DESTINATION 경로는 COMPLETED 블록 하나뿐이다. 배치 관측 누락, 해제 결과 유실(미확정), 완료 전 재시작에서는 AT_DESTINATION이 되지 않고 예약이 남는다(시험 고정). 입고 사건은 TASK_CREATED를 유지한다.
+- **개발 가정값**: 지점 메타(용도·용량·허용 종류·최대 하중·pose·역할별 정차 자세·대기 지점)는 개발 설정 파일(`config/dev_intake.json`, 시험은 `dev_fixtures.catalog_dict`)이다. 등록 지점 원장 값이 아니다.
+
+## 주행 goal UUID와 D1(W5)
+
+- 주행(NAVIGATE_TO)은 D2가 goal UUID를 만들지 않는다(계약 ID 표: UUID는 Action 클라이언트가 만듦). 순서: 의도 기록(execution_id) → `begin_submit`(실행 기록 `SUBMITTING`, UUID 없음) → 포트 `dispatch(intent, None)`(D1 submit, 같은 execution_id) → 돌려받은 UUID를 `record_submitted`로 참고 기록(`RESERVED`) → 상태 반영 → `SENT`.
+- UUID 기록 전에 멈추면 재시작에서 재전송하지 않고 단계를 `UNCERTAIN`으로 둔다(D1 공개 조회 API가 없어 대조 불가). 전송 중 미확정 오류도 `UNCERTAIN`(`DISPATCH_UNCERTAIN`)이다.
+- 로컬 작업(`ExecuteLocalTask`)은 D2가 Action 클라이언트이므로 지금처럼 D2가 UUID를 만들고 전송 전에 예약한다.
+- 모의 주행 포트(`MockNavigationPort`)는 D1처럼 execution_id마다 UUID 하나를 만들어 돌려준다.
+
+## live 연결 초안(W5, 기본 비활성)
+
+- `D1NavigationPort`: D1 `NavigationClient`(같은 프로세스 객체)의 `submit`·`cancel`을 감싼다. 등록 지점 revision·지도 revision을 대조하고 카탈로그의 역할별 정차 자세(x, y, yaw)를 보낸다. D2 UUID를 넘기면 거부한다. D1 예외는 예약 전 거절과 전송 실패를 밖에서 구분할 수 없어 모두 미확정으로 본다. `enabled=False`가 기본이며 runtime에 연결하지 않는다. 실제 D1 실행 원장(`src/ax_navigation/scripts/navigation_execution.py`, 수정 없이 시험에서 읽기만)으로 같은 execution_id 재호출 시 같은 UUID·전송 1회를 확인했다.
+- `d1_result_event`: D1 원장 행 상태(ARRIVED·CANCELED·ABORTED·REJECTED·UNKNOWN) → `StepResult`(execution_id 결합). ARRIVED는 도착일 뿐이며 정지 근거는 A4 관측으로 따로 본다.
+- `actuation_observation`: A4 `ActuationState` 필드 → D2 관측. 정지 근거는 `state`만, 허가 필드는 `permits`.
+- live 출처(`LIVE`)는 개발 모드 판정 근거로 받지 않으므로, 실제 연결 전에 출처 정책을 정해야 한다.
+
+## 개발 입고 노드(W5)
+
+```bash
+ros2 run ax_fleet_manager d2_dev_intake --ros-args -p store_path:=/tmp/<폴더>/d2.sqlite
+ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<폴더>/d2.sqlite  # 작업 목록
+```
+
+- 입력 `/ax/dev/d2/receipt/observations`(`ReceiptObservation`), 서비스 `/ax/dev/d2/tasks/register`(`RegisterTask`). 출력 `/ax/dev/d2/receipt/events`(`ReceiptEvent`, reliable·volatile), `/ax/dev/d2/inventory`(`InventorySnapshot`, STATE QoS, 변경 시 + 1 Hz).
+- 관측 메시지에서 pose는 쓰지 않는다. `meta.source_id`·`meta.valid`·`meta.header.stamp`를 관측 출처·유효성·시각으로 쓰고, float32 신뢰도는 소수 6자리로 맞춘다.
+- 원장은 쓰기 가능하게 연다(작업 목록 출력 노드는 같은 원장을 읽기 전용으로 읽는다). 작업은 QUEUED 등록만 하며 포트가 없어 배정·전송하지 않는다.
+- 운영 모드, `/ax/dev/` 밖 이름, `/ax/fleet`·`/ax/robot_` 포함 이름(remap 결과 포함)은 시작 거부(종료 코드 2). 운영 이름 연결은 하지 않는다.
+
+## 상대 확인 필요
+
+1. 등록 지점 원장 소유: D2(계약상 `InventorySnapshot` 발행자) vs D4(일정표 "FleetSnapshot·지도/지점 revision"). W5는 D2 개발 설정 파일로 대신한다.
+2. D1 복원 조회 API(execution_id → goal_uuid·상태) 공개 여부와 D1 패키지 import 방식(현재 `scripts/` 스크립트, 패키지 모듈 아님). D1 `ExecutionLedger`는 robot_1~robot_4만 허용한다.
+3. PLACEMENT·ARM_RETRACTED 관측 생산자(계약에 Topic 없음). 없으면 live로 COMPLETED에 도달하지 못한다.
+4. W4·W5 내부 사유 코드의 계약 D-13 반영 시점(운영 이름 연결 때 제안).
+
+## 종단 연결 막힘 목록(W5 시점)
+
+| 연결 | 상태 | 막힘 |
+|---|---|---|
+| (a) 순수 엔진 + 모의 포트 전 흐름 | 완료(시험) | 없음 |
+| (b1) D1 주행 | 어댑터 초안·실제 D1 원장 시험 | 위 2번(조회 API·import), 지점 pose 원천(1번), live 출처 정책 |
+| (b2) A3 로컬 작업 | 미연결 | A3 서버는 `CONFIRM_LOAD`만 수락하고 나머지는 거절(mock_executor). 기본 `RuntimeAuthority`는 dispatcher 등록이 없으면 거절 |
+| (b3) 관측 | `ActuationState` 변환만 | C4 `hold_state` 생산자 미완, 배치·팔 후퇴 생산자 없음(3번), A3 LoadState는 모의값 |
+| (c) 격리 Gazebo 종단 | 미실행 | (b1)~(b3). 혼합(live 주행 + 모의)도 실제 집기·배치가 아니므로 종단 완료가 아님 |
 
 ## 원장과 실행 ID
 
-- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`)이며 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
+- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`, schema 2에서 `receipt_events`·`receipt_observations`·`register_requests`, schema 3에서 `inventory`·`locations`·`reservations`와 `receipt_events.object_class` 추가)이다. schema 1·2 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고(종료 전 작업의 물체는 근거가 없어 `UNKNOWN` 항목으로 백필, 종료 작업은 생략), 실패하면 원장을 바꾸지 않고 거부한다. 개발 노드의 읽기 전용 열기는 이주하지 않는다. 원장은 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
 - 전송 순서는 의도 기록 → `reserve_dispatch`(goal UUID 기록) → 포트 전송이다. 이미 예약된 실행은 다시 예약하지 않으며 재전송하지 않는다. 같은 판정의 앞 의도가 실패하면 남은 의도도 보내지 않는다.
 - 재시작하면 관측을 버리고, 진행 중이거나 예약된 단계는 `UNCERTAIN`, 작업은 `RESTORED_UNRECONCILED`로 원장에 남긴다. 과거 세션·lease는 복원하지 않는다. 실제 상대 재대조 절차가 없어 차단은 풀리지 않는다.
 - 원장 손상(무결성·schema·JSON·단계 불일치)은 열기를 거부하고, 쓰기 실패는 runtime을 고장 상태로 두어 이후 전송을 막는다. 사건 기록은 작업별 500건(기본)·4 KiB로 제한한다.
@@ -87,9 +191,11 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 ```bash
 .venv/bin/python -m pytest -q -p no:launch_testing -p no:launch_ros tools/tests/test_d2_group_machine.py \
   tools/tests/test_d2_execution_ids.py tools/tests/test_d2_task_store.py tools/tests/test_d2_ports.py \
-  tools/tests/test_d2_workflow_scenarios.py tools/tests/test_d2_group_node.py
+  tools/tests/test_d2_workflow_scenarios.py tools/tests/test_d2_group_node.py tools/tests/test_d2_receipt.py \
+  tools/tests/test_d2_inventory.py
 # 격리 install을 source한 셸, 빈 domain 80~89 자동 예약
-python3 -m pytest -q -p no:cacheprovider tools/tests/test_d2_group_node_ros.py
+python3 -m pytest -q -p no:cacheprovider tools/tests/test_d2_group_node_ros.py \
+  tools/tests/test_d2_intake_node_ros.py
 ```
 
 시험은 개발 fixture와 모의 관측만 쓴다. Gazebo·실제 A3/C4/D1 연결·물리 시험은 포함하지 않는다.

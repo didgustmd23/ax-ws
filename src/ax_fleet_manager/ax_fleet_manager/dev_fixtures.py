@@ -90,11 +90,33 @@ class MockObservationSource:
             provenance=provenance)
 
 
+# 개발 등록 지점 카탈로그 사전. purposes는 {지점 ID: 용도}. 값은 시험용 가정값이며 실환경 값이 아니다
+def catalog_dict(purposes, capacity=100, classes=('*',), map_revision=1, revision=1,
+                 catalog_id='d2_dev_catalog'):
+    locations = {}
+    for index, (location_id, purpose) in enumerate(sorted(purposes.items())):
+        pose = {'x': float(index), 'y': 0.0, 'yaw': 0.0}
+        locations[location_id] = {
+            'location_revision': revision,
+            'purpose': purpose,
+            'zone_id': f'zone_{location_id}',
+            'capacity': capacity,
+            'allowed_object_classes': list(classes),
+            'max_load_kg': 5.0,
+            'active': True,
+            'pose': pose,
+            'stop_poses': {'MANIPULATOR': dict(pose, y=0.6), 'TRANSPORTER': dict(pose, y=-0.6)},
+            'wait_location_id': '',
+        }
+
+    return {'catalog_id': catalog_id, 'map_revision': map_revision, 'locations': locations}
+
+
 # 시험용 시각
 def clock(boottime_s, sim_time_s=None, time_valid=True):
     return ClockSnapshot(boottime_s, boottime_s if sim_time_s is None else sim_time_s,
                          time_valid)
 
 
-__all__ = ['Assignment', 'FIXTURE_SOURCE_ID', 'MockObservationSource', 'clock',
+__all__ = ['Assignment', 'FIXTURE_SOURCE_ID', 'MockObservationSource', 'catalog_dict', 'clock',
            'make_assignment', 'make_spec', 'spec_dict', 'standard_plan_dicts']

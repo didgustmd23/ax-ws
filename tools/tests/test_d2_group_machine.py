@@ -202,11 +202,13 @@ def test_transfer_state_sequence():
     flow.apply = tracking
     run_until(flow, 'dst_unlock')
     src, dst = flow.spec.source_transfer_id, flow.spec.destination_transfer_id
-    # 잠금 확인과 적재 의도가 같은 사건에서 일어나므로 사건 단위로는 LOCKED가 바로 IN_PROGRESS가 된다
+    # 잠금 확인과 적재 의도가 같은 사건에서 일어나므로 사건 단위로는 LOCKED가 바로 IN_PROGRESS가 된다.
+    # W4: LOCK_HANDOFF goal UUID 예약부터 잠금 확정 전까지 UNKNOWN+xfer(두 로봇 주행 금지)를 거친다.
+    # W3 기대값에서 NONE→IN_PROGRESS, UNLOCKED(src)→IN_PROGRESS(dst) 사이에 UNKNOWN이 추가된 강화다
     assert seen == [
         (gm.TRANSFER_NONE, ''),
-        (gm.TRANSFER_IN_PROGRESS, src), (gm.TRANSFER_UNLOCKED, src),
-        (gm.TRANSFER_IN_PROGRESS, dst), (gm.TRANSFER_UNLOCKED, dst)]
+        (gm.TRANSFER_UNKNOWN, src), (gm.TRANSFER_IN_PROGRESS, src), (gm.TRANSFER_UNLOCKED, src),
+        (gm.TRANSFER_UNKNOWN, dst), (gm.TRANSFER_IN_PROGRESS, dst), (gm.TRANSFER_UNLOCKED, dst)]
 
 
 # 두 잠금 결과·정지 확인 뒤 LOCKED. 보류 중이면 적재 의도 없이 LOCKED로 남는다
@@ -217,7 +219,9 @@ def test_locked_state_visible_when_pick_blocked():
     flow.apply(HoldApplied('hold_lock'))
     flow.evidence('stopped')
     flow.finish('src_lock_manipulator')
-    assert flow.state.transfer_state == gm.TRANSFER_NONE
+    # W4: 잠금 요청 예약 뒤 한쪽 결과만으로는 LOCKED가 아니며 UNKNOWN(주행 금지)이다. W3 기대값 NONE의 강화
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert flow.state.transfer_id == flow.spec.source_transfer_id
 
     flow.finish('src_lock_transporter')
     assert flow.state.transfer_state == gm.TRANSFER_LOCKED
@@ -965,3 +969,217 @@ def test_registry_task_limit():
 def gm_limits():
     from ax_fleet_manager.group_machine import EngineLimits
     return EngineLimits()
+
+
+# ---- W4 인계 잠금: 예약 시점 UNKNOWN, 양측 결과 결합, 한쪽 실패·만료 시 잠금 유지 ----
+
+SRC_LOCK_KEYS = ('src_lock_manipulator', 'src_lock_transporter')
+DST_LOCK_KEYS = ('dst_lock_manipulator', 'dst_lock_transporter')
+
+
+# 이동 의도(NAVIGATE_TO) 단계 키 목록
+def nav_intents(flow):
+    return [k for k, op in flow.operations() if op == 'NAVIGATE_TO']
+
+
+# 잠금 의도가 기록만 되고 예약 전 철회되면 이전 상태(출발 NONE, 목적지는 출발 xfer UNLOCKED)를 유지한다
+@pytest.mark.parametrize('phase', ['src_nav', 'dst_nav'])
+def test_lock_withdrawn_before_reserve_keeps_previous_state(phase):
+    flow = Flow()
+    run_until(flow, phase)
+    before = (flow.state.transfer_state, flow.state.transfer_id)
+    lock_keys = SRC_LOCK_KEYS if phase == 'src_nav' else DST_LOCK_KEYS
+    assert sorted(i.step_key for i in flow.unsent()) == sorted(lock_keys)
+
+    flow.apply(CancelRequested())
+    assert all(flow.state.steps[k].status == 'WITHDRAWN' for k in lock_keys)
+    assert (flow.state.transfer_state, flow.state.transfer_id) == before
+    assert before[0] in gm.RELEASED_TRANSFER_STATES
+
+
+# 잠금 요청 하나라도 goal UUID를 예약하면 즉시 UNKNOWN+해당 xfer(두 로봇 주행 금지)
+@pytest.mark.parametrize('phase', ['src_nav', 'dst_nav'])
+def test_lock_reserve_sets_unknown(phase):
+    flow = Flow()
+    run_until(flow, phase)
+    keys = SRC_LOCK_KEYS if phase == 'src_nav' else DST_LOCK_KEYS
+    xfer = (flow.spec.source_transfer_id if phase == 'src_nav'
+            else flow.spec.destination_transfer_id)
+    navs = len(nav_intents(flow))
+
+    intent = [i for i in flow.unsent() if i.step_key == keys[0]][0]
+    flow.apply(DispatchReserved(intent.execution['execution_id'], f'uuid_{keys[0]}'))
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert flow.state.transfer_id == xfer
+    assert len(nav_intents(flow)) == navs
+
+
+# 양측 결과 결합: 결과 순서와 무관하게 둘째 결과 뒤 받은 두 로봇 STOPPED가 있어야 LOCKED
+@pytest.mark.parametrize('order', [SRC_LOCK_KEYS, SRC_LOCK_KEYS[::-1]])
+def test_lock_combines_both_results_then_stop(order):
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    flow.send_all()
+    flow.wait(0.05)
+    flow.evidence('stopped')
+    flow.wait(0.05)
+
+    flow.finish(order[0])
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    flow.wait(0.05)
+    flow.evidence('stopped')
+    flow.wait(0.05)
+    flow.finish(order[1])
+
+    # 첫 결과 뒤 정지는 둘째 결과보다 앞서므로 근거가 아니다
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert not flow.intended('load_pick_and_stow')
+
+    flow.evidence('stopped')
+    assert flow.state.transfer_state == gm.TRANSFER_IN_PROGRESS
+    assert flow.intended('load_pick_and_stow')
+
+
+# 한쪽 실패: 다른 쪽이 성공·정지해도 UNKNOWN 유지, 이동·적재 의도 0건, 복구 미지원 사유
+@pytest.mark.parametrize('failed', SRC_LOCK_KEYS)
+def test_lock_one_side_failure_keeps_lock(failed):
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    navs = len(nav_intents(flow))
+    flow.send_all()
+    flow.wait(0.05)
+    flow.finish(failed, outcome=gm.OUTCOME_FAILED)
+    other = [k for k in SRC_LOCK_KEYS if k != failed][0]
+    flow.finish(other)
+    flow.wait(0.05)
+    decision = flow.observe('ACTUATION', flow.assignment.robots()[0], gm.ACTUATION_STOPPED)
+    flow.evidence('stopped')
+
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert flow.state.transfer_id == flow.spec.source_transfer_id
+    assert 'STEP_FAILED' in flow.state.inhibit
+    assert 'HANDOFF_RECOVERY_UNSUPPORTED' in decision.reasons
+    assert len(nav_intents(flow)) == navs
+    assert not flow.intended('load_pick_and_stow')
+
+    # 실패 종료해도 잠금은 그대로 남는다(자동 해제 없음)
+    flow.apply(FailTerminate('fail_lock_1'))
+    assert flow.state.task_state == gm.TASK_FAILED
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+
+
+# 한쪽 결과 만료(시간초과): 미확정·UNKNOWN 유지, 늦은 성공도 잠금 확정·진행 근거가 아니다
+def test_lock_one_side_timeout_keeps_lock():
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    navs = len(nav_intents(flow))
+    flow.send_all()
+    flow.finish('src_lock_manipulator')
+
+    flow.wait(61.0)
+    flow.apply(Tick())
+    assert flow.state.steps['src_lock_transporter'].status == 'UNCERTAIN'
+    assert 'RESULT_TIMEOUT' in flow.state.inhibit
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+
+    decision = flow.finish('src_lock_transporter')
+    assert 'LATE_RESULT_RECORDED' in decision.reasons
+    flow.evidence('stopped')
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert len(nav_intents(flow)) == navs
+    assert not flow.intended('load_pick_and_stow')
+
+
+# 잠금 확정 뒤 정지 관측이 만료되면 다음 의도 0건(목적지: 하역은 최신 정지·적재 근거 필요)
+def test_locked_then_stop_expired_has_no_intent():
+    flow = Flow()
+    run_until(flow, 'dst_nav')
+    navs = len(nav_intents(flow))
+    flow.send_all()
+    flow.wait(0.05)
+    for key in DST_LOCK_KEYS:
+        flow.finish(key)
+    flow.wait(0.05)
+    flow.evidence('stopped')
+    assert flow.state.transfer_state == gm.TRANSFER_LOCKED
+    assert flow.state.transfer_id == flow.spec.destination_transfer_id
+    assert not flow.intended('unload_place')
+
+    flow.wait(0.4)
+    flow.evidence('stowed')
+    assert not flow.intended('unload_place')
+    assert flow.state.transfer_state == gm.TRANSFER_LOCKED
+    assert len(nav_intents(flow)) == navs
+
+    flow.evidence('stopped')
+    assert flow.intended('unload_place')
+
+
+# 다른 xfer의 UNKNOWN에서는 LOCKED로 가지 않는다
+def test_unknown_of_other_transfer_does_not_lock():
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    flow.send_all()
+    flow.wait(0.05)
+    for key in SRC_LOCK_KEYS:
+        flow.finish(key)
+    flow.wait(0.05)
+
+    # 시험용 교란: 같은 작업의 목적지 xfer UNKNOWN 상태에 출발 잠금 근거가 들어온 경우
+    flow.state = replace(flow.state, transfer_id=flow.spec.destination_transfer_id)
+    flow.evidence('stopped')
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert not flow.intended('load_pick_and_stow')
+
+
+# 결과-단계 대조: 지금 인계 xfer와 다른 잠금 결과, 다른 배정 세대의 결과는 쓰지 않는다
+@pytest.mark.parametrize('field,reason', [('transfer_id', 'TRANSFER_MISMATCH'),
+                                          ('assignment_generation', 'ASSIGNMENT_STALE')])
+def test_lock_result_must_match_transfer_and_generation(field, reason):
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    flow.send_all()
+    run = flow.state.steps['src_lock_manipulator']
+    setattr(run, field, 'xfer_other' if field == 'transfer_id' else 99)
+
+    decision = flow.finish('src_lock_manipulator')
+    assert reason in decision.reasons
+    assert reason in flow.state.inhibit
+    assert flow.state.steps['src_lock_manipulator'].outcome == -1
+    flow.finish('src_lock_transporter')
+    flow.evidence('stopped')
+    assert flow.state.transfer_state == gm.TRANSFER_UNKNOWN
+
+
+# 복원 뒤에도 UNKNOWN·LOCKED 유지, W3 원장처럼 예약이 있는데 NONE으로 남은 상태도 UNKNOWN으로 올린다
+def test_restore_keeps_unknown_and_locked():
+    flow = Flow()
+    run_until(flow, 'src_nav')
+    flow.send_all()
+    restored = restore_state(flow.state)
+    assert restored.transfer_state == gm.TRANSFER_UNKNOWN
+    assert restored.transfer_id == flow.spec.source_transfer_id
+
+    legacy = replace(flow.state, transfer_state=gm.TRANSFER_NONE, transfer_id='')
+    restored = restore_state(legacy)
+    assert restored.transfer_state == gm.TRANSFER_UNKNOWN
+    assert restored.transfer_id == flow.spec.source_transfer_id
+
+    locked = Flow()
+    run_until(locked, 'src_nav')
+    locked.send_all()
+    locked.apply(HoldApplied('hold_restore'))
+    locked.wait(0.05)
+    for key in SRC_LOCK_KEYS:
+        locked.finish(key)
+    locked.evidence('stopped')
+    assert locked.state.transfer_state == gm.TRANSFER_LOCKED
+    restored = restore_state(locked.state)
+    assert restored.transfer_state == gm.TRANSFER_LOCKED
+    assert restored.transfer_id == locked.spec.source_transfer_id
+
+    # 출발 해제 뒤 복원: 지난 잠금 요청 기록이 있어도 UNLOCKED를 UNKNOWN으로 되돌리지 않는다
+    done = Flow()
+    run_until(done, 'src_unlock')
+    assert done.state.transfer_state == gm.TRANSFER_UNLOCKED
+    assert restore_state(done.state).transfer_state == gm.TRANSFER_UNLOCKED

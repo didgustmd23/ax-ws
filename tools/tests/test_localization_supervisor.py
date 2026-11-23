@@ -296,6 +296,57 @@ class SupervisorWithStubs(unittest.TestCase):
         self.assertEqual(self.world.state('robot_2'), 3)
         self.assertIn('REINIT_FAILED_AMCL_UNAVAILABLE', self.world.reason('robot_2'))
 
+    # 접수 전 거절: AMCL이 비활성이면(get_state 조회로 확인) REINIT_REJECTED_AMCL_UNAVAILABLE, 상태는 바꾸지 않는다.
+    # active로 돌아오면(다음 조회 뒤) 다시 접수할 수 있다. 다른 로봇은 OK 유지
+    def test_5b_reject_when_amcl_inactive(self):
+        self.lose('robot_2')
+        self.world.robots['robot_2']['lifecycle'] = 'inactive'
+        time.sleep(1.5)
+
+        self.assertEqual(self.reinit('robot_2'), (False, 'REINIT_REJECTED_AMCL_UNAVAILABLE'))
+        self.assertNotIn('REINIT', self.world.reason('robot_2'))
+        self.assertEqual(self.world.state('robot_1'), 1)
+
+        self.world.robots['robot_2']['lifecycle'] = 'active'
+        time.sleep(1.5)
+        self.assertEqual(self.reinit('robot_2'), (True, 'REINIT_ACCEPTED'))
+
+    # 진행 중 AMCL lifecycle 비활성(get_state 조회로 확인) → 제한시간(sim 15 s) 전에 REINIT_FAILED_AMCL_UNAVAILABLE.
+    # 다른 로봇은 OK 유지
+    def test_5c_amcl_inactive_by_get_state(self):
+        self.world.robots['robot_2']['amcl'] = 'silent'
+        self.lose('robot_2')
+
+        self.assertEqual(self.reinit('robot_2'), (True, 'REINIT_ACCEPTED'))
+        started = time.monotonic()
+        self.world.robots['robot_2']['lifecycle'] = 'inactive'
+        self.assertTrue(self.world.wait(
+            lambda: 'REINIT_FAILED_AMCL_UNAVAILABLE' in self.world.reason('robot_2'), 6.0), self.logs())
+        self.assertLess(time.monotonic() - started, 6.0)
+        self.assertEqual(self.world.state('robot_2'), 3)
+        self.assertEqual(self.world.state('robot_1'), 1)
+
+        # 다음 시험 전에 AMCL 상태를 active로 되돌리고 조회 주기(1 s)가 지나기를 기다린다
+        self.world.robots['robot_2']['lifecycle'] = 'active'
+        time.sleep(1.5)
+
+    # 진행 중 전이 사건(active → inactive)을 받으면 조회를 기다리지 않고 바로 실패로 끝낸다.
+    # 사건 앞에 보낸 조회의 active 응답이 늦게 와도 덮지 않는다(get_state는 계속 active를 돌려준다)
+    def test_5d_amcl_inactive_by_transition_event(self):
+        self.world.robots['robot_2']['amcl'] = 'silent'
+        self.lose('robot_2')
+
+        self.assertEqual(self.reinit('robot_2'), (True, 'REINIT_ACCEPTED'))
+        started = time.monotonic()
+        self.world.publish_transition('robot_2', 'active', 'inactive')
+        self.assertTrue(self.world.wait(
+            lambda: 'REINIT_FAILED_AMCL_UNAVAILABLE' in self.world.reason('robot_2'), 3.0), self.logs())
+        self.assertLess(time.monotonic() - started, 3.0)
+        # 전이 사건은 재시작 latch도 건다(기존 동작)
+        self.assertIn('ESTIMATE_DISCONTINUOUS', self.world.reason('robot_2'))
+        self.assertEqual(self.world.state('robot_1'), 1)
+        time.sleep(1.5)
+
     # 진행 중 정지 상태 상실 → REINIT_FAILED_NOT_STOPPED(직접 이동하지 않음: cmd_vel 발행 없음)
     def test_6_stop_lost_during(self):
         self.world.robots['robot_2']['amcl'] = 'echo'
@@ -749,7 +800,7 @@ def make_world(robot_ids):
     from ax_interfaces.msg import ActuationState, LocalizationHealth
     from builtin_interfaces.msg import Time as TimeMsg
     from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
-    from lifecycle_msgs.msg import State
+    from lifecycle_msgs.msg import State, TransitionEvent
     from lifecycle_msgs.srv import GetState
     from nav_msgs.msg import OccupancyGrid, Odometry
     from rclpy.node import Node
@@ -805,7 +856,10 @@ def make_world(robot_ids):
                                          lambda m, r=robot_id: self.latest.__setitem__(r, m), state_qos)
                 self.create_service(Empty, f'{ns}/request_nomotion_update',
                                     lambda req, res, r=robot_id: self.on_nomotion(r, res))
-                self.create_service(GetState, f'{ns}/amcl/get_state', self.on_get_state)
+                self.create_service(GetState, f'{ns}/amcl/get_state',
+                                    lambda req, res, r=robot_id: self.on_get_state(r, res))
+                self.pubs[robot_id]['transition'] = self.create_publisher(
+                    TransitionEvent, f'{ns}/amcl/transition_event', 10)
                 self.clients_reinit[robot_id] = self.create_client(Trigger, f'{ns}/localization/reinitialize')
                 self.robots[robot_id].update(initialposes=[], map_odom=None)
 
@@ -823,7 +877,7 @@ def make_world(robot_ids):
                 for robot in self.robots.values():
                     robot.update(scan=True, tf=robot.get('map_odom') is not None, actuation=4,
                                  actuation_publish=True, actuation_schema=2, amcl='ok', nomotion_calls=0, odom_override=None,
-                                 odom_publish=True, repeat_stamp=None)
+                                 odom_publish=True, repeat_stamp=None, lifecycle='active')
 
         # 가짜 시계와 입력 발행 스레드를 시작한다(벽시계 1 s = sim 1 s).
         def start_clock(self):
@@ -981,10 +1035,21 @@ def make_world(robot_ids):
             message.pose.covariance = list(covariance)
             self.pubs[robot_id]['amcl'].publish(message)
 
-        # 가짜 AMCL lifecycle 상태: 항상 active
-        def on_get_state(self, request, response):
-            response.current_state = State(id=State.PRIMARY_STATE_ACTIVE, label='active')
+        # 가짜 AMCL lifecycle 상태: 로봇별 'lifecycle'(기본 active)
+        def on_get_state(self, robot_id, response):
+            label = self.robots[robot_id].get('lifecycle', 'active')
+            ids = {'active': State.PRIMARY_STATE_ACTIVE, 'inactive': State.PRIMARY_STATE_INACTIVE,
+                   'unconfigured': State.PRIMARY_STATE_UNCONFIGURED}
+            response.current_state = State(id=ids[label], label=label)
             return response
+
+        # 가짜 AMCL lifecycle 전이 사건(start → goal)을 발행한다. get_state 응답 상태는 바꾸지 않는다.
+        def publish_transition(self, robot_id, start, goal):
+            ids = {'active': State.PRIMARY_STATE_ACTIVE, 'inactive': State.PRIMARY_STATE_INACTIVE}
+            event = TransitionEvent()
+            event.start_state = State(id=ids[start], label=start)
+            event.goal_state = State(id=ids[goal], label=goal)
+            self.pubs[robot_id]['transition'].publish(event)
 
         # 재위치 서비스 호출 → (success, message)
         def call_reinit(self, robot_id):

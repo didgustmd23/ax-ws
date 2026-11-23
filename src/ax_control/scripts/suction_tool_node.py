@@ -33,7 +33,9 @@ attached는 원시 신호이며 보유 판정은 C4 담당이다. 압력값을 �
   형식 검사 → arm_allowed → A3 확인 → arm_allowed 재확인 → 플러그인에 명령 전달
 
 알려진 제한
-- 거절 사유 코드는 계약에 맞는 값이 없어 임시로 지정했다(아래 REASON_ 상수).
+- arm_allowed 거부(SAFETY_STOP)는 계약에 원인별 코드가 없어 임시로 지정했다(아래 REASON_ 상수).
+- A3 확인 거절 사유: 무응답(서비스 미준비·0.5 s 무응답)은 A3_LEASE_TIMEOUT, A3 거절은 A3가 준 사유 그대로
+  (빈 사유면 LEASE_EXPIRED), 허용 뒤 기한 경과는 LEASE_EXPIRED(계약 D-13, A4와 같음).
 - 플러그인이 보고한 실패 원인(too_far 등)은 아직 attach_state로 전달하지 않는다.
 - responses 기록은 프로세스가 끝나면 사라지고 크기 제한도 없다.
 """
@@ -65,7 +67,10 @@ ACTUATION_SCHEMA_VERSION = 2
 
 # 계약 D-12·D-13에 실패 원인별 코드가 없어 구동 차단 코드 중 가장 보수적인 값을 쓴다.
 REASON_ARM_NOT_ALLOWED = "SAFETY_STOP"
-REASON_LEASE_NO_RESPONSE = "LEASE_EXPIRED"
+# A3 무응답(서비스 미준비·응답 대기 한도 초과). 계약 D-13, A4 보호 팔 서버와 같은 코드(2026-11-24)
+REASON_LEASE_NO_RESPONSE = "A3_LEASE_TIMEOUT"
+# 허용 뒤 기한(t_first + valid_for_s) 경과, 또는 A3가 사유 없이 거절한 경우(A4와 같은 대체값)
+REASON_LEASE_EXPIRED = "LEASE_EXPIRED"
 REASON_DUPLICATE = "DUPLICATE_REQUEST"
 REASON_INVALID = "AUTHORITY_INVALID"
 
@@ -356,12 +361,13 @@ class SuctionToolNode(Node):
 
         response = future.result()
 
+        # A3 거절 사유는 그대로 전달한다. 빈 사유는 호출자가 구분할 수 있게 LEASE_EXPIRED로 채운다.
         if not response.allowed:
-            return False, response.reason_code
+            return False, response.reason_code or REASON_LEASE_EXPIRED
 
         # 기한은 응답 수신이 아니라 최초 송신 시각부터 계산한다.
         if boottime_seconds() > first_sent + response.valid_for_s:
-            return False, REASON_LEASE_NO_RESPONSE
+            return False, REASON_LEASE_EXPIRED
 
         return True, ""
 

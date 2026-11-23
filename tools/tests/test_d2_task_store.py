@@ -92,7 +92,9 @@ def test_state_roundtrip():
     assert state_from_dict(json.loads(json.dumps(state_to_dict(state)))) == state
 
 
-# 시작 의도는 원장에 기록되고 goal UUID가 예약된 뒤에만 전송된다
+# 시작 의도는 원장에 기록되고 전송 시작(SUBMITTING)이 기록된 뒤에만 전송된다.
+# W5(사용자 결정): 주행 goal UUID는 D1이 만들므로 전송 순간 D2 원장에는 UUID가 없고(이전 기대값:
+# RESERVED+D2 UUID), D1이 돌려준 UUID를 전송 뒤 기록한다. 로컬 작업의 예약 선기록은 test_d2_inventory에서 본다
 def test_intent_recorded_and_reserved_before_send(tmp_path):
     order = []
     nav = MockNavigationPort()
@@ -102,14 +104,15 @@ def test_intent_recorded_and_reserved_before_send(tmp_path):
     # 전송 순간의 원장 기록 상태를 확인한다
     def checking(intent, goal_uuid):
         row = runtime.store.dispatch_row(intent.execution['execution_id'])
-        order.append((row['status'], row['goal_uuid'] == goal_uuid))
-        original(intent, goal_uuid)
+        order.append((row['status'], row['goal_uuid'], goal_uuid))
+        return original(intent, goal_uuid)
 
     nav.dispatch = checking
     start_task(runtime)
-    assert order == [('RESERVED', True), ('RESERVED', True)]
+    assert order == [('SUBMITTING', None, None), ('SUBMITTING', None, None)]
     rows = runtime.store.dispatch_rows('task_dev_1')
     assert [r['status'] for r in rows] == ['SENT', 'SENT']
+    assert {r['goal_uuid'] for r in rows} == set(nav.goal_uuids.values())
     assert {r['step_key'] for r in rows} == {'src_nav_manipulator', 'src_nav_transporter'}
     assert [r['robot_id'] for r in nav.requests] == ['robot_m1', 'robot_t9']
 
@@ -189,14 +192,15 @@ def test_reserve_failure_blocks_send(tmp_path):
     runtime = make_runtime(tmp_path / 'd2.sqlite', nav=nav, connect=connect)
     runtime.admit(make_spec())
     runtime.handle('task_dev_1', AssignRoles(make_assignment('robot_m1', 'robot_t9')))
-    original = runtime.store.reserve_dispatch
+    # W5: 주행 전송 시작 기록은 reserve_dispatch 대신 begin_submit이다(주행 UUID는 D1 생성)
+    original = runtime.store.begin_submit
 
-    # 예약 직전에 실패를 켠다
+    # 예약(전송 시작 기록) 직전에 실패를 켠다
     def failing_reserve(execution_id):
         flags['fail'] = True
         return original(execution_id)
 
-    runtime.store.reserve_dispatch = failing_reserve
+    runtime.store.begin_submit = failing_reserve
     runtime.handle('task_dev_1', StartTask())
     assert nav.requests == []
     assert runtime.fault
@@ -218,14 +222,15 @@ def test_crash_between_reserve_and_send_is_uncertain(tmp_path, crash_point):
     nav.dispatch = crashing
     runtime = make_runtime(path, nav=nav)
     if crash_point == 'reserved_only':
-        original = runtime.store.reserve_dispatch
+        # W5: 주행은 begin_submit(SUBMITTING)이 예약 기록에 해당한다(주행 UUID는 D1 생성)
+        original = runtime.store.begin_submit
 
-        # 예약 기록은 끝났지만 상태 기록 전에 멈춘다
+        # 전송 시작 기록은 끝났지만 상태 기록·전송 전에 멈춘다
         def reserve_then_crash(execution_id):
             original(execution_id)
             raise SimulatedCrash()
 
-        runtime.store.reserve_dispatch = reserve_then_crash
+        runtime.store.begin_submit = reserve_then_crash
 
     with pytest.raises(SimulatedCrash):
         start_task(runtime)
@@ -251,8 +256,9 @@ def test_crash_between_reserve_and_send_is_uncertain(tmp_path, crash_point):
                                                   gm.OUTCOME_SUCCEEDED, gm.PROVENANCE_MOCK))
     restarted.handle('task_dev_1', Tick())
     assert nav2.requests == []
-    assert restarted.store.dispatch_rows('task_dev_1')[0]['status'] in ('RESERVED', 'SENT',
-                                                                        'UNCERTAIN')
+    # W5: 주행 전송 시작 상태 SUBMITTING 추가
+    assert restarted.store.dispatch_rows('task_dev_1')[0]['status'] in ('SUBMITTING', 'RESERVED',
+                                                                        'SENT', 'UNCERTAIN')
 
 
 # 정상 재시작도 복원 상태를 원장에 남기고 새 명령을 막는다(과거 세션·관측 복원 없음)
@@ -359,4 +365,8 @@ def test_port_uncertain_error_recorded(tmp_path):
 def test_store_is_d2_only(tmp_path):
     store = TaskStore(str(tmp_path / 'd2.sqlite'))
     tables = {r[0] for r in store.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert tables == {'meta', 'tasks', 'dispatches', 'events', 'sqlite_sequence'}
+    # W4 schema 2(K9 승인)는 입고 표 3개, W5 schema 3은 재고·지점·예약 표 3개를 더한다.
+    # 정확한 표 집합 비교는 유지한다
+    assert tables == {'meta', 'tasks', 'dispatches', 'events', 'sqlite_sequence',
+                      'receipt_events', 'receipt_observations', 'register_requests',
+                      'inventory', 'locations', 'reservations'}

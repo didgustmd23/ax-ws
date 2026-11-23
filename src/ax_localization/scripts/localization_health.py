@@ -352,6 +352,8 @@ class Inputs:
     actuation_state: int = None
     actuation_valid: bool = False
     actuation_stamp: float = None
+    amcl_active: bool = None             # AMCL lifecycle active 여부(AmclLifecycle.available, 미확인이면 None).
+                                         # 재위치 접수는 True일 때만, 진행 중 False면 즉시 실패
 
 
 # 위치 신뢰성 판정 결과
@@ -662,6 +664,55 @@ class AmclResetDetector:
             return f"LIFECYCLE_{start_label}_TO_{goal_label}".upper()
 
         return None
+
+
+# AMCL lifecycle 상태 추적(재위치 진행 판단용). 두 출처를 합친다.
+# - 전이 사건(amcl/transition_event): 받는 즉시 goal 상태로 갱신한다.
+# - 상태 조회(amcl/get_state) 응답: 시작 시점·놓친 사건을 덮는다. 조회를 보낸 뒤 전이 사건이 왔으면
+#   응답이 그보다 오래된 상태일 수 있으므로 버린다.
+# 순서 비교는 단조 벽시계(wall)로 한다(sim time 정지와 무관).
+class AmclLifecycle:
+    def __init__(self):
+        self.label = None            # 마지막으로 확인한 상태 label(None = 미확인)
+        self.source = None           # "transition" · "get_state"
+        self.event_wall = None       # 마지막 전이 사건 수신 시각
+        self.updated_wall = None     # 마지막 갱신 시각
+        self.state_sent_wall = None  # 반영한 마지막 조회의 송신 시각(더 오래된 조회 응답은 버린다)
+
+    # 전이 사건의 goal 상태 label로 갱신한다.
+    def on_transition(self, goal_label, wall):
+        self.label = goal_label
+        self.source = "transition"
+        self.event_wall = wall
+        self.updated_wall = wall
+
+    # 상태 조회 응답으로 갱신한다. sent_wall: 조회를 보낸 시각. 그 뒤에 전이 사건이 있었거나, 이미 반영한 조회보다
+    # 먼저 보낸 조회의 응답이면 무시하고 False를 돌려준다.
+    def on_state(self, label, sent_wall, wall):
+        if self.event_wall is not None and self.event_wall >= sent_wall:
+            return False
+
+        if self.state_sent_wall is not None and sent_wall <= self.state_sent_wall:
+            return False
+
+        self.state_sent_wall = sent_wall
+
+        self.label = label
+        self.source = "get_state"
+        self.updated_wall = wall
+
+        return True
+
+    # active면 True, 다른 상태면 False, 아직 모르면 None
+    def available(self):
+        if self.label is None:
+            return None
+
+        return self.label == "active"
+
+    # 진단 기록용 요약
+    def summary(self):
+        return {"label": self.label, "source": self.source, "updated_wall": self.updated_wall}
 
 
 # launch initial_poses 최초 초기화의 산포 만들기. launch 초기 위치가 확인(established)됐는데 추정 공분산이 붕괴해 있으면
@@ -1197,6 +1248,7 @@ class ReinitAttempt:
     last_nomotion: float = None
     result: str = None                             # None(진행), "SUCCEEDED", "REINIT_FAILED_*"
     timeout: dict = None                           # 시간초과로 끝났을 때 두 시계 조건(진단 기록용, 판정에 쓰지 않음)
+    cause: str = None                              # 제한시간 전 즉시 종료 원인(진단 기록용, 예: AMCL_NOT_ACTIVE)
     number: int = None                             # 이 감독 세션의 접수 순번(진단 기록의 접수·종료 대응용, 판정에 쓰지 않음)
 
 
@@ -1244,6 +1296,10 @@ class Reinitializer:
 
         if problem == "NOT_STOPPED":
             return False, "REINIT_REJECTED_NOT_STOPPED"
+
+        # AMCL이 active임을 확인하지 못하면(비활성·미확인 모두) 보낸 후보가 버려질 수 있으므로 접수하지 않는다(fail-closed).
+        if inputs.amcl_active is not True:
+            return False, "REINIT_REJECTED_AMCL_UNAVAILABLE"
 
         candidate, rejection = reinit_candidate(tracker, inputs.odom_pose, now, map_id, self.config)
 
@@ -1319,6 +1375,12 @@ class Reinitializer:
         # 정지 조건 상실
         if actuation_problem(inputs, now, self.config) is not None:
             return self.finish("REINIT_FAILED_NOT_STOPPED", now)
+
+        # AMCL이 active가 아님을 확인했으면 보낸 후보가 버려졌거나 필터가 다시 시작되므로 제한시간을 기다리지 않고 끝낸다.
+        # 미확인(None)이면 판단하지 않고 기존 제한시간 판정을 따른다.
+        if inputs.amcl_active is False:
+            attempt.cause = "AMCL_NOT_ACTIVE"
+            return self.finish("REINIT_FAILED_AMCL_UNAVAILABLE", now)
 
         updates = attempt.updates
         candidate = attempt.candidate
@@ -1413,6 +1475,7 @@ def reinit_finished_entry(reinit, result, config_source):
 
     return {"result": result, "attempt": None if attempt is None else attempt.number,
             "timeout": None if attempt is None else attempt.timeout,
+            "cause": None if attempt is None else attempt.cause,
             "limits": {"timeout_s": r["timeout_s"], "timeout_wall_s": r["timeout_wall_s"]},
             "config_source": config_source}
 

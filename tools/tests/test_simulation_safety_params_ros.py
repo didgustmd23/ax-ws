@@ -187,9 +187,9 @@ class SimulationSafetyParamsRosTest(unittest.TestCase):
         self.assertEqual((b4_1['robot_id'], b4_2['robot_id']), ('robot_1', 'robot_2'))
         self.assertEqual(b4_1['sensor_stale_s'], 0.25)
 
-    # 매핑 없이 safety만 켜면 역할 미정·잠금, 허가 false
+    # 매핑 없이 기본값 적용을 끄면(safety_stop_evidence_auto:=false) 역할 미정·잠금, 허가 false
     def test_default_unconfirmed_and_locked(self):
-        self.launch(['safety:=true', 'robot_ids:=robot_2'])
+        self.launch(['safety:=true', 'robot_ids:=robot_2', 'safety_stop_evidence_auto:=false'])
         gate = self.get('/ax/robot_2/a4_safety_gate',
                         ['stop_arm_presence', 'travel_joint_names', *GATE_FLAGS])
         self.assertEqual(gate['stop_arm_presence'], 'unconfirmed')
@@ -199,6 +199,23 @@ class SimulationSafetyParamsRosTest(unittest.TestCase):
         arm = self.get('/ax/robot_2/a4_protected_arm_server', ['arm_joint_names', 'enable_simulation_arm'])
         self.assertEqual(arm['arm_joint_names'], [])
         self.assertIs(arm['enable_simulation_arm'], False)
+
+    # 매핑 없이 safety만 켜면(기본 auto) 각 로봇이 실제 모델의 정지 역할을 받는다. 주행 자세·허가는 그대로 잠금
+    def test_default_model_stop_evidence(self):
+        self.launch(['safety:=true', 'robots:=2'])
+        names = ['stop_arm_presence', 'stop_arm_joint_names', 'travel_joint_names', *GATE_FLAGS]
+        gate_1 = self.get('/ax/robot_1/a4_safety_gate', names)
+        gate_2 = self.get('/ax/robot_2/a4_safety_gate', names)
+
+        self.assertEqual(gate_1['stop_arm_presence'], 'present')
+        self.assertEqual(gate_1['stop_arm_joint_names'], AX1_JOINTS)
+        self.assertEqual(gate_2['stop_arm_presence'], 'absent')
+        self.assertEqual(gate_2['stop_arm_joint_names'], [])
+
+        for gate in (gate_1, gate_2):
+            self.assertEqual(gate['travel_joint_names'], [])
+            for flag in GATE_FLAGS:
+                self.assertIs(gate[flag], False, flag)
 
     # 실제 CLI에서 미선언 하위 인자는 상위 context에 들어오며, 상위 진입점이 이를 거부한다
     def test_cli_global_alias_rejected(self):

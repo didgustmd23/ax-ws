@@ -35,9 +35,13 @@ ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false
 
 ```bash
 S=$(ros2 pkg prefix --share ax_safety)/config
-# 두 로봇: 정지 판정 역할을 로봇별로 준다. robot_params는 검증된 파일이 있을 때만 준다.
+# 두 로봇: 정지 판정 역할은 각 로봇 모델의 기본 파일을 받는다(robot_1 AX_1 → ax1, robot_2 AX_2 → ax2).
+ros2 launch ax_control simulation.launch.py gui:=false safety:=true
+# 명시 매핑(위와 같은 결과). 매핑한 로봇은 기본값 대신 이 파일을 쓴다.
 ros2 launch ax_control simulation.launch.py gui:=false safety:=true \
   safety_stop_evidence_files:=robot_1=$S/stop_evidence_ax1.yaml,robot_2=$S/stop_evidence_ax2.yaml
+# 역할 미정(STOPPED 미확인) 상태 재현: 기본값 적용을 끈다
+ros2 launch ax_control simulation.launch.py gui:=false safety:=true safety_stop_evidence_auto:=false
 # 한 로봇
 ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false safety:=true \
   safety_stop_evidence_files:=robot_1=$S/stop_evidence_ax1.yaml \
@@ -47,14 +51,22 @@ ros2 launch ax_control simulation.launch.py robot_ids:=robot_1 gui:=false safety
 | 인자 | 형식·기본 | 하위 `safety.launch.py` 인자 |
 |---|---|---|
 | `safety_params_file` | 경로. 비우면 선택된 ax_safety 설치본의 `config/safety_limits.yaml` | `params_file`(모든 로봇 공통) |
-| `safety_stop_evidence_files` | `robot_<n>=<경로>,...`. 기본 빈 값 | `stop_evidence_file`(로봇별) |
+| `safety_stop_evidence_files` | `robot_<n>=<경로>,...`. 기본 빈 값. 매핑한 로봇은 이 파일이 모델 기본값보다 우선 | `stop_evidence_file`(로봇별) |
+| `safety_stop_evidence_auto` | `true`(기본)·`false`. `true`면 매핑에 없는 로봇에 실제 모델의 기본 정지 역할 파일을 넣는다 | `stop_evidence_file`(로봇별) |
 | `safety_robot_params_files` | `robot_<n>=<경로>,...`. 기본 빈 값 | `robot_params_file`(로봇별) |
 | `safety_enable_simulation_drive`·`safety_enable_simulation_arm`·`safety_operational_permits_verified`·`safety_travel_envelope_verified`·`safety_arm_operation_verified` | 기본 `false` | 접두사를 뗀 같은 이름(파일 값보다 나중에 적용) |
 
-- 매핑에 없는 로봇은 빈 값으로 넘어가 역할 미정(STOPPED 미확인)·주행 자세/팔 한계 미설정(잠금)이 된다. 다른 로봇 값으로 채우지 않으며, 로봇 include마다 scope를 나눠 값이 옆 로봇으로 새지 않는다. `robot_id`로 역할 파일을 추측하지 않는다.
+- 정지 역할 기본값(2026-11-23 사용자 결정): `safety_stop_evidence_auto:=true`(기본)이면 매핑에 없는 로봇은 이 launch가 그 로봇에 **실제로 띄우는 모델**의 파일을 받는다. `robot_id` 문자열로 추측하지 않는다.
+  - 모델은 A1 `robot_test.launch.py`의 `ROBOT_ROLES`(그 파일을 직접 읽음)와 A1의 역할→모델 규칙(MANIPULATOR → `ax.urdf.xacro`, 그 밖 → `ax_2.urdf.xacro`)으로 정한다. 같은 모델 판단으로 `arm_controller`·공구 노드 대상도 정한다. 두 규칙이 A1 원문과 같은지는 `tools/tests/test_simulation_safety_launch.py`가 대조한다.
+  - `ax.urdf.xacro`(AX_1, 팔 있음) → `stop_evidence_ax1.yaml`, `ax_2.urdf.xacro`(AX_2, 팔 없음) → `stop_evidence_ax2.yaml`(선택된 ax_safety 설치본의 `config/`).
+  - A1 역할 표에 없거나 모델을 정할 수 없는 로봇, 기본 파일이 없는 경우는 빈 값으로 넘기지 않고 시작 전에 거부한다.
+  - 로봇마다 쓴 파일과 출처(명시 매핑·모델 기본값·빈 값)를 launch 로그에 `[ax_control] robot_<n> A4 정지 역할 파일: …`로 남긴다.
+  - `safety_stop_evidence_auto:=false`이면 이전 동작과 같다. 매핑에 없는 로봇은 빈 값(역할 미정·STOPPED 미확인)이다.
+  - 기본값은 정지 판정 역할만 정한다. 주행 허가·주행 자세·팔 한계·운영 허가를 열지 않는다.
+- `safety_robot_params_files`에 없는 로봇은 빈 값(주행 자세·팔 한계 미설정, 잠금)이다. 이 값에는 기본값이 없다. 다른 로봇 값으로 채우지 않으며, 로봇 include마다 scope를 나눠 값이 옆 로봇으로 새지 않는다.
 - 쉼표로 항목을 나누고 각 항목의 첫 `=`만 구분자로 본다. 항목 앞뒤 공백은 지우고 경로 내부 공백은 보존한다(셸 따옴표 필요). 쉼표가 든 경로는 지원하지 않는다.
 - 시작 전에 거부: 선택되지 않은 로봇·중복 로봇·형식 오류·없는 파일, `safety:=false`에서 파일 인자 지정, 하위 단일 로봇 인자(`params_file`·`stop_evidence_file`·`robot_params_file`·접두사 없는 허가 플래그)를 이 진입점에 직접 준 경우. 단일 로봇 인자는 `safety.launch.py`를 직접 실행할 때 쓴다.
-- 파일 존재만 확인한다. 역할 파일이 그 로봇 모델과 맞는지(AX_1 팔 있음 `stop_evidence_ax1`, AX_2 팔 없음 `stop_evidence_ax2`), 주행 자세·팔 한계 값이 검증됐는지는 호출자 책임이다. 특히 팔 있는 로봇에 `stop_evidence_ax2`를 주면 팔 움직임을 보지 않고 STOPPED가 날 수 있다.
+- 명시 매핑 파일은 존재만 확인한다. 역할 파일이 그 로봇 모델과 맞는지(AX_1 팔 있음 `stop_evidence_ax1`, AX_2 팔 없음 `stop_evidence_ax2`), 주행 자세·팔 한계 값이 검증됐는지는 호출자 책임이다. 특히 팔 있는 로봇에 `stop_evidence_ax2`를 주면 팔 움직임을 보지 않고 STOPPED가 날 수 있다.
 - 이 전달만으로 주행 허가·B3/B4 경로·W2 전체가 해결되지 않는다. 허가 플래그는 모두 기본 `false`다.
 
 ### 바퀴 보정값
@@ -123,6 +135,15 @@ Gazebo 실제 값은 시험 비교용이며 운영 판정에 쓰지 않는다.
 | 내부 | `tool/gz_command`, `tool/gz_state` | 공구 노드와 플러그인 사이 전용. 다른 노드는 쓰지 않는다 |
 
 수락에는 `arm_allowed`가 유효·최신이고 A3 `CheckCommandLease`가 허용해야 한다. A3·A4가 없으면 모든 요청을 거절한다.
+
+| 거절 경우 | `reason_code` |
+|---|---|
+| 형식 오류(명령·robot_id·object_id) | `AUTHORITY_INVALID` |
+| `arm_allowed` 아님(무효·만료·미수신 포함, A3 확인 전) | `SAFETY_STOP` |
+| A3 무응답(서비스 미준비, 0.5 s 안에 응답 없음) | `A3_LEASE_TIMEOUT`(계약 D-13, A4 보호 팔 서버와 같은 코드. 2026-11-24 전에는 `LEASE_EXPIRED`) |
+| A3 거절 | A3가 준 사유 그대로(예: `ASSIGNMENT_STALE`·`LEASE_EXPIRED`·`DUPLICATE_REQUEST`). 빈 사유면 `LEASE_EXPIRED` |
+| A3 허용 뒤 기한(`t_first + valid_for_s`) 경과 | `LEASE_EXPIRED` |
+| 같은 `request_id`에 인자가 다름 | `DUPLICATE_REQUEST` |
 
 A4 `actuation_state`는 Schema 2만 받는다([인터페이스 계약](../../docs/design/INTERFACE_CONTRACT.md#actuationstate-schema-2-w2-a4-전환)). 수신 단계에서 자기 `robot_id`, `schema_version` 2, 비어 있지 않은 `source_id`·`source_session_id`, `revision` > 0, 0이 아닌 stamp를 확인한다. 같은 세션에서 revision이나 stamp가 줄어든 메시지와 이미 교체된 이전 세션의 메시지는 버린다. 거부한 메시지는 수신 시각을 갱신하지 않아 0.3 s 만료를 늦추지 않는다. `valid=false`는 받아서 바로 거절 상태로 만든다. 허가 판단은 `arm_allowed`만 보고 `STOPPED`를 허가로 쓰지 않는다. sim time 기준 표본 나이가 0.3 s를 넘거나 미래 stamp(나이 < 0)이면 그 평가만 거절하고 메시지는 버리지 않는다. 거부 사유는 바뀔 때만 로그에 남긴다. 시험은 `tools/tests/test_a2_tool_actuation_schema2.py`, `check_tool_attach.py`의 모의 A4도 Schema 2로 발행한다.
 안전 정지나 A3 무응답으로 물체를 자동 해제하지 않으며, 해제는 명시적 `RELEASE`로만 한다.

@@ -1,0 +1,31 @@
+{
+  "receipt": {
+    "receipt_zones": ["loc-dev-receipt-a"],
+    "destination_rules": {"loc-dev-receipt-a": "loc-dev-storage-1"},
+    "min_identity_confidence": 0.8,
+    "max_observation_age_s": 2.0
+  },
+  "catalog": {
+    "catalog_id": "d2_dev_intake_catalog",
+    "map_revision": 1,
+    "locations": {
+      "loc-dev-receipt-a": {
+        "location_revision": 1, "purpose": "RECEIPT", "zone_id": "zone-dev-receipt",
+        "capacity": 4, "allowed_object_classes": ["*"], "max_load_kg": 5.0, "active": true,
+        "pose": {"x": 0.0, "y": 0.0, "yaw": 0.0},
+        "stop_poses": {"MANIPULATOR": {"x": 0.0, "y": 0.6, "yaw": 0.0},
+                       "TRANSPORTER": {"x": 0.0, "y": -0.6, "yaw": 0.0}},
+        "wait_location_id": ""
+      },
+      "loc-dev-storage-1": {
+        "location_revision": 1, "purpose": "STORAGE", "zone_id": "zone-dev-storage",
+        "capacity": 1, "allowed_object_classes": ["box_small"], "max_load_kg": 5.0,
+        "active": true,
+        "pose": {"x": 4.0, "y": 0.0, "yaw": 0.0},
+        "stop_poses": {"MANIPULATOR": {"x": 4.0, "y": 0.6, "yaw": 0.0},
+                       "TRANSPORTER": {"x": 4.0, "y": -0.6, "yaw": 0.0}},
+        "wait_location_id": ""
+      }
+    }
+  }
+}

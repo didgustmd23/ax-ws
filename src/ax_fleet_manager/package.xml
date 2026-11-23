@@ -3,12 +3,14 @@
 <package format="3">
   <name>ax_fleet_manager</name>
   <version>0.0.0</version>
-  <description>D2 group task step machine (W3 development base): pure engine, D2 SQLite ledger, mock ports and development-namespace GroupTaskList output. No live actuation or operational output.</description>
+  <description>D2 group task step machine (W3-W5 development): pure engine, D2 SQLite ledger with receipt intake and inventory, mock ports and development-namespace outputs. No live actuation or operational output.</description>
   <maintainer email="yhs@todo.todo">yhs</maintainer>
   <license>Apache-2.0</license>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>ax_interfaces</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

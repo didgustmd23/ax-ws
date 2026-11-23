@@ -430,6 +430,15 @@ class Rejection(unittest.TestCase):
         self.assertEqual(item['value']['premise_unmet'], 1)
         self.assertEqual(item['value']['correct'], 0)
 
+    # AMCL 비활성·미확인으로 거절된 것도 이동 거절 성공이 아니다(전제 불충족, not_judged, 2026-11-23 코드 추가).
+    def test_amcl_unavailable(self):
+        items = F.items(CHECK, criteria(), edit_diag('reinit_request', 7.0, code='REINIT_REJECTED_AMCL_UNAVAILABLE'))
+        item = find(items, 'B2-L7', MOVING)
+
+        self.assertEqual(item['result'], 'not_judged')
+        self.assertEqual(item['value']['premise_unmet'], 1)
+        self.assertEqual(item['value']['wrong_reason'], 0)
+
     # 요청 시각 odom이 없으면(0.5 s 넘게 공백) 조건을 정하지 못해 분류하지 않는다.
     def test_state_time_missing(self):
         def drop(data):

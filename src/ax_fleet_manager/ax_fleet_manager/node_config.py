@@ -14,6 +14,7 @@ from .dev_fixtures import clock
 from .group_events import AssignRoles
 from .group_machine import restore_state
 from .registry import GroupRegistry
+from .runtime import reconcile_dispatch_rows
 from .task_store import TaskStore
 
 DEV_TOPIC_PREFIX = '/ax/dev/'
@@ -96,8 +97,14 @@ def load_store_states(path):
     def connect(_path, **kwargs):
         return sqlite3.connect(uri, uri=True, **kwargs)
 
-    store = TaskStore(str(path), connect=connect)
+    store = TaskStore(str(path), connect=connect, read_only=True)
     try:
-        return [restore_state(s) for s in store.load_states()]
+        states = []
+        for state in store.load_states():
+            restored = restore_state(state)
+            reconcile_dispatch_rows(restored, store.dispatch_rows(state.spec.task_id))
+            states.append(restored)
+
+        return states
     finally:
         store.close()

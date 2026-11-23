@@ -21,7 +21,8 @@ def good_inputs(now=10.0, odom=(1.0, 0.0, 0.0), map_odom=(0.5, 0.2, 0.0), std=0.
         tf_valid_time=now - 0.1, map_odom=map_odom, tf_chain_ok=True,
         amcl_stamp=now - 5.0, amcl_pose=lh.compose(map_odom, odom),
         amcl_covariance=tuple(lh.pose_covariance(std, yaw_std)), amcl_odom_pose=odom, amcl_updates=3,
-        actuation_state=lh.ACTUATION_STOPPED, actuation_valid=True, actuation_stamp=now - 0.05)
+        actuation_state=lh.ACTUATION_STOPPED, actuation_valid=True, actuation_stamp=now - 0.05,
+        amcl_active=True)  # AMCL lifecycle active(재위치 접수 전제, 2026-11-23)
 
 
 # 위치 신뢰성 판정
@@ -724,6 +725,110 @@ class TimeoutCause(unittest.TestCase):
         monitor.expire(21.0, 161.0, True)
 
         self.assertIsNotNone(monitor.intent)
+
+
+# AMCL lifecycle 추적과 진행 중 비활성 즉시 실패(2026-11-23, 계약 변경 없음: 기존 REINIT_FAILED_AMCL_UNAVAILABLE)
+class AmclLifecycleTracking(unittest.TestCase):
+
+    # 접수·송신까지 한 재위치(sim 20 s, 벽시계 100 s)
+    def accepted(self):
+        tracker, inputs, reinit, health = Reinit().prepared()
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.0, 'map-a', True, wall=100.0),
+                         (True, 'REINIT_ACCEPTED'))
+        reinit.mark_sent(20.0)
+
+        return inputs, reinit, health
+
+    # 진행 중 AMCL이 active가 아님을 확인하면 제한시간 전이라도 바로 AMCL_UNAVAILABLE로 끝낸다
+    def test_inactive_fails_immediately(self):
+        inputs, reinit, health = self.accepted()
+        fresh_actuation(inputs, 20.5)
+        inputs.amcl_active = False
+
+        self.assertEqual(reinit.step(inputs, 20.5, clock_valid=True, wall=100.5), 'REINIT_FAILED_AMCL_UNAVAILABLE')
+        self.assertFalse(reinit.active())
+        self.assertIsNone(reinit.attempt.timeout)
+        self.assertEqual(reinit.attempt.cause, 'AMCL_NOT_ACTIVE')
+        self.assertIn('REINIT_FAILED_AMCL_UNAVAILABLE', reinit.apply(health).reason)
+        entry = lh.reinit_finished_entry(reinit, 'REINIT_FAILED_AMCL_UNAVAILABLE', 'cfg')
+        self.assertEqual((entry['cause'], entry['timeout']), ('AMCL_NOT_ACTIVE', None))
+
+    # active·미확인(None)이면 즉시 끝내지 않는다. 미확인은 기존 제한시간 판정을 따른다
+    def test_active_or_unknown_keeps_running(self):
+        for state in (True, None):
+            with self.subTest(amcl_active=state):
+                inputs, reinit, _ = self.accepted()
+                inputs.amcl_active = state
+                fresh_actuation(inputs, 25.0)
+                self.assertIsNone(reinit.step(inputs, 25.0, clock_valid=True, wall=105.0))
+                fresh_actuation(inputs, 35.5)
+                self.assertEqual(reinit.step(inputs, 35.5, clock_valid=True, wall=115.5),
+                                 'REINIT_FAILED_AMCL_UNAVAILABLE')
+                self.assertIsNone(reinit.attempt.cause)
+                self.assertTrue(reinit.attempt.timeout['sim_expired'])
+
+    # 우선순위: 시계 무효 > 정지 상실 > AMCL 비활성
+    def test_priority(self):
+        inputs, reinit, _ = self.accepted()
+        inputs.amcl_active = False
+        self.assertEqual(reinit.step(inputs, 20.5, clock_valid=False, wall=100.5), 'REINIT_FAILED_CLOCK_INVALID')
+
+        inputs, reinit, _ = self.accepted()
+        inputs.amcl_active = False
+        inputs.actuation_state = None
+        self.assertEqual(reinit.step(inputs, 20.5, clock_valid=True, wall=100.5), 'REINIT_FAILED_NOT_STOPPED')
+
+    # 접수 전 거절: AMCL 비활성·미확인(fail-closed)은 REINIT_REJECTED_AMCL_UNAVAILABLE, 상태·시도 번호 불변.
+    # 우선순위: 시계 무효·NOT_NEEDED·A4 사유가 먼저, 후보 검사보다 앞
+    def test_request_requires_active(self):
+        for state in (False, None):
+            with self.subTest(amcl_active=state):
+                tracker, inputs, reinit, health = Reinit().prepared()
+                inputs.amcl_active = state
+                self.assertEqual(reinit.request(health, inputs, tracker, 20.0, 'map-a', True, wall=100.0),
+                                 (False, 'REINIT_REJECTED_AMCL_UNAVAILABLE'))
+                self.assertFalse(reinit.active())
+                self.assertEqual(reinit.accepted_count, 0)
+
+        tracker, inputs, reinit, health = Reinit().prepared()
+        inputs.amcl_active = False
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.0, 'map-a', False)[1],
+                         'REINIT_REJECTED_CLOCK_INVALID')
+        ok = lh.evaluate(good_inputs(), 10.0, CONFIG)
+        self.assertEqual(reinit.request(ok, inputs, tracker, 10.0, 'map-a', True)[1], 'REINIT_REJECTED_NOT_NEEDED')
+        inputs.actuation_state = None
+        self.assertEqual(reinit.request(health, inputs, tracker, 20.0, 'map-a', True)[1],
+                         'REINIT_REJECTED_NOT_STOPPED')
+
+        # 후보 검사보다 앞: 신뢰 기록이 없어도 AMCL 사유가 먼저 나온다
+        _, inputs, reinit, health = Reinit().prepared()
+        inputs.amcl_active = None
+        self.assertEqual(reinit.request(health, inputs, lh.TrustedPoseTracker(CONFIG), 20.0, 'map-a', True)[1],
+                         'REINIT_REJECTED_AMCL_UNAVAILABLE')
+
+    # 상태 추적: 전이 사건은 즉시, 조회 응답은 조회 뒤 사건이 없을 때만, 오래된 조회 응답은 버린다
+    def test_lifecycle_sources(self):
+        life = lh.AmclLifecycle()
+        self.assertIsNone(life.available())
+
+        self.assertTrue(life.on_state('active', sent_wall=1.0, wall=1.1))
+        self.assertIs(life.available(), True)
+
+        # 조회(2.0 송신) 뒤 3.0에 deactivate 사건 → 2.0 조회의 active 응답(3.2 도착)은 버린다
+        life.on_transition('inactive', wall=3.0)
+        self.assertIs(life.available(), False)
+        self.assertFalse(life.on_state('active', sent_wall=2.0, wall=3.2))
+        self.assertIs(life.available(), False)
+        self.assertEqual(life.source, 'transition')
+
+        # 사건 뒤 보낸 조회 응답은 반영한다
+        self.assertTrue(life.on_state('unconfigured', sent_wall=4.0, wall=4.1))
+        self.assertEqual((life.label, life.source), ('unconfigured', 'get_state'))
+
+        # 이미 반영한 조회보다 먼저 보낸 조회의 늦은 응답은 버린다
+        self.assertFalse(life.on_state('active', sent_wall=3.5, wall=4.5))
+        self.assertTrue(life.on_state('active', sent_wall=5.0, wall=5.1))
+        self.assertIs(life.available(), True)
 
 
 if __name__ == '__main__':

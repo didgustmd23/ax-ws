@@ -180,7 +180,10 @@ def test_partial_lock_success(tmp_path):
     mock.run()
 
     state = runtime.registry.states['task_a']
-    assert state.transfer_state == gm.TRANSFER_NONE
+    # W4: 한쪽 잠금이 이미 걸렸을 수 있으므로 NONE으로 돌아가지 않고 UNKNOWN(두 로봇 주행 금지)을
+    # 유지한다. W3 기대값 NONE에서 강화(A4 HANDOFF_LOCK이 걸리도록)
+    assert state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert state.transfer_id == state.spec.source_transfer_id
     assert 'STEP_FAILED' in state.inhibit
     assert not any(r['operation'] == 'PICK_AND_STOW' for r in local.requests)
 
@@ -278,3 +281,90 @@ def test_restart_mid_handoff_keeps_lock(tmp_path):
 
     listed = task_list_fields(restarted.states())
     assert listed[0]['transfer_state'] == gm.TRANSFER_IN_PROGRESS
+
+
+# W4: 잠금 요청 포트가 없어 예약 전에 실패하면 A3에 보낸 것이 없으므로 NONE을 유지한다(영구 차단 없음)
+def test_lock_not_reserved_keeps_none(tmp_path):
+    clk = Clock()
+    nav = MockNavigationPort('scenario')
+    store = TaskStore(str(tmp_path / 'd2.sqlite'))
+    runtime = GroupRuntime(store, {'NAVIGATION': nav}, clk, map_revision=1, locations=LOCATIONS)
+    mock = MockCounterpart(runtime, MockLocalTaskPort('unused'), nav, clk)
+    begin(runtime, 'task_a', 'box_a', 'robot_m', 'robot_t')
+    mock.run()
+
+    state = runtime.registry.states['task_a']
+    for key in ('src_lock_manipulator', 'src_lock_transporter'):
+        run = state.steps[key]
+        assert run.status == 'NOT_SENT' and not run.goal_uuid
+        assert store.dispatch_row(run.execution_id)['status'] == 'INTENDED'
+
+    assert 'DISPATCH_FAILED' in state.inhibit
+    assert state.transfer_state == gm.TRANSFER_NONE
+    assert state.transfer_id == ''
+
+
+# W4: 예약 기록 직후 상태 기록 전에 멈춘 경우: 재시작 복원이 예약 표로 UNKNOWN을 세우고 재전송하지 않는다.
+# 개발 출력 노드의 읽기 전용 복원도 같은 상태를 낸다
+def test_restart_after_lock_reserve_before_record(tmp_path):
+    from ax_fleet_manager.node_config import load_store_states
+    from ax_fleet_manager.task_store import StoreError
+
+    runtime, mock, local, _ = make_scenario(tmp_path)
+    original_reserve = runtime.store.reserve_dispatch
+    original_record = runtime.store.record_decision
+    flags = {}
+
+    # 잠금 요청 예약 뒤 다음 상태 기록을 실패시킨다
+    def reserve(execution_id):
+        goal_uuid = original_reserve(execution_id)
+        if 'src_lock' in runtime.store.dispatch_row(execution_id)['step_key']:
+            flags['fail_next'] = True
+        return goal_uuid
+
+    # 표시된 다음 기록 하나만 실패
+    def record(*args, **kwargs):
+        if flags.pop('fail_next', False):
+            raise StoreError('시험 주입: 예약 뒤 상태 기록 실패')
+        return original_record(*args, **kwargs)
+
+    runtime.store.reserve_dispatch = reserve
+    runtime.store.record_decision = record
+    begin(runtime, 'task_a', 'box_a', 'robot_m', 'robot_t')
+    mock.run()
+    assert runtime.fault
+    assert not any(r['operation'] == 'LOCK_HANDOFF' for r in local.requests)
+    runtime.store.close()
+
+    restarted, mock2, local2, nav2 = make_scenario(tmp_path)
+    state = restarted.registry.states['task_a']
+    assert state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert state.transfer_id == state.spec.source_transfer_id
+    assert 'RESTORED_UNRECONCILED' in state.inhibit
+    mock2.publish('task_a', ['stopped'])
+    assert local2.requests == [] and nav2.requests == []
+    restarted.store.close()
+
+    (read_state,) = load_store_states(tmp_path / 'd2.sqlite')
+    assert read_state.transfer_state == gm.TRANSFER_UNKNOWN
+    listed = task_list_fields([read_state])
+    assert listed[0]['transfer_state'] == gm.TRANSFER_UNKNOWN
+
+
+# W4: 한쪽 잠금 실패 뒤 재시작해도 UNKNOWN·목록 유지, 이동 요청 0건
+def test_restart_after_partial_lock_keeps_unknown(tmp_path):
+    runtime, mock, _, nav = make_scenario(tmp_path)
+    mock.overrides[('task_a', 'src_lock_transporter')] = gm.OUTCOME_FAILED
+    begin(runtime, 'task_a', 'box_a', 'robot_m', 'robot_t')
+    mock.run()
+    navs = len(nav.requests)
+    assert runtime.registry.states['task_a'].transfer_state == gm.TRANSFER_UNKNOWN
+    runtime.store.close()
+
+    restarted, mock2, local2, nav2 = make_scenario(tmp_path)
+    mock2.publish('task_a', ['stopped'])
+    state = restarted.registry.states['task_a']
+    assert state.transfer_state == gm.TRANSFER_UNKNOWN
+    assert local2.requests == [] and nav2.requests == []
+    assert navs == 2
+    assert task_list_fields(restarted.states())[0]['transfer_state'] == gm.TRANSFER_UNKNOWN

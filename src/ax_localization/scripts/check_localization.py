@@ -1792,7 +1792,8 @@ REINIT_RESULT_CODES = {"REJECTED_NOT_STOPPED": "REINIT_REJECTED_NOT_STOPPED",
                        "NOT_NEEDED": "REINIT_REJECTED_NOT_NEEDED"}
 # 거절이지만 시험 전제가 성립하지 않은 응답(이동 거절·불필요 거절 성공으로 세지 않는다)
 REINIT_PREMISE_CODES = {"REINIT_REJECTED_ACTUATION_STALE": "A4 구동 상태 미수신·만료",
-                        "REINIT_REJECTED_CLOCK_INVALID": "sim time 무효"}
+                        "REINIT_REJECTED_CLOCK_INVALID": "sim time 무효",
+                        "REINIT_REJECTED_AMCL_UNAVAILABLE": "AMCL lifecycle active 미확인(비활성·미확인)"}
 # 재위치 종료 중 시험 전제가 깨진 중단(정상 완료 실패와 구분한다)
 REINIT_ABORT_RESULTS = ("REINIT_FAILED_NOT_STOPPED", "REINIT_FAILED_CLOCK_INVALID")
 ACTUATION_STOPPED = 4

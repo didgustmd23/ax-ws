@@ -2,11 +2,14 @@
 
 - LocalTaskPort: A3 ExecuteLocalTask Goal 전송·취소. live 연결(실 A3)은 W3 범위 밖이라 미지원.
 - NavigationPort: D1의 실행 ID·goal UUID·취소를 제공하는 실행 API가 아직 없어 미지원.
+  주행 포트는 goal UUID를 스스로 만든다(generates_goal_uuid, W5). dispatch(intent, None)이 D1의
+  goal UUID를 돌려주고, D2는 그 값을 참고 기록한다. 결합 키는 execution_id다.
 - 모의 포트는 프로세스·인스턴스가 드러나는 source_id와 provenance=MOCK을 가진다. 받은 요청을
   기록만 하며 ROS Action·속도·팔·공구·안전 해제를 호출하거나 발행하지 않는다.
 """
 import itertools
 import os
+import uuid
 
 from .group_model import MODE_DEVELOPMENT_MOCK, PROVENANCE_MOCK
 
@@ -68,6 +71,7 @@ class NavigationPort(LocalTaskPort):
     """D1 주행 실행 포트(실행 API 미정으로 W3 미지원)."""
 
     name = 'D1_NAVIGATION_EXECUTION_API'
+    generates_goal_uuid = True
 
 
 # ExecuteLocalTask Goal 필드 사전(msg 필드 이름 그대로). pose는 원장 조회 포트가 없어 None
@@ -141,7 +145,25 @@ class MockLocalTaskPort(LocalTaskPort):
 
 
 class MockNavigationPort(MockLocalTaskPort):
-    """개발 모의 주행 포트. Nav2·cmd_vel을 사용하지 않는다."""
+    """개발 모의 주행 포트. Nav2·cmd_vel을 사용하지 않는다.
+
+    D1 방식을 흉내 낸다: goal UUID는 포트(D1)가 execution_id마다 한 번 만들고 같은 execution_id
+    재호출에는 같은 UUID를 돌려준다(D1 ExecutionLedger.reserve와 같은 멱등).
+    """
 
     name = 'MOCK_NAVIGATION'
     convert = staticmethod(navigation_request_fields)
+    generates_goal_uuid = True
+
+    # 출처와 execution_id별 UUID 기록을 준비한다
+    def __init__(self, label='mock'):
+        super().__init__(label)
+        self.goal_uuids = {}
+
+    # 요청 기록 후 D1처럼 만든 goal UUID를 돌려준다(D2가 준 값은 쓰지 않는다)
+    def dispatch(self, intent, goal_uuid=None):
+        execution_id = intent.execution['execution_id']
+        made = self.goal_uuids.setdefault(execution_id, uuid.uuid4().hex)
+        super().dispatch(intent, made)
+
+        return made

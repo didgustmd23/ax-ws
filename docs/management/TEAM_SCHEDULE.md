@@ -337,6 +337,159 @@ P1~P5를, **시험 1개월**(2026-12-28 ~ 2027-01-28)에 P6·P7을 둔다. 주�
   실제 A4 경로의 재위치 확인, 실제 A3·A4 경유 공구 명령 확인.
   이 절은 개발 진행 기록이며 G1 통과·A4/D 통합 완료를 뜻하지 않는다.
 
+### W3 양현승 C2·D2 진행 — 2026-11-23
+
+- C2 표면 관측(개발 중, [ax_perception 안내](../../src/ax_perception/README.md)): RGB-D 관측 표면 계산과 C3 Surface 보류 어댑터(`2099b04`),
+  검출 bbox와 같은 stamp의 깊이를 잇는 연결기(`84e26f9`), RGB-D 검출 입력 ROS 노드와 설치 규칙(`f3ae558`)을 추가했다.
+  출력은 로컬 JSON Lines 기록뿐이고 공개 Surface 메시지·토픽은 정하지 않았다. `VALID`/`LINKED`는 평면 맞춤 유효일 뿐 목표 물체 일치가 아니며
+  object_id·대상 대응·confidence·질량·흡착 적합성을 만들지 않는다. C1 기본 구성(`front_rgb`)은 이 노드 입력이 아니어서 실제 C1 검출과는 연결하지 않았다.
+- D2 그룹 단계 머신(개발 기반, [ax_fleet_manager 안내](../../src/ax_fleet_manager/README.md)): 순수 엔진·D2 전용 SQLite 원장·모의 상대 포트·`/ax/dev/` 개발 상태 출력 노드를 추가했다(`0597bf7`).
+  자동 입고·실제 인계 프로토콜·재고 갱신·운영 종단 완료가 아니다. 실제 Action·주행·팔·공구·안전 해제를 호출하지 않고, 운영 모드는 시작을 거부하며,
+  live 포트(A3·D1·C4·D3·D4·A4 `ActuationState`)는 미지원(`NOT_SENT`)이다. 실행 억제(`inhibit`) 해제와 재시작 뒤 재대조 절차는 없다.
+- ActuationState Schema 2 수신 검사(PR #78, 11-22): 공구 노드(`84ef57a`)·B2 위치 감독기(`ea2487d`)가 Schema 2만 받도록 하고,
+  A4·B4·팀 소비자 시험을 Schema 2·배터리 변경에 맞췄다(`ddab083`).
+- 실행한 검사(2026-11-23, HEAD `a5e157d`를 `git archive`로 꺼낸 별도 복사본, Ubuntu 24.04 WSL2·ROS 2 Jazzy, 시험 전용 ROS domain, Gazebo 미실행):
+  - 빌드: `colcon build --packages-up-to`로 `ax_interfaces`·`ax_perception`·`ax_fleet_manager`·`ax_control`·`ax_localization`·`ax_safety`·`ax_grasp_planner` 포함 10개 패키지 성공.
+  - C2(`test_c2_surface.py`·`test_c2_detection_link.py`·`test_c2_surface_node.py`·`test_c2_surface_node_process.py`, 격리 install 지정): 첫 실행 81 통과·1 실패, skip 0.
+    실패는 설치본 프로세스 시험 1건으로, 첫 stamp의 image·depth_image를 노드가 받지 못해 `NO_MATCHING_FRAME_TIMEOUT`이 났다. 같은 시험을 단독으로 5회 다시 실행하니 모두 통과했고,
+    묶음 전체 재실행도 82개가 모두 통과했다. 간헐적인 실패이며 원인(DDS 연결 시점 추정)은 확정하지 않았다.
+  - D2(`test_d2_*.py` 6개 파일 162개, `test_d2_group_node_ros.py` 3개): 모두 통과, skip 0. 실행 ID 대조 시험의 `rfc8785`는 작업공간 `.venv`의 외부 모듈을 썼다.
+  - PR #78: `test_a2_tool_actuation_schema2.py` 14개와 `test_b2_actuation_schema2.py`·`test_localization_supervisor.py` 33개는 모두 통과했다.
+    `test_a4_b4_sim_clock_params_ros.py`·`test_b4_observation_validation.py`·`test_team_consumers_offline.py`는 셸 설정 `RCUTILS_COLORIZED_OUTPUT=1`일 때 51 통과·2 실패였다.
+    실패한 2건은 `StopDiagnosticsTest`로, A4 진단 로그 줄 끝에 붙은 색 코드 때문에 JSON 해석이 실패했다. 같은 조건에서 재현됐고, `RCUTILS_COLORIZED_OUTPUT=0`으로 두면 53개가 모두 통과했다.
+  - 시험 수정 뒤 재실행(`57d6e15`에 반영, 작업트리 소스를 별도 install로 빌드):
+    - A4 진단 시험은 게이트 실행 환경의 색 출력을 끄고 색 코드만 지운 뒤 해석하도록 고쳤다. 해석 실패는 그대로 실패한다. 3개 파일 묶음이 `RCUTILS_COLORIZED_OUTPUT` 1·0에서 각각 53개 모두 통과했다.
+    - C2 프로세스 시험은 발행자 쪽 구독 수만으로는 노드 수신이 보장되지 않았다(진단: 매칭 직후 첫 영상 20회 중 14회 미수신). 또 `/clock`과 데이터의 도착 순서도 가정하고 있었다.
+      그래서 시계 시작 전 탐침으로 노드의 네 입력 수신을 먼저 확인하고(상한 10 s), stamp마다 노드 시계 도달을 확인한 뒤 보내도록 고쳤다(상한 5 s). 기대값은 바꾸지 않았다.
+      해당 시험을 색 출력 1·0에서 각각 단독 10회 실행해 모두 통과했고, C2 4개 파일 묶음 1회도 82개 모두 통과했다.
+- 실제 A4 경로 재확인(2026-11-23, HEAD `a5e157d` 별도 복사본, 격리 domain·partition, headless, RTF 0.6~0.98, 판정 기준 없는 값은 `not_judged`, 로컬 기록):
+  - robot_2 B2 재위치(정지 상태, 주행 없음): A4 정지 역할 파일(`stop_evidence_ax2.yaml`)을 지정한 3회는 A4가 Schema 2 `STOPPED`·`valid`였다. AMCL 재설정 뒤 재위치가 3회 모두 접수·완료됐고, 재설정 뒤 위치 오차는 최대 0.029 m였다.
+    3회 중 1회는 이탈 직후(AMCL inactive) 요청을 접수한 뒤 `REINIT_FAILED_TIMEOUT`으로 끝났고, 다시 요청해 완료됐다.
+    역할 파일을 지정하지 않은 대조 1회(`simulation.launch.py` 기본)에서는 A4가 `STOPPING`에 머물렀고 `REINIT_REJECTED_NOT_STOPPED`였다.
+  - 11-14 원인 3가지의 현재 상태:
+    - 정지 중 `STOPPED` 미발행: 역할 파일을 지정할 때만 해소된다(조건부 해소).
+    - B2 `LOST` → A4 무효 → `ACTUATION_STALE` 순환: 해소됐다. B4가 내내 무효였는데도 A4는 valid였다.
+    - B4 `use_sim_time` 미전달: 지금은 전달된다. 다만 B4 신선도는 아직 벽시계로 잰다. 이번 RTF에서는 센서가 유효했고, 저RTF(11-14의 0.23)는 재지 않았다.
+  - robot_1 실제 A3·A4를 거친 공구 명령(팔·주행 미구동):
+    - 운영 기본 설정(허가 플래그 false, B3 regions 미승인)에서는 `arm_allowed=false`였다. 공구 노드는 A3를 부르기 전에 `SAFETY_STOP`으로 거절했다(A3 원장 0행).
+    - 시험 매개변수(허가 플래그를 열고, 현재 regions의 승인 표시만 바꾼 사본)에서는 `arm_allowed=true`였다. 결과는 A3 없음과 개발 정책 `dev_deny`가 `LEASE_EXPIRED`, 운영 A3(D4 배정 없음)가 `ASSIGNMENT_STALE`이었고, 개발 정책 `dev_allow`만 ATTACH·RELEASE를 수락했다(2회 반복).
+    - 시험 물체가 없어 실제 부착·해제는 확인하지 않았다. 이전 부착 14개·하중 284개 판정은 모의 A3·A4 경로였고, 이번 결과와 구분한다.
+- 남은 일:
+  - C2: 실제 C1 연결(`front_rgbd` 구성·stamp 보존), Surface 공개 계약, C4 대상 대응 판정.
+  - D2: live 포트 연결, inhibit 해제·재대조 절차.
+  - 양현승 처리 완료(`991d55e`, 계약 4.2·D-13·D-19 함께 갱신):
+    - B2 AMCL inactive 중 재위치 접수: 이제 AMCL lifecycle active가 아니거나 미확인이면 접수 전에 `REINIT_REJECTED_AMCL_UNAVAILABLE`로 거절한다.
+      격리 Gazebo 1회(robot_2)에서 비활성 직후 요청은 거절됐고(11-23의 접수 뒤 15 s 시간초과 대신), 재설정 뒤 요청은 `REINIT_ACCEPTED`→`SUCCEEDED`였다.
+    - A2 A3 무응답과 거절의 같은 사유: 무응답은 `A3_LEASE_TIMEOUT`, A3 거절은 A3가 준 사유로 나눴다.
+      격리 Gazebo 1회(robot_1, 시험 매개변수)에서 A3 없음 `A3_LEASE_TIMEOUT`, `dev_deny` `LEASE_EXPIRED`였다.
+  - 양현승(A2) 처리 완료(`991d55e`): 정지 역할 파일 기본 미지정 문제. `simulation.launch.py`에 매핑이 없으면 A1 `ROBOT_ROLES` 기준으로 실제 모델의 정지 역할 파일(ax1/ax2)을 기본 적용하고, `safety_stop_evidence_auto:=false`로 끌 수 있다.
+    격리 Gazebo 1회(robot_2, 매핑 없음)에서 A4 `STOPPED`, B2 재위치 `REINIT_ACCEPTED`→`SUCCEEDED`였다. launch 시험 22개·ROS 매개변수 시험 4개가 통과했다.
+    `safety.launch.py`를 직접 실행하는 경로에는 여전히 기본값이 없다(A4 범위).
+  - 다른 담당과 공유할 것:
+    - B4: 신선도를 벽시계로 잰다.
+    - B3·B4: regions가 미승인이면 B4 사유가 `SENSOR_STALE`로 나와 원인을 오해하기 쉽다.
+  이 절은 개발 진행 기록이며 G1 통과·C/D 통합 완료를 뜻하지 않는다.
+
+### W4 양현승 D2 진행 — 2026-11-24
+
+`1e41e3e`(W5 변경과 같은 커밋, 작업 기준 HEAD `a5e157d`). 변경 범위는 `src/ax_fleet_manager/`(`group_machine`·`group_model`·`node_config`·`runtime`·`task_store` 수정, `receipt.py`·`intake.py` 신규)와
+`tools/tests/test_d2_*.py`(`test_d2_receipt.py` 신규)다. 규칙의 기준은 [ax_fleet_manager 안내](../../src/ax_fleet_manager/README.md)의 "인계 잠금(W4)"·"자동 입고 등록(W4)" 절이다.
+
+- 인계 잠금:
+  - `LOCK_HANDOFF` goal UUID를 원장에 예약하는 순간 `TRANSFER_UNKNOWN`과 그 `transfer_id`를 낸다. 계약상 이 상태에서는 두 로봇이 주행할 수 없다.
+  - 의도만 기록하고 예약 전에 철회·전송 실패한 경우는 A3에 보낸 것이 없으므로 이전 상태(출발 `NONE`, 목적지 전 출발 xfer `UNLOCKED`)를 유지한다.
+  - `LOCKED`는 같은 xfer의 `UNKNOWN`에서 두 결과가 모두 성공하고, 둘째 결과 뒤 두 로봇의 정지를 받았을 때만 된다.
+  - 결과는 goal UUID로 결합한 뒤 배정 세대와 `transfer_id`를 지금 상태와 대조한다. 다르면 `ASSIGNMENT_STALE`·`TRANSFER_MISMATCH`로 억제한다.
+  - 재시작 복원 뒤에도 예약 기록으로 `UNKNOWN`을 다시 세운다.
+  - 잠금 해제·인계 중단(설계 9.7)은 없다. 그래서 예약 뒤 실패하면 잠금이 남아 두 로봇이 계속 차단되고, 그 판정에는 `HANDOFF_RECOVERY_UNSUPPORTED`가 붙는다.
+- 자동 입고 등록:
+  - 흐름은 관측 → 사건 대조 → 내부 `RegisterTask` → QUEUED 작업이다. 관측·사건·요청·작업 기록은 한 SQLite 트랜잭션이고, 실패하면 모두 되돌린다.
+  - 내부 요청 ID는 고정 namespace의 uuid5로 만들어 같은 사건이면 같은 ID다(멱등). 입고 사건당 작업은 1개이고, `ax_interfaces` 타입은 바꾸지 않았다.
+  - 결정 규칙(K2~K9):
+    - K2: 같은 물체의 이전 사건 작업이 이미 종료됐으면 재입고를 확인할 수 없으므로 작업을 만들지 않고 `RERECEIPT_UNCONFIRMED`로 거절한다.
+    - K3·K4: 식별 신뢰 0.8 미만은 식별 불명으로 두고, 관측 나이 2.0 s를 넘으면 거부한다.
+    - K5: 목적지는 입고 구역별 목적지 표로 정하고, 표에 없으면 `NO_DESTINATION_RULE`이다.
+    - K6: 출발은 입고 구역이다.
+    - K7: 식별된 사건은 승인 없이 자동 등록한다.
+    - K8: D2 내부 사유 코드는 README에만 적었다. ROS를 연결할 때 계약 D-13 목록을 갱신해야 한다.
+    - K9: schema 1(v1) 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 입고 표를 추가 이주한다.
+    - 식별 불명 관측은 입고 구역마다 대기 사건 1개에 관측 ID로 묶는다.
+  - 신뢰 0.8·나이 2.0 s·목적지 표는 개발 가정값이며 운영 기준이 아니다.
+- 실행한 검사:
+  - 재실행 결과(2026-11-24, 작업트리 `src`·`tools`·`docs`를 해시 대조해 복사한 사본, 별도 build/install, 시험 전용 ROS domain, Gazebo 없음):
+    - 빌드: `ax_interfaces`·`ax_fleet_manager` 성공. 설치본에 `receipt.py`·`intake.py`가 포함됐다.
+    - `test_d2_*.py`(ROS 시험 제외 7개 파일)는 217개 통과, 실패 0, skip 0이다. `test_d2_group_node_ros.py`는 3개 통과했다.
+    - 처음 실행에서는 사본에 `docs/`가 없어 계약 대조 시험 1건이 파일 없음으로 실패했다. `docs/`를 복사해 다시 실행해 위 결과를 얻었다(시험 환경 문제).
+  - 보고 기준(다시 실행하지 않음): 변이 확인. 소스는 고치지 않고 메모리 패치로 분류·신뢰 임계·구역 충돌 검사를 무시하게 만들면 시험이 실패해, 시험이 이 회귀를 잡는다.
+- 바뀐 기존 기대값 6건:
+  - 인계 잠금 강화 3건(한쪽 잠금이 이미 걸렸을 수 있으므로 `NONE`으로 돌아가지 않고 주행 금지를 유지):
+    - `test_d2_group_machine.py::test_transfer_state_sequence`: 순서에 `UNKNOWN`(출발·목적지)을 추가했다.
+    - `test_d2_group_machine.py::test_locked_state_visible_when_pick_blocked`: 한쪽 결과 뒤 기대값 `NONE`을 `UNKNOWN`+출발 xfer로 바꿨다.
+    - `test_d2_workflow_scenarios.py::test_partial_lock_success`: 기대값 `NONE`을 `UNKNOWN`+출발 xfer로 바꿨다.
+  - 원장 표 집합 1건: `test_d2_task_store.py::test_store_is_d2_only`에 schema 2 입고 표 3개를 추가했다. 정확한 집합 비교는 유지한다.
+  - 식별 불명 구역 묶기 2건: `test_d2_receipt.py`의 `test_unidentified_observation_is_pending_and_not_merged`(관측마다 사건 1개 → 구역마다 1개)와 `test_pending_observation_id_cap`(전역 대기 사건 상한 시험 → 사건당 관측 ID 상한 시험으로 교체)이다.
+- 범위 밖·남은 일:
+  - ROS 연결은 이번 범위에서 뺐다(K10): 입고 관측 구독, `RegisterTask` 서버, `ReceiptEvent` 발행이 없다.
+  - 실제 A3·D1·A4 연결이 없다. 출력은 `/ax/dev/`뿐이고, `UNKNOWN`이 A4 `HANDOFF_LOCK`으로 이어지는 것은 계약 문구로만 확인했다.
+  - 잠금 해제·inhibit 해제 절차, W5 재고·완료 판정, 위치 예약·용량 검사, 자동 배정, 식별 불명·재입고 확인 절차가 없다.
+  - 입고 관측 표에 보존 상한이 없다. 여러 프로세스가 같은 원장을 동시에 쓰는 경우는 시험하지 않았다.
+  이 절은 개발 진행 기록이며 G2·종단 운반·통합 완료를 뜻하지 않는다.
+
+### W5 양현승 D2 진행 — 2026-11-24
+
+`1e41e3e`(W4와 같은 커밋). 변경 범위는 `src/ax_fleet_manager/`(`inventory.py`·`live_adapters.py`·`intake_node.py`·`config/dev_intake.json` 신규, 엔진·원장·runtime·포트·입고 접수 수정)와
+`tools/tests/test_d2_*.py`(`test_d2_inventory.py`·`test_d2_intake_node_ros.py` 신규)다. 규칙의 기준은 [ax_fleet_manager 안내](../../src/ax_fleet_manager/README.md)의 W5 절이다.
+
+- 재고 전이:
+  - 엔진이 그룹 물체 상태를 정하고, 같은 판정을 기록하는 원장 트랜잭션에서 재고 항목에 반영한다. 계획·전송·수락만으로는 바꾸지 않는다.
+  - `AT_SOURCE` → `HELD_BY_MANIPULATOR` → `STOWED_ON_TRANSPORTER` → `AT_DESTINATION`으로 간다.
+  - 집기 시작 뒤 적재 상실은 `LOST`, 집기 요청 예약 뒤 실패·미확정은 `UNKNOWN`(격리)이다. 복원 뒤 미대조 중에는 재고를 바꾸지 않는다.
+- 완료 판정 결합(E-31): `AT_DESTINATION`은 COMPLETED 판정과 같은 사건·같은 트랜잭션에서만 된다.
+  배치 관측 누락, 해제 결과 유실, 하역 중 재시작에서는 `AT_DESTINATION`이 되지 않고 예약이 남는다(시험으로 고정).
+- 목적지 예약:
+  - 등록과 같은 트랜잭션에서 예약을 만든다. 거절 사유는 사용 중지 `LOCATION_INACTIVE`, 허용 종류 밖 `OBJECT_CLASS_NOT_ALLOWED`, 용량 초과 `LOCATION_FULL`이다.
+  - COMPLETED에서 소진하고, 집기 요청 예약 전 실패·취소만 해제한다. 그 밖의 실패에서는 예약을 유지한다.
+- 원장 schema 3: 재고·지점·예약 표를 추가했다. v1·v2 원장을 한 트랜잭션으로 이주하고, 종료 전 작업만 `UNKNOWN`으로 채운다.
+- 주행 goal UUID: 이제 D2가 아니라 D1이 만든다. D2는 실행 기록을 `SUBMITTING`으로 둔 뒤 D1에 전송하고, 돌려받은 UUID를 기록한다.
+  UUID 기록 전에 멈추면 재전송하지 않고 `UNCERTAIN`으로 둔다. 로컬 작업은 지금처럼 D2가 UUID를 예약한다.
+- live 어댑터 초안: D1 주행 포트, D1 결과 변환, A4 `ActuationState` 변환을 만들었다. 기본 비활성이고 runtime에 연결하지 않았다.
+- 개발 입고 노드 `d2_dev_intake`:
+  - `/ax/dev/d2/` 아래에서 입고 관측을 구독하고, `RegisterTask` 서비스를 제공하며, `ReceiptEvent`·`InventorySnapshot`을 발행한다.
+  - 운영 모드나 운영 이름(`/ax/fleet`·`/ax/robot_` 포함)이면 시작을 거부한다.
+- 지점 메타(용도·용량·허용 종류·최대 하중·pose·역할별 정차 자세)는 개발 설정 파일 값이며 등록 지점 원장 값이 아니다. 계약 문서와 `ax_interfaces` 타입은 바꾸지 않았다.
+- 바뀐 기존 기대값 5건(이유는 시험 주석에 적음):
+  - `test_d2_task_store.py`의 3건은 주행 UUID를 D1이 만들게 된 데 따른 변경이다:
+    - `test_intent_recorded_and_reserved_before_send`: 전송 순간 상태가 `RESERVED`+D2 UUID에서 `SUBMITTING`+UUID 없음으로 바뀌었다. 전송 뒤 D1(모의) UUID 기록 확인을 추가했다.
+    - `test_reserve_failure_blocks_send`: 실패 주입 대상이 `begin_submit`으로 바뀌었다. 기대(전송 0·고장)는 같다.
+    - `test_crash_between_reserve_and_send_is_uncertain`: 중단 지점이 `begin_submit`으로 바뀌었고, 허용 상태에 `SUBMITTING`을 추가했다. 미확정·재전송 0 기대는 같다.
+  - `test_d2_task_store.py::test_store_is_d2_only`: 정확한 표 집합에 schema 3 표 3개를 추가했다.
+  - `test_d2_receipt.py`: `test_v1_migration_preserves_tasks`의 원장 버전 기대값을 2에서 3으로 바꿨고, `make_intake`에 카탈로그 인자를 넣었다. W4 판정 기대값은 바꾸지 않았다.
+  - 인계 잠금(K1) 단언은 바꾸지 않았다.
+- 실행한 검사(보고 기준, 이번 기록 작성 때 다시 실행하지 않음, 격리 build/install, 시험 전용 ROS domain):
+  - 격리 빌드: `ax_interfaces`·`ax_fleet_manager` 성공.
+  - `test_d2_*.py`(ROS 시험 제외 9개 파일): 255개 통과, 실패 0.
+  - ROS 시험: `test_d2_intake_node_ros.py` 단독 5회 모두 통과, `test_d2_group_node_ros.py` 단독 3회 모두 통과.
+    두 파일을 묶어 6회 실행했을 때 2회 실패했다. 1회는 W3 시험 `test_fixture_output_and_graph`의 1 Hz 재발행 시간 조건(3.6 s 안 3회 기대에 2회)이었고, 나머지 1회는 로그가 없어 원인을 모른다.
+  - 변이 확인: 하역 성공 시점에 `AT_DESTINATION`을 쓰도록 바꾸면 4건, 실패 뒤 `UNKNOWN` 강등을 없애면 3건이 실패했다.
+- 종단 연결 막힘:
+  - 순수 엔진+모의 포트 전 흐름은 시험으로 완료했다.
+  - D1 주행: 어댑터 초안만 있다. D1 조회 API·import 방식, 지점 pose 원천, live 출처 정책이 정해지지 않았다.
+  - A3 로컬 작업: 연결하지 않았다. A3 서버는 `CONFIRM_LOAD`만 수락한다.
+  - 관측: C4 보유 상태 생산자가 완성되지 않았고, 배치·팔 후퇴 관측 생산자가 없다.
+  - 격리 Gazebo 종단: 실행하지 않았다.
+- 상대 확인 필요 4건:
+  - 등록 지점 원장 소유(D2 또는 D4)
+  - D1 복원 조회 API 공개 여부와 D1 패키지 import 방식(D1 원장은 robot_1~4만 허용)
+  - 배치·팔 후퇴 관측 생산자(계약에 Topic 없음, 없으면 live로 COMPLETED에 도달하지 못함)
+  - W4·W5 내부 사유 코드를 계약 D-13에 반영하는 시점
+- 남은 제한:
+  - 재고 재대조 절차와 격리 해제 절차가 없다.
+  - live 출처(`LIVE`)를 개발 모드 판정 근거로 받지 않으므로, 실제 연결 전에 출처 정책을 정해야 한다.
+  - `max_load_kg`는 물품 질량 원천이 없어 검사하지 않는다. `reservation_id`는 1개만 표시한다.
+  - 입고 관측 표에 보존 상한이 없다. 다중 프로세스 동시 쓰기는 시험하지 않았다.
+  - W3 ROS 시험(`test_fixture_output_and_graph`)이 간헐적으로 실패한다.
+  이 절은 개발 진행 기록이며 G2·종단 운반·통합 완료를 뜻하지 않는다.
+
 ## A2 기본 제어·하중 시험 도구 상태 — 2026-11-04
 
 - 구현: 로봇별 ros2_control 구성(`ax_control/config`), 흡착 부착 플러그인·공구 노드(`ToolCommand`·`AttachState`, A3 lease·A4 `arm_allowed` 확인), 개발 시험 도구.

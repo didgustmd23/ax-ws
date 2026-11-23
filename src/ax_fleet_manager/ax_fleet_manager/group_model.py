@@ -24,7 +24,7 @@ TASK_RETRY_PENDING = 7  # W3는 자동 재시도를 하지 않아 이 상태를 
 TERMINAL_TASK_STATES = (TASK_COMPLETED, TASK_FAILED, TASK_CANCELED)
 
 # GroupTaskStatus 인계 상태
-TRANSFER_UNKNOWN = 0
+TRANSFER_UNKNOWN = 0  # 잠금 요청 예약 뒤 LOCKED 확인 전에도 쓴다(두 로봇 주행 금지)
 TRANSFER_NONE = 1
 TRANSFER_LOCKED = 2
 TRANSFER_IN_PROGRESS = 3
@@ -44,6 +44,14 @@ OUTCOMES = (0, 1, 2, 3, 4, 5)
 HOLD_UNKNOWN, HOLD_HELD, HOLD_RELEASED = 0, 1, 2
 LOAD_UNKNOWN, LOAD_STOWED, LOAD_EMPTY, LOAD_LOST = 0, 1, 2, 3
 ACTUATION_STOPPED = 4
+
+# InventoryEntry.state(공개 값 그대로). 그룹 물체 상태
+INV_UNKNOWN = 0
+INV_AT_SOURCE = 1
+INV_HELD_BY_MANIPULATOR = 2
+INV_STOWED_ON_TRANSPORTER = 3
+INV_AT_DESTINATION = 4
+INV_LOST = 5
 
 # ExecuteLocalTask.task_kind(D-10)
 LOCAL_TASK_KINDS = {
@@ -364,7 +372,12 @@ def validate_assignment(assignment):
 
 # 단계 정의를 key로 찾는다
 def step_by_key(spec, step_key):
-    for s in spec.steps:
+    return step_by_key_in(spec.steps, step_key)
+
+
+# 단계 목록에서 key로 찾는다
+def step_by_key_in(steps, step_key):
+    for s in steps:
         if s.step_key == step_key:
             return s
 
@@ -496,6 +509,8 @@ class StepRun:
     object_hold_state: int = -1
     load_state: int = -1
     status_phase: str = ''
+    transfer_id: str = ''
+    assignment_generation: int = 0
 
 
 @dataclass
@@ -518,6 +533,13 @@ class GroupState:
     cancel_requested_boottime_s: float = -1.0
     failure_event_id: str = ''
     revision: int = 0
+    # W5 그룹 물체 상태(재고 항목에 같은 트랜잭션으로 반영). 확정 근거 없이 승격하지 않는다
+    object_state: int = INV_AT_SOURCE
+    object_location_id: str = ''
+    object_carrier_robot_id: str = ''
+    object_assignment_generation: int = 0
+    object_isolated: bool = False
+    physical_started: bool = False
 
     # 깊은 복사본(입력 상태를 바꾸지 않는다)
     def copy(self):
@@ -547,4 +569,5 @@ def new_group_state(spec, mode=MODE_DEVELOPMENT_MOCK):
     validate_spec(spec)
 
     return GroupState(spec=spec, mode=mode,
-                      steps={s.step_key: StepRun(s.step_key) for s in spec.steps})
+                      steps={s.step_key: StepRun(s.step_key) for s in spec.steps},
+                      object_location_id=spec.source_location_id)

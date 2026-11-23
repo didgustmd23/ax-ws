@@ -74,7 +74,13 @@ def persistent_view(state):
             {k: vars(v) for k, v in state.steps.items()}, tuple(state.inhibit),
             tuple(state.hold_ids), state.cancel_requested,
             state.cancel_requested_boottime_s, state.failure_event_id,
-            state.last_sim_time_s)
+            state.last_sim_time_s, object_view(state))
+
+
+# 그룹 물체 상태(재고 항목으로 내보내는 필드)
+def object_view(state):
+    return (state.object_state, state.object_location_id, state.object_carrier_robot_id,
+            state.object_assignment_generation, state.object_isolated, state.physical_started)
 
 
 # 단계 기록을 goal UUID로 찾는다
@@ -180,6 +186,35 @@ def _destination_release_ready(ctx, anchor):
             and _both_stopped(ctx, anchor))
 
 
+# 인계 xfer의 잠금 요청을 낼 수 있는 이전 상태인지. 출발은 NONE, 목적지는 출발 xfer의 UNLOCKED.
+# 같은 xfer의 UNKNOWN(한쪽 잠금 요청 예약됨)도 같은 잠금 단계로 본다
+def _lock_open(s, transfer_id):
+    if s.transfer_state == gm.TRANSFER_UNKNOWN:
+        return s.transfer_id == transfer_id
+
+    if transfer_id == s.spec.source_transfer_id:
+        return s.transfer_state == gm.TRANSFER_NONE
+
+    return (s.transfer_state == gm.TRANSFER_UNLOCKED
+            and s.transfer_id == s.spec.source_transfer_id)
+
+
+# LOCK_HANDOFF goal UUID를 원장에 예약한 시점의 인계 상태 전환. 두 결과·정지 확인 전에는
+# TRANSFER_UNKNOWN(계약상 두 로봇 주행 금지)과 그 xfer를 낸다. 예약 전 철회된 의도는 여기 오지 않아
+# 이전 상태(NONE·출발 xfer의 UNLOCKED)가 남는다. 예약 뒤에는 결과와 무관하게 해제하지 않는다
+def mark_lock_reserved(state, step_key):
+    plan_step = gm.step_by_key(state.spec, step_key)
+    if plan_step.operation != 'LOCK_HANDOFF':
+        return
+
+    transfer_id = gm.transfer_id_for(state.spec, plan_step)
+    if state.transfer_state == gm.TRANSFER_UNKNOWN or not _lock_open(state, transfer_id):
+        return
+
+    state.transfer_state = gm.TRANSFER_UNKNOWN
+    state.transfer_id = transfer_id
+
+
 # 단계별 추가 조건(선행 단계 성공 외). True면 의도를 낼 수 있다
 def _gate(ctx, plan_step):
     s = ctx.s
@@ -193,7 +228,7 @@ def _gate(ctx, plan_step):
         return s.transfer_state == gm.TRANSFER_NONE
 
     if key in SRC_LOCK:
-        return s.transfer_state == gm.TRANSFER_NONE and _both_stopped(ctx, anchor)
+        return _lock_open(s, s.spec.source_transfer_id) and _both_stopped(ctx, anchor)
 
     if key == 'load_pick_and_stow':
         return s.transfer_state == gm.TRANSFER_LOCKED and _both_stopped(ctx, anchor)
@@ -217,9 +252,7 @@ def _gate(ctx, plan_step):
         return True
 
     if key in DST_LOCK:
-        return (s.transfer_state == gm.TRANSFER_UNLOCKED
-                and s.transfer_id == s.spec.source_transfer_id
-                and _both_stopped(ctx, anchor))
+        return _lock_open(s, s.spec.destination_transfer_id) and _both_stopped(ctx, anchor)
 
     if key == 'unload_place':
         return (s.transfer_state == gm.TRANSFER_LOCKED
@@ -262,6 +295,8 @@ def _emit(ctx, plan_step):
 
     run.status = 'INTENDED'
     run.execution_id = execution['execution_id']
+    run.transfer_id = execution['transfer_id']
+    run.assignment_generation = execution['assignment_generation']
     ctx.effects.append(CommandIntent(
         kind=kind, task_id=s.spec.task_id, step_key=plan_step.step_key,
         operation=plan_step.operation, robot_id=args['robot_id'],
@@ -279,10 +314,12 @@ def _transitions(ctx):
     if s.assignment is None or s.task_state != gm.TASK_RUNNING:
         return
 
-    if (s.transfer_state == gm.TRANSFER_NONE and _all_succeeded(s, SRC_LOCK)
+    # 잠금 확정: 같은 xfer의 UNKNOWN(두 잠금 요청 예약)에서만, 두 결과 성공과 둘째 결과 뒤 두 로봇 정지
+    if (s.transfer_state == gm.TRANSFER_UNKNOWN
+            and s.transfer_id == s.spec.source_transfer_id
+            and _all_succeeded(s, SRC_LOCK)
             and _both_stopped(ctx, _anchor(s, SRC_LOCK))):
         s.transfer_state = gm.TRANSFER_LOCKED
-        s.transfer_id = s.spec.source_transfer_id
 
     if (s.transfer_state == gm.TRANSFER_IN_PROGRESS
             and s.transfer_id == s.spec.source_transfer_id
@@ -290,12 +327,11 @@ def _transitions(ctx):
             and _source_release_ready(ctx, _anchor(s, SRC_UNLOCK))):
         s.transfer_state = gm.TRANSFER_UNLOCKED
 
-    if (s.transfer_state == gm.TRANSFER_UNLOCKED
-            and s.transfer_id == s.spec.source_transfer_id
+    if (s.transfer_state == gm.TRANSFER_UNKNOWN
+            and s.transfer_id == s.spec.destination_transfer_id
             and _all_succeeded(s, DST_LOCK)
             and _both_stopped(ctx, _anchor(s, DST_LOCK))):
         s.transfer_state = gm.TRANSFER_LOCKED
-        s.transfer_id = s.spec.destination_transfer_id
 
     if (s.transfer_state == gm.TRANSFER_IN_PROGRESS
             and s.transfer_id == s.spec.destination_transfer_id
@@ -426,10 +462,16 @@ def _check_confirm_result(ctx, run, plan_step):
         ctx.inhibit('EVIDENCE_CONFLICT')
 
 
-# 하위 Action 결과 처리(goal UUID 결합)
+# 하위 Action 결과 처리. goal UUID로 결합하고, 주행 단계는 D1 execution_id로도 결합한다
 def _on_result(ctx, event):
     s = ctx.s
     run = _step_by_uuid(s, event.goal_uuid)
+    if run is None and event.execution_id:
+        candidate = _step_by_execution(s, event.execution_id)
+        if (candidate is not None and candidate.goal_uuid
+                and gm.step_by_key(s.spec, candidate.step_key).operation == 'NAVIGATE_TO'):
+            run = candidate
+
     if run is None:
         ctx.reason('UNBOUND_RESULT')
         return
@@ -444,6 +486,17 @@ def _on_result(ctx, event):
 
     if event.outcome not in gm.OUTCOMES:
         ctx.inhibit('INVALID_RESULT')
+        return
+
+    # 결과를 낸 실행이 지금의 배정 세대·인계와 같은지 대조한다(다르면 결과를 쓰지 않는다)
+    if run.assignment_generation != s.assignment.assignment_generation:
+        ctx.inhibit('ASSIGNMENT_STALE')
+        return
+
+    plan_step = gm.step_by_key(s.spec, run.step_key)
+    if (plan_step.operation in ('LOCK_HANDOFF', 'UNLOCK_HANDOFF')
+            and run.transfer_id != s.transfer_id):
+        ctx.inhibit('TRANSFER_MISMATCH')
         return
 
     if run.outcome != -1:
@@ -470,7 +523,6 @@ def _on_result(ctx, event):
 
     run.status = OUTCOME_STATUS[event.outcome]
     if event.outcome == gm.OUTCOME_SUCCEEDED:
-        plan_step = gm.step_by_key(s.spec, run.step_key)
         if plan_step.operation == 'CONFIRM_LOAD':
             _check_confirm_result(ctx, run, plan_step)
         return
@@ -582,6 +634,7 @@ def _dispatch_event(ctx, event):
             run.status = 'RESERVED'
             run.goal_uuid = event.goal_uuid
             run.sent_boottime_s = ctx.now.boottime_s
+            mark_lock_reserved(s, run.step_key)
 
     elif isinstance(event, DispatchSent):
         run = _step_by_execution(s, event.execution_id)
@@ -595,8 +648,12 @@ def _dispatch_event(ctx, event):
         run = _step_by_execution(s, event.execution_id)
         if run is None or run.status not in INFLIGHT + ('INTENDED',):
             ctx.reason('DISPATCH_FAILED_MISMATCH')
+        elif run.status == 'INTENDED' and event.uncertain:
+            # 주행은 D1이 UUID를 만들므로 엔진 예약 반영 전에 전송이 시작된다: 미확정이면 보냈을 수 있다
+            run.status = 'UNCERTAIN'
+            ctx.inhibit('DISPATCH_UNCERTAIN')
         elif run.status == 'INTENDED':
-            # 원장 예약 전이면 전송했을 수 없다(예약이 항상 전송보다 먼저)
+            # 확실한 미전송(로컬 작업은 예약이 항상 전송보다 먼저, 주행은 포트가 미전송을 확정)
             run.status = 'NOT_SENT'
             ctx.inhibit('DISPATCH_FAILED')
             ctx.reason(event.reason or 'NOT_RESERVED')
@@ -704,10 +761,94 @@ def apply_event(state, event, now, limits=EngineLimits()):
             if _gate(ctx, plan_step) and not s.inhibit:
                 _emit(ctx, plan_step)
 
+    _object_tracking(ctx)
+
+    # 잠금이 걸린 채 차단·종료된 작업: 명시적 인계 중단·잠금 해제 절차(9.7)는 아직 없다
+    stuck = s.inhibit or s.task_state in (gm.TASK_FAILED, gm.TASK_CANCELED)
+    if stuck and s.transfer_state not in gm.RELEASED_TRANSFER_STATES:
+        ctx.reason('HANDOFF_RECOVERY_UNSUPPORTED')
+
     if persistent_view(s) != persistent_view(state):
         s.revision = state.revision + 1
 
     return Decision(s, tuple(ctx.effects), tuple(ctx.reasons))
+
+
+# 물체를 운반 역할 로봇에 둔다(carrier·배정 세대 함께)
+def _carry(s, state, robot_id):
+    s.object_state = state
+    s.object_location_id = ''
+    s.object_carrier_robot_id = robot_id
+    s.object_assignment_generation = s.assignment.assignment_generation
+
+
+# 그룹 물체 상태 추적(W5). 계획·전송·수락만으로 바꾸지 않고, 단계 결과와 그 뒤 최신 관측이 함께
+# 있을 때만 승격한다. 집기 요청 예약 전에는 출발 지점, 예약 뒤 실패·미확정·모순은 UNKNOWN(격리).
+# 도착 지점은 COMPLETED와 같은 판정에서만 된다(E-31). 복원 미대조 중에는 바꾸지 않는다
+def _object_tracking(ctx):
+    s = ctx.s
+    if s.assignment is None or 'RESTORED_UNRECONCILED' in s.inhibit:
+        return
+
+    if s.object_state in (gm.INV_AT_DESTINATION, gm.INV_LOST):
+        return
+
+    m, t = s.assignment.robots()
+    obj = s.spec.object_id
+    pick = s.steps['load_pick_and_stow']
+    if pick.goal_uuid:
+        s.physical_started = True
+
+    # 완료 판정과 같은 사건: 배치·해제·후퇴·EMPTY·정지·두 해제 결과가 모두 확인됨
+    if s.task_state == gm.TASK_COMPLETED:
+        s.object_state = gm.INV_AT_DESTINATION
+        s.object_location_id = s.spec.destination_location_id
+        s.object_carrier_robot_id = ''
+        s.object_isolated = False
+        return
+
+    # 운반 중 이탈 확인(적재 감시·적재 확인 결과)
+    lost = ('LOAD_LOST' in s.inhibit
+            or any(run.load_state == gm.LOAD_LOST for run in s.steps.values()
+                   if run.outcome != -1))
+    if lost and s.physical_started:
+        s.object_state = gm.INV_LOST
+        s.object_location_id = ''
+        s.object_isolated = True
+        return
+
+    if not s.physical_started:
+        return
+
+    # 물리 동작 시작 뒤 실패·미확정·모순·실패 종료·취소: 위치를 확정할 수 없다
+    if s.inhibit or s.task_state in (gm.TASK_FAILED, gm.TASK_CANCELED):
+        s.object_state = gm.INV_UNKNOWN
+        s.object_location_id = ''
+        s.object_isolated = True
+        return
+
+    confirm = s.steps['load_confirm']
+    unload = s.steps['unload_place']
+
+    # 하역 요청 예약 뒤 조작 로봇 보유 관측
+    if (s.object_state == gm.INV_STOWED_ON_TRANSPORTER and unload.goal_uuid
+            and _fresh_is(ctx, 'HOLD', m, gm.HOLD_HELD, unload.sent_boottime_s, obj)):
+        _carry(s, gm.INV_HELD_BY_MANIPULATOR, m)
+        return
+
+    # 적재 확인 결과 STOWED와 그 뒤 최신 적재 관측 STOWED(집기 중 보유 관측이 없어도 바로 승격).
+    # 하역 요청 예약 뒤에는 출발 적재 근거로 되돌리지 않는다
+    if (s.object_state in (gm.INV_AT_SOURCE, gm.INV_HELD_BY_MANIPULATOR)
+            and not unload.goal_uuid and confirm.status == 'SUCCEEDED'
+            and confirm.load_state == gm.LOAD_STOWED
+            and _fresh_is(ctx, 'LOAD', t, gm.LOAD_STOWED, confirm.finished_boottime_s, obj)):
+        _carry(s, gm.INV_STOWED_ON_TRANSPORTER, t)
+        return
+
+    # 집기 요청 예약 뒤 조작 로봇 보유 관측
+    if (s.object_state == gm.INV_AT_SOURCE
+            and _fresh_is(ctx, 'HOLD', m, gm.HOLD_HELD, pick.sent_boottime_s, obj)):
+        _carry(s, gm.INV_HELD_BY_MANIPULATOR, m)
 
 
 # 원장에서 읽은 상태의 재시작 복원: 관측 폐기, 진행 중 단계 미확정, 새 명령 차단
@@ -719,6 +860,11 @@ def restore_state(state):
     for run in s.steps.values():
         if run.status in INFLIGHT:
             run.status = 'UNCERTAIN'
+
+    # 예약 기록이 있는 잠금 요청은 잠금 확정 전이라도 UNKNOWN으로 둔다(이전 원장 포함)
+    for run in s.steps.values():
+        if run.goal_uuid:
+            mark_lock_reserved(s, run.step_key)
 
     if 'RESTORED_UNRECONCILED' not in s.inhibit:
         s.inhibit.append('RESTORED_UNRECONCILED')

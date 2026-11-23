@@ -46,7 +46,7 @@ class B3B4ConsumerTests(unittest.TestCase):
         CorridorObserver.tick(source)
         return source.publisher.publish.call_args.args[0]
 
-    def consume(self, message):
+    def consume(self, message, *, battery=None, battery_required=False):
         """B4 원본 콜백·메타 검사·판정 함수를 그대로 호출해 결과를 읽습니다."""
         loc = LocalizationHealth()
         loc.robot_id, loc.state = 'robot_1', LocalizationHealth.OK
@@ -61,10 +61,11 @@ class B3B4ConsumerTests(unittest.TestCase):
             slowdown_linear=0.2, session='offline-b4', revision=1, publisher=Mock(),
             # fbde940 B4가 __init__에서 만드는 배터리 속성. 기본값(b4_risk_node.py 75~91행)으로
             # 배터리 검사를 끈 상태(battery_required=False)라 B3 소비 판정 기대값은 그대로다.
-            battery=None, battery_time=None, battery_required=False, battery_topic='battery_state',
+            battery=battery, battery_time=now if battery is not None else None,
+            battery_required=battery_required, battery_topic='battery_state',
             battery_ttl=0.5, battery_low_percent=22.0, battery_critical_percent=-1.0,
             battery_low_action_level=-1, battery_critical_action_level=-1, last_battery_risk=None,
-            get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=100)))
+            get_clock=lambda: SimpleNamespace(now=lambda: Time(seconds=100)), get_logger=Mock())
         for name in ('recent_stamp', 'meta_ok', 'fresh'):
             setattr(node, name, MethodType(getattr(B4RiskNode, name), node))
         B4RiskNode.on_corridor(node, message)

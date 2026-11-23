@@ -1,0 +1,25 @@
+meta:
+  header:
+    stamp:
+      sec: 6
+      nanosec: 840000000
+    frame_id: ''
+  schema_version: 2
+  source_id: a4_safety_gate
+  source_session_id: '195910621725'
+  revision: 429
+  valid: true
+  validity_reason: ''
+robot_id: robot_2
+state: 4
+drive_allowed: false
+arm_allowed: false
+block_reasons:
+- SAFETY_STOP
+- TRAVEL_POSE_UNVERIFIED
+- HANDOFF_LOCK
+- SIMULATION_DRIVE_DISABLED
+linear_speed: 5.1453836194497697e-20
+angular_speed: 1.2860003792421168e-19
+max_joint_speed: 0.0
+---

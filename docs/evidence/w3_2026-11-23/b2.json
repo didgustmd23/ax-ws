@@ -1,0 +1,62 @@
+{
+ "status": "active",
+ "timeout_s": 60.0,
+ "elapsed_s": 1.099,
+ "failure": null,
+ "nodes": {
+  "/map_server": {
+   "state": "active",
+   "stage": "active",
+   "transitions": [
+    [
+     0.55,
+     "unconfigured",
+     "configuring"
+    ],
+    [
+     0.565,
+     "configuring",
+     "inactive"
+    ],
+    [
+     0.57,
+     "inactive",
+     "activating"
+    ],
+    [
+     0.57,
+     "activating",
+     "active"
+    ]
+   ],
+   "exit_code": null
+  },
+  "/ax/robot_2/amcl": {
+   "state": "active",
+   "stage": "active",
+   "transitions": [
+    [
+     1.059,
+     "unconfigured",
+     "configuring"
+    ],
+    [
+     1.092,
+     "configuring",
+     "inactive"
+    ],
+    [
+     1.093,
+     "inactive",
+     "activating"
+    ],
+    [
+     1.099,
+     "activating",
+     "active"
+    ]
+   ],
+   "exit_code": null
+  }
+ }
+}

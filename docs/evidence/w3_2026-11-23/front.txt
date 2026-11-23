@@ -1,0 +1,5 @@
+stamp:
+  sec: 11
+  nanosec: 100000000
+frame_id: robot_2/front_lidar_link
+---

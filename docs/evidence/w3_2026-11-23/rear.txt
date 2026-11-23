@@ -1,0 +1,5 @@
+stamp:
+  sec: 10
+  nanosec: 400000000
+frame_id: robot_2/rear_lidar_link
+---

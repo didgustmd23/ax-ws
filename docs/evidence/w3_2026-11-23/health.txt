@@ -1,0 +1,19 @@
+meta:
+  header:
+    stamp:
+      sec: 7
+      nanosec: 920000000
+    frame_id: map
+  schema_version: 1
+  source_id: b2_localization_supervisor
+  source_session_id: dae759d4a69342ec81f6468b04a1ae62
+  revision: 6
+  valid: true
+  validity_reason: ''
+robot_id: robot_2
+state: 1
+position_std_m: 0.10158540308475494
+yaw_std_rad: 0.07974638789892197
+anomaly_score: 0.0
+anomaly_model_available: false
+---

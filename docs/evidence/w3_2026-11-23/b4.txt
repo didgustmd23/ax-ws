@@ -1,0 +1,25 @@
+meta:
+  header:
+    stamp:
+      sec: 8
+      nanosec: 800000000
+    frame_id: ''
+  schema_version: 1
+  source_id: b4_risk_node
+  source_session_id: 7526c7dd-8d00-41b7-81c7-912e3e498697
+  revision: 88
+  valid: false
+  validity_reason: SENSOR_STALE
+robot_id: robot_2
+level: 3
+reason_code: SENSOR_STALE
+sensor_valid: false
+front_sensor_valid: true
+rear_sensor_valid: true
+localization_valid: true
+allow_forward: false
+allow_backward: false
+allow_rotate: false
+max_linear_speed: 0.0
+max_angular_speed: 0.0
+---

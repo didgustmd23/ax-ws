@@ -1,5 +1,69 @@
 # D1 Nav2 기본 구성 — W2
 
+## W3 실행 관리 기반 — 2026-11-17
+
+`scripts/navigation_execution.py`는 SQLite 로컬 원장과 실행 상태 머신,
+`scripts/navigation_client.py`는 Nav2 NavigateToPose Python 어댑터다.
+기존 launch에는 자동 연결하지 않았다. D2 dispatcher·공통 메시지·A4 정책은 변경하지 않는다.
+
+- 호출자는 D가 승인한 execution_id·assignment_id·assignment_generation과 map 목표를 제공한다.
+  이 모듈은 ID를 발급하거나 배정의 유효성을 승인하지 않는다.
+- 최초 전송 전에 인자·UUID·SENDING을 커밋한다. 같은 ID 재호출은 저장된 상태를 반환하며
+  목표·배정 변경은 거절한다. 로봇별 미확정 실행이 있으면 다른 실행도 거절한다.
+- 전송 예외는 UNKNOWN으로 유지한다. 재시작 후 PREPARED/SENDING/ACTIVE/UNKNOWN을
+  자동 재전송하거나 새 UUID로 대체하지 않는다. 실제 Nav2 상태·배정과의 수동/상위 대조가 필요하다.
+  복원 조회·관리자 해제 API는 아직 제공하지 않는다.
+- 수락 거절·ABORTED·CANCELED·ARRIVED를 저장한다. 취소 응답 수락만으로 CANCELED로 만들지 않는다.
+  ARRIVED는 Nav2 성공이며 실제 정차·조작 가능 상태를 뜻하지 않는다.
+- `stopped_after_arrival(execution_id)`는 현재 실행의 Nav2 도착 시각 이후에 발행·수신한
+  자기 로봇 A4 Schema 2 `STOPPED`를 조회한다. ROS stamp와 수신 경과가 모두 0.3 s 이내여야 한다.
+  새 실행이나 ROS 시각 역행 시 이전 도착 근거를 폐기하며, 재시작 후 저장된 ARRIVED만으로 정차를 복원하지 않는다.
+- 어댑터는 한 로봇·하나의 SingleThreadedExecutor에서 사용한다. 원장은 영속 로컬 경로에 두고
+  네트워크/동기화 폴더를 피한다. 임시 원장은 아래 통신 검사에만 사용한다.
+
+검증:
+
+```bash
+python3 -m unittest discover -s tools/tests -p test_d1_navigation_execution.py -v
+# 실제 노드가 없는 격리 domain을 먼저 확인하고 선택한다.
+source /opt/ros/jazzy/setup.bash
+ROS_DOMAIN_ID=<격리값> ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+  python3 tools/check_d1_navigation_transport.py
+colcon build --packages-up-to ax_navigation
+```
+
+통신 검사기는 모의 Nav2 Action 서버와 시험용 위치·scan 입력을 실행한다.
+저장 UUID와 실제 Action UUID 일치, 성공·중복 전송 방지·수락 거절·입력 손실 취소,
+도착 전 정지 근거 거절·도착 후 정지 근거 수락 및 만료를
+확인하며 속도 토픽을 발행하지 않는다.
+실제 B2/A4 연결 주행·정차, D3 허가 소비, D2 dispatcher 연결,
+실제 정차 후 완료 판정 검증은 남아 있다. C1 수집 결과는
+[W3 검증 기록](../../docs/evidence/w3_2026-11-23/README.md)에 있다.
+
+### D1 입력 감시·취소 — 2026-11-18
+
+어댑터는 자기 로봇의 `localization/health`와 전·후방 `scan_filtered`를 구독한다.
+위치 상태는 valid·자기 robot_id·OK를 요구한다(DEGRADED/LOST/UNKNOWN은 주행 불허).
+LiDAR는 자기 로봇 frame·비어 있지 않은 ranges·유한하고 올바른 범위 설정을 요구하며,
+NaN·음수·음의 무한대는 무효, 양의 무한대는 기존 costmap의 inf_is_valid와 같이 허용한다.
+
+- 위치 수명은 D-05의 1.0 s, 각 scan 수명은 기존 D1 costmap의 개발값 0.5 s다.
+  ROS stamp 나이와 CLOCK_BOOTTIME 수신 경과를 모두 검사한다. 미래 0.05 s 초과,
+  0 stamp·비유한 시각·ROS 시간 역행도 거절한다. 시간 역행 시 기존 입력을 폐기한다.
+- 입력 미준비 시 새 목표를 전송하지 않는다. 이동/수락 대기 중 문제가 생기면 첫 원인을
+  로컬 holds 테이블에 저장한다. ACTIVE 목표에는 취소를 요청하고, 수락 대기 중이면
+  수락 직후 취소한다. STEADY_TIME 50 ms 타이머는 sim time 정지 중에도 검사한다.
+- 입력 회복·Action 종료·프로세스 재시작으로 보류를 자동 해제하지 않는다.
+  보류 해제/재승인은 아직 상위 계약과 실제 상태 대조가 필요한 미구현 경계다.
+  취소 거절/통신 예외는 UNKNOWN으로 남기며 취소 요청만으로 정지했다고 선언하지 않는다.
+- 감시는 D1 취소 요청이며 A4 구동 차단을 대신하지 않는다. 실제 정차·정지 지연,
+  WSL 호스트 절전 복귀 및 실제 B2/Gazebo 주행 시험은 미검증이다.
+
+`test_d1_navigation_watchdog.py`가 만료·무효·정지된 sim clock·역행·보류 영속화를 검사한다.
+`check_d1_navigation_transport.py`는 격리 domain에서 모의 B2/scan과 모의 Nav2만 발행해
+LOST 및 위치/양쪽 scan 수신 중단에 따른 실제 Action 취소 왕복을 검사한다.
+실제 운영 domain에서 실행하지 않는다.
+
 2026-11-09: 두 로봇의 Nav2 설정·기동·모의 경로 계산을 확인했다.
 실제 지도·B2 위치 추정·A4 게이트를 연결한 주행/정차 시험은 수행하지 않았다.
 
@@ -12,7 +76,7 @@
 - TF는 공통 `/tf`·`/tf_static`, 로봇의 base/odom/센서 프레임은 접두사로 구분한다.
 - 출력: `/ax/robot_<n>/nav/cmd_vel`, `geometry_msgs/TwistStamped`만 발행한다.
   제어기 입력에 직접 연결하지 않는다. A4 최종 게이트는 별도 담당 구현이다.
-- NavigateToPose: `/ax/robot_<n>/navigate_to_pose`. D2 호출·실행 ID/UUID 영속화·취소·실패 처리는 후속 D1 작업이다.
+- NavigateToPose: `/ax/robot_<n>/navigate_to_pose`. 위 D1 어댑터가 실행 기록과 취소를 처리하며, D2의 실제 호출 연결은 남아 있다.
 
 ## 설정
 

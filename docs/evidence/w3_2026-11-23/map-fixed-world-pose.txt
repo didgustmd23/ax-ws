@@ -1,0 +1,8 @@
+
+Requesting state for world [ax_test]...
+
+Model: [420]
+  - Name: robot_2
+  - Pose [ XYZ (m) ] [ RPY (rad) ]:
+    [-6.800000 0.000000 0.269020]
+    [-0.000000 0.000000 -0.000000]

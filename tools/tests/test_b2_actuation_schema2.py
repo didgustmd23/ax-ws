@@ -23,7 +23,8 @@ def base_inputs(now=10.0, odom=(1.0, 0.0, 0.0), map_odom=(0.5, 0.2, 0.0)):
         scan_stamp=now - 0.1, odom_stamp=now - 0.02, odom_pose=odom,
         tf_valid_time=now - 0.1, map_odom=map_odom, tf_chain_ok=True,
         amcl_stamp=now - 5.0, amcl_pose=lh.compose(map_odom, odom),
-        amcl_covariance=tuple(lh.pose_covariance(0.05, 0.03)), amcl_odom_pose=odom, amcl_updates=3)
+        amcl_covariance=tuple(lh.pose_covariance(0.05, 0.03)), amcl_odom_pose=odom, amcl_updates=3,
+        amcl_active=True)  # AMCL lifecycle active(재위치 접수 전제, 2026-11-23)
 
 
 # 구동 상태 메시지 필드 묶음(기본은 정상 Schema 2 STOPPED)

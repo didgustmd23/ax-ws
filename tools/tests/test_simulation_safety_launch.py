@@ -7,12 +7,13 @@ Gazebo·ROS 그래프는 실행하지 않는다. 패키지 share 경로는 저�
 """
 import importlib.util
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest import mock
 
 from launch import LaunchContext
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, LogInfo, OpaqueFunction
 from launch.actions import SetEnvironmentVariable
 from launch.utilities import normalize_to_list_of_substitutions, perform_substitutions
 from launch_ros.actions import Node
@@ -27,6 +28,7 @@ COMMON = SAFETY_CONFIG / 'safety_limits.yaml'
 AX1 = SAFETY_CONFIG / 'stop_evidence_ax1.yaml'
 AX2 = SAFETY_CONFIG / 'stop_evidence_ax2.yaml'
 SAFETY_EXECUTABLES = ('a4_safety_gate', 'a4_protected_arm_server', 'b4_risk_node')
+ROBOT_TEST = SHARES['ax_description'] / 'launch' / 'robot_test.launch.py'
 
 
 # 패키지 share·prefix를 저장소 src로 돌려 설치본 노후와 무관하게 소스를 검사한다
@@ -83,6 +85,11 @@ def walk(entities, context, nodes, includes):
         if isinstance(entity, SetEnvironmentVariable):
             continue
 
+        # 로그는 출력하지 않고 내용만 모은다(정지 역할 파일 출처 확인용)
+        if isinstance(entity, LogInfo):
+            LOGS.append(perform_substitutions(context, entity.msg))
+            continue
+
         if isinstance(entity, IncludeLaunchDescription):
             location = launch_file(entity, context)
             includes.append(location)
@@ -97,6 +104,7 @@ def walk(entities, context, nodes, includes):
 
 # 상위 launch를 실행해 safety Node 평가 결과와 include 목록, 방문 후 context를 돌려준다
 def run_simulation(overrides=None, extra=None):
+    LOGS.clear()
     with mock.patch('ament_index_python.packages.get_package_share_directory', share_of):
         module = load_simulation()
         description = module.generate_launch_description()
@@ -127,6 +135,10 @@ def node(nodes, robot_id, executable):
 
 
 SAFETY_ON = {'safety': 'true', 'gui': 'false'}
+# 기존 의미(매핑 없는 로봇은 빈 값)를 확인하는 시험용. 기본값 적용을 끈다
+SAFETY_ON_NO_AUTO = {**SAFETY_ON, 'safety_stop_evidence_auto': 'false'}
+# walk가 모은 LogInfo 내용(run_simulation마다 비운다)
+LOGS = []
 
 
 class SimulationSafetyLaunchTest(unittest.TestCase):
@@ -175,7 +187,7 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
 
     # 미지정이면 공통 패키지 기본 파일만 들어가고 빈 경로를 넘기지 않는다
     def test_unspecified_uses_package_common_only(self):
-        nodes, _, _ = run_simulation({**SAFETY_ON, 'robots': '2'})
+        nodes, _, _ = run_simulation({**SAFETY_ON_NO_AUTO, 'robots': '2'})
         for robot_id in ('robot_1', 'robot_2'):
             for executable in SAFETY_EXECUTABLES:
                 files, _ = node(nodes, robot_id, executable)
@@ -183,7 +195,7 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
 
     # 별도 공통 파일 지정
     def test_custom_common_file(self):
-        nodes, _, _ = run_simulation({**SAFETY_ON, 'safety_params_file': str(self.common)})
+        nodes, _, _ = run_simulation({**SAFETY_ON_NO_AUTO, 'safety_params_file': str(self.common)})
         files, _ = node(nodes, 'robot_2', 'a4_safety_gate')
         self.assertEqual(files, [str(self.common)])
 
@@ -197,7 +209,7 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
 
     # 4대 선택에서 일부만 지정: 나머지는 비어 있어야 한다
     def test_four_robots_no_fill_from_neighbor(self):
-        nodes, _, _ = run_simulation({**SAFETY_ON, 'robots': '4',
+        nodes, _, _ = run_simulation({**SAFETY_ON_NO_AUTO, 'robots': '4',
                                       'safety_stop_evidence_files': f'robot_2={AX2},robot_3={AX1}'})
         expected = {'robot_1': [str(COMMON)], 'robot_2': [str(COMMON), str(AX2)],
                     'robot_3': [str(COMMON), str(AX1)], 'robot_4': [str(COMMON)]}
@@ -209,7 +221,7 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
         for mapping, filled, empty in ((f'robot_1={AX1}', 'robot_1', 'robot_2'),
                                        (f'robot_2={AX2}', 'robot_2', 'robot_1')):
             with self.subTest(mapping=mapping):
-                nodes, _, context = run_simulation({**SAFETY_ON, 'safety_stop_evidence_files': mapping,
+                nodes, _, context = run_simulation({**SAFETY_ON_NO_AUTO, 'safety_stop_evidence_files': mapping,
                                                     'safety_robot_params_files': f'{filled}={self.robot_b}'})
                 self.assertEqual(len(node(nodes, filled, 'a4_safety_gate')[0]), 3)
                 self.assertEqual(node(nodes, empty, 'a4_safety_gate')[0], [str(COMMON)])
@@ -226,10 +238,13 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
                 'stop_evidence_file': str(AX2), 'robot_params_file': str(self.robot_a),
                 'params_file': str(self.common), 'enable_simulation_drive': 'true'})
             values = {**{name: '' for name in module.SAFETY_FILE_ARGUMENTS},
-                      **{name: 'false' for name in module.SAFETY_FLAG_ARGUMENTS}}
+                      **{name: 'false' for name in module.SAFETY_FLAG_ARGUMENTS},
+                      'safety_stop_evidence_auto': 'false'}
             values['safety_stop_evidence_files'] = f'robot_1={AX1}'
             nodes, includes = [], []
-            walk(module.safety_actions(values, ['robot_1', 'robot_2']), context, nodes, includes)
+            robot_ids = ['robot_1', 'robot_2']
+            per_robot = module.safety_actions(values, robot_ids, module.robot_models(robot_ids))
+            walk([action for robot_id in robot_ids for action in per_robot[robot_id]], context, nodes, includes)
 
         self.assertEqual(node(nodes, 'robot_1', 'a4_safety_gate')[0], [str(COMMON), str(AX1)])
         files, gate = node(nodes, 'robot_2', 'a4_safety_gate')
@@ -262,7 +277,7 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
     def test_path_spaces_and_equals(self):
         odd = Path(self.tmp.name) / 'a=b c.yaml'
         odd.write_text('/**/a4_safety_gate:\n  ros__parameters:\n    stop_hold_s: 0.5\n')
-        nodes, _, _ = run_simulation({**SAFETY_ON, 'robot_ids': 'robot_1',
+        nodes, _, _ = run_simulation({**SAFETY_ON_NO_AUTO, 'robot_ids': 'robot_1',
                                       'safety_robot_params_files': f' robot_1 = {odd} '})
         self.assertEqual(node(nodes, 'robot_1', 'a4_safety_gate')[0], [str(COMMON), str(odd)])
 
@@ -298,6 +313,121 @@ class SimulationSafetyLaunchTest(unittest.TestCase):
         self.assertEqual(len(groups), 2)
         safety_includes = [a for a in includes if launch_file(a, context).endswith('safety.launch.py')]
         self.assertEqual(safety_includes, [])
+
+    # 매핑 없음(기본 auto=true): 각 로봇이 실제 모델의 기본 정지 역할 파일을 받는다
+    def test_auto_default_by_model(self):
+        nodes, _, _ = run_simulation({**SAFETY_ON, 'robots': '2'})
+        for robot_id, evidence in (('robot_1', AX1), ('robot_2', AX2)):
+            for executable in SAFETY_EXECUTABLES:
+                self.assertEqual(node(nodes, robot_id, executable)[0], [str(COMMON), str(evidence)])
+        # 로봇별 출처 로그
+        self.assertEqual(len(LOGS), 2)
+        self.assertIn('robot_1', LOGS[0])
+        self.assertIn(str(AX1), LOGS[0])
+        self.assertIn('모델 기본값(ax.urdf.xacro)', LOGS[0])
+        self.assertIn('모델 기본값(ax_2.urdf.xacro)', LOGS[1])
+
+    # robot_3·robot_4 포함 선택(4대·부분 선택)도 모델 기준
+    def test_auto_default_four_and_partial(self):
+        nodes, _, _ = run_simulation({**SAFETY_ON, 'robots': '4'})
+        expected = {'robot_1': AX1, 'robot_2': AX2, 'robot_3': AX1, 'robot_4': AX2}
+        for robot_id, evidence in expected.items():
+            self.assertEqual(node(nodes, robot_id, 'a4_safety_gate')[0], [str(COMMON), str(evidence)])
+
+        nodes, _, _ = run_simulation({**SAFETY_ON, 'robot_ids': 'robot_4,robot_3'})
+        self.assertEqual({n['namespace'] for n in nodes}, {'/ax/robot_3', '/ax/robot_4'})
+        self.assertEqual(node(nodes, 'robot_4', 'a4_safety_gate')[0], [str(COMMON), str(AX2)])
+        self.assertEqual(node(nodes, 'robot_3', 'a4_safety_gate')[0], [str(COMMON), str(AX1)])
+
+    # 부분 매핑: 명시 항목이 우선이고 나머지는 모델 기본값
+    def test_explicit_mapping_overrides_default(self):
+        custom = Path(self.tmp.name) / 'custom_evidence.yaml'
+        custom.write_text('/**/a4_safety_gate:\n  ros__parameters:\n    stop_arm_presence: absent\n')
+        nodes, _, _ = run_simulation({**SAFETY_ON, 'robots': '2', 'safety_stop_evidence_files': f'robot_1={custom}'})
+        self.assertEqual(node(nodes, 'robot_1', 'a4_safety_gate')[0], [str(COMMON), str(custom)])
+        self.assertEqual(node(nodes, 'robot_2', 'a4_safety_gate')[0], [str(COMMON), str(AX2)])
+        self.assertIn('명시 매핑', LOGS[0])
+        self.assertIn('모델 기본값(ax_2.urdf.xacro)', LOGS[1])
+
+    # auto=false: 매핑 없는 로봇은 빈 값이고 로그에 그 사실을 남긴다. 잘못된 값은 거부
+    def test_auto_false_and_invalid_value(self):
+        nodes, _, _ = run_simulation({**SAFETY_ON_NO_AUTO, 'robots': '2'})
+        for robot_id in ('robot_1', 'robot_2'):
+            self.assertEqual(node(nodes, robot_id, 'a4_safety_gate')[0], [str(COMMON)])
+        self.assertTrue(all('(빈 값)' in line and 'auto:=false' in line for line in LOGS))
+
+        for value in ('yes', '', '1'):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, 'safety_stop_evidence_auto'):
+                    run_simulation({**SAFETY_ON, 'safety_stop_evidence_auto': value})
+
+    # 역할을 모르는 로봇(A1 ROBOT_ROLES에 없음)은 기본값을 넣지 않고 시작 전에 거부한다
+    def test_unknown_model_rejected(self):
+        with mock.patch('ament_index_python.packages.get_package_share_directory', share_of):
+            module = load_simulation()
+            module.a1_robot_roles = lambda: {'robot_1': 'MANIPULATOR', 'robot_2': 'INSPECTOR'}
+            with self.assertRaisesRegex(ValueError, "robot_2.*모델을 정할 수 없다"):
+                module.robot_models(['robot_1', 'robot_2'])
+            with self.assertRaisesRegex(ValueError, "robot_3.*모델을 정할 수 없다"):
+                module.robot_models(['robot_3'])
+
+    # 모델 기본 파일이 없으면 빈 값으로 넘기지 않고 거부한다
+    def test_missing_default_file_rejected(self):
+        with mock.patch('ament_index_python.packages.get_package_share_directory', share_of):
+            module = load_simulation()
+            module.MODEL_STOP_EVIDENCE = {**module.MODEL_STOP_EVIDENCE, 'ax_2.urdf.xacro': 'missing.yaml'}
+            values = {**{name: '' for name in module.SAFETY_FILE_ARGUMENTS},
+                      **{name: 'false' for name in module.SAFETY_FLAG_ARGUMENTS},
+                      'safety_stop_evidence_auto': 'true'}
+            with self.assertRaisesRegex(ValueError, '모델 기본 파일 없음'):
+                module.safety_actions(values, ['robot_2'], module.robot_models(['robot_2']))
+
+    # 두 출처 일치: 역할 표는 A1 파일 그대로 읽고, 역할→모델 규칙·모델 목록은 A1 원문과 같다
+    def test_roles_and_models_match_a1(self):
+        with mock.patch('ament_index_python.packages.get_package_share_directory', share_of):
+            module = load_simulation()
+            spec = importlib.util.spec_from_file_location('robot_test_under_test', ROBOT_TEST)
+            a1 = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(a1)
+
+            self.assertEqual(module.a1_robot_roles(), a1.ROBOT_ROLES)
+            # A1 모델 선택 원문: 'ax.urdf.xacro' if manipulator else 'ax_2.urdf.xacro', manipulator = 역할 MANIPULATOR
+            source = ROBOT_TEST.read_text(encoding='utf-8')
+            self.assertRegex(source, r"manipulator = ROBOT_ROLES\[robot_id\] == 'MANIPULATOR'")
+            rule = re.search(r"model_filename = '([^']+)' if manipulator else '([^']+)'", source)
+            self.assertIsNotNone(rule)
+            for role in set(a1.ROBOT_ROLES.values()):
+                expected = rule.group(1) if role == 'MANIPULATOR' else rule.group(2)
+                self.assertEqual(module.ROLE_MODELS[role], expected)
+            # 모델 목록은 A1 제어기 설정 표와 같고, 각 모델에 정지 역할 파일이 있다
+            self.assertEqual(set(module.MODEL_STOP_EVIDENCE), set(a1.CONTROLLER_FILES))
+            for name in module.MODEL_STOP_EVIDENCE.values():
+                self.assertTrue((SAFETY_CONFIG / name).is_file(), name)
+            # 팔 모델(arm_controller·공구 대상)은 MANIPULATOR 모델뿐
+            self.assertEqual(module.ARM_MODELS, {rule.group(1)})
+
+    # 팔 제어기·공구 노드는 모델 기준(robot_1·robot_3)으로만 붙는다
+    def test_arm_nodes_follow_model(self):
+        with mock.patch('ament_index_python.packages.get_package_share_directory', share_of):
+            module = load_simulation()
+            description = module.generate_launch_description()
+            context = make_context(description, {'gui': 'false', 'robots': '4'})
+            actions = [a for e in description.entities if isinstance(e, OpaqueFunction) for a in e.execute(context)]
+        spawned = {}
+        tools = set()
+        for action in actions:
+            if isinstance(action, Node):
+                namespace = perform_substitutions(context, normalize_to_list_of_substitutions(
+                    action._Node__node_namespace))
+                if action.node_executable == 'spawner':
+                    args = [perform_substitutions(context, normalize_to_list_of_substitutions(a))
+                            for a in action._Node__arguments]
+                    spawned.setdefault(namespace, set()).update(args)
+                if action.node_executable == 'suction_tool_node.py':
+                    tools.add(namespace)
+        arm = {ns for ns, args in spawned.items() if 'arm_controller' in args}
+        self.assertEqual(arm, {'/ax/robot_1', '/ax/robot_3'})
+        self.assertEqual(tools, {'/ax/robot_1', '/ax/robot_3'})
 
 
 if __name__ == '__main__':

@@ -12,6 +12,9 @@
   공분산 0 추정은 OK로 내지 않는다(DEGRADED COVARIANCE_COLLAPSED).
 - AMCL 재시작: lifecycle 전이 사건(amcl/transition_event)에서 active를 떠나는 전이, 또는 산포 있는 추정 뒤 다시 공분산 0
   추정이 오면 LOST(ESTIMATE_DISCONTINUOUS)로 latch한다. 해제는 재위치 성공 때만이다.
+- AMCL lifecycle 추적: 전이 사건(goal 상태)과 1 s(벽시계) 주기 amcl/get_state 조회로 active 여부를 둔다.
+  재위치 요청은 AMCL active를 확인했을 때만 접수한다(비활성·미확인은 REINIT_REJECTED_AMCL_UNAVAILABLE, fail-closed).
+  진행 중 active가 아님을 확인하면 제한시간을 기다리지 않고 REINIT_FAILED_AMCL_UNAVAILABLE로 끝낸다.
 - 로봇을 움직이지 않는다. 판단 로직은 localization_health.py에 있다.
 - 입력 stamp: amcl_pose·map→odom TF는 늦은 stamp만 받아들인다. 같은 stamp는 값이 같으면 중복, 다르면 충돌로
   나누고 갱신 수·회복 근거에 넣지 않는다(오래된 TF가 최신 추정을 덮지 않음).
@@ -119,6 +122,10 @@ class LocalizationSupervisor(Node):
         self.odom_history = lh.OdomHistory(self.config["estimate_jump"]["odom_history_s"])
         self.monitor = lh.EstimateMonitor(self.config)
         self.reset_detector = lh.AmclResetDetector(self.config)
+        # AMCL lifecycle 상태(재위치 진행 중 이탈 감지). 조회는 한 번에 하나만 보낸다.
+        self.amcl_lifecycle = lh.AmclLifecycle()
+        self.lifecycle_pending = False
+        self.lifecycle_query_wall = None
         self.spread = lh.InitialSpread(self.config)
         self.travel_floor = lh.TravelStdFloor(self.config)
         self.clock_valid_at = None   # sim time이 처음 유효해진 시각(재시작 감지에서 이전 세션 추정 배제)
@@ -240,6 +247,7 @@ class LocalizationSupervisor(Node):
     def on_amcl_transition(self, message):
         reset = self.reset_detector.on_transition(message.start_state.label, message.goal_state.label)
         now = self.now()
+        self.amcl_lifecycle.on_transition(message.goal_state.label, time.monotonic())
 
         if reset is not None:
             self.get_logger().warn(f"AMCL lifecycle 전이 감지({reset}): LOST(ESTIMATE_DISCONTINUOUS), 재위치 필요")
@@ -319,6 +327,8 @@ class LocalizationSupervisor(Node):
             self.write_diagnostics("estimate_retry", now, self.health, stream=stream, decision=decision)
 
         self.inputs.tf_chain_ok = self.tf_chain_ok()
+        self.maybe_query_lifecycle()
+        self.inputs.amcl_active = self.amcl_lifecycle.available()
         health = self.judge(now)
 
         # 교차 프로세스 /clock 지연 관찰용. 판정은 actuation_problem이 그대로 한다.
@@ -363,7 +373,38 @@ class LocalizationSupervisor(Node):
                                gates={"amcl": self.amcl_gate.counts, "tf": self.tf_gate.counts,
                                       "actuation": self.actuation_gate.counts},
                                actuation_future_ticks=self.actuation_future_ticks,
+                               amcl_lifecycle=self.amcl_lifecycle.summary(),
                                covariance_roundoff=self.covariance_roundoff())
+
+    # AMCL lifecycle 상태를 1 s(벽시계)마다 비동기로 조회한다. 응답 전에는 다시 보내지 않는다.
+    def maybe_query_lifecycle(self):
+        wall = time.monotonic()
+
+        # 응답이 5 s(벽시계) 넘게 없으면 그 조회를 버리고 다시 보낸다(늦게 온 응답은 on_state가 시각으로 거른다).
+        if self.lifecycle_pending and wall - self.lifecycle_query_wall > 5.0:
+            self.lifecycle_pending = False
+
+        if self.lifecycle_pending or not self.amcl_state.service_is_ready():
+            return
+
+        if self.lifecycle_query_wall is not None and wall - self.lifecycle_query_wall < 1.0:
+            return
+
+        self.lifecycle_pending = True
+        self.lifecycle_query_wall = wall
+        future = self.amcl_state.call_async(GetState.Request())
+        future.add_done_callback(lambda done, sent=wall: self.on_lifecycle_state(done, sent))
+
+    # 상태 조회 응답. 조회 뒤 전이 사건이 먼저 왔으면 AmclLifecycle이 오래된 응답으로 보고 버린다.
+    def on_lifecycle_state(self, future, sent_wall):
+        self.lifecycle_pending = False
+
+        try:
+            label = future.result().current_state.label
+        except Exception:
+            return
+
+        self.amcl_lifecycle.on_state(label, sent_wall, time.monotonic())
 
     # 판정: 이동 거리 비례 std 하한 적용 전 판정으로 '잘 구속됨'을 갱신한 뒤, 하한을 적용해 다시 판정하고 latch·근거
     # 부족을 반영한다(재위치 표시는 호출자가 더한다).
@@ -463,6 +504,8 @@ class LocalizationSupervisor(Node):
     def on_reinitialize(self, request, response):
         now = self.now()
         self.inputs.tf_chain_ok = self.tf_chain_ok()
+        # 마지막 tick 뒤 받은 전이 사건까지 반영한다(접수는 AMCL active 확인이 있어야 한다).
+        self.inputs.amcl_active = self.amcl_lifecycle.available()
         health = self.reinit.apply(self.judge(now))
         accepted, code = self.reinit.request(health, self.inputs, self.tracker, now, self.map_id, self.clock_valid,
                                              time.monotonic())

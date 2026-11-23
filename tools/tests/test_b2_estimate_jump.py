@@ -23,7 +23,8 @@ def good_inputs(now=10.0, odom=ODOM, map_odom=MAP_ODOM, std=0.05, yaw_std=0.03):
         tf_valid_time=now - 0.1, map_odom=map_odom, tf_chain_ok=True,
         amcl_stamp=now - 0.1, amcl_pose=lh.compose(map_odom, odom),
         amcl_covariance=tuple(lh.pose_covariance(std, yaw_std)), amcl_odom_pose=odom, amcl_updates=3,
-        actuation_state=lh.ACTUATION_STOPPED, actuation_valid=True, actuation_stamp=now - 0.05)
+        actuation_state=lh.ACTUATION_STOPPED, actuation_valid=True, actuation_stamp=now - 0.05,
+        amcl_active=True)  # AMCL lifecycle active(재위치 접수 전제, 2026-11-23)
 
 
 # start부터 end까지 50 Hz로 같은 odom 자세를 넣은 기록(시험에서는 보관 기간을 길게 둔다)

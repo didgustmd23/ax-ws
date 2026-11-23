@@ -267,6 +267,7 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
        - 검사를 통과한 `meta.valid=false`는 무효 상태로 바로 반영한다(직전 `STOPPED`를 남기지 않음, `REINIT_REJECTED_ACTUATION_STALE`).
        - 미래 stamp는 수신에서 버리지 않고 판단 시점에 아직 미래면 `ACTUATION_STALE`로 본다(프로세스 사이 `/clock` 지연으로 정상 메시지를 잃지 않게). 그런 tick 수는 감독 진단 `actuation_future_ticks`에 남는다.
        - Schema 2 `STOPPED`는 허가와 독립된 실제 정지다. B2는 로봇을 움직이지 않으므로 `drive_allowed`·`arm_allowed`를 재위치 조건으로 쓰지 않고, 허가를 `STOPPED` 대신 쓰지도 않는다. Schema 1은 `ACTUATION_STALE`로 거절된다.
+     - AMCL lifecycle이 active임을 확인함(아래 AMCL lifecycle 추적). 비활성이거나 아직 확인하지 못했으면 `REINIT_REJECTED_AMCL_UNAVAILABLE`로 거절한다(fail-closed). 검사 순서는 시계 → `NOT_NEEDED` → A4(`ACTUATION_STALE`·`NOT_STOPPED`) → AMCL → 신뢰 위치 후보다.
      - 마지막 신뢰 위치가 있고, 그 뒤 60 s 이내·odom **누적** 이동 1.0 m·0.8 rad 이하(순변위가 아님)
      - 이미 `OK`가 아님
   2. 후보 = 마지막 신뢰 `map → odom` · 현재 odom. 표준편차는 누적 이동량에 따라 키운다.
@@ -282,11 +283,16 @@ ros2 launch ax_localization localization.launch.py map:=<지도.yaml> robot_ids:
   6. **실패**(`LOST`·`REINIT_FAILED_*`)는 다음 요청이나 AMCL 회복 근거가 생길 때까지 유지한다.
      - `NOT_STOPPED`: 진행 중 정지 상태 상실
      - `CLOCK_INVALID`: 진행 중 sim time 역행·정지(상태는 `UNKNOWN`·`valid=false`)
-     - `AMCL_UNAVAILABLE`: 15 s(sim time) 또는 60 s(벽시계) 동안 새 추정 없음
+     - `AMCL_UNAVAILABLE`: 15 s(sim time) 또는 60 s(벽시계) 동안 새 추정 없음, 또는 진행 중 AMCL lifecycle이 active가 아님을 확인(2026-11-23, 아래)
      - `TIMEOUT`: 추정은 왔으나 조건 미충족
      - `NOT_RECOVERED`: 후보에서 1.0 m·0.6 rad 넘게 벗어남
+- **AMCL lifecycle 추적(2026-11-23):** 감독 노드는 `amcl/transition_event`의 goal 상태(받는 즉시)와 1 s(벽시계) 주기 `amcl/get_state` 조회로 AMCL이 active인지 둔다. 조회를 보낸 뒤 전이 사건이 왔으면 그 조회 응답은 오래된 상태로 보고 버리고, 응답이 5 s 넘게 없으면 다시 조회한다. 상태는 감독 진단 `tick`의 `amcl_lifecycle`에 남는다.
+  - 재위치가 진행 중일 때 active가 아님을 확인하면 제한시간을 기다리지 않고 `REINIT_FAILED_AMCL_UNAVAILABLE`로 끝낸다(진단 `reinit_finished`의 `cause: AMCL_NOT_ACTIVE`, `timeout: null`). 우선순위는 시계 무효 → 정지 상실 → AMCL 비활성이다. 상태를 아직 모르면(조회 전·서비스 없음) 즉시 끝내지 않고 기존 제한시간 판정을 따른다.
+  - 접수 조건에도 쓴다(2026-11-24 사용자 결정): active를 확인하지 못한 요청은 `REINIT_REJECTED_AMCL_UNAVAILABLE`로 거절한다. 요청을 받을 때 마지막 tick 뒤 온 전이 사건까지 반영한다.
+  - **한계:** `amcl/get_state` 서비스가 없거나 응답하지 않는 환경(그리고 전이 사건도 받지 못한 경우)에서는 상태가 미확인으로 남아 재위치를 할 수 없다. 감독 노드 시작 직후 첫 조회 응답 전(최대 약 1 s)도 같다.
+  - 계기: 11-23 실제 A4 경로 시험에서 AMCL deactivate 직후 접수된 재위치가 sim 15 s 뒤 `REINIT_FAILED_TIMEOUT`으로 끝났다(AMCL 비활성 중 보낸 후보가 버려진 뒤 AMCL이 재활성됨).
 - **latch와 실패:** 재위치가 실패하거나 거절되면(후보 없음·만료·이동 초과) 추정 도약 latch는 그대로 `LOST`다. AMCL 회복 근거로 `REINIT_FAILED_*`가 지워져도 latch는 남는다. odom 끊김·지도 변경으로 지운 신뢰 위치는 latch 해제 뒤에도 되살리지 않는다.
-- **응답 코드:** 진행 중 재요청은 `success=true`·`REINIT_IN_PROGRESS`이며 새 재위치를 만들지 않는다. 거절은 `success=false`와 `REINIT_REJECTED_*`이다(`NOT_STOPPED`·`ACTUATION_STALE`·`NO_TRUSTED_POSE`·`TRUSTED_POSE_EXPIRED`·`MOTION_TOO_LARGE`·`ODOM_DISCONTINUOUS`·`MAP_CHANGED`·`CLOCK_INVALID`·`NOT_NEEDED`).
+- **응답 코드:** 진행 중 재요청은 `success=true`·`REINIT_IN_PROGRESS`이며 새 재위치를 만들지 않는다. 거절은 `success=false`와 `REINIT_REJECTED_*`이다(`NOT_STOPPED`·`ACTUATION_STALE`·`AMCL_UNAVAILABLE`·`NO_TRUSTED_POSE`·`TRUSTED_POSE_EXPIRED`·`MOTION_TOO_LARGE`·`ODOM_DISCONTINUOUS`·`MAP_CHANGED`·`CLOCK_INVALID`·`NOT_NEEDED`).
 - **책임 범위:** 감독 노드는 로봇을 움직이지 않는다. 재위치 중 작업·이동 보류는 D, 실제 정지·구동은 A의 책임이다.
 - **절차 완료와 정확도:** 절차 완료(`OK`)와 정확도 판정은 다르다. 정확도는 평가 도구로 기록하며 `not_judged`다.
 
@@ -324,13 +330,14 @@ python3 src/ax_localization/scripts/check_localization.py --robot-ids robot_1,ro
   - B2-L4 과신: 오차 표본은 B2-L1·L2와 같은 정의(odom 시각 기준 0.5 s 간격, truth 보간 공백 ≤ 0.1 s)를 원시 정밀도로 다시 계산한다(보고 시계열의 4자리 반올림 값으로 경계를 판정하지 않음). 오차 > 0.15 m(초과) 표본마다 그 시각 이하 마지막 health(만료 1.0 s, 같은 stamp 재발행은 한 표본)를 대응해 `state=OK`·`valid=true` 수를 센다. 초과 표본 0개면 PASS(위험 조건 미노출), 초과 표본의 health를 확인하지 못하면 `not_judged`, 확인된 과신은 결측이 있어도 FAIL이다.
   - B2-L5 도약 감지: 사건 시작은 AMCL lifecycle active 이탈(수집기 `amcl_lifecycle` recv_sim, 감독 `amcl_transition` 수신 sim), 감독 `LATCHED`의 입력 stamp, 원시 TF를 같은 odom 자세에서 합성한 추정 도약(감독 `estimate_jump` 임계값, `INTENDED` 갱신 제외)이다. health 저하 시각은 사건 시작으로 쓰지 않는다. 지연은 사건 시작 → 첫 비(OK·valid) health stamp, 조기 복귀는 OK 이탈 뒤 같은 세션 재위치 `SUCCEEDED`(옛 기록은 `RELEASED`) 전 유효 OK 표본 수다(성공 tick의 OK는 ns 절삭을 고려해 1e-6 s 안이면 성공 뒤로 본다). 사건 시각에 이미 OK가 아니면 지연 0의 의미(`already_not_ok`)를 남긴다. 사건이 없으면 `not_applicable`, 사건 출처(감독 tick 연속성)·사건 시각·감시 구간이 끊기면 `not_judged`다.
   - B2-L6 재위치: `reinit_request`(REINIT_ACCEPTED) ↔ 같은 세션 `reinit_finished`를 시도 번호(`attempt`, 2026-11-14 감독 진단에 추가, 판정 불변)로, 옛 기록은 순서로 묶는다. 완료 시간 = 종료 sim − 접수 sim(시간초과·회복 실패는 FAIL, `REINIT_FAILED_NOT_STOPPED`·`CLOCK_INVALID` 중단과 기록 절단은 `not_judged`), 정확도 = 성공 뒤 같은 세션 첫 유효 OK 시각의 평가용 위치 오차(그 시점 값이며 이후 주행 정확도 보장이 아니다).
-  - B2-L7 재위치 거절: 요청 시각 odom(≤ 0.5 s 전 표본)이 D-06 초과면 이동, 감독이 판단에 쓴 health가 OK·valid면 OK 조건이다. 기준 이름은 대응표(`REJECTED_NOT_STOPPED`→`REINIT_REJECTED_NOT_STOPPED`, `NOT_NEEDED`→`REINIT_REJECTED_NOT_NEEDED`)로만 맞춘다. 오판 접수·잘못된 거절 사유는 FAIL, `REINIT_REJECTED_ACTUATION_STALE`·`CLOCK_INVALID`는 전제 불충족(성공으로 세지 않음)이다. OK이면서 이동인 요청은 서버 우선순위대로 NOT_NEEDED를 기대하고 두 조건 충족에 세지 않는다. 구동 상태 출처를 `stub`·실제 A4(유효 STOPPED 제공 여부)·없음으로 남긴다.
+  - B2-L7 재위치 거절: 요청 시각 odom(≤ 0.5 s 전 표본)이 D-06 초과면 이동, 감독이 판단에 쓴 health가 OK·valid면 OK 조건이다. 기준 이름은 대응표(`REJECTED_NOT_STOPPED`→`REINIT_REJECTED_NOT_STOPPED`, `NOT_NEEDED`→`REINIT_REJECTED_NOT_NEEDED`)로만 맞춘다. 오판 접수·잘못된 거절 사유는 FAIL, `REINIT_REJECTED_ACTUATION_STALE`·`CLOCK_INVALID`·`AMCL_UNAVAILABLE`(2026-11-24 추가)는 전제 불충족(성공으로 세지 않음)이다. OK이면서 이동인 요청은 서버 우선순위대로 NOT_NEEDED를 기대하고 두 조건 충족에 세지 않는다. 구동 상태 출처를 `stub`·실제 A4(유효 STOPPED 제공 여부)·없음으로 남긴다.
 - **B2-L4~L7 실제 기록 재평가(11-14, 복사본 10회차, 원본 sha256 전후 일치):** 11-14 중앙 경로 1회는 B2-L4 PASS(154표본 중 초과 0), B2-L5~L7 사건·요청 없음(`not_applicable`)이라 회차 `not_judged`(사건 시험 미노출)다. 11-14 실제 A4 run1~3은 AMCL deactivate 뒤 OK 이탈 지연 0.010·0.024·0.006 s(PASS), 재위치 성공 전에 기록이 끝나 조기 복귀는 `not_judged`, OK 중 요청 NOT_NEEDED PASS, 이동 중 요청은 없다. run3의 이탈 직후 `REINIT_REJECTED_NOT_STOPPED`는 정지 중(odom)·LOST 요청이라 이동 조건이 아니며, 실제 A4가 유효 STOPPED를 내지 않아(state UNKNOWN) 실제 A4 경로는 검증 불가다. 11-12 rev 1 재위치 회차(과거 설정)는 AMCL lifecycle 이탈(32.28 s, 이미 `DEGRADED`) 뒤 재위치 없이 33.42 s부터 OK로 돌아와 B2-L5 조기 복귀 FAIL이다. 현재 감독 노드는 lifecycle 이탈에서 latch하므로 이 결과를 현재 설정에 일반화하지 않는다. 현재 판단 설정 6회차(중앙 1회·출발 실패 2회·A4 run1~3) 묶음은 `not_judged`이며 B2-L5 조기 복귀, B2-L6 전부, B2-L7 이동 조건, B2-L8, LD-2가 미충족이다. 재위치 접수·완료(B2-L6)와 이동 중 요청(B2-L7)은 기존 실제 기록에는 없었다(아래 사건 실측).
 - **B2-L4~L7 사건 실측(11-14, 오류 주입, A4 시험 스텁 `a4_path=stub`, `log/b2_events/20261114_173444_s2s5`):** robot_2 단독 무부하, 두 창고 기준 월드·채택 지도 rev 1, 현재 AMCL·health 설정, 주행은 `mapping_drive.py` 보호 주행으로 중앙 경로 첫 구간(출발 → P1, 통로 밖 직진)만 했다. 실제 A4·B4 통합 근거가 아니며 오류 주입 회차라 정상 성능 판정(B2-L1~L3)에 쓰지 않는다.
   - S2(정지 중 AMCL deactivate→activate → 재위치): OK 이탈 0.041 s, 성공 전 OK 복귀 0, 접수→SUCCEEDED 0.588 s, 성공 뒤 첫 유효 OK 오차 0.027 m(관측 PASS, stub).
   - S4(주행 중 출발 뒤 0.6 m 지점 재시작): 유효 OK에서 시작, 이탈 0.029 s, 보호 주행은 P1까지 정상 종료, 정지 뒤 재위치 0.594 s·오차 0.016 m(관측 PASS, stub). AMCL이 launch 초기 자세로 재초기화돼 오차 > 0.15 m 표본 14개가 노출됐고 모두 LOST라 과신 0(B2-L4 노출 PASS). 이 회차의 B2-L1~L3 FAIL은 주입 결과다.
   - S3(LOST 상태 0.30 m/s 주행 중 요청 1회, 스텁 RUNNING): `REINIT_REJECTED_NOT_STOPPED`·accepted=false(관측 PASS, stub). 재위치를 하지 않은 회차라 조기 복귀는 감시 잘림(`not_judged`).
   - S5(접수 직후 AMCL deactivate): sim 13.04 s(< 15 s)에서 벽시계 60.19 s가 먼저 제한을 넘어 `REINIT_FAILED_AMCL_UNAVAILABLE`. B2-L6 FAIL·LD-3 FAIL(벽시계 제한)은 의도한 관측이며 회차는 `not_judged`다.
+    - 2026-11-23 AMCL lifecycle 추적 뒤에는 같은 조작(접수 뒤 deactivate)이 전이 사건을 받은 다음 판정 주기에 `REINIT_FAILED_AMCL_UNAVAILABLE`(`cause: AMCL_NOT_ACTIVE`, 시간초과 아님)로 끝나야 한다. deactivate 뒤 요청은 접수 전에 `REINIT_REJECTED_AMCL_UNAVAILABLE`로 거절된다. 따라서 이 회차의 LD-3 벽시계 제한 사건은 현재 설정에서는 생기지 않는다. 결과 코드는 같지만 종료 시각이 달라지므로 이 기록을 현재 설정의 재현으로 쓰지 않는다. S5 자체는 다시 재지 않았다.
   - 차체 z 0.26902 m 일정, |roll| ≤ 6e-12·|pitch| ≤ 1e-9 rad, 차체 앞 최대 world x −4.86(통로 문벽 −4.2 밖), 모델 270개 시작·끝 이동 없음, RTF 평균 약 0.22, 실시간·복사본 재판정 일치, 원본 sha256 전후 일치. 첫 회차(runA)는 하네스 결함(odom 수신 전 준비 통과)으로 사건 전에 끝나 보존했다.
   - 묶음: stub 사건 회차만으로는 B2-L7 OK 조건 근거가 없어 미충족, 실제 A4 run1~3(OK 중 요청 NOT_NEEDED)을 더한 혼합 출처 묶음에서 B2-L4~L7 coverage가 충족된다. 묶음 판정은 주입 회차의 B2-L1~L3·LD-3 FAIL 때문에 FAIL이며 성능 결과가 아니다. 실제 A4 STOPPED 경로, 반복(B2-L8)·두 로봇(LD-2)은 남았다.
 - **B2-L8 반복·LD-2 부하 비교(11-14, 정상 성능 회차, `log/b2_repeat/20261114_180358_l8ld2`):** 반복·부하 근거는 회차마다 기준 경로(`repeats.min_route`) 완주(실행 전 경로 해시·주행 결과 경로 해시·경유점 전부·관문 정지 확인), 측정 중 활성 로봇 불변(수집기 `raw/common/active_robots.jsonl`, 1 Hz 감시), 동작 설정 서명(amcl·health 설정, health·감독·주행 코드, 경로, 월드 sha256), 감독 세션이 있어야 하며 같은 세션은 한 번만 센다. 옛 기록의 robot_ids 길이로 활성 수를 대신해 확정하지 않는다. 같은 절차(중앙 실측 하네스 사본, 출발 전 정지 20 s → P1 → 중앙 통로 → P2 정지 10 s)로 robot_2 단독 3회와 두 대 동시 활성 1회(robot_1은 spawn 위치에서 A1 주행 자세로 정지 유지·센서·AMCL·health 활성, robot_2만 주행)를 했다. 11-14 중앙 1회는 활성 기록이 없고 감독 코드 해시가 달라(진단 기록 추가) 기준선으로 쓰지 않았다.

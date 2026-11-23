@@ -20,13 +20,20 @@
 # A4/B4 설정 파일(safety:=true일 때만, 로봇별로 safety.launch.py에 전달)
 # - safety_params_file: 로봇 공통 파일. 비우면 선택된 ax_safety 설치본의 config/safety_limits.yaml
 # - safety_stop_evidence_files: 로봇별 정지 판정 역할 파일. 예) robot_1=<share>/config/stop_evidence_ax1.yaml,robot_2=<...ax2.yaml>
+#   매핑에 없는 로봇은 safety_stop_evidence_auto(기본 true)이면 그 로봇에 실제로 띄우는 모델의 기본 파일을 받는다.
+#   모델은 robot_id 문자열 추측이 아니라 A1 robot_test.launch.py의 ROBOT_ROLES(같은 파일을 읽음)와
+#   역할→모델 규칙(MANIPULATOR → ax.urdf.xacro, 그 밖 → ax_2.urdf.xacro)으로 정한다.
+#   ax.urdf.xacro → stop_evidence_ax1.yaml, ax_2.urdf.xacro → stop_evidence_ax2.yaml. 로봇별로 launch 로그에 남긴다.
+#   역할을 모르는 로봇이면 기본값을 넣지 않고 시작 전에 오류로 끝낸다.
+#   safety_stop_evidence_auto:=false이면 매핑에 없는 로봇은 빈 값(역할 미정·STOPPED 미확인)이다.
 # - safety_robot_params_files: 로봇별 주행 자세·팔 한계 파일. 같은 robot_<n>=<경로>,... 형식
-#   매핑에 없는 로봇은 빈 값(역할 미정·잠금)으로 넘긴다. robot_id로 파일을 추측하지 않는다.
-#   파일 존재만 확인하며 내용이 그 로봇 모델에 맞는지는 호출자 책임이다.
+#   매핑에 없는 로봇은 빈 값(미검증·잠금)으로 넘긴다. 기본값은 없다.
+#   명시 파일은 존재만 확인하며 내용이 그 로봇 모델에 맞는지는 호출자 책임이다.
 # - 하위 단일 로봇 인자(params_file·stop_evidence_file·robot_params_file·허가 플래그)를 이 진입점에 직접
 #   주면 여러 로봇에 같은 값이 섞이므로 거부한다. 단일 로봇은 safety.launch.py를 직접 실행할 때 그 인자를 쓴다.
 #   이 이름을 launch configuration으로 남기는 상위 launch(예: 다른 include)에서 포함해도 거부된다.
 
+import importlib.util
 import os
 from pathlib import Path
 
@@ -36,6 +43,7 @@ from launch.actions import (
     DeclareLaunchArgument,
     GroupAction,
     IncludeLaunchDescription,
+    LogInfo,
     OpaqueFunction,
     SetEnvironmentVariable,
 )
@@ -44,8 +52,19 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-# robot_test.launch.py의 시험 역할과 같다. 운영 역할·능력 소유는 D2다.
-MANIPULATORS = {"robot_1", "robot_3"}
+# A1 robot_test.launch.py의 역할 → 실제로 띄우는 모델 파일. 그 launch의 규칙
+# ('ax.urdf.xacro' if MANIPULATOR else 'ax_2.urdf.xacro')과 같다(시험이 원문과 대조한다).
+# 역할 표 자체(ROBOT_ROLES)는 A1 파일에서 읽는다. 운영 역할·능력 소유는 D2다.
+ROLE_MODELS = {"MANIPULATOR": "ax.urdf.xacro", "TRANSPORTER": "ax_2.urdf.xacro"}
+
+# 팔이 있는 모델(arm_controller·공구 노드 대상)
+ARM_MODELS = {"ax.urdf.xacro"}
+
+# 모델 → ax_safety/config의 A4 정지 판정 역할 기본 파일
+MODEL_STOP_EVIDENCE = {
+    "ax.urdf.xacro": "stop_evidence_ax1.yaml",
+    "ax_2.urdf.xacro": "stop_evidence_ax2.yaml",
+}
 
 # 흡착 부착 플러그인이 붙는 공구
 ATTACH_TOOLS = {"epick", "suction"}
@@ -65,6 +84,9 @@ MODEL_ARGUMENTS = {
 # A4/B4 safety.launch.py에만 쓰는 인자. A1에는 넘기지 않는다.
 # 기본값 false로 기존 A2 전용 실행 방식을 보존한다.
 SAFETY_ENABLE_ARGUMENT = {"safety": "false"}
+
+# 매핑에 없는 로봇에 모델 기본 정지 역할 파일을 넣을지(true/false). false면 역할 미정 상태를 재현한다.
+SAFETY_EVIDENCE_AUTO_ARGUMENT = {"safety_stop_evidence_auto": "true"}
 
 # 상위 허가 인자 → safety.launch.py 인자. 기본 false이며 파일 값보다 나중에 적용된다.
 SAFETY_FLAG_ARGUMENTS = {
@@ -93,6 +115,7 @@ REJECTED_SAFETY_ALIASES = (
 LAUNCH_ARGUMENTS = {
     **MODEL_ARGUMENTS,
     **SAFETY_ENABLE_ARGUMENT,
+    **SAFETY_EVIDENCE_AUTO_ARGUMENT,
     **{name: "false" for name in SAFETY_FLAG_ARGUMENTS},
     **{name: "" for name in SAFETY_FILE_ARGUMENTS},
 }
@@ -106,8 +129,37 @@ def selected_robot_ids(robots, robot_ids):
     return [f"robot_{index + 1}" for index in range(int(robots))]
 
 
+# A1 robot_test.launch.py를 모듈로 읽어 ROBOT_ROLES를 가져온다(역할 표를 이 파일에 두 벌로 두지 않는다).
+def a1_robot_roles():
+    path = Path(get_package_share_directory("ax_description")) / "launch" / "robot_test.launch.py"
+    spec = importlib.util.spec_from_file_location("ax_description_robot_test_launch", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return dict(module.ROBOT_ROLES)
+
+
+# 선택한 로봇마다 A1이 실제로 띄우는 모델 파일 이름. 역할을 모르면 시작 전에 거부한다.
+def robot_models(robot_ids):
+    roles = a1_robot_roles()
+    models = {}
+
+    for robot_id in robot_ids:
+        role = roles.get(robot_id)
+
+        if role not in ROLE_MODELS:
+            raise ValueError(
+                f"{robot_id}: A1 robot_test.launch.py ROBOT_ROLES에서 모델을 정할 수 없다(역할 {role!r})"
+            )
+
+        models[robot_id] = ROLE_MODELS[role]
+
+    return models
+
+
 # 한 로봇의 제어기 spawner를 만든다. odom TF 접두사는 로봇별 값이라 diff_drive만 따로 띄워 넘긴다.
-def controller_spawners(robot_id):
+# arm: 그 로봇 모델에 팔이 있는지(arm_controller 포함 여부)
+def controller_spawners(robot_id, arm):
     namespace = f"/ax/{robot_id}"
     common_arguments = [
         "--controller-manager", f"{namespace}/controller_manager",
@@ -120,7 +172,7 @@ def controller_spawners(robot_id):
     # 상태 발행과 팔 제어기
     state_controllers = ["joint_state_broadcaster"]
 
-    if robot_id in MANIPULATORS:
+    if arm:
         state_controllers.append("arm_controller")
 
     state_spawner = Node(
@@ -243,34 +295,76 @@ def common_safety_file(text):
     return str(Path(path).absolute())
 
 
+# safety_stop_evidence_auto 값(true/false)을 bool로 바꾼다. 그 밖의 값은 거부한다.
+def evidence_auto(text):
+    value = text.strip().lower()
+
+    if value not in ("true", "false"):
+        raise ValueError(f"safety_stop_evidence_auto: true 또는 false여야 한다: {text!r}")
+
+    return value == "true"
+
+
+# 로봇별 정지 역할 파일과 출처를 정한다. 명시 매핑 > (auto면) 모델 기본값 > 빈 값.
+# 반환: {robot_id: (경로 또는 "", 출처 설명)}
+def stop_evidence_files(values, robot_ids, models):
+    explicit = robot_file_mapping("safety_stop_evidence_files", values["safety_stop_evidence_files"], robot_ids)
+    auto = evidence_auto(values["safety_stop_evidence_auto"])
+    config = Path(get_package_share_directory("ax_safety")) / "config"
+    result = {}
+
+    for robot_id in robot_ids:
+        if robot_id in explicit:
+            result[robot_id] = (explicit[robot_id], "명시 매핑")
+        elif auto:
+            path = config / MODEL_STOP_EVIDENCE[models[robot_id]]
+
+            if not path.is_file():
+                raise ValueError(f"safety_stop_evidence_auto: {robot_id} 모델 기본 파일 없음: {path}")
+
+            result[robot_id] = (str(path.absolute()), f"모델 기본값({models[robot_id]})")
+        else:
+            result[robot_id] = ("", "없음(safety_stop_evidence_auto:=false, 역할 미정·STOPPED 미확인)")
+
+    return result
+
+
 # 로봇마다 safety.launch.py를 scope가 있는 그룹으로 감싸 넣는다.
 # 모든 하위 인자를 빈 값 포함 명시 전달하고 scope를 닫아 앞 로봇의 값이 다음 로봇으로 새지 않게 한다.
 # 하위 적용 순서(공통 → 정지 역할 → 로봇별 → 허가 사전)는 safety.launch.py가 정한다.
-def safety_actions(values, robot_ids):
+# models: {robot_id: 모델 파일 이름}(robot_models). 로봇마다 정지 역할 파일의 출처를 로그로 남긴다.
+# 반환: {robot_id: [출처 로그, safety include 그룹]}
+def safety_actions(values, robot_ids, models):
     common = common_safety_file(values["safety_params_file"])
-    evidence = robot_file_mapping("safety_stop_evidence_files", values["safety_stop_evidence_files"], robot_ids)
+    evidence = stop_evidence_files(values, robot_ids, models)
     robot_params = robot_file_mapping("safety_robot_params_files", values["safety_robot_params_files"], robot_ids)
     safety_launch = str(Path(get_package_share_directory("ax_safety")) / "launch" / "safety.launch.py")
 
-    actions = []
+    actions = {}
 
     for robot_id in robot_ids:
+        evidence_path, evidence_source = evidence[robot_id]
+        log = LogInfo(
+            msg=f"[ax_control] {robot_id} A4 정지 역할 파일: {evidence_path or '(빈 값)'} — {evidence_source}"
+        )
+
         arguments = {
             "robot_id": robot_id,
             "params_file": common,
-            "stop_evidence_file": evidence.get(robot_id, ""),
+            "stop_evidence_file": evidence_path,
             "robot_params_file": robot_params.get(robot_id, ""),
             **{child: values[parent] for parent, child in SAFETY_FLAG_ARGUMENTS.items()},
         }
 
-        actions.append(GroupAction(
+        group = GroupAction(
             [IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(safety_launch),
                 launch_arguments=arguments.items(),
             )],
             scoped=True,
             forwarding=True,
-        ))
+        )
+        actions[robot_id] = [log, group]
 
     return actions
 
@@ -286,6 +380,8 @@ def launch_setup(context):
     tool_attach = values["tool"] in ATTACH_TOOLS
     safety = values["safety"].lower() == "true"
     robot_ids = selected_robot_ids(values["robots"], values["robot_ids"])
+    # A1이 각 로봇에 실제로 띄우는 모델(팔 유무·정지 역할 기본값의 근거)
+    models = robot_models(robot_ids)
 
     # safety:=false에서 파일 인자를 주면 조용히 무시하지 않는다(기존 허가 플래그는 이전처럼 무시).
     given_files = [name for name in SAFETY_FILE_ARGUMENTS if values[name].strip()]
@@ -294,7 +390,7 @@ def launch_setup(context):
         raise ValueError(", ".join(given_files) + "는 safety:=true일 때만 쓴다")
 
     # 시작 전에 safety 인자를 모두 검사한다.
-    safety_includes = safety_actions(values, robot_ids) if safety else []
+    safety_includes = safety_actions(values, robot_ids, models) if safety else {}
 
     # Gazebo가 ax_control의 흡착 플러그인 라이브러리를 찾도록 경로를 더한다.
     plugin_path = os.pathsep.join(filter(None, [
@@ -321,15 +417,16 @@ def launch_setup(context):
     ]
 
     # 로봇마다 제어기와 공구 노드
-    for index, robot_id in enumerate(robot_ids):
-        actions.extend(controller_spawners(robot_id))
+    for robot_id in robot_ids:
+        arm = models[robot_id] in ARM_MODELS
+        actions.extend(controller_spawners(robot_id, arm))
 
         # W1 안전 실행은 명시적으로 요청한 경우에만 로봇별로 붙인다.
         # safety.launch.py의 허용 플래그 기본값(false)은 그대로 유지한다.
         if safety:
-            actions.append(safety_includes[index])
+            actions.extend(safety_includes[robot_id])
 
-        if robot_id in MANIPULATORS and tool_attach:
+        if arm and tool_attach:
             actions.extend(tool_nodes(robot_id))
 
     return actions

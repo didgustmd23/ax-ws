@@ -392,7 +392,7 @@ P1~P5를, **시험 1개월**(2026-12-28 ~ 2027-01-28)에 P6·P7을 둔다. 주�
 
 ### W4 양현승 D2 진행 — 2026-11-24
 
-미커밋 작업트리(기준 HEAD `a5e157d`). 변경 범위는 `src/ax_fleet_manager/`(`group_machine`·`group_model`·`node_config`·`runtime`·`task_store` 수정, `receipt.py`·`intake.py` 신규)와
+`1e41e3e`(W5 변경과 같은 커밋, 작업 기준 HEAD `a5e157d`). 변경 범위는 `src/ax_fleet_manager/`(`group_machine`·`group_model`·`node_config`·`runtime`·`task_store` 수정, `receipt.py`·`intake.py` 신규)와
 `tools/tests/test_d2_*.py`(`test_d2_receipt.py` 신규)다. 규칙의 기준은 [ax_fleet_manager 안내](../../src/ax_fleet_manager/README.md)의 "인계 잠금(W4)"·"자동 입고 등록(W4)" 절이다.
 
 - 인계 잠금:
@@ -433,6 +433,61 @@ P1~P5를, **시험 1개월**(2026-12-28 ~ 2027-01-28)에 P6·P7을 둔다. 주�
   - 실제 A3·D1·A4 연결이 없다. 출력은 `/ax/dev/`뿐이고, `UNKNOWN`이 A4 `HANDOFF_LOCK`으로 이어지는 것은 계약 문구로만 확인했다.
   - 잠금 해제·inhibit 해제 절차, W5 재고·완료 판정, 위치 예약·용량 검사, 자동 배정, 식별 불명·재입고 확인 절차가 없다.
   - 입고 관측 표에 보존 상한이 없다. 여러 프로세스가 같은 원장을 동시에 쓰는 경우는 시험하지 않았다.
+  이 절은 개발 진행 기록이며 G2·종단 운반·통합 완료를 뜻하지 않는다.
+
+### W5 양현승 D2 진행 — 2026-11-24
+
+`1e41e3e`(W4와 같은 커밋). 변경 범위는 `src/ax_fleet_manager/`(`inventory.py`·`live_adapters.py`·`intake_node.py`·`config/dev_intake.json` 신규, 엔진·원장·runtime·포트·입고 접수 수정)와
+`tools/tests/test_d2_*.py`(`test_d2_inventory.py`·`test_d2_intake_node_ros.py` 신규)다. 규칙의 기준은 [ax_fleet_manager 안내](../../src/ax_fleet_manager/README.md)의 W5 절이다.
+
+- 재고 전이:
+  - 엔진이 그룹 물체 상태를 정하고, 같은 판정을 기록하는 원장 트랜잭션에서 재고 항목에 반영한다. 계획·전송·수락만으로는 바꾸지 않는다.
+  - `AT_SOURCE` → `HELD_BY_MANIPULATOR` → `STOWED_ON_TRANSPORTER` → `AT_DESTINATION`으로 간다.
+  - 집기 시작 뒤 적재 상실은 `LOST`, 집기 요청 예약 뒤 실패·미확정은 `UNKNOWN`(격리)이다. 복원 뒤 미대조 중에는 재고를 바꾸지 않는다.
+- 완료 판정 결합(E-31): `AT_DESTINATION`은 COMPLETED 판정과 같은 사건·같은 트랜잭션에서만 된다.
+  배치 관측 누락, 해제 결과 유실, 하역 중 재시작에서는 `AT_DESTINATION`이 되지 않고 예약이 남는다(시험으로 고정).
+- 목적지 예약:
+  - 등록과 같은 트랜잭션에서 예약을 만든다. 거절 사유는 사용 중지 `LOCATION_INACTIVE`, 허용 종류 밖 `OBJECT_CLASS_NOT_ALLOWED`, 용량 초과 `LOCATION_FULL`이다.
+  - COMPLETED에서 소진하고, 집기 요청 예약 전 실패·취소만 해제한다. 그 밖의 실패에서는 예약을 유지한다.
+- 원장 schema 3: 재고·지점·예약 표를 추가했다. v1·v2 원장을 한 트랜잭션으로 이주하고, 종료 전 작업만 `UNKNOWN`으로 채운다.
+- 주행 goal UUID: 이제 D2가 아니라 D1이 만든다. D2는 실행 기록을 `SUBMITTING`으로 둔 뒤 D1에 전송하고, 돌려받은 UUID를 기록한다.
+  UUID 기록 전에 멈추면 재전송하지 않고 `UNCERTAIN`으로 둔다. 로컬 작업은 지금처럼 D2가 UUID를 예약한다.
+- live 어댑터 초안: D1 주행 포트, D1 결과 변환, A4 `ActuationState` 변환을 만들었다. 기본 비활성이고 runtime에 연결하지 않았다.
+- 개발 입고 노드 `d2_dev_intake`:
+  - `/ax/dev/d2/` 아래에서 입고 관측을 구독하고, `RegisterTask` 서비스를 제공하며, `ReceiptEvent`·`InventorySnapshot`을 발행한다.
+  - 운영 모드나 운영 이름(`/ax/fleet`·`/ax/robot_` 포함)이면 시작을 거부한다.
+- 지점 메타(용도·용량·허용 종류·최대 하중·pose·역할별 정차 자세)는 개발 설정 파일 값이며 등록 지점 원장 값이 아니다. 계약 문서와 `ax_interfaces` 타입은 바꾸지 않았다.
+- 바뀐 기존 기대값 5건(이유는 시험 주석에 적음):
+  - `test_d2_task_store.py`의 3건은 주행 UUID를 D1이 만들게 된 데 따른 변경이다:
+    - `test_intent_recorded_and_reserved_before_send`: 전송 순간 상태가 `RESERVED`+D2 UUID에서 `SUBMITTING`+UUID 없음으로 바뀌었다. 전송 뒤 D1(모의) UUID 기록 확인을 추가했다.
+    - `test_reserve_failure_blocks_send`: 실패 주입 대상이 `begin_submit`으로 바뀌었다. 기대(전송 0·고장)는 같다.
+    - `test_crash_between_reserve_and_send_is_uncertain`: 중단 지점이 `begin_submit`으로 바뀌었고, 허용 상태에 `SUBMITTING`을 추가했다. 미확정·재전송 0 기대는 같다.
+  - `test_d2_task_store.py::test_store_is_d2_only`: 정확한 표 집합에 schema 3 표 3개를 추가했다.
+  - `test_d2_receipt.py`: `test_v1_migration_preserves_tasks`의 원장 버전 기대값을 2에서 3으로 바꿨고, `make_intake`에 카탈로그 인자를 넣었다. W4 판정 기대값은 바꾸지 않았다.
+  - 인계 잠금(K1) 단언은 바꾸지 않았다.
+- 실행한 검사(보고 기준, 이번 기록 작성 때 다시 실행하지 않음, 격리 build/install, 시험 전용 ROS domain):
+  - 격리 빌드: `ax_interfaces`·`ax_fleet_manager` 성공.
+  - `test_d2_*.py`(ROS 시험 제외 9개 파일): 255개 통과, 실패 0.
+  - ROS 시험: `test_d2_intake_node_ros.py` 단독 5회 모두 통과, `test_d2_group_node_ros.py` 단독 3회 모두 통과.
+    두 파일을 묶어 6회 실행했을 때 2회 실패했다. 1회는 W3 시험 `test_fixture_output_and_graph`의 1 Hz 재발행 시간 조건(3.6 s 안 3회 기대에 2회)이었고, 나머지 1회는 로그가 없어 원인을 모른다.
+  - 변이 확인: 하역 성공 시점에 `AT_DESTINATION`을 쓰도록 바꾸면 4건, 실패 뒤 `UNKNOWN` 강등을 없애면 3건이 실패했다.
+- 종단 연결 막힘:
+  - 순수 엔진+모의 포트 전 흐름은 시험으로 완료했다.
+  - D1 주행: 어댑터 초안만 있다. D1 조회 API·import 방식, 지점 pose 원천, live 출처 정책이 정해지지 않았다.
+  - A3 로컬 작업: 연결하지 않았다. A3 서버는 `CONFIRM_LOAD`만 수락한다.
+  - 관측: C4 보유 상태 생산자가 완성되지 않았고, 배치·팔 후퇴 관측 생산자가 없다.
+  - 격리 Gazebo 종단: 실행하지 않았다.
+- 상대 확인 필요 4건:
+  - 등록 지점 원장 소유(D2 또는 D4)
+  - D1 복원 조회 API 공개 여부와 D1 패키지 import 방식(D1 원장은 robot_1~4만 허용)
+  - 배치·팔 후퇴 관측 생산자(계약에 Topic 없음, 없으면 live로 COMPLETED에 도달하지 못함)
+  - W4·W5 내부 사유 코드를 계약 D-13에 반영하는 시점
+- 남은 제한:
+  - 재고 재대조 절차와 격리 해제 절차가 없다.
+  - live 출처(`LIVE`)를 개발 모드 판정 근거로 받지 않으므로, 실제 연결 전에 출처 정책을 정해야 한다.
+  - `max_load_kg`는 물품 질량 원천이 없어 검사하지 않는다. `reservation_id`는 1개만 표시한다.
+  - 입고 관측 표에 보존 상한이 없다. 다중 프로세스 동시 쓰기는 시험하지 않았다.
+  - W3 ROS 시험(`test_fixture_output_and_graph`)이 간헐적으로 실패한다.
   이 절은 개발 진행 기록이며 G2·종단 운반·통합 완료를 뜻하지 않는다.
 
 ## A2 기본 제어·하중 시험 도구 상태 — 2026-11-04

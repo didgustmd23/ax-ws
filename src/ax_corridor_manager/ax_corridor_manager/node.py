@@ -20,6 +20,24 @@ STATE_QOS = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                        durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
 
+def stop_evidence_remaining(meta, now_ns):
+    """A4 Schema 2의 식별·유효성·정규 시각을 검사해 남은 300ms 수명을 반환합니다."""
+    # 공백 문자열도 식별자로 인정하지 않는다. 출처 문자열 검사는 노드 인증을 대신하지 않는다.
+    if (meta.schema_version != 2 or not meta.source_id.strip()
+            or not meta.source_session_id.strip() or meta.revision == 0 or not meta.valid):
+        return 0.0
+    stamp = meta.header.stamp
+    # sec에 합산하면 정상 시각처럼 보일 수 있는 비정규 nanosec도 먼저 거절한다.
+    if stamp.sec < 0 or not 0 <= stamp.nanosec < 1_000_000_000 or now_ns <= 0:
+        return 0.0
+    stamp_ns = stamp.sec * 1_000_000_000 + stamp.nanosec
+    age_ns = now_ns - stamp_ns
+    # float 초에서 100 - 99.7은 0.3보다 작게 보일 수 있다. 만료 경계는 정수 ns로 판정한다.
+    if stamp_ns <= 0 or not 0 <= age_ns < 300_000_000:
+        return 0.0
+    return (300_000_000 - age_ns) / 1_000_000_000
+
+
 class CorridorNode(Node):
     """영속 통로 상태와 공통 계약의 허가 및 해제 서비스를 제공합니다."""
 
@@ -121,11 +139,17 @@ class CorridorNode(Node):
         # 역할: 신선한 정지 상태와 실제 속도 한계를 함께 확인합니다.
         if message.robot_id != robot:
             return
-        duration = self.remaining(message.meta, 0.3)
-        if duration > 0 and not self.ordered(('stop', robot), message.meta):
+        duration = stop_evidence_remaining(message.meta, self.get_clock().now().nanoseconds)
+        # 잘못된 메타는 이전 정지 증거를 지우되, 정상 세션의 revision 이력을 교체하지 않는다.
+        if duration <= 0:
+            self.manager.stopped(robot, False, 0.0)
+            return
+        if not self.ordered(('stop', robot), message.meta):
             return
         speeds = (message.linear_speed, message.angular_speed, message.max_joint_speed)
-        stopped = (message.state == ActuationState.STOPPED
+        # drive_allowed/arm_allowed는 명령 허가다. 둘 다 False여도 실측 STOPPED일 수 있다.
+        # 만료 메시지는 기한만 0으로 두지 않고 정지 플래그도 내려 내부 상태를 일관되게 만든다.
+        stopped = (duration > 0 and message.state == ActuationState.STOPPED
                    and all(math.isfinite(value) and value >= 0 for value in speeds)
                    and speeds[0] <= 0.01 and speeds[1] <= 0.02 and speeds[2] <= 0.01)
         self.manager.stopped(robot, stopped, duration)

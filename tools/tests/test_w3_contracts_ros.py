@@ -104,6 +104,7 @@ class W3RosTests(unittest.TestCase):
             stop = ActuationState()
             stop.robot_id = robot
             self.fill_meta(stop.meta, 'a4-test-' + robot)
+            stop.meta.schema_version = 2  # A4 구동 상태만 Schema 2, B3/D2 메시지는 기존 Schema 1이다.
             stop.state = stop.STOPPED
             self.a4[robot].publish(stop)
         tasks = GroupTaskList()

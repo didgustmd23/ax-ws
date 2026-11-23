@@ -80,3 +80,72 @@ SROS2 노드 권한 구성과 다른 담당자의 점유·허가 소비 경로�
 완전 이탈과 통로 비움을 분리하는 정책 변경은 D1·D2·A4와 별도로 합의해야 한다.
 
 사유 코드 추가 제안과 상대 구현 경계는 [계약 인계 문서](../../docs/guides/C3_D3_CONTRACT_HANDOFF.md)를 따른다.
+
+## 2026-11-23 상대 변경 연동
+
+A4 `ActuationState`만 Schema 2로 받는다. 구형·미지원 schema 또는 출처 없는 입력은 이전 정지
+근거를 무효화한다. 신선한 STOPPED와 실측 속도 기준을 함께 확인하며, 만료 시 내부 정지 표시도
+내린다. `drive_allowed`·`arm_allowed`는 명령 허가이므로 정지 판정으로 대신 사용하지 않는다.
+예를 들어 HANDOFF_LOCK으로 명령이 차단됐어도 실제 정지 증거는 유효할 수 있다.
+
+새 D2의 개발 fixture와 실제 `task_list_fields` 결과를 내 수신 콜백에 직접 전달해 형식 호환을
+검사한다. 이는 오프라인 시험이다. D2 개발 토픽을 운영 `/ax/fleet/tasks`로 remap하거나 실제
+A3 실행 포트로 연결하지 않는다. D2의 live 포트는 여전히 상대 패키지에서 미지원이다.
+
+`tools/tests/test_d3_team_inputs.py`는 새 정지 형식·만료·잘못된 입력과 D2 직렬화 연결을,
+`tools/tests/test_b3_b4_battery_handoff.py`는 내 B3 출력과 상대 B4 배터리 차단의 결합을 검사한다.
+정상 배터리도 미승인 영역을 우회하지 않으며 LOW 강제 정지 같은 새 정책은 추가하지 않는다.
+
+검증: 관련 13개 패키지 재빌드 후 연동·회귀·스타일 78건, A3/B3/C3 추가 검사 92건,
+상대 A2/B2/B4 원본 33건, A4 원본 정지 2건이 통과했다. A4는 최신 시험이 요구하는
+`AX_GATE_BIN`을 현재 설치본 실행파일로 명시했다. 합의 domain이 없는 C3 ROS 검사 8건은
+건너뛰었다. 전체 저장소·Gazebo 종단 시험을 새로 모두 실행한 결과는 아니다.
+
+### D3(W2) 정지 메타 추가 검증
+
+`node.py`의 `stop_evidence_remaining`은 A4 메시지만 대상으로 Schema 2, 공백이 아닌
+source_id·source_session_id, revision > 0, valid=true를 검사한다. 정지 증거는 양의 ROS stamp와
+0~999,999,999 범위의 nanosec를 가져야 하고, 미래 표본 또는 나이 300ms 이상이면 무효다.
+초 단위 float 대신 정수 ns로 판정해 정확한 만료 경계와 큰 ROS 시각에서도 1ns를 구분한다.
+B3 관측·D2 배정 메시지의 기존 schema 규칙은 바꾸지 않았다.
+
+추가 시험에서 공백 식별자, 정확히 300ms 된 표본의 float 오차, 비정규 nanosec 합산이라는
+세 누락을 재현하고 수정했다. 무효 입력은 이전 정지 근거를 지우며 정상 세션 이력은 교체하지
+않는다. 기존 세션·revision 검사는 세션 재시작 후 옛 세션 재등장과 낮은 revision을 차단한다.
+
+최종 검사: `tools/tests/test_d3_stop_metadata.py`의 9개 시험을 포함해 D3 회귀·스타일 57건,
+현재 A4 실행파일을 사용한 원본 정지 시험 2건이 통과했다. D3 빌드도 성공했다.
+원본 로그는 로컬 docs/reports/d3_stop_metadata_*_20261123 및 d3_metadata_*_20261123에 있다.
+첫 재현 결과 3 failed/4 passed와 수정 후 결과를 별도로 보존한다.
+
+D3는 속도 세 개와 STOPPED 보고를 검증한다. 0.5초 연속 정지의 표본 축적은 생산자 A4가
+담당하며 D3가 대신 수행하지 않는다. source_id 문자열 검사는 출처 필드 검증이지 노드 인증이
+아니다. 이번 검사는 직접 콜백·격리 원장과 A4 합성 입력 시험이며 실제 Gazebo 종단 검증 또는
+미합의 domain에서의 D3 DDS 시험 완료를 뜻하지 않는다. 영역·허가 정책 승인은 유지 보류다.
+
+### 후속: 실제 ROS2/Gazebo Schema 2·배터리 연결 확인
+
+2026-11-23 `run_kim_gazebo_schema2_review.py`로 설치된 원본 simulation launch, 두 로봇의
+Gazebo 물리·제어기·sim_battery, A4/B4와 내 D3를 실제 실행했다. 기존 김성민 시험 domain
+138~140에서 잠금·그래프 충돌 검사를 거쳤고 Gazebo partition도 매번 분리했다.
+원본 설정 파일은 수정하지 않았으며 임시 설정에서 battery_required=true만 지정했다.
+모든 주행·팔·운영 허가 플래그와 영역·통로 승인 보류는 유지했다.
+
+최종 run_3: robot_1 배터리 27개, Schema 2 STOPPED 수신·D3 수락 85회; robot_2 배터리 28개,
+Schema 2 STOPPED 148회·D3 수락 147회. 종료 직전에는 두 로봇 모두 유효한 STOPPED이고
+D3 정지 근거도 미만료였다. robot_2는 격리 Gazebo set_pose로 패드에 배치한 뒤 DISCHARGING
+→ CHARGING → FULL 전환을 확인했다. 자율 주행·자동 도킹 성공을 뜻하지 않는다.
+
+LiDAR·B2 위치 추정·승인된 B3 실제 입력은 이번 Gazebo 실행에 포함하지 않았다(sensors=false).
+따라서 B4의 UNKNOWN과 A4 명령 차단은 예상 결과이며, 배터리 정상만으로 주행이 열리지 않았다.
+실제 주행 중 LOW/CRITICAL 대응과 전체 센서 경로까지 통과했다고 볼 수 없다.
+
+상대 원본의 보호팔 Schema 2·상위 launch 매개변수 실제 ROS 시험 6개, A2/B2/B4 및 내 B3/D3
+경계값·스타일 시험 59개도 통과했다. 후자는 모의 입력을 포함하며 실제 Gazebo 시험과 구분한다.
+run_2에서는 controller_manager 조회의 일시적 DDS timeout 경고가 있었다. 원인을 확정하거나
+완전히 해결한 것은 아니며, run_3의 기동·최종 상태 확인과 별도로 남긴다.
+
+첫 실행에서 내 시험 도구가 ROS_HOME을 자식 종료 전에 지우는 정리 오류를 발견해 종료 순서를
+수정했다. SIGINT 종료 뒤의 exit -2·KeyboardInterrupt 로그는 의도한 시험 종료와 구분한다.
+실제 결과·명령·임시 설정·원본 로그는 로컬 docs/reports/gazebo_schema2_battery_20261123/
+run_1~3와 schema2_real_ros_consumers_20261123.*, schema2_battery_boundary_regression_20261123.*에 있다.

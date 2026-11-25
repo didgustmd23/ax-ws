@@ -1,4 +1,7 @@
 @echo off
-REM Install or refresh desktop shortcuts; no ROS build is performed.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-shortcuts.ps1" %*
-if errorlevel 1 pause
+setlocal
+REM Prepare WSL and the AX workspace before creating desktop shortcuts.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" %*
+set "AX_INSTALL_EXIT=%errorlevel%"
+if not "%AX_INSTALL_EXIT%"=="0" pause
+exit /b %AX_INSTALL_EXIT%

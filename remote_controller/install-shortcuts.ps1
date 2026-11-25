@@ -25,22 +25,26 @@ if (-not $Distro) {
 if (-not $Workspace) {
     if ($previous -and $previous.distro -eq $Distro) { $Workspace = $previous.workspace }
     else {
-        $probe = "from pathlib import Path; print(next((str(p) for p in [Path.home()/'ax-play-ws', Path.home()/'ax-ws'] if (p/'src'/'ax_description').is_dir()), ''))"
+        $probe = "from pathlib import Path; print(next((str(p) for p in [Path.home()/'ax-play-ws', Path.home()/'ax-ws'] if (p/'src'/'ax_description'/'package.xml').is_file()), ''))"
         $Workspace = (& wsl.exe -d $Distro --exec python3 -c $probe | Select-Object -Last 1)
         if ($LASTEXITCODE -ne 0 -or -not $Workspace) {
-            throw 'No AX Ubuntu workspace found. Prepare it first, or rerun install-shortcuts.ps1 -Workspace ~/YOUR_FOLDER.'
+            throw 'No AX Ubuntu workspace found. Run install.cmd to prepare it, or pass -Workspace ~/YOUR_FOLDER for an existing AX workspace.'
         }
     }
 }
 # 설정은 저장소 log/ 아래에만 기록한다. 다른 사람에게 넘길 Git 소스에는 개인 경로를 넣지 않는다.
 New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-@{distro=$Distro;workspace=$Workspace;tool=$Tool;port=$Port} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $configDir 'config.json') -Encoding UTF8
+$settings = @{distro=$Distro;workspace=$Workspace;tool=$Tool;port=$Port}
+if ($previous.world -and $previous.distro -eq $Distro -and $previous.workspace -eq $Workspace) {
+    $settings.world = $previous.world
+}
+$settings | ConvertTo-Json | Set-Content -LiteralPath $previousPath -Encoding UTF8
 $desktopDir = [IO.Path]::GetFullPath($ShortcutDirectory)
 New-Item -ItemType Directory -Path $desktopDir -Force | Out-Null
 $shell = New-Object -ComObject WScript.Shell
 $names = @{Stop=('AX '+[char]0xC885+[char]0xB8CC); Remote=('AX '+[char]0xB9AC+[char]0xBAA8+[char]0xCEE8)}
 $names.Recover = 'AX '+[char]0xD654+[char]0xBA74+' '+[char]0xBCF5+[char]0xAD6C
-$names.ChooseWorld = 'AX 월드 선택'
+$names.ChooseWorld = 'AX '+[char]0xC6D4+[char]0xB4DC+' '+[char]0xC120+[char]0xD0DD
 # 이 저장소가 만든 이전 AX 실행 바로가지만 제거한다. 다른 작업공간 것은 유지한다.
 $legacyPath = Join-Path $desktopDir (('AX '+[char]0xC2E4+[char]0xD589)+'.lnk')
 if (Test-Path -LiteralPath $legacyPath) {

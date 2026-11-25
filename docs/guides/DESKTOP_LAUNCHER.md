@@ -1,23 +1,23 @@
 # 바탕화면에서 한 번에 실행·종료
 
 Windows 저장소 폴더의 **`remote_controller/install.cmd`를 더블클릭**한다.
-바탕화면에 **AX 월드 선택**, **AX 리모컨**, **AX 종료**, **AX 화면 복구** 바로가기를 만든다. 기존 AX 실행 바로가기는 월드 선택으로 통합해 제거한다. 최초 ROS 설치·빌드는 자동 수행하지 않는다.
+설치기는 Ubuntu 24.04 WSL2, ROS 2 Jazzy와 AX 작업공간을 준비한 뒤 바탕화면에 **AX 월드 선택**, **AX 리모컨**, **AX 종료**, **AX 화면 복구** 바로가기를 만든다. WSL이 재부팅이나 Ubuntu 사용자 설정을 요청하면 완료한 뒤 설치기를 다시 실행한다.
 
 Windows PowerShell에서 저장소 루트 기준:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\remote_controller\install-shortcuts.ps1
+.\remote_controller\install.cmd
 ```
 
 Ubuntu 배포판과 `~/ax-play-ws` 또는 `~/ax-ws` 작업 폴더를 자동으로 찾으며 신규 바로가기의 기본 공구는 다중 흡착판 · 12컵이다. 실행값 `epick`은 호환 이름이다. 기존 개인 설정이 있으면 유지하며 리모컨에서 손가락 집게 · Robotiq 2F-85와 교체할 수 있다.
 다른 PC의 폴더가 다르면 설치할 때 지정한다.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\remote_controller\install-shortcuts.ps1 -Distro Ubuntu-24.04 -Workspace ~/ax-ws -Tool epick
+.\remote_controller\install.cmd -Distro Ubuntu-24.04 -Workspace ~/ax-ws -Tool epick
 ```
 
 Ubuntu 작업 폴더에는 빌드된 `install/setup.bash`와 리모컨 파일이 있어야 한다.
-설치·빌드는 [다른 PC 실행 안내](RUN_ON_ANOTHER_PC.md)를 따른다.
+Ubuntu에서 직접 설치하고 빌드하려면 [다른 PC 실행 안내](RUN_ON_ANOTHER_PC.md)를 따른다.
 Windows 쪽 저장소는 WSL에서 접근 가능한 로컬 드라이브에 둔다.
 
 - **AX 월드 선택**: 현재 만든 두 창고 월드(44×16m, 연결 통로 3개)의 기준(질감) 판을 연다. 단색 보존본은 바로가기 창에는 없고 `python3 tools/desktop_session.py start --world planned/ax_warehouse_plain.world --switch-world`로 고른다(선택 목록은 `src/ax_description/config/worlds.yaml`). 같은 월드는 재사용하고 취소하면 현재 세션을 유지한다. 빈 월드와 AWS 월드는 삭제했다. 최신 `ax_description` 빌드가 필요하며 외부 다운로드는 없다. 리모컨은 별도로 실행한다.

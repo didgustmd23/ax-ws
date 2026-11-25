@@ -1,38 +1,37 @@
 # AX 실행·리모컨
 
-**이 폴더의 `install.cmd`를 더블클릭하면 바탕화면에 바로가기 4개가 생성됩니다.**
+**이 폴더의 `install.cmd`를 더블클릭하면 Windows에서 AX 실행 환경을 준비하고 바탕화면에 바로가기 4개를 생성합니다.**
 Git 다운로드만으로 바로가기가 자동 생성되지는 않습니다. 내려받은 뒤 설치 파일을 한 번 실행하세요.
 
 | 파일 / 바탕화면 바로가기 | 동작 |
 |---|---|
-| `install.cmd` | 바탕화면 바로가기 생성·갱신 |
+| `install.cmd` | Ubuntu·AX 실행 환경 준비 및 바탕화면 바로가기 생성·갱신 |
 | `start.cmd` / **AX 월드 선택** | 기존 시험 월드 또는 창고 월드를 선택해 Ubuntu 24.04·Gazebo·로봇 두 대 실행 |
 | `remote_controller.cmd` / **AX 리모컨** | 리모컨 서버와 별도 창만 실행 |
 | `stop.cmd` / **AX 종료** | 해당 로봇 세션·Gazebo·리모컨 서버·리모컨 전용 창 종료 |
 | `recover.cmd` / **AX 화면 복구** | 확인 후 WSL 그래픽 환경을 재시작하고 Gazebo·두 로봇을 다시 실행 |
 
 `start.cmd`, `remote_controller.cmd`, `stop.cmd`도 바로 사용할 수 있습니다.
-설정 파일이 없으면 첫 실행 때 바로가기 생성도 함께 수행합니다.
+Ubuntu 작업 폴더가 이미 준비되어 있고 설정 파일이 없으면 첫 실행 때 바로가기 생성도 함께 수행합니다.
 파일 위치를 기준으로 경로를 계산하므로 다른 사용자 이름·다운로드 위치에서도 사용할 수 있습니다.
 **이 폴더만 떼어내지 말고 저장소 전체를 내려받으세요.** ROS 연동용 내부 코드는 `tools/`를 사용합니다.
 
 ## 처음 받는 사람
 
 1. 저장소의 `main` 브랜치를 Windows의 로컬 폴더에 내려받습니다.
-2. Ubuntu 24.04 WSL2, ROS 2 Jazzy와 Ubuntu 작업공간을 준비하고 최초 빌드를 완료합니다.
-   [다른 PC 설치·빌드 안내](../docs/guides/RUN_ON_ANOTHER_PC.md)를 따르세요.
-3. 이 폴더의 **`install.cmd`**를 더블클릭합니다.
-4. 바탕화면의 **AX 월드 선택**을 더블클릭하고 월드를 골라 **열기**를 누릅니다.
+2. 이 폴더의 **`install.cmd`**를 더블클릭합니다. 설치기는 Ubuntu 24.04와 ROS 2 Jazzy를 준비하고 AX 소스를 Ubuntu 작업 폴더에서 빌드합니다.
+3. WSL 설치 과정에서 요청하면 Windows를 재부팅하고 Ubuntu 사용자 설정을 마친 뒤 **`install.cmd`**를 다시 실행합니다. Windows에서 권한 상승을 요청하면 관리자 권한으로 실행하고, Ubuntu에서 `sudo`가 요청하면 Ubuntu 암호를 입력합니다.
+4. 바탕화면의 **AX 월드 선택**을 더블클릭하고 월드를 골라 **열기**를 누릅니다. 이어 **AX 리모컨**을 엽니다.
 
 설치기는 Ubuntu 배포판과 `~/ax-play-ws`, `~/ax-ws` 작업 폴더를 자동으로 찾습니다.
 여러 폴더가 있으면 `ax-play-ws`를 우선합니다. 기존 설정이 있으면 해당 배포판·작업 폴더를 유지합니다.
 다른 이름의 작업 폴더를 사용한다면 이 폴더에서 Windows PowerShell을 열어 지정하세요.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install-shortcuts.ps1 -Distro Ubuntu-24.04 -Workspace ~/my-ax-ws
+.\install.cmd -Distro Ubuntu-24.04 -Workspace ~/my-ax-ws
 ```
 
-자동 감지는 작업 폴더를 찾는 기능이며, Ubuntu·ROS 설치나 빌드를 대신하지 않습니다.
+처음 설치에는 인터넷과 WSL2를 지원하는 Windows가 필요합니다. Gazebo 창에는 WSLg와 작동하는 그래픽 드라이버가 필요합니다.
 처음 실행할 때 Ubuntu 시작과 로봇 생성에 시간이 걸릴 수 있으니 기다리세요.
 이미 실행 중인 세션은 재사용하며, 중복 클릭으로 로봇을 추가 생성하지 않습니다.
 **AX 월드 선택**은 현재 만든 두 창고 월드(44×16m, 연결 통로 3개)만 엽니다. 빈 시험 월드는 삭제했습니다.
@@ -47,7 +46,7 @@ AX 종료는 AX 전용 Ubuntu 터미널도 함께 종료합니다. 별도로 연
 ## 파일 정리
 
 - 사용자용 진입점: 이 폴더의 `.cmd` 파일 다섯 개.
-- Windows 실행·설치 처리: `ax-launch.ps1`, `install-shortcuts.ps1`.
+- Windows 실행·설치 처리: `ax-launch.ps1`, `install.ps1`, `install-shortcuts.ps1`. Ubuntu 작업 폴더는 `prepare-workspace.sh`에서 준비합니다.
 - ROS 세션·리모컨 내부 구현: 저장소의 `tools/`.
 - 개인 설정: `log/desktop_launcher/config.json` — Git 제외.
 - 실행 로그: Ubuntu 작업공간의 `log/desktop_session/` — Git 제외.

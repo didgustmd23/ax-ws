@@ -4,6 +4,9 @@
 
 #include <ax_interfaces/msg/safety_state.hpp>
 #include <ax_interfaces/msg/actuation_state.hpp>
+#include <ax_interfaces/msg/corridor_observation_list.hpp>
+#include <ax_interfaces/msg/corridor_state_list.hpp>
+#include <ax_interfaces/msg/group_task_list.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -24,6 +27,9 @@
 using namespace std::chrono_literals;
 using ax_interfaces::msg::SafetyState;
 using ax_interfaces::msg::ActuationState;
+using ax_interfaces::msg::CorridorObservationList;
+using ax_interfaces::msg::CorridorStateList;
+using ax_interfaces::msg::GroupTaskList;
 using geometry_msgs::msg::TwistStamped;
 using nav_msgs::msg::Odometry;
 using sensor_msgs::msg::JointState;
@@ -83,6 +89,17 @@ public:
     pub_cmd_ = create_publisher<TwistStamped>(base + "/diff_drive_controller/cmd_vel", cmd_qos);
     pub_state_ = create_publisher<ActuationState>(base + "/safety/actuation_state", state_qos);
 
+    // D2/D3/B3 운영 입력은 정책 합의 전까지 허가 판정에 직접 사용하지 않는다.
+    // A4가 계약 필드·출처·revision·freshness를 먼저 관측해 진단한다.
+    auto fleet_state_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
+    sub_tasks_ = create_subscription<GroupTaskList>("/ax/fleet/tasks", fleet_state_qos,
+        [this](GroupTaskList::SharedPtr m) { on_tasks(*m); });
+    sub_corridors_ = create_subscription<CorridorStateList>("/ax/fleet/corridor/state", fleet_state_qos,
+        [this](CorridorStateList::SharedPtr m) { on_corridors(*m); });
+    sub_corridor_observation_ = create_subscription<CorridorObservationList>(
+        base + "/perception/corridor_observation", fleet_state_qos,
+        [this](CorridorObservationList::SharedPtr m) { on_corridor_observation(*m); });
+
     sub_safety_ = create_subscription<SafetyState>(base + "/safety/state", state_qos,
         [this](SafetyState::SharedPtr m) {
           const auto &meta = m->meta;
@@ -130,6 +147,8 @@ private:
   // - /clock 정체 3.0 s(벽시계): 계약 D-09 "/clock이 3 s 진행하지 않으면 PAUSED".
   static constexpr double kFeedbackTtlS = 0.3;
   static constexpr double kClockPauseS = 3.0;
+  static constexpr double kFleetStateTtlS = 3.0;
+  static constexpr double kFleetObservationTtlS = 1.0;
 
   static double stamp_seconds(const builtin_interfaces::msg::Time &stamp) {
     return static_cast<double>(stamp.sec) + static_cast<double>(stamp.nanosec) * 1e-9;
@@ -307,6 +326,97 @@ private:
   // 안전 조건이 하나라도 충족되지 않으면 사용할 공통 정지 명령이다.
   void stop() { command(0,0); }
 
+  static bool state_meta_valid(const ax_interfaces::msg::StateMeta &meta, double now_s,
+                               double ttl_s) {
+    const double stamp = stamp_seconds(meta.header.stamp);
+    const double age = now_s - stamp;
+    return meta.valid && meta.revision != 0 && !meta.source_id.empty() &&
+           !meta.source_session_id.empty() && std::isfinite(stamp) && stamp > 0.0 &&
+           std::isfinite(age) && age >= 0.0 && age <= ttl_s;
+  }
+
+  void on_tasks(const GroupTaskList &message) {
+    const double now_s = now().seconds();
+    tasks_seen_ = true;
+    const bool ordered = tasks_retired_sessions_.count(message.meta.source_session_id) == 0 &&
+      (tasks_session_.empty() || message.meta.source_session_id != tasks_session_ ||
+       message.meta.revision >= tasks_revision_);
+    tasks_meta_valid_ = state_meta_valid(message.meta, now_s, kFleetStateTtlS) && ordered;
+    if (!tasks_meta_valid_) return;
+    if (!tasks_session_.empty() && message.meta.source_session_id != tasks_session_)
+      tasks_retired_sessions_.insert(tasks_session_);
+    tasks_received_ = steady();
+    tasks_revision_ = message.meta.revision;
+    tasks_session_ = message.meta.source_session_id;
+  }
+
+  void on_corridors(const CorridorStateList &message) {
+    const double now_s = now().seconds();
+    corridors_seen_ = true;
+    const bool ordered = corridors_retired_sessions_.count(message.meta.source_session_id) == 0 &&
+      (corridors_session_.empty() || message.meta.source_session_id != corridors_session_ ||
+       message.meta.revision >= corridors_revision_);
+    corridors_meta_valid_ = state_meta_valid(message.meta, now_s, kFleetStateTtlS) && ordered;
+    if (!corridors_meta_valid_) return;
+    if (!corridors_session_.empty() && message.meta.source_session_id != corridors_session_)
+      corridors_retired_sessions_.insert(corridors_session_);
+    corridors_received_ = steady();
+    corridors_revision_ = message.meta.revision;
+    corridors_session_ = message.meta.source_session_id;
+  }
+
+  void on_corridor_observation(const CorridorObservationList &message) {
+    const double now_s = now().seconds();
+    corridor_observation_received_ = steady();
+    corridor_observation_seen_ = true;
+    corridor_observation_meta_valid_ = message.robot_id == robot_ &&
+      state_meta_valid(message.meta, now_s, kFleetObservationTtlS);
+  }
+
+  bool live_tasks_fresh() const {
+    return tasks_seen_ && tasks_meta_valid_ && elapsed(tasks_received_) <= kFleetStateTtlS;
+  }
+
+  bool live_corridors_fresh() const {
+    return corridors_seen_ && corridors_meta_valid_ && elapsed(corridors_received_) <= kFleetStateTtlS;
+  }
+
+  bool live_corridor_observation_fresh() const {
+    return corridor_observation_seen_ && corridor_observation_meta_valid_ &&
+           elapsed(corridor_observation_received_) <= kFleetObservationTtlS;
+  }
+
+  std::string gate_block_detail(const ax_safety::GateInput &gate, bool clock_ok) const {
+    std::vector<std::string> details;
+    if (!clock_ok) details.emplace_back("TIME_INVALID");
+    if (!gate.safety_fresh) details.emplace_back("SAFETY_STOP:B4_STATE_STALE_OR_INVALID");
+    else if (gate.stop_required) details.emplace_back("SAFETY_STOP:B4_STOP_REQUIRED");
+    if (!gate.state_fresh) details.emplace_back("STATE_STALE:ODOM_OR_JOINT_FEEDBACK");
+    if (!gate.travel_pose_valid) {
+      if (!pose_approved_) details.emplace_back("TRAVEL_POSE_UNVERIFIED:APPROVAL_FLAG_OFF");
+      else if (joint_names_.empty()) details.emplace_back("TRAVEL_POSE_UNVERIFIED:JOINT_SET_EMPTY");
+      else if (joint_names_.size() != joint_positions_.size())
+        details.emplace_back("TRAVEL_POSE_UNVERIFIED:JOINT_SET_LENGTH_MISMATCH");
+      else if (!gate.state_fresh) details.emplace_back("TRAVEL_POSE_UNVERIFIED:STATE_STALE");
+      else details.emplace_back("TRAVEL_POSE_UNVERIFIED:CURRENT_JOINT_MISMATCH");
+    }
+    if (!gate.operational_permits_valid) {
+      details.emplace_back("HANDOFF_LOCK:PARAMETER_OR_D2_D3_POLICY_NOT_VERIFIED");
+      details.emplace_back(std::string("D2_TASKS=") + (live_tasks_fresh() ? "FRESH" : "MISSING_OR_STALE"));
+      details.emplace_back(std::string("D3_CORRIDOR=") + (live_corridors_fresh() ? "FRESH" : "MISSING_OR_STALE"));
+      details.emplace_back(std::string("B3_OBSERVATION=") +
+                           (live_corridor_observation_fresh() ? "FRESH" : "MISSING_OR_STALE"));
+    }
+    if (!gate.enabled) details.emplace_back("SIMULATION_DRIVE_DISABLED:PARAMETER_OFF");
+    if (details.empty()) return "NONE";
+    std::ostringstream out;
+    for (std::size_t i = 0; i < details.size(); ++i) {
+      if (i != 0) out << ';';
+      out << details[i];
+    }
+    return out.str();
+  }
+
 
   void on_command(const TwistStamped &msg) {
     // 입력 timestamp·불필요한 축·B4/A1/D2 조건을 순서대로 확인한 뒤 제한된 명령만 보낸다.
@@ -449,6 +559,11 @@ private:
       << "\",\"now\":" << t_now << ",\"state\":" << static_cast<int>(m.state) << ",\"valid\":" << (m.meta.valid ? "true" : "false")
       << ",\"clock_ok\":" << (clock_ok ? "true" : "false") << ",\"state_fresh\":" << (gate.state_fresh ? "true" : "false")
       << ",\"safety_fresh\":" << (gate.safety_fresh ? "true" : "false") << ",\"low\":" << (low ? "true" : "false")
+      << ",\"gate_block_detail\":\"" << gate_block_detail(gate, clock_ok) << "\""
+      << ",\"d2_tasks\":\"" << (live_tasks_fresh() ? "FRESH" : "MISSING_OR_STALE") << "\""
+      << ",\"d3_corridor\":\"" << (live_corridors_fresh() ? "FRESH" : "MISSING_OR_STALE") << "\""
+      << ",\"b3_corridor_observation\":\""
+      << (live_corridor_observation_fresh() ? "FRESH" : "MISSING_OR_STALE") << "\""
       << ",\"held\":" << held << ",\"hold_s\":" << stop_hold_s_ << ",\"presence\":\"" << presence
       << "\",\"joint_used_for_hold\":" << (absent ? "false" : "true") << ",\"required\":" << stop_arm_joints_.size()
       << ",\"odom\":" << channel(odom_channel_, odom_counts_) << ",\"joint\":" << channel(joint_channel_, joint_counts_)
@@ -487,11 +602,18 @@ private:
   std::chrono::steady_clock::time_point last_diag_counters_{steady()};
   std::vector<std::string> stop_arm_joints_;
   ax_safety::ArmPresence arm_presence_{ax_safety::ArmPresence::UNCONFIRMED};
+  bool tasks_seen_{false}, tasks_meta_valid_{false};
+  bool corridors_seen_{false}, corridors_meta_valid_{false};
+  bool corridor_observation_seen_{false}, corridor_observation_meta_valid_{false};
+  uint64_t tasks_revision_{0}, corridors_revision_{0};
+  std::string tasks_session_, corridors_session_;
+  std::unordered_set<std::string> tasks_retired_sessions_, corridors_retired_sessions_;
   bool has_prev_tick_time_{false};
   double prev_tick_time_{0.0};
   std::chrono::steady_clock::time_point last_clock_advance_{steady()};
   std::chrono::steady_clock::time_point received_safety_{},received_odom_{},received_joints_{},
-      received_cmd_{},previous_sent_{steady()};
+      received_cmd_{},tasks_received_{},corridors_received_{},
+      corridor_observation_received_{},previous_sent_{steady()};
 
   // 입력과 상태를 연결하는 ROS publisher/subscription/timer 핸들이다.
   rclcpp::Publisher<TwistStamped>::SharedPtr pub_cmd_;
@@ -500,6 +622,9 @@ private:
   rclcpp::Subscription<Odometry>::SharedPtr sub_odom_;
   rclcpp::Subscription<JointState>::SharedPtr sub_joints_;
   rclcpp::Subscription<TwistStamped>::SharedPtr sub_cmd_;
+  rclcpp::Subscription<GroupTaskList>::SharedPtr sub_tasks_;
+  rclcpp::Subscription<CorridorStateList>::SharedPtr sub_corridors_;
+  rclcpp::Subscription<CorridorObservationList>::SharedPtr sub_corridor_observation_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 

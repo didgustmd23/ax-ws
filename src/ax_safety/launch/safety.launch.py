@@ -66,6 +66,17 @@ def launch_nodes(context):
              parameters=files + [{'robot_id': robot_id,
                                   'use_sim_time': True,
                                   'enable_simulation_arm': flag('enable_simulation_arm')}]),
+
+        # W3 A4 감독기. 기존 safety_gate의 ActuationState와 B4 SafetyState를
+        # 소비하여 시계·상태 스트림·실제 STOPPED를 검증한다.
+        # 감독기는 Schema 2를 다시 발행하지 않으며, 주행·팔 허가는 기존
+        # safety_gate가 계속 최종 결정한다.
+        Node(package='ax_safety', executable='a4_supervisor_node', namespace=['/ax/', robot_id], output='screen',
+             parameters=[{'robot_id': robot_id,
+                          'use_sim_time': True,
+                          # D4가 전역 SAFE_STOP을 소유하므로 기본값은 false다.
+                          # 팀 합의 후에만 D4 서비스 자동 요청을 활성화한다.
+                          'request_system_safe_stop': False}]),
     ]
 
 

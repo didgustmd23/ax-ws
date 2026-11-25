@@ -48,6 +48,7 @@ install(DIRECTORY include/ DESTINATION include)
 ament_python_install_package(${PROJECT_NAME})
 # launch/config는 실행 시 패키지 share 디렉터리에서 읽고, B4 노드는 실행 이름을 고정한다.
 install(PROGRAMS ax_safety/b4/b4_risk_node.py DESTINATION lib/${PROJECT_NAME} RENAME b4_risk_node)
+install(PROGRAMS ax_safety/a4/a4_supervisor_node.py DESTINATION lib/${PROJECT_NAME} RENAME a4_supervisor_node)
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 

@@ -48,21 +48,35 @@ def reconcile_dispatch_rows(state, rows):
             mark_lock_reserved(state, row['step_key'])
 
 
+# 원장 작업의 모드·live 허용 종류가 runtime 설정과 같은지. 다르면 STORE_MODE_MISMATCH로 거부한다
+def check_store_mode(states, mode, live_kinds):
+    for state in states:
+        if state.mode != mode or tuple(state.live_kinds) != tuple(live_kinds):
+            raise gm.SpecError('STORE_MODE_MISMATCH',
+                               f'{state.spec.task_id}: {state.mode}{list(state.live_kinds)} '
+                               f'!= {mode}{list(live_kinds)}')
+
+
 class GroupRuntime:
     """작업 모음 하나의 실행 결합. ports는 {'LOCAL_TASK': 포트, 'NAVIGATION': 포트}."""
 
-    # 원장에서 상태를 복원하고(새 명령 차단) 포트·시계를 연결한다
+    # 원장에서 상태를 복원하고(새 명령 차단) 포트·시계를 연결한다. 원장 작업의 모드·live 허용 종류가
+    # 이 runtime과 다르면 아무것도 쓰지 않고 거부한다(모의 원장을 혼합 모드로 열지 않는다)
     def __init__(self, store, ports, clock, map_revision, locations,
-                 mode=gm.MODE_DEVELOPMENT_MOCK, max_tasks=64):
+                 mode=gm.MODE_DEVELOPMENT_MOCK, max_tasks=64, live_kinds=()):
         self.store = store
         self.ports = ports
         self.clock = clock
-        self.registry = GroupRegistry(map_revision, locations, max_tasks=max_tasks, mode=mode)
+        self.registry = GroupRegistry(map_revision, locations, max_tasks=max_tasks, mode=mode,
+                                      live_kinds=live_kinds)
         self.fault = None
         self.notes = []
 
+        states = store.load_states()
+        check_store_mode(states, self.registry.mode, self.registry.live_kinds)
+
         # 복원 상태(관측 폐기·진행 중 단계 미확정·RESTORED_UNRECONCILED)를 먼저 원장에 남긴다
-        for state in store.load_states():
+        for state in states:
             restored = restore_state(state)
             self._reconcile_dispatch_rows(restored)
             store.record_decision(state.spec.task_id, state.revision, Decision(restored),
@@ -79,7 +93,7 @@ class GroupRuntime:
             raise StoreError(f'원장 고장으로 새 작업 거부: {self.fault}')
 
         self.registry.check_admission(spec)
-        state = gm.new_group_state(spec, self.registry.mode)
+        state = gm.new_group_state(spec, self.registry.mode, self.registry.live_kinds)
         self.store.create_task(state)
         self.registry.commit(spec.task_id, state)
 
@@ -141,12 +155,13 @@ class GroupRuntime:
 
         port = self.ports.get('LOCAL_TASK' if intent.kind == 'CANCEL' else intent.kind)
         mode = self.registry.mode
+        live_kinds = self.registry.live_kinds
 
         if intent.kind == 'CANCEL':
             if intent.operation == 'NAVIGATE_TO':
                 port = self.ports.get('NAVIGATION')
             try:
-                if port is None or not port.supported(mode):
+                if port is None or not port.supported(mode, live_kinds):
                     raise PortError('PORT_UNSUPPORTED', uncertain=False)
                 port.cancel(intent)
             except PortError as error:
@@ -154,7 +169,7 @@ class GroupRuntime:
             return
 
         execution_id = intent.execution['execution_id']
-        if port is None or not port.supported(mode):
+        if port is None or not port.supported(mode, live_kinds):
             self.handle(task_id, DispatchFailed(execution_id, False, 'PORT_UNSUPPORTED'))
             return
 

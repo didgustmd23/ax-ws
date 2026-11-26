@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ax_travel_time_ml</name>
+  <version>0.0.0</version>
+  <description>D ETA travel time prediction (W7 development): hierarchical baseline and XGBoost Regressor training/evaluation from D2 eta_samples CSV. Offline tool, no ROS node. xgboost is an undeclared runtime dependency (apt python3-xgboost) until its rosdep key is confirmed.</description>
+  <maintainer email="yhs@todo.todo">yhs</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>python3-numpy</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

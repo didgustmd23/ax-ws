@@ -91,7 +91,19 @@ ROBOT_ID_PATTERN = re.compile(r'^[a-z][a-z0-9_]{0,63}$')
 
 # 개발 모드만 지원한다. 운영 모드는 선행 기능이 없어 생성 단계에서 거부한다
 MODE_DEVELOPMENT_MOCK = 'DEVELOPMENT_MOCK'
+# 혼합 개발 모드: live_kinds에 연 근거 종류만 LIVE, 나머지는 MOCK으로 받는다(종단 완료 아님)
+MODE_DEVELOPMENT_MIXED = 'DEVELOPMENT_MIXED'
 MODE_OPERATIONAL = 'OPERATIONAL'
+DEVELOPMENT_MODES = (MODE_DEVELOPMENT_MOCK, MODE_DEVELOPMENT_MIXED)
+
+# 혼합 모드에서 live로 열 수 있는 근거 종류. NAVIGATION은 D1 주행 단계의 결과·응답·상태 사건이다.
+# LOAD는 A3 값이 모의값이고 PLACEMENT·ARM_RETRACTED는 생산자가 없어 열 수 없다
+LIVE_KIND_ACTUATION = 'ACTUATION'
+LIVE_KIND_NAVIGATION = 'NAVIGATION'
+LIVE_KIND_HOLD = 'HOLD'
+OPENABLE_LIVE_KINDS = (LIVE_KIND_ACTUATION, LIVE_KIND_HOLD, LIVE_KIND_NAVIGATION)
+# 로컬 작업(A3) 결과·응답·상태의 근거 종류. 혼합 모드에서도 항상 MOCK만 받는다
+EVIDENCE_LOCAL_TASK = 'LOCAL_TASK'
 PROVENANCE_MOCK = 'MOCK'
 PROVENANCE_LIVE = 'LIVE'
 
@@ -511,6 +523,12 @@ class StepRun:
     status_phase: str = ''
     transfer_id: str = ''
     assignment_generation: int = 0
+    # W6 ETA 표본용 시각·출처(-1·빈 값 = 모름). 상태 전이와 같은 사건에서만 바뀐다
+    sent_sim_s: float = -1.0
+    accepted_boottime_s: float = -1.0
+    accepted_sim_s: float = -1.0
+    finished_sim_s: float = -1.0
+    result_provenance: str = ''
 
 
 @dataclass
@@ -540,6 +558,10 @@ class GroupState:
     object_assignment_generation: int = 0
     object_isolated: bool = False
     physical_started: bool = False
+    # 혼합 모드에서 LIVE로 받는 근거 종류(정렬 tuple). 작업 생성 때 정하고 바꾸지 않는다
+    live_kinds: tuple = ()
+    # 판정에 실제로 쓴 근거의 (종류, 출처) 요약(정렬 tuple, 누적). 완료 사건 기록에 남긴다
+    evidence_used: tuple = ()
 
     # 깊은 복사본(입력 상태를 바꾸지 않는다)
     def copy(self):
@@ -551,23 +573,55 @@ def check_mode(mode):
     if mode == MODE_OPERATIONAL:
         raise SpecError('OPERATIONAL_MODE_UNSUPPORTED')
 
-    if mode != MODE_DEVELOPMENT_MOCK:
+    if mode not in DEVELOPMENT_MODES:
         raise SpecError('UNKNOWN_MODE', repr(mode))
 
 
-# 모드별로 받을 수 있는 근거 출처. 운영 모드는 MOCK을 실제 근거로 받지 않는다
-def provenance_acceptable(mode, provenance):
+# live 허용 종류 검사 → 정렬 tuple. 혼합 모드에서만 비어 있지 않을 수 있다
+def parse_live_kinds(mode, live_kinds):
+    if not isinstance(live_kinds, (list, tuple, set, frozenset)):
+        raise SpecError('INVALID_LIVE_KINDS', repr(live_kinds))
+
+    names = list(live_kinds)
+    for name in names:
+        if type(name) is not str:
+            raise SpecError('INVALID_LIVE_KINDS', repr(name))
+
+        if name not in OPENABLE_LIVE_KINDS:
+            raise SpecError('LIVE_KIND_NOT_OPENABLE', name)
+
+    if len(set(names)) != len(names):
+        raise SpecError('DUPLICATE_LIVE_KIND', repr(names))
+
+    if names and mode != MODE_DEVELOPMENT_MIXED:
+        raise SpecError('LIVE_KINDS_REQUIRE_MIXED_MODE', repr(mode))
+
+    return tuple(sorted(names))
+
+
+# 모드별로 받을 수 있는 근거 출처. 운영 모드는 MOCK을 실제 근거로 받지 않는다.
+# 혼합 모드는 근거 종류(kind)가 live_kinds에 있으면 LIVE만, 없으면 MOCK만 받는다(종류마다 출처 하나)
+def provenance_acceptable(mode, provenance, kind=None, live_kinds=()):
     if mode == MODE_OPERATIONAL:
         return provenance == PROVENANCE_LIVE
+
+    # 혼합 모드는 종류 없이 판정하지 않는다(종류를 넘기지 않았거나 문자열이 아니면 거절)
+    if mode == MODE_DEVELOPMENT_MIXED:
+        if type(kind) is not str:
+            return False
+
+        expected = PROVENANCE_LIVE if kind in live_kinds else PROVENANCE_MOCK
+        return provenance == expected
 
     return mode == MODE_DEVELOPMENT_MOCK and provenance == PROVENANCE_MOCK
 
 
 # 새 작업 상태를 만든다. 단계 기록은 전부 PENDING
-def new_group_state(spec, mode=MODE_DEVELOPMENT_MOCK):
+def new_group_state(spec, mode=MODE_DEVELOPMENT_MOCK, live_kinds=()):
     check_mode(mode)
+    kinds = parse_live_kinds(mode, live_kinds)
     validate_spec(spec)
 
-    return GroupState(spec=spec, mode=mode,
+    return GroupState(spec=spec, mode=mode, live_kinds=kinds,
                       steps={s.step_key: StepRun(s.step_key) for s in spec.steps},
                       object_location_id=spec.source_location_id)

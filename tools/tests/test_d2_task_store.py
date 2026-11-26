@@ -366,7 +366,8 @@ def test_store_is_d2_only(tmp_path):
     store = TaskStore(str(tmp_path / 'd2.sqlite'))
     tables = {r[0] for r in store.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     # W4 schema 2(K9 승인)는 입고 표 3개, W5 schema 3은 재고·지점·예약 표 3개를 더한다.
+    # W6 schema 4는 ETA 표본 표 1개를 더한다.
     # 정확한 표 집합 비교는 유지한다
     assert tables == {'meta', 'tasks', 'dispatches', 'events', 'sqlite_sequence',
                       'receipt_events', 'receipt_observations', 'register_requests',
-                      'inventory', 'locations', 'reservations'}
+                      'inventory', 'locations', 'reservations', 'eta_samples'}

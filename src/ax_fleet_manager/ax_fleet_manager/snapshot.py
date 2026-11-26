@@ -47,6 +47,15 @@ def visible_in_list(state):
     return state.transfer_state not in gm.RELEASED_TRANSFER_STATES
 
 
+# 출력 source_id 접두어. 노드 파라미터가 아니라 작업 상태의 모드로 정한다:
+# 혼합 모드 작업이 하나라도 있으면 d2_dev_mixed, 아니면 d2_dev_mock
+def source_prefix(states):
+    if any(s.mode == gm.MODE_DEVELOPMENT_MIXED for s in states):
+        return 'd2_dev_mixed:'
+
+    return 'd2_dev_mock:'
+
+
 # 목록 전체(작업 ID 순서 고정)
 def task_list_fields(states):
     return [task_status_fields(s) for s in sorted(states, key=lambda s: s.spec.task_id)

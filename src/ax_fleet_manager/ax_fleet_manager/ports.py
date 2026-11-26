@@ -11,7 +11,9 @@ import itertools
 import os
 import uuid
 
-from .group_model import MODE_DEVELOPMENT_MOCK, PROVENANCE_MOCK
+from .group_model import (
+    DEVELOPMENT_MODES, EVIDENCE_LOCAL_TASK, LIVE_KIND_NAVIGATION, PROVENANCE_MOCK,
+)
 
 # W3에서 연결하지 않은 상대 기능. 운영 실행 전 각 소유자의 구현·계약 확정이 필요하다
 UNSUPPORTED_EXTERNAL_PORTS = {
@@ -54,8 +56,8 @@ class LocalTaskPort:
     name = 'A3_LIVE_EXECUTE_LOCAL_TASK'
     provenance = 'LIVE'
 
-    # 이 모드에서 사용할 수 있는지
-    def supported(self, mode):
+    # 이 모드·live 허용 종류에서 사용할 수 있는지
+    def supported(self, mode, live_kinds=()):
         return False
 
     # Goal 전송(미지원)
@@ -115,6 +117,8 @@ class MockLocalTaskPort(LocalTaskPort):
 
     name = 'MOCK_LOCAL_TASK'
     provenance = PROVENANCE_MOCK
+    # 이 포트가 내는 결과의 근거 종류. LOCAL_TASK는 열 수 없으므로 항상 MOCK 대상이다
+    evidence_kind = EVIDENCE_LOCAL_TASK
     convert = staticmethod(local_task_goal_fields)
 
     # 프로세스 ID·인스턴스 번호로 출처를 구분한다
@@ -124,9 +128,10 @@ class MockLocalTaskPort(LocalTaskPort):
         self.cancels = []
         self.fail_next = None
 
-    # 개발 모의 모드에서만 사용 가능
-    def supported(self, mode):
-        return mode == MODE_DEVELOPMENT_MOCK
+    # 두 개발 모드(모의·혼합)에서 사용 가능. 단, 담당 근거 종류를 live로 열었으면 MOCK 결과는
+    # 받을 수 없으므로 거절한다(종류마다 출처 하나, 설정 실수를 전송 전에 PORT_UNSUPPORTED로 드러냄)
+    def supported(self, mode, live_kinds=()):
+        return mode in DEVELOPMENT_MODES and self.evidence_kind not in live_kinds
 
     # 요청 기록. fail_next에 PortError를 넣으면 한 번 실패한다
     def dispatch(self, intent, goal_uuid):
@@ -152,6 +157,7 @@ class MockNavigationPort(MockLocalTaskPort):
     """
 
     name = 'MOCK_NAVIGATION'
+    evidence_kind = LIVE_KIND_NAVIGATION
     convert = staticmethod(navigation_request_fields)
     generates_goal_uuid = True
 

@@ -481,7 +481,7 @@ def test_migration_to_v3(tmp_path, version):
     path = str(tmp_path / 'd2.sqlite')
     make_old_store(path, version)
     store = TaskStore(path)
-    assert store.schema_version == 3
+    assert store.schema_version == 4  # W6: schema 4
     assert sorted(s.spec.task_id for s in store.load_states()) == ['task_done', 'task_run']
     entries = store.inventory_entries()
     assert [(e['object_id'], e['state'], e['isolated'], e['task_id']) for e in entries] == [
@@ -489,7 +489,7 @@ def test_migration_to_v3(tmp_path, version):
     store.close()
 
     tables, schema, columns = schema_of(path)
-    assert V3_TABLES <= tables and schema == '3' and 'object_class' in columns
+    assert V3_TABLES <= tables and schema == '4' and 'object_class' in columns  # W6: schema 4
 
 
 # 이주 실패: 원장 불변(버전·표), 읽기 전용 열기는 이주 없이 읽는다
@@ -644,7 +644,11 @@ def test_d1_adapter_with_real_d1_ledger(tmp_path):
     client = FakeD1Client(module, str(tmp_path / 'd1.sqlite'), 'robot_1')
     port = D1NavigationPort({'robot_1': client}, CATALOG)
     assert not port.supported(gm.MODE_DEVELOPMENT_MOCK)
-    assert D1NavigationPort({}, CATALOG, enabled=True).supported(gm.MODE_DEVELOPMENT_MOCK)
+    enabled = D1NavigationPort({}, CATALOG, enabled=True)
+    assert not enabled.supported(gm.MODE_DEVELOPMENT_MOCK)
+    assert not enabled.supported(gm.MODE_DEVELOPMENT_MIXED, ())
+    assert enabled.supported(gm.MODE_DEVELOPMENT_MIXED, ('NAVIGATION',))
+    assert not port.supported(gm.MODE_DEVELOPMENT_MIXED, ('NAVIGATION',))
 
     intent = nav_intent()
     with pytest.raises(PortError) as error:

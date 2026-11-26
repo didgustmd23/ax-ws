@@ -20,10 +20,11 @@ def _occupies(state):
 class GroupRegistry:
     """작업 상태 모음과 작업 간 상호 배제 규칙."""
 
-    # 지도 revision·등록 지점 revision·작업 상한을 명시로 받는다
+    # 지도 revision·등록 지점 revision·작업 상한·모드·live 허용 종류를 명시로 받는다
     def __init__(self, map_revision, locations, max_tasks=64, limits=EngineLimits(),
-                 mode=gm.MODE_DEVELOPMENT_MOCK):
+                 mode=gm.MODE_DEVELOPMENT_MOCK, live_kinds=()):
         gm.check_mode(mode)
+        self.live_kinds = gm.parse_live_kinds(mode, live_kinds)
         if type(map_revision) is not int or map_revision < 0:
             raise gm.SpecError('INVALID_NUMBER', 'map_revision')
 
@@ -71,7 +72,7 @@ class GroupRegistry:
     # 검사 후 QUEUED 상태로 수용한다
     def admit(self, spec):
         self.check_admission(spec)
-        state = gm.new_group_state(spec, self.mode)
+        state = gm.new_group_state(spec, self.mode, self.live_kinds)
         self.states[spec.task_id] = state
 
         return state

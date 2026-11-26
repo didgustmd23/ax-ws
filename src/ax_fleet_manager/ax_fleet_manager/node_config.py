@@ -45,6 +45,13 @@ def validate_output_topic(topic):
     return topic
 
 
+# 노드 파라미터 mode·live_kinds 검사. ROS 배열 파라미터는 list로 받는다
+def node_mode(mode, live_kinds):
+    gm.check_mode(mode)
+
+    return gm.parse_live_kinds(mode, live_kinds)
+
+
 # fixture JSON을 읽어 작업을 수용·배정한 registry를 만든다(실행 시작·전송 없음)
 def load_fixture(path):
     data_path = Path(path)

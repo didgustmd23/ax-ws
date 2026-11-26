@@ -13,11 +13,12 @@ W4에서 입고 관측 → 입고 사건 대조 → 작업 자동 등록(QUEUED)
 | `group_machine.py` | 순수 엔진 `apply_event(state, event, now) -> Decision(next_state, effects, reasons)`, 복원 규칙 `restore_state` |
 | `registry.py` | 작업 간 충돌 검사(작업·물체·로봇·배정·인계·root 실행 ID 중복, 지도·지점 revision 불일치) |
 | `execution_ids.py` | D-03 `derive-v1` 실행 ID 최소 구현 |
-| `task_store.py` | D2 전용 SQLite 원장(schema 2: 입고 표 포함) |
+| `task_store.py` | D2 전용 SQLite 원장(schema 4: 입고·재고·ETA 주행 표본 표 포함) |
+| `reassignment.py` | 예비 재배정 사전 검사(9.10, 순수 함수, 실행 없음) |
 | `receipt.py` | 입고 규칙(순수): 관측 검증·식별·반복/재입고/구역 충돌 판정, 등록 요청 형식·목적지 규칙 |
 | `intake.py` | 입고 접수(`ReceiptIntake`): 관측·사건·등록 요청·재고 항목·목적지 예약·작업 생성을 원장 한 트랜잭션으로 기록 |
 | `inventory.py` | 등록 지점 카탈로그(개발 설정) 검증, 지점 파생 상태, `InventorySnapshot` 필드 |
-| `live_adapters.py` | live 연결 초안(기본 비활성): D1 `NavigationClient` 어댑터, D1 결과 변환, A4 `ActuationState` 관측 변환 |
+| `live_adapters.py` | live 연결 초안(기본 비활성): D1 `NavigationClient` 어댑터, D1 결과 변환, A4 `ActuationState`·C4 `ToolHoldState` 관측 변환 |
 | `intake_node.py`·`config/dev_intake.json` | 개발 입고 노드(`d2_dev_intake`)와 개발 설정(입고 규칙·지점 카탈로그, 실환경 값 아님) |
 | `runtime.py` | 평가 → 원장 기록 → goal UUID 예약 → 포트 전송 결합 |
 | `ports.py` | live 포트(전부 미지원), 개발 모의 포트, Goal 필드 변환 |
@@ -66,7 +67,7 @@ W4에서 입고 관측 → 입고 사건 대조 → 작업 자동 등록(QUEUED)
 - `LOCKED`는 같은 xfer의 `UNKNOWN`에서만 가며 다른 xfer의 `UNKNOWN`에서는 가지 않는다. 결과는 goal UUID로 결합한 뒤 단계 기록의 배정 세대(`ASSIGNMENT_STALE`)와 잠금·해제 단계의 `transfer_id`(`TRANSFER_MISMATCH`)를 지금 상태와 대조하고, 다르면 쓰지 않고 억제한다.
 - 재시작 복원(runtime·개발 노드 읽기 전용 복원 모두)은 단계 기록의 goal UUID와 실행 기록 표의 예약 행으로 잠금 요청 예약을 다시 확인해 `UNKNOWN`을 세운다. 상태 기록 전에 멈춘 예약과 W3 원장(예약 뒤 `NONE`)도 포함한다. `LOCKED`·`UNLOCKED`는 되돌리지 않는다.
 
-실패·취소·시간초과·미확정·Goal 거절·원장 오류·sim time 역행·복원은 실행 억제(`inhibit`)로 남고 W3에는 해제 사건이 없다. 실패는 잠금 해제·재시도·`attempt_index` 증가가 아니다. 취소 ACK만으로 `CANCELED`가 되지 않는다. 모든 하위 실행이 확실히 끝나야 하고(미확정이 남으면 완료 불가), 한 번이라도 goal UUID를 예약·전송한 작업은 취소 요청 시각과 마지막 하위 종료 시각보다 **뒤에** 받은 두 로봇의 최신·유효·출처 허용 `STOPPED`가 있어야 `CANCELED`다(같은 시각 수신은 인정하지 않음). 전송이 전혀 없던 작업(QUEUED·ASSIGNED, 또는 의도만 기록되고 예약 전 철회)의 취소는 물리 근거를 요구하지 않는다. 취소 요청 시각은 원장에 남고, 재부팅 등으로 시계가 그보다 앞서면 완료되지 않는다. 취소 완료는 inhibit·hold·인계 상태를 바꾸지 않는다. `FailTerminate`는 개발 운영자의 명시 실패 종료이며 인계 상태를 바꾸지 않는다. `HoldApplied`는 보류 ID를 남기고, 해제는 `HOLD_RELEASE_UNSUPPORTED`다(D4 9.6 절차 미지원). 운영 모드에서는 `MOCK` 출처를 근거로 받지 않는다(`provenance_acceptable`). 다만 운영 모드는 지금 생성 단계에서 거부된다.
+실패·취소·시간초과·미확정·Goal 거절·원장 오류·sim time 역행·복원은 실행 억제(`inhibit`)로 남고 W3에는 해제 사건이 없다. 실패는 잠금 해제·재시도·`attempt_index` 증가가 아니다. 취소 ACK만으로 `CANCELED`가 되지 않는다. 모든 하위 실행이 확실히 끝나야 하고(미확정이 남으면 완료 불가), 한 번이라도 goal UUID를 예약·전송한 작업은 취소 요청 시각과 마지막 하위 종료 시각보다 **뒤에** 받은 두 로봇의 최신·유효·출처 허용 `STOPPED`가 있어야 `CANCELED`다(같은 시각 수신은 인정하지 않음). 전송이 전혀 없던 작업(QUEUED·ASSIGNED, 또는 의도만 기록되고 예약 전 철회)의 취소는 물리 근거를 요구하지 않는다. 취소 요청 시각은 원장에 남고, 재부팅 등으로 시계가 그보다 앞서면 완료되지 않는다. 취소 완료는 inhibit·hold·인계 상태를 바꾸지 않는다. `FailTerminate`는 개발 운영자의 명시 실패 종료이며 인계 상태를 바꾸지 않는다. `HoldApplied`는 보류 ID를 남기고, 해제는 `HOLD_RELEASE_UNSUPPORTED`다(D4 9.6 절차 미지원). 운영 모드에서는 `MOCK` 출처를 근거로 받지 않는다(`provenance_acceptable`). 다만 운영 모드는 지금 생성 단계에서 거부된다. 혼합 개발 모드의 종류별 출처 규칙은 아래 [혼합 개발 모드](#혼합-개발-모드development_mixed)를 본다.
 
 Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 goal UUID로 결과를 결합한다(로컬 작업). 주행 단계는 goal UUID를 D1이 만들므로 D1이 돌려준 UUID 또는 `StepResult.execution_id`로 결합한다(W5, 주행 단계에만 허용). `RobotTaskStatus`는 `task_id`·`assignment_id`·`assignment_generation`·`execution_id`가 맞을 때만 쓴다. 실패 보고는 진행을 막지만, 성공 보고는 Action 결과를 대신하지 않는다.
 
@@ -131,7 +132,92 @@ Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 go
 - `actuation_observation`: A4 `ActuationState` 필드 → D2 관측. 정지 근거는 `state`만, 허가 필드는 `permits`.
 - `hold_observation`: C4 `ToolHoldState` 필드 → D2 관측(`HOLD`), `(관측, None)` 또는 `(None, 사유)`를 돌려준다(입고 `observation_rejection`과 같은 사유 문자열 관례). `hold_rejection`이 형식만 거절한다: state가 0·1·2 밖(`HOLD_STATE_UNKNOWN_VALUE`), `robot_id`(`HOLD_ROBOT_ID_EMPTY`)·`object_id`(`HOLD_OBJECT_ID_EMPTY`)·`source_id`/`source_session_id`(`HOLD_SOURCE_EMPTY`) 빈 문자열, revision 0(`HOLD_REVISION_UNSET`), evidence가 `MOCK`으로 시작(`HOLD_MOCK_EVIDENCE`). `valid=false`·만료·물체 불일치·앵커 이전 수신은 어댑터가 보지 않고 `group_machine._fresh`가 거른다. `UNKNOWN`(0)은 관측으로 넘기되 미보유로 해석하지 않는다. `hold_fields`는 메시지 속성만 읽어(rclpy 불필요) 필드 사전을 만든다. 구독·노드는 만들지 않는다.
   - **모의 근거 거절은 임시 규칙이다.** 현재 C4 `mock_execution`은 `evidence='MOCK_ATTACH_STATE'`, `valid=true`로 HELD·RELEASED를 낸다. C4가 meta·출처로 모의 판정을 구분하기 전까지 evidence 접두어로 거른다.
-- live 출처(`LIVE`)는 개발 모드 판정 근거로 받지 않으므로, 실제 연결 전에 출처 정책을 정해야 한다.
+- live 출처(`LIVE`)는 모의 모드에서 판정 근거가 아니며, 아래 혼합 개발 모드에서 `live_kinds`로 연 종류만 받는다. `D1NavigationPort.supported`는 `enabled=True`이고 혼합 모드에서 `NAVIGATION`을 열었을 때만 참이다(결과가 LIVE라 모의 모드에서는 받을 수 없으므로).
+
+## 혼합 개발 모드(`DEVELOPMENT_MIXED`)
+
+개발 중 live 입력을 근거 종류별로 하나씩 열기 위한 모드다. `DEVELOPMENT_MOCK` 동작은 그대로이고 `OPERATIONAL`은 계속 `OPERATIONAL_MODE_UNSUPPORTED`로 거부한다. runtime에 live 구독·연결을 새로 추가하지 않았다(어댑터는 함수·객체뿐).
+
+1. **모드:** `gm.MODE_DEVELOPMENT_MIXED`. `check_mode`가 두 개발 모드(`DEVELOPMENT_MODES`)를 받는다.
+2. **live 허용 종류(`live_kinds`):** 열 수 있는 이름은 `ACTUATION`(A4 관측), `NAVIGATION`(D1 주행 단계의 결과·수락 응답·상태 사건), `HOLD`(C4)뿐이다. `LOAD`(A3 값이 모의값)·`PLACEMENT`·`ARM_RETRACTED`(생산자 없음)와 그 밖의 이름은 `LIVE_KIND_NOT_OPENABLE`로 설정 단계에서 거절한다. 기본값은 빈 값이며(혼합 모드여도 전부 MOCK), 첫 시험 대상(ACTUATION+NAVIGATION)을 코드 기본값으로 넣지 않았다. 모의 모드에 `live_kinds`를 주면 `LIVE_KINDS_REQUIRE_MIXED_MODE`, 중복은 `DUPLICATE_LIVE_KIND`, 목록이 아니거나 문자열이 아닌 항목은 `INVALID_LIVE_KINDS`다.
+3. **종류마다 출처 하나:** `provenance_acceptable(mode, provenance, kind, live_kinds)`. 혼합 모드에서 `live_kinds`에 든 종류는 `LIVE`만, 나머지는 `MOCK`만 받고 반대 출처는 `PROVENANCE_REJECTED`다. 단계 결과·Goal 응답·상태 사건의 종류는 그 단계 operation이 `NAVIGATE_TO`면 `NAVIGATION`, 그 밖(A3 로컬 작업)은 `LOCAL_TASK`이며 `LOCAL_TASK`는 열 수 없어 항상 MOCK이다.
+4. **상태·원장:** `live_kinds`는 작업 생성 때 정해 `GroupState`에 두고 원장 상태 JSON에 저장·복원한다(관측 버퍼처럼 버리지 않는다). 상태 JSON 안 필드라 **schema 이주는 없다**: 필드가 없는 이전 원장은 빈 값(=전부 MOCK)으로 읽는다(W5 `object_*` 필드와 같은 방식). runtime의 mode·`live_kinds`와 원장 작업의 값이 하나라도 다르면 원장에 쓰기 전에 `STORE_MODE_MISMATCH`로 거부한다. 따라서 기존 모의 원장은 혼합 모드로 열 수 없다.
+5. **포트:** 모의 포트 `supported(mode, live_kinds)`는 두 개발 모드에서 참이되, 포트가 담당하는 근거 종류(`evidence_kind`: 모의 주행 `NAVIGATION`, 모의 로컬 작업 `LOCAL_TASK`)가 `live_kinds`에 있으면 거짓이다(종류마다 출처 하나). 그래서 혼합 모드 + `NAVIGATION`에서 모의 주행 포트는 `PORT_UNSUPPORTED`이고, `LOCAL_TASK`는 열 수 없으므로 모의 로컬 작업 포트는 계속 참이다. `D1NavigationPort`는 위 조건에서만 참이다. `provenance_acceptable`은 혼합 모드에서 종류가 없거나 문자열이 아니면 거절한다(호출부 누락은 닫힌 쪽). runtime은 `port.supported(mode, live_kinds)`로 판정하며, 거짓이면 보내지 않고 `PORT_UNSUPPORTED`로 실패 처리한다.
+6. **완료 표기:** 계약 상태값은 늘리지 않았다.
+   - (a) 판정에 쓴 근거의 (종류, 출처) 요약(`evidence_used`)을 작업 상태에 누적·영속한다. 누적 시점은 단계 조건에서 참으로 확인된 관측, 적재 확인의 모순 검사에 쓴 관측, 수용한 단계 결과다. **기록 범위는 과대(보수적)다:** `_fresh_is`가 참인 관측은 그 판정 전체(다른 조건과의 AND)가 거짓이어도 누적된다. 요약은 `persistent_view`에 없어 요약만 바뀌면 revision을 올리지 않는다(원장에는 판정마다 상태 전체를 쓰므로 함께 저장된다). COMPLETED로 바뀐 판정에서 원장 사건 `Completed`(`mode`·`live_kinds`·`evidence_used`)를 한 번 남긴다.
+   - (b) `group_dev_publisher`의 `source_id`는 노드 파라미터가 아니라 작업 상태의 모드로 정한다. 혼합 모드 작업이 하나라도 있으면 `d2_dev_mixed:<label>`, 아니면 `d2_dev_mock:<label>`이다. 원장을 다시 읽어 바뀌면 revision을 올린다.
+   - 두 노드의 `mode` 파라미터는 MIXED를 받고, `live_kinds` 파라미터(문자열 배열, 기본 빈 값)를 받는다. 입고 노드는 이 값으로 runtime을 만든다. 출력 노드는 값을 검사만 한다.
+7. **입고:** 혼합 모드도 입고 관측은 모의 모드와 같게 다룬다(정답 기반 관측은 `allow_ground_truth`를 따름).
+8. **재고:** 재고 전이는 작업과 같은 원장 트랜잭션에 기록되고, 4번 규칙으로 원장 하나에는 한 모드·한 `live_kinds`의 작업만 있으므로 별도 처리를 하지 않았다.
+
+**혼합 모드의 COMPLETED는 종단 완료가 아니다.** 열지 않은 종류(LOAD·PLACEMENT·ARM_RETRACTED·로컬 작업)는 모의 근거이며, 실제 집기·배치·적재를 확인하지 않는다. 완료 사건의 `evidence_used`로 어떤 근거가 live였는지 구분한다.
+
+내부 사유 코드(계약 D-13 미반영): `LIVE_KIND_NOT_OPENABLE`, `LIVE_KINDS_REQUIRE_MIXED_MODE`, `DUPLICATE_LIVE_KIND`, `INVALID_LIVE_KINDS`, `STORE_MODE_MISMATCH`.
+
+## ETA 주행 표본과 예비 재배정 사전 검사(W6 선행)
+
+ETA 학습·모델·관제는 하지 않는다(W7 ETA XGBoost 몫, 설계 4.4·10절). 이번에는 표본 기록과 사전 검사만 한다.
+
+### ETA 주행 표본(`eta_samples`, schema 4)
+
+- **기록 조건:** `NAVIGATE_TO` 단계 상태가 `SUCCEEDED`·`FAILED`·`CANCELED`·`TIMED_OUT`·`UNCERTAIN` 중 하나로 처음 바뀐 판정에서, 그 판정을 원장에 쓰는 트랜잭션(`record_decision`) 안에서 실행당 1행을 남긴다(`execution_id` 기본 키). 표본 쓰기가 실패하면 그 판정 전체가 기록되지 않는다.
+- **제외:** `REJECTED`·`NOT_SENT`·`WITHDRAWN`은 주행하지 않아 제외한다. 중복 결과는 엔진이 상태를 바꾸지 않으므로(`DUPLICATE_RESULT`) 행이 늘지 않는다. 재시작 복원으로 진행 중 주행이 `UNCERTAIN`이 되면 종료 시각 없는 행을 남긴다.
+- **이주:** v1·v2·v3 → v4는 한 트랜잭션이며 실패하면 원장이 바뀌지 않는다. 과거 단계는 백필하지 않는다.
+- **시각:** 단계 기록(`StepRun`)에 `sent_sim_s`·`accepted_boottime_s`·`accepted_sim_s`·`finished_sim_s`·`result_provenance`를 더했다. 상태 JSON에 없으면 기본값(-1·빈 값)으로 읽는다.
+
+| 열 | 단위·값 | 설명 |
+|---|---|---|
+| `execution_id`·`task_id`·`step_key`·`robot_id`·`role`·`attempt_index` | 문자열·정수 | 실행 식별. `role`은 `MANIPULATOR`·`TRANSPORTER` |
+| `mode`·`live_kinds` | 문자열·JSON 목록 | 작업 모드와 live 허용 종류 |
+| `provenance` | `MOCK`·`LIVE`·NULL | 결과 사건 출처. 결과 없이 미확정이면 NULL |
+| `status`·`outcome`·`error_code` | 문자열·정수·문자열 | 단계 종료 상태, `ResultStatus.outcome`(없으면 NULL), 오류 코드 |
+| `from_location_id`·`to_location_id` | 등록 지점 ID | 목적지 주행만 출발 지점이 있다. 출발지 주행은 출발 위치 원천이 없어 NULL |
+| `to_location_revision`·`map_revision` | 정수 | 작업 정의의 지점·지도 revision |
+| `object_state` | `INV_*` 정수 | 결과 판정 시점의 D2 그룹 물체 상태 |
+| `carrying_object` | 1·0·NULL | 그 로봇이 물체를 들거나 싣고 있으면 1. 물체 상태 `UNKNOWN`·`LOST`면 NULL |
+| `sent_*`·`accepted_*`·`finished_*` | s | `_boottime_s`는 D2 프로세스 CLOCK_BOOTTIME, `_sim_s`는 ROS sim time. 모르면 NULL |
+| `duration_s`·`duration_sim_s` | s | 전송 예약 → 결과(boottime 차·sim 차). 한쪽 시각이 없으면 NULL |
+| `path_length_m`·`turn_count`·`corridor_wait_s`·`obstacle_density` | m·회·s·(미정) | 원천(D1·D3·B3)이 없어 **항상 NULL**. 값을 지어내지 않는다 |
+
+내보내기(원장 읽기 전용, ROS 불필요):
+
+```bash
+python3 tools/export_d2_eta_samples.py /tmp/<폴더>/d2.sqlite -o /tmp/<폴더>/eta.csv
+```
+
+- 기본은 `mode=DEVELOPMENT_MIXED`·`provenance=LIVE`·`status=SUCCEEDED` 표본만 낸다(학습 표본). MOCK 표본은 학습에 쓰지 않는다.
+- `--include-failed`를 주면 그 밖의 종료 상태도 넣고, `--include-mock`을 주면 모드·출처 필터를 끈다(개발 확인용).
+- `finished_boottime_s`가 NULL이거나 `duration_s`·`duration_sim_s`가 음수·비유한인 행은 항상 제외한다.
+- CSV 첫 줄은 위 열 이름이고 NULL은 빈 칸이다. schema 4 미만 원장은 종료 코드 2로 거부한다.
+
+### 예비 재배정 사전 검사(`reassignment.check_spare_reassignment`)
+
+- **입력:** 대상 작업 상태, 교체할 역할, 후보 `RobotSummary` 필드 사전, 기존 로봇의 `ActuationState` 필드 사전(없으면 `None`), 필요 capabilities(호출자 입력), 시각, 다른 작업 상태 목록.
+- **결과:** `(허용 여부, 사유 코드 tuple)`. 재배정을 실행하거나 원장·상태를 바꾸지 않는다. 사유는 모두 모으고, 하나라도 있으면 거절이다. 허용은 사전 조건 충족일 뿐 재배정 승인이 아니다.
+- **D2에는 로봇 풀이 없다.** 후보는 D4 `FleetSnapshot`의 `RobotSummary`다.
+
+| 사유 코드 | 조건 |
+|---|---|
+| `INVALID_ROLE`·`TASK_NOT_ASSIGNED`·`CANDIDATE_INVALID` | 역할 이름 오류, 배정 없음, 후보 형식·robot_id 오류 |
+| `TASK_TERMINAL` | 종료 작업(실패 작업을 되살리지 않음, 후속 작업 승인 절차 몫) |
+| `CANDIDATE_IS_DEPARTING_ROBOT`·`CANDIDATE_IS_PARTNER` | 후보가 기존 로봇이거나 상대 역할 로봇 |
+| `CANDIDATE_ROLE_MISMATCH` | 다른 역할 대체 금지 |
+| `CANDIDATE_CAPABILITY_MISSING` | 필요 capabilities 미포함 |
+| `CANDIDATE_NOT_AVAILABLE` | `availability`가 `AVAILABLE`·`STANDBY_SPARE`가 아님(빈 문자열·`BUSY`·`FAULT`) |
+| `CANDIDATE_ALREADY_ASSIGNED` | 후보 `assignment_id`가 비어 있지 않음 |
+| `CANDIDATE_META_STALE:<영역>` | `actuation`·`safety`·`localization`(운송 역할은 `load`도) meta가 무효·revision 0·만료(D-05: 0.3·0.5·1.0·0.5 s, sim 나이)·미래 |
+| `CANDIDATE_IN_ACTIVE_TASK` | 다른 진행 중·잠금 잔존 작업이 후보를 씀 |
+| `DEPARTING_STEP_ACTIVE`·`DEPARTING_STEP_UNCERTAIN` | 기존 로봇 단계가 의도·예약·전송·수락 중이거나 미확정. 상대 로봇 단계는 보지 않는다 |
+| `DEPARTING_ACTUATION_UNCONFIRMED` | 기존 로봇의 최신·유효 `ActuationState`가 `STOPPED`이고 `drive_allowed`·`arm_allowed`가 모두 거짓인 것을 확인할 수 없음 |
+| `TRANSFER_NOT_RELEASED` | `transfer_state`가 `NONE`·`UNLOCKED`가 아님(물품 보유·인계 중일 수 있음) |
+| `OBJECT_HELD_NO_RECOVERY_PROCEDURE` | 재고 상태 `HELD_BY_MANIPULATOR`·`STOWED_ON_TRANSPORTER`(검증된 회수·인계 절차 없음) |
+| `OBJECT_STATE_UNKNOWN` | 재고 상태 `UNKNOWN`·`LOST`(보유 여부를 배제할 수 없음) |
+
+`TASK_TERMINAL`·`CANDIDATE_ALREADY_ASSIGNED`·`CANDIDATE_IN_ACTIVE_TASK`·`OBJECT_STATE_UNKNOWN`과 정지 판정의 허가 필드 확인은 9.10 "확인할 수 없으면 재배정하지 않는다"에 따른 보수적 추가다.
+
+판정하지 않는 미정 항목: (1) 실행·예산 이력 승계 방식(DEC-24), (2) 기존 권한 철회와 새 배정 세대 부여 절차, (3) 재시작한 고장 로봇의 과거 명령 재실행 방지(A·D 검증), (4) 역할별 필요 capabilities 목록(호출자가 넘긴다).
+
+내부 사유 코드(계약 D-13 미반영): 위 표의 코드 전부.
 
 ## 개발 입고 노드(W5)
 
@@ -157,7 +243,7 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 | 연결 | 상태 | 막힘 |
 |---|---|---|
 | (a) 순수 엔진 + 모의 포트 전 흐름 | 완료(시험) | 없음 |
-| (b1) D1 주행 | 어댑터 초안·실제 D1 원장 시험 | 위 2번(조회 API·import), 지점 pose 원천(1번), live 출처 정책 |
+| (b1) D1 주행 | 어댑터 초안·실제 D1 원장 시험 | 위 2번(조회 API·import), 지점 pose 원천(1번), runtime live 연결 없음(출처 규칙은 혼합 개발 모드로 결정) |
 | (b2) A3 로컬 작업 | 미연결 | A3 서버는 `CONFIRM_LOAD`만 수락하고 나머지는 거절(mock_executor). 기본 `RuntimeAuthority`는 dispatcher 등록이 없으면 거절 |
 | (b3) 관측 | `ActuationState`·`ToolHoldState` 변환 함수(구독 없음) | C4 `hold_state`는 조작 단계에서만 발행(주기 재발행 없음), revision이 1씩 증가하지 않음, 모의 판정을 출처로 구분하지 않음(아래 운영 발행 전환 조건). 배치·팔 후퇴 생산자 없음(3번), A3 LoadState는 모의값 |
 | (c) 격리 Gazebo 종단 | 미실행 | (b1)~(b3). 혼합(live 주행 + 모의)도 실제 집기·배치가 아니므로 종단 완료가 아님 |
@@ -168,12 +254,12 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 
 **현재 상태**
 
-- `check_mode`가 `OPERATIONAL`을 `OPERATIONAL_MODE_UNSUPPORTED`로 거부한다. 개발 노드(`group_dev_publisher`·`d2_dev_intake`)는 운영 모드, `/ax/dev/` 밖 이름, `/ax/fleet`·`/ax/robot_` 포함 이름(remap 결과 포함)을 시작 거부한다(종료 코드 2). 출력은 `/ax/dev/` 아래뿐이다.
+- `check_mode`가 `OPERATIONAL`을 `OPERATIONAL_MODE_UNSUPPORTED`로 거부한다(개발 모드 `DEVELOPMENT_MOCK`·`DEVELOPMENT_MIXED`만 받음). 개발 노드(`group_dev_publisher`·`d2_dev_intake`)는 운영 모드, `/ax/dev/` 밖 이름, `/ax/fleet`·`/ax/robot_` 포함 이름(remap 결과 포함)을 시작 거부한다(종료 코드 2). 출력은 `/ax/dev/` 아래뿐이다.
 - live 입력을 받는 runtime 노드가 없다. live 어댑터(`D1NavigationPort`·`d1_result_event`·`actuation_observation`·`hold_observation`)는 함수·객체만 있고 연결하지 않는다.
 
 **D2 쪽 결정**
 
-1. live 출처 정책: `provenance_acceptable`은 개발 모드에서 `MOCK`만, 운영 모드에서 `LIVE`만 받는다. 개발 모드에서 `LIVE`를 받을지(혼합 시험), 받는다면 어느 관측 종류부터인지 정해야 한다. 현재 정책은 바꾸지 않았다.
+1. live 출처 정책: **결정됨(혼합 개발 모드).** 모의 모드는 `MOCK`만, 운영 모드는 `LIVE`만 받고, 개발 중 live 입력은 `DEVELOPMENT_MIXED`에서 `live_kinds`(ACTUATION·NAVIGATION·HOLD 중)로 연 종류만 `LIVE`로 받는다. 종류마다 출처는 하나다. 규칙은 [혼합 개발 모드](#혼합-개발-모드development_mixed)를 본다. 운영 모드의 출처 규칙(운영 모드 허용 조건, 2번)은 그대로 미정이다.
 2. 운영 모드 허용 조건: `check_mode` 거부를 풀 조건(어느 상대 포트가 live여야 하는지, 위 미지원 상대 기능 중 어디까지)을 정해야 한다.
 3. 원장 경로·쓰기 주체: 개발 노드는 `store_path` 파라미터로 원장을 받고, 입고 노드는 쓰기, 출력 노드는 읽기 전용으로 연다. 운영에서 원장 위치와 쓰기 프로세스(단일 writer 여부)는 미정이다.
 4. 세션·revision 규칙(D-05): 출력 노드는 시작마다 새 `source_session_id`, 내용 변경 시 revision +1, 1 Hz 재발행·3.0 s 만료를 쓴다. 운영 이름에서 같은 규칙을 쓸지, 재시작 뒤 소비자 재대조 방법은 정해야 한다.
@@ -185,12 +271,12 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 
 **`hold_state` 입력 상태**
 
-- D2: `hold_observation` 변환 함수만 추가했다(구독·runtime 연결 없음, LIVE는 개발 모드 근거 아님).
+- D2: `hold_observation` 변환 함수만 추가했다(구독·runtime 연결 없음). LIVE 보유 관측은 혼합 모드에서 `HOLD`를 열었을 때만 근거가 된다.
 - C4 쪽 필요 사항(계약 STATE 10 Hz·0.5 s 기준): 현재 C4는 PICK·PLACE 처리 중에만 발행하고 주기 재발행이 없다. revision은 `time.monotonic_ns()` 값이라 같은 세션에서 1씩 증가하지 않는다. 모의 판정은 `evidence='MOCK_ATTACH_STATE'`·`valid=true`로만 드러나 출처 구분이 필요하다.
 
 ## 원장과 실행 ID
 
-- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`, schema 2에서 `receipt_events`·`receipt_observations`·`register_requests`, schema 3에서 `inventory`·`locations`·`reservations`와 `receipt_events.object_class` 추가)이다. schema 1·2 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고(종료 전 작업의 물체는 근거가 없어 `UNKNOWN` 항목으로 백필, 종료 작업은 생략), 실패하면 원장을 바꾸지 않고 거부한다. 개발 노드의 읽기 전용 열기는 이주하지 않는다. 원장은 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
+- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`, schema 2에서 `receipt_events`·`receipt_observations`·`register_requests`, schema 3에서 `inventory`·`locations`·`reservations`와 `receipt_events.object_class`, schema 4에서 `eta_samples` 추가)이다. schema 1·2·3 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고(1·2는 종료 전 작업의 물체를 근거가 없어 `UNKNOWN` 항목으로 백필, 종료 작업은 생략. ETA 표본은 백필하지 않음), 실패하면 원장을 바꾸지 않고 거부한다. 개발 노드의 읽기 전용 열기는 이주하지 않는다. 원장은 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
 - 전송 순서는 의도 기록 → `reserve_dispatch`(goal UUID 기록) → 포트 전송이다. 이미 예약된 실행은 다시 예약하지 않으며 재전송하지 않는다. 같은 판정의 앞 의도가 실패하면 남은 의도도 보내지 않는다.
 - 재시작하면 관측을 버리고, 진행 중이거나 예약된 단계는 `UNCERTAIN`, 작업은 `RESTORED_UNRECONCILED`로 원장에 남긴다. 과거 세션·lease는 복원하지 않는다. 실제 상대 재대조 절차가 없어 차단은 풀리지 않는다.
 - 원장 손상(무결성·schema·JSON·단계 불일치)은 열기를 거부하고, 쓰기 실패는 runtime을 고장 상태로 두어 이후 전송을 막는다. 사건 기록은 작업별 500건(기본)·4 KiB로 제한한다.
@@ -220,7 +306,8 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 .venv/bin/python -m pytest -q -p no:launch_testing -p no:launch_ros tools/tests/test_d2_group_machine.py \
   tools/tests/test_d2_execution_ids.py tools/tests/test_d2_task_store.py tools/tests/test_d2_ports.py \
   tools/tests/test_d2_workflow_scenarios.py tools/tests/test_d2_group_node.py tools/tests/test_d2_receipt.py \
-  tools/tests/test_d2_inventory.py
+  tools/tests/test_d2_inventory.py tools/tests/test_d2_mixed_mode.py \
+  tools/tests/test_d2_eta_samples.py tools/tests/test_d2_reassignment.py
 # 격리 install을 source한 셸, 빈 domain 80~89 자동 예약
 python3 -m pytest -q -p no:cacheprovider tools/tests/test_d2_group_node_ros.py \
   tools/tests/test_d2_intake_node_ros.py

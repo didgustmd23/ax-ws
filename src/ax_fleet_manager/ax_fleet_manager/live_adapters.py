@@ -9,8 +9,9 @@
   permits에 따로 둔다.
 - hold_observation: C4 ToolHoldState 필드 → D2 관측(kind='HOLD'). 형식·모의 근거 거절만 하고
   valid·만료·물체·앵커 판정은 group_machine이 한다. 구독·노드는 만들지 않는다.
-- 기본 enabled=False다. live 출처(LIVE)는 개발 모드 판정 근거로 받지 않으므로(provenance_acceptable)
-  runtime 연결 전에 출처 정책 결정이 필요하다. src/ax_navigation 파일은 수정하지 않는다.
+- 기본 enabled=False다. live 출처(LIVE)는 혼합 개발 모드(DEVELOPMENT_MIXED)에서 live_kinds로 연
+  종류만 판정 근거가 된다(provenance_acceptable). 모의 모드에서는 받지 않는다.
+  src/ax_navigation 파일은 수정하지 않는다.
 """
 from . import group_model as gm
 from .group_events import StepResult
@@ -45,9 +46,11 @@ class D1NavigationPort:
         self.enabled = enabled
         self.submitted = {}
 
-    # 명시적으로 켠 개발 시험에서만 사용한다. 운영 모드는 지원하지 않는다
-    def supported(self, mode):
-        return self.enabled and mode == gm.MODE_DEVELOPMENT_MOCK
+    # 명시적으로 켜고, 혼합 개발 모드에서 NAVIGATION을 live로 연 경우에만 사용한다.
+    # 결과 출처가 LIVE라 모의 모드에서는 결과를 받을 수 없다. 운영 모드는 지원하지 않는다
+    def supported(self, mode, live_kinds=()):
+        return (self.enabled and mode == gm.MODE_DEVELOPMENT_MIXED
+                and gm.LIVE_KIND_NAVIGATION in live_kinds)
 
     # 등록 지점 revision 대조 후 역할별 정차 자세(map 기준 x, y, yaw)
     def stop_pose(self, intent):
@@ -195,7 +198,7 @@ def hold_rejection(fields):
 
 
 # C4 ToolHoldState 필드 → (D2 관측, None) 또는 (None, 거절 사유). 수신 시각은 호출자의 CLOCK_BOOTTIME.
-# 기본 출처 LIVE는 개발 모드 판정 근거가 아니다(provenance_acceptable, 정책 변경 없음)
+# 기본 출처 LIVE는 모의 모드 판정 근거가 아니며, 혼합 모드에서 HOLD를 live로 연 경우에만 받는다
 def hold_observation(fields, received_boottime_s, provenance=gm.PROVENANCE_LIVE):
     reason = hold_rejection(fields)
     if reason is not None:

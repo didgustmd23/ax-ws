@@ -24,6 +24,7 @@ from ax_interfaces.msg import (
 from ax_interfaces.srv import RegisterTask
 from geometry_msgs.msg import PoseStamped
 from rcl_interfaces.msg import ParameterDescriptor
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -162,8 +163,10 @@ class ReceiptIntakeDevNode(Node):
         self.create_service(RegisterTask, names['register_service'], self._on_register)
 
         self.last_revision = None
+        # 재고 1 Hz 재발행은 STEADY 시계로 잰다(use_sim_time이어도, 시계 역행에 흔들리지 않게). stamp는 ROS 시간
         self._publish_inventory()
-        self.create_timer(period, self._publish_inventory)
+        self.create_timer(period, self._publish_inventory,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self.get_logger().info(
             f'D2 개발 입고 노드 시작: {resolved} session={self.session_id} '

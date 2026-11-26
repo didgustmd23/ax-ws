@@ -71,6 +71,8 @@ class GroupTaskDevPublisher(Node):
         self.session_id = uuid.uuid4().hex
         self.revision = 0
         self.last = None
+        # 시계가 유효하지 않아(ROS 시각 0, use_sim_time에서 /clock 수신 전) 건너뛴 발행 횟수
+        self.skipped_invalid_clock = 0
         self.valid = True
         self.reason = ''
         self.store_signature = None
@@ -127,8 +129,15 @@ class GroupTaskDevPublisher(Node):
         if self._reload_store():
             self._publish()
 
-    # 현재 목록 발행. 내용·유효성이 바뀌면 revision을 올린다
+    # 현재 목록 발행. 내용·유효성이 바뀌면 revision을 올린다. ROS 시각이 0(sim /clock 수신 전)이면
+    # stamp 0 메시지를 내지 않고 건너뛴다(다음 STEADY tick에서 다시 시도)
     def _publish(self):
+        now = self.get_clock().now()
+        if now.nanoseconds == 0:
+            self.skipped_invalid_clock += 1
+            self.get_logger().debug('ROS 시각 0(/clock 수신 전): 발행 건너뜀', once=True)
+            return
+
         states = self.fixture_states + self.store_states
         fields = task_list_fields(states)
         self.source_id = source_prefix(states) + self.label
@@ -139,7 +148,7 @@ class GroupTaskDevPublisher(Node):
 
         msg = GroupTaskList()
         msg.meta = StateMeta()
-        msg.meta.header.stamp = self.get_clock().now().to_msg()
+        msg.meta.header.stamp = now.to_msg()
         msg.meta.schema_version = SCHEMA_VERSION
         msg.meta.source_id = self.source_id
         msg.meta.source_session_id = self.session_id

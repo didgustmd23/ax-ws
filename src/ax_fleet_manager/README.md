@@ -298,6 +298,8 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 - 출력은 `/ax/dev/` 아래(기본 `/ax/dev/d2_mock/fleet_tasks`) `GroupTaskList`뿐이며 STATE QoS(reliable·transient_local·keep_last 1)를 쓴다. 내용이 바뀌면 `StateMeta.revision`을 1 올려 바로 내고, 1 Hz로 같은 revision을 새 stamp와 함께 다시 낸다(소비자 만료 3.0 s).
 - launch 인자 `use_sim_time`은 기본 `false`다(/clock 없는 개발 단독 실행). sim 소비자(`safety.launch.py`·`corridor_manager.launch.py`·관제 `console.launch.py`, 모두 기본 `true`)와 같이 띄울 때는 `use_sim_time:=true`를 준다. 맞추지 않으면 stamp 기준이 달라 소비자가 전부 거부한다(미래 stamp·만료). `ros2 run`으로 띄울 때는 `-p use_sim_time:=true`다.
 - 재발행·원장 폴링 타이머(입고 노드의 재고 1 Hz 재발행 포함)는 `use_sim_time`이어도 STEADY 시계로 돈다(소비자의 무수신 판정이 수신 측 CLOCK_BOOTTIME 기준이고, 시스템 시계가 역행하면 ROS 시계 타이머 간격이 2 s 넘게 벌어진 기록이 있다). 메시지 stamp는 지금처럼 `get_clock().now()`(ROS 시간, sim이면 sim)다.
+- sim 정지 중에는 같은 revision을 같은 stamp(정지 시점 sim 시각)로 1 Hz 재발행한다(D-05 '새 stamp'는 sim이 진행할 때만 해당).
+- ROS 시각이 0이면(`use_sim_time`에서 `/clock` 수신 전) 작업 목록·재고를 발행하지 않고 다음 STEADY tick에서 다시 시도한다(stamp 0 메시지를 내지 않음, 건너뛴 횟수는 노드 내부 카운터와 디버그 로그 1회).
 - `source_id`는 `d2_dev_mock:<fixture_id>` 또는 `d2_dev_mock:store`, `source_session_id`는 시작마다 새로 만든다. 단계 진행은 `task_revision`을 올리지 않는다(`task_revision`·`schedule_revision`은 입력값 그대로).
 - 원장은 읽기 전용 URI로 열고 복원 규칙은 메모리에서만 적용한다. 원장이 바뀌면(0.2 s 확인) 다시 읽고, 읽지 못하면 `valid=false`·`D2_STORE_UNREADABLE`로 낸다.
 - 목록 유지: 진행 중 작업과, 종료됐어도 `transfer_state`가 `NONE`·`UNLOCKED`가 아닌 작업을 낸다(계약 4.3).

@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ax_operations_console</name>
+  <version>0.0.0</version>
+  <description>D2 integrated operations console (stage 1): topic-subscribe-only display relay with an HTTP GET/HEAD-only web page. No publishers, service clients, action clients or parameter services. Responses are for display only.</description>
+  <maintainer email="yhs@todo.todo">yhs</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ax_interfaces</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>ax_localization</exec_depend>
+  <exec_depend>ax_fleet_manager</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

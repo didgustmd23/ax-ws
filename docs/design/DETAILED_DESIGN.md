@@ -312,7 +312,7 @@ Cosmos는 후보 모델이며 채택·실행 성능·파인튜닝 여부를 확�
 조회·알림·사후 조치 등록 중심이며 정상 운영은 화면 조작을 요구하지 않는다. 등록만으로 성공 처리·
 잠금 해제·예산 재발급하지 않고 D가 실제 상태와 권한을 확인한다. 화면과 상태 Topic·예산 조회(`QueryBudget`)는 D, 추론 상태는 E,
 공통 계약은 K0 공동 책임이다. 관제 운영 기능은 D2, 원장·검증/알림은 D4, 추론 상태 제공은 E1~E3 작업이 맡으며 담당자와 세부 연결은 공통 일정에서 관리한다.
-비상 정지·최종 차단은 화면·LLM과 독립적으로 동작한다. 화면 정지 요청은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md)의 `RequestSafeStop`을 쓴다. 화면 기술·레이아웃·색상은 미정이다.
+비상 정지·최종 차단은 화면·LLM과 독립적으로 동작한다. 화면 정지 요청은 [공통 인터페이스 계약](INTERFACE_CONTRACT.md)의 `RequestSafeStop`을 쓴다. 화면 중계 방식은 계약 8절(읽기 전용 `rosbridge_server` 또는 Topic 구독 전용 표시 중계)을 따르고, 레이아웃·색상은 미정이다.
 
 ## 6. 통신·명명·시간·좌표 규칙
 
@@ -1206,7 +1206,7 @@ input_features, ground_truth, prediction, result
 | A | ax_description·ax_simulation·ax_control·ax_task_executor·ax_control_ml, 최종 게이트·감독/서비스 시작 래퍼 |
 | B | ax_localization·ax_environment_perception·ax_safety_monitor·ax_localization_ml |
 | C | ax_vision·ax_manipulation·ax_grasp_ml |
-| D | ax_navigation·ax_fleet_manager·ax_corridor_manager·ax_travel_time_ml, 입고/재고/지점 예약·원장·관제 상태 Topic과 예산 조회 |
+| D | ax_navigation·ax_fleet_manager·ax_corridor_manager·ax_travel_time_ml·ax_operations_console, 입고/재고/지점 예약·원장·관제 상태 Topic과 예산 조회 |
 | E | ax_operations_agent, 중앙/로봇 Agent·추론 어댑터·오프라인 품질 평가 |
 | 공통 K0 | ax_interfaces·ax_bringup·ax_integration_tests·독립 관측기. SROS2 기반 설정·소비자 계약 |
 
@@ -1476,7 +1476,7 @@ P2 통과는 복수 그룹·예비·Agent 완료가 아니며 P3~P6에서 실제
 - 전체 계획 검증 규칙·재계획 예산·독립 결과 확인(계획 스키마는 `AgentPlan`, 허용 operation은 계약 D-11).
 - 입고 사건/재입고 식별·물품 ID, 보관 규칙·용량·위치 예약·재고 원자 갱신·지도 revision.
 - 13.2절의 4대 시험 기준을 넘어서는 예비 대수·동시 가동 수와 역할별 능력 검증·회수/인계·Agent 문맥/권한 이관·오래된 로봇 복귀 차단의 세부 조건.
-- 통합 관제 화면 기술·사후 등록 API·표시/외부 알림(조회 경로와 화면 정지 요청은 계약 8절·`RequestSafeStop`).
+- 통합 관제 화면 레이아웃·사후 등록 API·표시/외부 알림(조회 경로와 화면 정지 요청은 계약 8절·`RequestSafeStop`).
 
 ## 15. 추가 검토 사항
 

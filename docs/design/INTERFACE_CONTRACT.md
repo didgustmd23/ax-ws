@@ -476,7 +476,7 @@ A가 자기 세션 ID(`a_session_id`)를 넣어 `assignment_check/request`를 �
 
 **경로·조회**
 - 주행 명령 경로: Nav2 → `/ax/robot_<n>/nav/cmd_vel` → A4 게이트 → `/ax/robot_<n>/diff_drive_controller/cmd_vel`(모두 `TwistStamped`, 4.3절). Nav2 입력 무수신·오래된 stamp 기준은 0.2 s이며 넘으면 0 속도.
-- 관제 화면: 범용 조회 API는 두지 않는다. 상태는 4절의 STATE·EVENT Topic을 구독하고, 예산은 읽기 전용 `QueryBudget`, 실패 이력은 `/ax/fleet/failures/history`로 본다. 웹 화면이 필요하면 `rosbridge_server`로 중계하되 **읽기 전용 Topic만** 노출하고 Service와 쓰기 Topic(모드 설정·정지·고장 해제 등)은 노출하지 않는다. 정지 요청 버튼은 SROS2 권한을 가진 관제 노드가 `RequestSafeStop`을 호출한다.
+- 관제 화면: 범용 조회 API는 두지 않는다. 상태는 4절의 STATE·EVENT Topic을 구독하고, 예산은 관제 노드가 읽기 전용 `QueryBudget`을 호출해 결과를 표시하고, 실패 이력은 `/ax/fleet/failures/history`로 본다. 웹 화면은 `rosbridge_server`(읽기 전용 설정, `rosapi` 미실행) 또는 Topic 구독 전용 표시 중계 노드(D2 `ax_operations_console`, HTTP GET·HEAD만, 기본 `127.0.0.1`)로 중계한다. 어느 쪽도 Service·Action·쓰기 Topic(모드 설정·정지·고장 해제 등)·파라미터 변경 경로를 노출하지 않는다. 표시 중계의 응답은 화면 표시 전용이며 다른 노드·Agent의 상태 원천으로 쓰지 않는다. 화면은 표시용으로 4절 표 밖의 `/ax/robot_<n>/amcl_pose`(B2 내부, 위치 표시)와 `/ax/robot_<n>/battery_state`(B4 입력)를 읽을 수 있으며 이 값을 판정·허가에 쓰지 않는다. `QueryBudget` 호출, 정지 요청(`RequestSafeStop`), 사후 조치 등록처럼 Service를 쓰는 기능은 웹 중계가 아니라 SROS2 권한을 가진 별도 관제 노드가 맡는다(사후 등록 API는 미정).
 - 보조 Service: 통로 해제 `ReleaseCorridor`(D3), 예산 조회 `QueryBudget`(D4), 고장 해제 `ClearFault`(A4, 시험 하네스·사후 조치 경로만 호출), 수동 전체 정지 `RequestSafeStop`(D4). 통로 조회는 `/ax/fleet/corridor/state` 구독으로 한다.
 
 **크기·센서**

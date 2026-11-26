@@ -44,6 +44,9 @@ def main():
     gate = prefix / 'ax_safety/lib/ax_safety/a4_safety_gate'
     if not gate.is_file():
         parser.error(f'A4 실행 파일 없음: {gate}')
+    protected_arm = prefix / 'ax_safety/lib/ax_safety/a4_protected_arm_server'
+    if not protected_arm.is_file():
+        parser.error(f'A4 보호 팔 실행 파일 없음: {protected_arm}')
     output = args.output.resolve()
     if output.exists() and any(output.iterdir()):
         parser.error('기존/진행 중인 시험 근거를 보존하도록 비어 있는 새 output 폴더를 사용하세요.')
@@ -53,6 +56,8 @@ def main():
         parser.error('기존 시험 근거를 덮어쓰지 않도록 새 output 폴더를 사용하세요.')
     environment = dict(os.environ, AX_KIM_INSTALL_BASE=str(prefix),
                        AX_C2_NODE_PREFIX=str(c2_prefix), AX_GATE_BIN=str(gate),
+                       # 새 원본 보호팔 시험도 같은 설치본을 검사하도록 경로를 명시한다.
+                       AX_PROTECTED_ARM_BIN=str(protected_arm),
                        AX_LOCAL_EXECUTOR_LATENCY_OUT=str(output / 'latency.json'))
     summary = {'started_utc': datetime.now(timezone.utc).isoformat(),
                'install_prefix': str(prefix), 'c2_prefix': str(c2_prefix), 'stages': [],

@@ -104,6 +104,13 @@ D-06 정지 판정(STOPPED)은 수신한 피드백 표본의 stamp(시뮬레이�
   STOPPED 진입·이탈 때 판정 근거(sim now, 채널별 구간 start/end, 유지 길이, freshness·SafetyState·시계 유효성,
   역할·joint 사용 여부)와, 1 s(벽시계)마다 채널별 수용·중복·상충·늦음·거부(시계·stamp·미래) 누적 수를 쓴다.
   판정·발행 내용은 바꾸지 않으며 공개 토픽이 아니다. 무수신 나이(age_*)는 진단 시점에 따로 읽은 값이다.
+- W3 A4 진단은 D2 `/ax/fleet/tasks`, D3 `/ax/fleet/corridor/state`, B3
+  `/ax/<robot>/perception/corridor_observation`을 구독해 `valid`, 출처,
+  session/revision 순서와 상태 freshness를 별도로 표시한다. `A4_STOP_DIAG`의
+  `gate_block_detail`, `d2_tasks`, `d3_corridor`, `b3_corridor_observation`은 실제 입력별
+  차단 원인을 구분하기 위한 진단 필드이며, 공통 `ActuationState` 차단 사유나 주행 허가를
+  임의로 바꾸지 않는다. D2/D3 허가 정책과 AX_2 무관절 주행 자세 계약이 확정되기 전까지
+  게이트는 기존 보수적인 parameter 기본값(false)을 유지한다.
 
 설치·연결 절차는 [W1 안내](../../docs/guides/W1_A4_B4_SETUP.txt)를 따른다.
 A2 시뮬레이션에서 함께 시작하려면 `simulation.launch.py safety:=true`를 사용한다.

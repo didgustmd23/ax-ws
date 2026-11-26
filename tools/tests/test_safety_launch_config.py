@@ -84,9 +84,14 @@ class SafetyLaunchConfigTest(unittest.TestCase):
     # 세 노드 모두 공통 파일을 받고, 로봇별 파일이 없으면 공통 파일 하나뿐이다
     def test_common_file_reaches_all_nodes(self):
         nodes = nodes_for()
-        self.assertEqual(sorted(nodes), ['a4_protected_arm_server', 'a4_safety_gate', 'b4_risk_node'])
+        self.assertEqual(sorted(nodes), ['a4_protected_arm_server', 'a4_safety_gate', 'a4_supervisor_node', 'b4_risk_node'])
 
         for name, node in nodes.items():
+            if name == 'a4_supervisor_node':
+                # 감독기는 공통 safety_limits YAML을 해석하지 않고 자체
+                # 파라미터만 받는다. 알 수 없는 A4/B4 파라미터를 주입하지 않는다.
+                self.assertEqual(file_entries(node), [], name)
+                continue
             files = [file_path(e) for e in file_entries(node)]
             self.assertEqual(len(files), 1, name)
             self.assertTrue(files[0].endswith('safety_limits.yaml'), name)
@@ -99,6 +104,9 @@ class SafetyLaunchConfigTest(unittest.TestCase):
             nodes = nodes_for({'robot_params_file': robot_file.name})
 
             for name, node in nodes.items():
+                if name == 'a4_supervisor_node':
+                    self.assertEqual(file_entries(node), [], name)
+                    continue
                 files = [file_path(e) for e in file_entries(node)]
                 self.assertEqual(files[-1], robot_file.name, name)
 

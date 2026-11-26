@@ -37,6 +37,7 @@
 
   <!-- ament가 package.xml과 CMake 설치 결과를 검증할 때 사용하는 테스트 의존성이다. -->
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
   <!-- ament_cmake 패키지로 인식되도록 빌드 타입을 선언한다. -->
   <export><build_type>ament_cmake</build_type></export>
 </package>

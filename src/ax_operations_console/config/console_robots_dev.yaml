@@ -1,0 +1,8 @@
+# 개발용 로봇 목록(1단계). 운영 로봇 목록 원천은 D4 FleetSnapshot.robots(RobotSummary)이며 생기면 바꾼다.
+# 화면에는 "출처: 개발 설정"으로 표시한다. 역할·예비 여부는 시험 구성(ax_description robot_test.launch.py)과 같다.
+source: dev_config
+robots:
+  - {robot_id: robot_1, role: MANIPULATOR, spare: false}
+  - {robot_id: robot_2, role: TRANSPORTER, spare: false}
+  - {robot_id: robot_3, role: MANIPULATOR, spare: true}
+  - {robot_id: robot_4, role: TRANSPORTER, spare: true}

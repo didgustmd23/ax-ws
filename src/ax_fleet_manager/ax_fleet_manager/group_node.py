@@ -4,7 +4,8 @@
 - 운영 모드(OPERATIONAL)는 시작을 거부한다. /ax/fleet/tasks 등 운영 Topic에는 발행하지 않으며,
   remap으로 출력 이름이 바뀌어도 해석된 이름을 다시 검사해 운영 이름이면 종료한다.
 - STATE QoS(reliable·transient_local·keep_last 1). 내용이 바뀌면 바로 revision+1로 발행하고,
-  1 Hz로 같은 revision을 새 stamp로 재발행한다(소비자 만료 3.0 s, 계약 D-05).
+  1 Hz로 같은 revision을 새 stamp로 재발행한다(소비자 만료 3.0 s, 계약 D-05). 재발행·원장 폴링 타이머는
+  STEADY 시계(use_sim_time이어도), stamp는 ROS 시간이다.
 - source_id는 d2_dev_mock:<fixture_id 또는 store>로 출처를 남긴다. 혼합 모드 작업이 하나라도 있으면
   d2_dev_mixed:<label>이며 파라미터 mode가 아니라 작업 상태의 모드로 정한다. source_session_id는 시작마다
   새로 만든다.
@@ -16,6 +17,7 @@ import uuid
 import rclpy
 from ax_interfaces.msg import GroupTaskList, GroupTaskStatus, StateMeta
 from rcl_interfaces.msg import ParameterDescriptor
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -69,6 +71,8 @@ class GroupTaskDevPublisher(Node):
         self.session_id = uuid.uuid4().hex
         self.revision = 0
         self.last = None
+        # 시계가 유효하지 않아(ROS 시각 0, use_sim_time에서 /clock 수신 전) 건너뛴 발행 횟수
+        self.skipped_invalid_clock = 0
         self.valid = True
         self.reason = ''
         self.store_signature = None
@@ -80,10 +84,13 @@ class GroupTaskDevPublisher(Node):
         self.publisher = self.create_publisher(GroupTaskList, topic, STATE_QOS)
         validate_output_topic(self.publisher.topic_name)
 
+        # 재발행·폴링 주기는 STEADY 시계로 잰다(use_sim_time이어도). 시스템·ROS 시계가 역행하면 ROS 시계
+        # 타이머 간격이 벌어져 소비자 만료(3.0 s)에 걸린다. 메시지 stamp는 ROS 시간 그대로다
+        steady = Clock(clock_type=ClockType.STEADY_TIME)
         self._publish()
-        self.create_timer(period, self._publish)
+        self.create_timer(period, self._publish, clock=steady)
         if self.store_path:
-            self.create_timer(poll, self._poll_store)
+            self.create_timer(poll, self._poll_store, clock=steady)
 
         self.get_logger().info(
             f'D2 개발 상태 출력 시작: topic={self.publisher.topic_name} source={self.source_id} '
@@ -122,8 +129,15 @@ class GroupTaskDevPublisher(Node):
         if self._reload_store():
             self._publish()
 
-    # 현재 목록 발행. 내용·유효성이 바뀌면 revision을 올린다
+    # 현재 목록 발행. 내용·유효성이 바뀌면 revision을 올린다. ROS 시각이 0(sim /clock 수신 전)이면
+    # stamp 0 메시지를 내지 않고 건너뛴다(다음 STEADY tick에서 다시 시도)
     def _publish(self):
+        now = self.get_clock().now()
+        if now.nanoseconds == 0:
+            self.skipped_invalid_clock += 1
+            self.get_logger().debug('ROS 시각 0(/clock 수신 전): 발행 건너뜀', once=True)
+            return
+
         states = self.fixture_states + self.store_states
         fields = task_list_fields(states)
         self.source_id = source_prefix(states) + self.label
@@ -134,7 +148,7 @@ class GroupTaskDevPublisher(Node):
 
         msg = GroupTaskList()
         msg.meta = StateMeta()
-        msg.meta.header.stamp = self.get_clock().now().to_msg()
+        msg.meta.header.stamp = now.to_msg()
         msg.meta.schema_version = SCHEMA_VERSION
         msg.meta.source_id = self.source_id
         msg.meta.source_session_id = self.session_id

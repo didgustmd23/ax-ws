@@ -24,6 +24,7 @@ from ax_interfaces.msg import (
 from ax_interfaces.srv import RegisterTask
 from geometry_msgs.msg import PoseStamped
 from rcl_interfaces.msg import ParameterDescriptor
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -162,8 +163,12 @@ class ReceiptIntakeDevNode(Node):
         self.create_service(RegisterTask, names['register_service'], self._on_register)
 
         self.last_revision = None
+        # 시계가 유효하지 않아(ROS 시각 0, use_sim_time에서 /clock 수신 전) 건너뛴 재고 발행 횟수
+        self.skipped_invalid_clock = 0
+        # 재고 1 Hz 재발행은 STEADY 시계로 잰다(use_sim_time이어도, 시계 역행에 흔들리지 않게). stamp는 ROS 시간
         self._publish_inventory()
-        self.create_timer(period, self._publish_inventory)
+        self.create_timer(period, self._publish_inventory,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self.get_logger().info(
             f'D2 개발 입고 노드 시작: {resolved} session={self.session_id} '
@@ -204,8 +209,15 @@ class ReceiptIntakeDevNode(Node):
 
         return response
 
-    # 재고 snapshot 발행. revision은 원장 재고 revision(영속), 1 Hz로 같은 revision 재발행
+    # 재고 snapshot 발행. revision은 원장 재고 revision(영속), 1 Hz로 같은 revision 재발행.
+    # ROS 시각이 0(sim /clock 수신 전)이면 stamp 0 메시지를 내지 않고 건너뛴다(관측·등록 뒤 발행도 같음)
     def _publish_inventory(self):
+        now = self.get_clock().now()
+        if now.nanoseconds == 0:
+            self.skipped_invalid_clock += 1
+            self.get_logger().debug('ROS 시각 0(/clock 수신 전): 재고 발행 건너뜀', once=True)
+            return
+
         valid, reason = True, ''
         try:
             fields = inventory_snapshot_fields(self.store, self.catalog)
@@ -218,7 +230,7 @@ class ReceiptIntakeDevNode(Node):
         if self.runtime.fault:
             valid, reason = False, 'D2_STORE_FAULT'
 
-        stamp = self.get_clock().now().to_msg()
+        stamp = now.to_msg()
         msg = InventorySnapshot()
         msg.meta = StateMeta()
         msg.meta.header.stamp = stamp

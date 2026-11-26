@@ -23,6 +23,7 @@ from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ros_test_domain  # noqa: E402
+from d2_stamp_order import check_stamp_order  # noqa: E402
 
 from ax_fleet_manager import group_model as gm  # noqa: E402
 from ax_fleet_manager.group_events import FailTerminate, HoldApplied  # noqa: E402
@@ -101,11 +102,22 @@ class D2GroupNodeRosTest(unittest.TestCase):
         self.procs.append(proc)
         return proc
 
-    # 조건까지 수신(구독은 STATE QoS)
-    def collect(self, duration, until=None, topic=DEV_TOPIC):
+    # 시스템 시계와 monotonic의 차(s). 줄면 시스템 시계가 역행한 것이다
+    @staticmethod
+    def clock_offset():
+        return time.time() - time.monotonic()
+
+    # 조건까지 수신(구독은 STATE QoS). offsets를 주면 수신마다 시계 offset을 함께 남긴다
+    def collect(self, duration, until=None, topic=DEV_TOPIC, offsets=None):
         got = []
-        sub = self.node.create_subscription(
-            GroupTaskList, topic, lambda m: got.append((time.monotonic(), m)), STATE_QOS)
+
+        # 수신 기록(monotonic 수신 시각, 메시지)과 선택적 offset 기록
+        def receive(msg):
+            got.append((time.monotonic(), msg))
+            if offsets is not None:
+                offsets.append(self.clock_offset())
+
+        sub = self.node.create_subscription(GroupTaskList, topic, receive, STATE_QOS)
         end = time.monotonic() + duration
         try:
             while time.monotonic() < end:
@@ -150,16 +162,24 @@ class D2GroupNodeRosTest(unittest.TestCase):
         self.assertEqual(task.task_revision, 1)
 
         # 늦게 접속해도 마지막 값을 받고, 같은 revision을 약 1 Hz로 새 stamp와 함께 재발행
+        # 시계 offset은 대기 전부터 잰다: 창의 첫 메시지(transient_local 마지막 값)는 대기 전에 발행됐을 수 있다
+        offsets = [self.clock_offset()]
         time.sleep(1.5)
-        got = self.collect(3.6)
+        offsets.append(self.clock_offset())
+        got = self.collect(3.6, offsets=offsets)
+        offsets.append(self.clock_offset())
         self.assertGreaterEqual(len(got), 3)
         self.assertEqual({m.meta.revision for _, m in got}, {1})
         self.assertEqual({m.meta.source_session_id for _, m in got}, {msg.meta.source_session_id})
         gaps = [b[0] - a[0] for a, b in zip(got[1:], got[2:])]
         self.assertTrue(all(0.6 < g < 1.6 for g in gaps), gaps)
         stamps = [m.meta.header.stamp.sec * 10**9 + m.meta.header.stamp.nanosec for _, m in got]
-        self.assertEqual(stamps, sorted(stamps))
-        self.assertEqual(len(set(stamps)), len(stamps))
+        # stamp(시스템 시계)는 단조·중복 없음. 창 안에서 시스템 시계 역행이 측정된 경우에만 그 크기 안의
+        # 감소 1회를 허용한다(d2_stamp_order, WSL 실측 역행 1.2~1.75 s)
+        ok, detail = check_stamp_order(stamps, offsets)
+        if detail:
+            print(f'[stamp_order] {detail}')
+        self.assertTrue(ok, detail)
 
         # 발행자 QoS·그래프: 개발 Topic만 발행, 구독·Action·운영 Topic·cmd_vel 없음
         infos = self.node.get_publishers_info_by_topic(DEV_TOPIC)

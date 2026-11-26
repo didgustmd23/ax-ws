@@ -1,0 +1,16 @@
+# 관제 화면 입력 Topic. profile은 작업 목록 Topic만 다르다.
+# - operational: 계약 4.1 /ax/fleet/tasks(D2 운영 발행자는 아직 없음)
+# - dev: D2 개발 출력(group_dev_publisher)의 /ax/dev/d2_mock/fleet_tasks
+# robot_topics는 /ax/<robot_id>/ 아래 상대 이름이다. pose·battery는 계약 8절의 표시 전용 입력이다.
+profiles:
+  operational:
+    tasks: /ax/fleet/tasks
+  dev:
+    tasks: /ax/dev/d2_mock/fleet_tasks
+robot_topics:
+  actuation: safety/actuation_state
+  safety: safety/state
+  health: localization/health
+  executor: executor/status
+  pose: amcl_pose
+  battery: battery_state

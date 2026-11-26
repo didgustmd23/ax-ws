@@ -50,6 +50,7 @@ import rclpy
 from ax_interfaces.msg import ActuationState, AttachState
 from ax_interfaces.srv import CheckCommandLease, ToolCommand
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
@@ -242,7 +243,9 @@ class SuctionToolNode(Node):
             callback_group=group,
         )
 
-        self.create_timer(ATTACH_STATE_PERIOD_SECONDS, self.publish_attach_state)
+        # 재발행 주기는 /clock 정지·시스템 시계 역행과 무관하게 STEADY로 돌리고, stamp는 ROS(sim) 시간을 유지한다.
+        self.create_timer(ATTACH_STATE_PERIOD_SECONDS, self.publish_attach_state,
+                          clock=Clock(clock_type=ClockType.STEADY_TIME))
 
     # 플러그인이 보고한 실제 연결 상태를 저장한다
     def on_plugin_state(self, message):

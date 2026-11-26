@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AX 통합 관제</title>
+<link rel="stylesheet" href="/static/console.css">
+</head><body>
+<script src="/static/app.js"></script>
+<script>
+// 서버가 판정한 /api/state를 0.2 s마다 폴링해 표시만 한다(쓰기 요청 없음). 3회 연속 실패하면 연결 끊김 표시.
+(() => {
+  buildSkeleton(Map2D);
+  let fails = 0;
+
+  // 한 번 폴링하고 다음 폴링 예약
+  const poll = async () => {
+    try {
+      const r = await fetch('/api/state', {cache: 'no-store', signal: AbortSignal.timeout(1000)});
+      if (!r.ok) throw Error(String(r.status));
+      renderAll(await r.json());
+      fails = 0;
+      setConn(true, '연결 정상');
+    } catch (e) {
+      if (++fails >= 3) setConn(false, '연결 끊김');
+    }
+    setTimeout(poll, 200);
+  };
+  poll();
+})();
+</script>
+</body></html>

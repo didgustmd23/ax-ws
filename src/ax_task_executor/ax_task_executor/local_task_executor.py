@@ -10,7 +10,7 @@
 - 상태 그룹(MutuallyExclusive): RobotTaskStatus 1 Hz 재발행 타이머.
 MultiThreadedExecutor(파라미터 threads, 기본 4)가 세 그룹을 돌린다(dedicated면 lease는 별도 스레드).
 
-잠금 순서(교착 방지): 한 스레드가 두 잠금을 동시에 잡지 않는다.
+잠금 순서(교착 방지): 운영 권한은 RuntimeAuthority → LeaseLedger 순서로 잡는다.
 - ExecutorState.lock: 사전·집합 갱신만(잎 잠금). 안에서 SQLite·ROS 호출·await 없음.
 - ExecutionStore.lock·LeaseLedger.lock: 각자의 SQLite 트랜잭션만. 안에서 ROS 호출·await 없음.
 - 상태 메시지 잠금(MockExecutor._status_lock): 메시지 계산·교체만, 발행은 잠금 밖.
@@ -26,11 +26,13 @@ import time
 
 from ax_interfaces.msg import AssignmentCheckRequest, AssignmentCheckResponse
 from ax_interfaces.srv import CheckCommandLease
+from ax_task_executor.arm_retraction import ArmRetractionObserver
 from ax_task_executor.assignment_monitor import AssignmentMonitor
 from ax_task_executor.executor_state import ExecutorState
 from ax_task_executor.lease_check import (
     default_lease_db, DevPolicyAuthority, fill_lease_reply,
     LEASE_SERVICE_QOS, LeaseChecker, LeaseLedger)
+from ax_task_executor.lease_topics import LeaseTopics
 from ax_task_executor.mock_executor import execute_action_name, MockExecutor
 from ax_task_executor.runtime_authority import RuntimeAuthority
 import rclpy
@@ -39,6 +41,8 @@ from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import JointState
 
 # 이 실행 파일의 노드 이름과 lease 전용 노드 이름(dedicated 모드)
 NODE_NAME = 'local_task_executor'
@@ -70,6 +74,19 @@ class LocalTaskExecutor(MockExecutor):
         # 시작 시 같은 서비스·Action 이름을 가진 다른 노드를 찾는 시간(s). 0이면 확인하지 않는다.
         self.declare_parameter('name_check_s', 1.0)
         self.declare_parameter('lease_mode', 'reentrant')
+        # 후퇴 자세는 모델별 승인값을 명시해야 한다. 기본값으로 완료를 만들지 않는다.
+        self.declare_parameter('retraction_pose_approved', False)
+        self.declare_parameter('retraction_joint_names', rclpy.Parameter.Type.STRING_ARRAY)
+        self.declare_parameter('retraction_joint_positions', rclpy.Parameter.Type.DOUBLE_ARRAY)
+        self.declare_parameter('retraction_position_tolerance_rad', 0.02)
+        self.arm_retraction = ArmRetractionObserver(
+            self.get_parameter_or('retraction_joint_names').value or (),
+            self.get_parameter_or('retraction_joint_positions').value or (),
+            self.get_parameter('retraction_pose_approved').value,
+            self.get_parameter('retraction_position_tolerance_rad').value)
+        self.arm_joint_subscription = self.create_subscription(
+            JointState, f'/ax/{self.robot_id}/joint_states', self.on_arm_joint_state,
+            qos_profile_sensor_data, callback_group=MutuallyExclusiveCallbackGroup())
 
         if int(self.get_parameter('threads').value) < 2:
             raise ValueError('threads must be >= 2 (Action·상태 콜백을 함께 처리)')
@@ -110,6 +127,8 @@ class LocalTaskExecutor(MockExecutor):
             qos_profile=LEASE_SERVICE_QOS, callback_group=group)
 
         if policy == 'operational':
+            # C4 토픽과 CheckCommandLease가 같은 RuntimeAuthority·SQLite를 공유한다.
+            self.lease_topics = LeaseTopics(self, authority, self.ledger, group)
             # D4 소스는 수정하지 않고 공통 계약의 요청·응답 Topic으로만 연결합니다.
             from rclpy.qos import QoSProfile, ReliabilityPolicy
             event_qos = QoSProfile(depth=50, reliability=ReliabilityPolicy.RELIABLE)
@@ -168,11 +187,33 @@ class LocalTaskExecutor(MockExecutor):
             raise RuntimeError('task authority requires operational policy')
         self.assignment_monitor.start(execution)
 
+    def register_manipulation_goal(self, execution, goal_id, budgets):
+        """내 dispatcher가 보낼 Goal을 등록합니다. C4 요청 자체로 배정·Goal을 만들지 않습니다."""
+        if not isinstance(self.authority, RuntimeAuthority):
+            raise RuntimeError('manipulation leases require operational policy')
+        self.authority.activate_goal(execution, goal_id)
+        try:
+            self.lease_topics.protocol.register_budgets(execution.execution_id, goal_id, budgets)
+        except Exception:
+            self.authority.finish_goal(execution.execution_id, goal_id)
+            raise
+
+    def revoke_manipulation_lease(self, reason='LEASE_REVOKED'):
+        """현재 C4 lease를 차단하고 revoke·부모 Goal cancel을 함께 요청합니다."""
+        self.lease_topics.revoke_current(reason)
+
+    def finish_manipulation_goal(self, execution_id, goal_id):
+        """하위 Action 종료를 받은 dispatcher가 호출해 늦은 이전 Goal 요청을 차단합니다."""
+        return self.lease_topics.finish_goal(execution_id, goal_id)
+
     def stop_task_authority(self, execution_id):
         """현재 실제 작업의 배정 확인 추적을 종료합니다."""
         # 배정 재확인 중단과 권한 해제만 담당합니다. 물리 취소·정지 확인을 대신하지 않습니다.
         if not isinstance(self.authority, RuntimeAuthority):
             raise RuntimeError('task authority requires operational policy')
+        if (self.authority.context is not None
+                and self.authority.context.execution_id == execution_id):
+            self.revoke_manipulation_lease()
         return self.assignment_monitor.stop(execution_id)
 
     # 실행기 스레드 수
@@ -237,9 +278,21 @@ class LocalTaskExecutor(MockExecutor):
         # 역할: 명령 확인 요청을 판정하고 서비스 응답 필드를 채웁니다.
         return fill_lease_reply(self.checker, request, reply)
 
+    def on_arm_joint_state(self, message):
+        """하위 Action 결과 대신 실제 관절 피드백을 후퇴 판정기에 전달한다."""
+        self.arm_retraction.update(
+            message, self.get_clock().now().nanoseconds * 1e-9, time.monotonic())
+
+    def arm_retraction_evidence(self):
+        """내부 관측만 반환하며 작업 성공·잠금 해제·주행 허가를 자동 생성하지 않는다."""
+        return self.arm_retraction.snapshot(
+            self.get_clock().now().nanoseconds * 1e-9, time.monotonic())
+
     # lease 원장을 닫고 모의 실행기 정리를 이어 한다
     def destroy_node(self):
         # 역할: 노드가 소유한 원장을 닫고 상위 노드를 정리합니다.
+        if hasattr(self, 'lease_topics'):
+            self.lease_topics.close()
         if isinstance(getattr(self, 'authority', None), RuntimeAuthority):
             self.authority.invalidate_assignment()
         if hasattr(self, 'assignment_timer'):

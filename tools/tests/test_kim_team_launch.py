@@ -47,6 +47,7 @@ class KimTeamLaunchTests(unittest.TestCase):
         self.assertEqual(config['robot_ids'], ['robot_1', 'robot_2'])
         self.assertEqual(config['regions_file'], '/tmp/regions.json')
         self.assertEqual(config['database'], '/tmp/isolated-corridors.db')
+        self.assertEqual(config['fleet_tasks_topic'], '/ax/fleet/tasks')
         self.assertNotIn('grant_policy_approved', config)
         self.assertNotIn('approved', config)
 
@@ -60,3 +61,18 @@ class KimTeamLaunchTests(unittest.TestCase):
         """실행 옵션 오타는 조용히 일부 노드만 켜는 대신 시작 전에 거절합니다."""
         with self.assertRaises(ValueError):
             self.build(with_w3='yes')
+
+    def test_d2_development_topic_changes_only_my_consumer(self):
+        """D2와 상대 노드는 시작하지 않고 D3 입력만 명시적으로 고릅니다."""
+        nodes = self.build(with_w3='true', fleet_tasks_topic='/ax/dev/d2_mock/fleet_tasks')
+        manager = next(node for node in nodes if node['package'] == 'ax_corridor_manager')
+        self.assertEqual(manager['parameters'][0]['fleet_tasks_topic'], '/ax/dev/d2_mock/fleet_tasks')
+        self.assertNotIn('grant_policy_approved', manager['parameters'][0])
+        self.assertNotIn('ax_fleet_manager', {node['package'] for node in nodes})
+
+    def test_invalid_task_topic_is_rejected(self):
+        """오타·상대 구동 토픽·개발 경로 안의 운영 이름 혼입을 거절합니다."""
+        for topic in ('', 'ax/fleet/tasks', '/ax/robot_1/cmd_vel', '/ax/dev/../tasks',
+                      '/ax/dev/x/ax/fleet/tasks', '/other/tasks'):
+            with self.subTest(topic=topic), self.assertRaises(ValueError):
+                self.build(with_w3='true', fleet_tasks_topic=topic)

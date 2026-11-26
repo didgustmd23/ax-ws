@@ -12,7 +12,8 @@ import time
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
-from ax_interfaces.msg import ActuationState, SafetyState
+from ax_interfaces.msg import ActuationState, CorridorObservationList, CorridorStateList, SafetyState
+from ax_interfaces.srv import RequestCorridorEntry
 from rcl_interfaces.srv import GetParameters
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -74,6 +75,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seconds', type=int, default=120)
     parser.add_argument('--check-charging', action='store_true')
+    parser.add_argument('--with-b3', action='store_true')
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -81,7 +83,7 @@ def main():
               '주행/조작/영역 승인/LOW 강제정지 검증 아님'}
     domain, lock = ros_test_domain.reserve_domain(ros_test_domain.A3_DOMAINS)
     process = None
-    monitor = d3 = executor = None
+    monitor = d3 = b3 = executor = None
     try:
         # 이미 내게 배정된 domain만 예약하고, 기본 domain 및 팀 Gazebo 범위는 사용하지 않는다.
         os.environ.update(ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
@@ -108,18 +110,53 @@ def main():
             with (output / 'simulation.log').open('w') as log:
                 process = subprocess.Popen(command, cwd=ROOT, env=environment, stdout=log,
                                            stderr=subprocess.STDOUT, start_new_session=True)
-                rclpy.init(args=['--ros-args', '-p', 'use_sim_time:=true', '-p', f'database:={database}'])
+                ros_args = ['--ros-args', '-p', 'use_sim_time:=true', '-p', f'database:={database}']
+                if args.with_b3:
+                    ros_args.extend(['-r', '__ns:=/ax/robot_2',
+                                     '-p', 'robot_id:=robot_2', '-p', 'robot_model:=AX_2'])
+                rclpy.init(args=ros_args)
                 monitor = Node('kim_schema2_observer')
                 d3 = ObservedD3()
                 executor = SingleThreadedExecutor()
                 executor.add_node(monitor)
                 executor.add_node(d3)
+                corridor = {'observation_messages': 0, 'state_messages': 0}
+                if args.with_b3:
+                    from ax_environment.corridor_observer import CorridorObserver
+                    b3 = CorridorObserver()
+                    executor.add_node(b3)
+                    result['corridor'] = corridor
+                    corridor['regions_approved'] = bool((b3.catalog or {}).get('approved'))
                 stats = {robot: {'battery_count': 0, 'battery_latest': {}, 'battery_status_counts': {},
                                 'actuation_count': 0, 'schema_versions': [], 'stopped_count': 0,
                                 'unsafe_permission_count': 0, 'safety_count': 0}
                          for robot in ('robot_1', 'robot_2')}
                 result['robots'] = stats
                 handles, parameter_futures = [], {}
+
+                def observations(message):
+                    corridor['observation_messages'] += 1
+                    corridor['observation_valid'] = message.meta.valid
+                    corridor['observation_reason'] = message.meta.validity_reason
+                    corridor['observations'] = [
+                        {'corridor_id': item.corridor_id, 'observation': item.observation,
+                         'position_valid': item.position_valid} for item in message.observations]
+
+                def corridor_state(message):
+                    corridor['state_messages'] += 1
+                    corridor['state_valid'] = message.meta.valid
+                    corridor['state_reason'] = message.meta.validity_reason
+                    corridor['states'] = [
+                        {'corridor_id': item.corridor_id, 'state': item.state,
+                         'owner_robot_id': item.owner_robot_id, 'active_grant_id': item.active_grant_id}
+                        for item in message.corridors]
+
+                if args.with_b3:
+                    handles.extend([
+                        monitor.create_subscription(CorridorObservationList,
+                            '/ax/robot_2/perception/corridor_observation', observations, STATE_QOS),
+                        monitor.create_subscription(CorridorStateList,
+                            '/ax/fleet/corridor/state', corridor_state, STATE_QOS)])
 
                 def battery(message, robot):
                     row = stats[robot]
@@ -173,6 +210,9 @@ def main():
                     if all(row['battery_count'] >= 10 and row['stopped_count'] >= 10
                            and d3.accepted_stops[robot] >= 5 and row.get('battery_required')
                            and row['safety_count'] >= 5 for robot, row in stats.items()):
+                        if args.with_b3 and (corridor['observation_messages'] < 2
+                                            or corridor['state_messages'] < 2):
+                            continue
                         if not args.check_charging:
                             break
                         if not moved_to_pad:
@@ -211,6 +251,21 @@ def main():
                 # 전송 성공과 마지막 순간의 정지 유지 여부를 분리해, 과거 한 번의 STOPPED로 과장하지 않는다.
                 result['transport_and_battery_passed'] = result['passed']
                 result['both_stopped_at_end'] = all(row['d3_stop_currently_valid'] for row in stats.values())
+                if args.with_b3:
+                    client = monitor.create_client(RequestCorridorEntry, '/ax/fleet/corridor/request_entry')
+                    if client.wait_for_service(timeout_sec=2.0):
+                        future = client.call_async(RequestCorridorEntry.Request(
+                            corridor_id=d3.manager.corridor_ids[0], robot_id='robot_2',
+                            request_id='operational-review'))
+                        end = time.monotonic() + 3.0
+                        while not future.done() and time.monotonic() < end:
+                            executor.spin_once(timeout_sec=0.05)
+                        if future.done():
+                            reply = future.result()
+                            corridor['entry_reply'] = {'granted': reply.granted,
+                                'grant_id': reply.grant_id, 'reason_code': reply.reason_code}
+                    result['passed'] = (result['passed'] and corridor['observation_messages'] >= 2
+                        and corridor['state_messages'] >= 2 and 'entry_reply' in corridor)
                 result['gazebo_process_exit_before_cleanup'] = process.poll()
                 print(json.dumps(result, ensure_ascii=False), flush=True)
     except Exception as error:
@@ -219,7 +274,7 @@ def main():
     finally:
         if executor is not None:
             executor.shutdown()
-        for node in (d3, monitor):
+        for node in (b3, d3, monitor):
             if node is not None:
                 node.destroy_node()
         if rclpy.ok():

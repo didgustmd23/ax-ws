@@ -10,6 +10,7 @@ import time
 import uuid
 
 import rclpy
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
@@ -117,7 +118,11 @@ class B4RiskNode(Node):
         if self.rear_topic:
             self.create_subscription(Range, self.rear_topic, self.on_rear,
                                      sensor_qos)
-        self.create_timer(0.1, self.publish_state)
+        self.create_timer(
+            0.1,
+            self.publish_state,
+            clock=Clock(clock_type=ClockType.STEADY_TIME),
+        )
         self.get_logger().info('B4 initialized: sensor subscriptions only on explicitly configured topics')
 
 

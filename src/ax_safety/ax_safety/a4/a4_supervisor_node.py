@@ -14,6 +14,7 @@ import uuid
 
 import rclpy
 from builtin_interfaces.msg import Time
+from rclpy.clock import Clock as RclpyClock, ClockType
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from ax_interfaces.msg import ActuationState, FailureEvent, SafetyState, TimeValidity
@@ -87,7 +88,11 @@ class A4SupervisorNode(Node):
         self.clear_srv = self.create_service(
             ClearFault, f"{prefix}/safety/clear_fault", self._on_clear_fault
         )
-        self.timer = self.create_timer(0.1, self._on_tick)
+        self.timer = self.create_timer(
+            0.1,
+            self._on_tick,
+            clock=RclpyClock(clock_type=ClockType.STEADY_TIME),
+        )
 
     def _wall_now(self) -> float:
         # 시뮬레이션 시계가 멈추거나 역행해도 timeout을 측정해야 하므로

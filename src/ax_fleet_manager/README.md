@@ -291,10 +291,12 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 ```bash
 source /opt/ros/jazzy/setup.bash && source <격리 install>/setup.bash
 ros2 launch ax_fleet_manager group_manager_dev.launch.py            # 패키지 fixture
+ros2 launch ax_fleet_manager group_manager_dev.launch.py use_sim_time:=true   # sim 소비자와 같이 띄울 때
 ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<폴더>/d2.sqlite
 ```
 
 - 출력은 `/ax/dev/` 아래(기본 `/ax/dev/d2_mock/fleet_tasks`) `GroupTaskList`뿐이며 STATE QoS(reliable·transient_local·keep_last 1)를 쓴다. 내용이 바뀌면 `StateMeta.revision`을 1 올려 바로 내고, 1 Hz로 같은 revision을 새 stamp와 함께 다시 낸다(소비자 만료 3.0 s).
+- launch 인자 `use_sim_time`은 기본 `false`다(/clock 없는 개발 단독 실행). sim 소비자(`safety.launch.py`·`corridor_manager.launch.py`·관제 `console.launch.py`, 모두 기본 `true`)와 같이 띄울 때는 `use_sim_time:=true`를 준다. 맞추지 않으면 stamp 기준이 달라 소비자가 전부 거부한다(미래 stamp·만료). `ros2 run`으로 띄울 때는 `-p use_sim_time:=true`다.
 - 재발행·원장 폴링 타이머(입고 노드의 재고 1 Hz 재발행 포함)는 `use_sim_time`이어도 STEADY 시계로 돈다(소비자의 무수신 판정이 수신 측 CLOCK_BOOTTIME 기준이고, 시스템 시계가 역행하면 ROS 시계 타이머 간격이 2 s 넘게 벌어진 기록이 있다). 메시지 stamp는 지금처럼 `get_clock().now()`(ROS 시간, sim이면 sim)다.
 - `source_id`는 `d2_dev_mock:<fixture_id>` 또는 `d2_dev_mock:store`, `source_session_id`는 시작마다 새로 만든다. 단계 진행은 `task_revision`을 올리지 않는다(`task_revision`·`schedule_revision`은 입력값 그대로).
 - 원장은 읽기 전용 URI로 열고 복원 규칙은 메모리에서만 적용한다. 원장이 바뀌면(0.2 s 확인) 다시 읽고, 읽지 못하면 `valid=false`·`D2_STORE_UNREADABLE`로 낸다.

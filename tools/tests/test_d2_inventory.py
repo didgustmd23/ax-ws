@@ -29,7 +29,8 @@ from ax_fleet_manager.group_events import (  # noqa: E402
 from ax_fleet_manager.group_machine import apply_event, restore_state  # noqa: E402
 from ax_fleet_manager.intake import ReceiptIntake  # noqa: E402
 from ax_fleet_manager.live_adapters import (  # noqa: E402
-    D1NavigationPort, actuation_observation, d1_result_event,
+    D1NavigationPort, actuation_observation, d1_result_event, hold_fields,
+    hold_observation, hold_rejection,
 )
 from ax_fleet_manager.ports import MockLocalTaskPort, MockNavigationPort, PortError  # noqa: E402
 from ax_fleet_manager.runtime import GroupRuntime  # noqa: E402
@@ -701,6 +702,128 @@ def test_actuation_observation_adapter():
     live = actuation_observation(dict(fields, state=gm.ACTUATION_STOPPED), flow.t)
     decision = apply_event(flow.state, ObservationReceived(live), flow.now())
     assert 'PROVENANCE_REJECTED' in decision.reasons
+
+
+# C4 ToolHoldState 필드 시험용 사전(정상 HELD). 물체는 make_spec 기본값과 같다
+def _hold_fields(**changes):
+    meta = {'source_id': 'c4_manipulate_object_server', 'source_session_id': 'c4_s1',
+            'revision': 5, 'valid': True, 'stamp_s': 100.0}
+    meta.update(changes.pop('meta', {}))
+    fields = {'robot_id': 'robot_m7', 'object_id': 'box_dev_1', 'state': gm.HOLD_HELD,
+              'evidence': 'ATTACH_SIGNAL', 'meta': meta}
+    fields.update(changes)
+
+    return fields
+
+
+# 정상 변환: HELD·RELEASED·UNKNOWN 모두 관측이 되고 UNKNOWN은 HELD·RELEASED가 아니다. 기본 출처는 LIVE
+@pytest.mark.parametrize('state', [gm.HOLD_HELD, gm.HOLD_RELEASED, gm.HOLD_UNKNOWN])
+def test_hold_observation_states(state):
+    obs, reason = hold_observation(_hold_fields(state=state), 100.2)
+
+    assert reason is None
+    assert (obs.kind, obs.robot_id, obs.object_id, obs.value) == (
+        'HOLD', 'robot_m7', 'box_dev_1', state)
+    assert (obs.source_id, obs.session_id, obs.revision, obs.valid) == (
+        'c4_manipulate_object_server', 'c4_s1', 5, True)
+    assert (obs.stamp_sim_s, obs.received_boottime_s) == (100.0, 100.2)
+    assert obs.provenance == gm.PROVENANCE_LIVE
+    assert obs.permits == ()
+
+
+# 형식 거절: 관측을 만들지 않고 사유 코드를 돌려준다
+@pytest.mark.parametrize('changes, reason', [
+    ({'state': 3}, 'HOLD_STATE_UNKNOWN_VALUE'),
+    ({'state': True}, 'HOLD_STATE_UNKNOWN_VALUE'),
+    ({'robot_id': ''}, 'HOLD_ROBOT_ID_EMPTY'),
+    ({'object_id': ''}, 'HOLD_OBJECT_ID_EMPTY'),
+    ({'meta': {'source_id': ''}}, 'HOLD_SOURCE_EMPTY'),
+    ({'meta': {'source_session_id': ''}}, 'HOLD_SOURCE_EMPTY'),
+    ({'meta': {'revision': 0}}, 'HOLD_REVISION_UNSET'),
+    ({'evidence': None}, 'HOLD_EVIDENCE_INVALID'),
+    ({'evidence': 'MOCK_ATTACH_STATE'}, 'HOLD_MOCK_EVIDENCE'),
+    ({'evidence': 'MOCK'}, 'HOLD_MOCK_EVIDENCE'),
+])
+def test_hold_observation_rejections(changes, reason):
+    fields = _hold_fields(**changes)
+
+    assert hold_rejection(fields) == reason
+    assert hold_observation(fields, 100.0) == (None, reason)
+
+
+# valid=false·빈 근거는 형식 거절이 아니다(관측으로 넘기고 group_machine이 판정한다)
+def test_hold_observation_passes_invalid_through():
+    obs, reason = hold_observation(_hold_fields(evidence='', meta={'valid': False}), 100.0)
+
+    assert reason is None and obs.valid is False
+
+
+# ROS 메시지(duck-typing) → 필드 사전. stamp는 sec + nanosec
+def test_hold_fields_from_message():
+    from types import SimpleNamespace as NS
+
+    stamp = NS(sec=100, nanosec=250_000_000)
+    meta = NS(header=NS(stamp=stamp), source_id='c4', source_session_id='s1',
+              revision=7, valid=True)
+    msg = NS(meta=meta, robot_id='robot_m7', object_id='box_dev_1', state=2,
+             evidence='ATTACH_SIGNAL')
+
+    fields = hold_fields(msg)
+
+    assert fields == {'robot_id': 'robot_m7', 'object_id': 'box_dev_1', 'state': 2,
+                      'evidence': 'ATTACH_SIGNAL',
+                      'meta': {'source_id': 'c4', 'source_session_id': 's1', 'revision': 7,
+                               'valid': True, 'stamp_s': 100.25}}
+    assert hold_rejection(fields) is None
+
+
+# 출발지 해제 직전까지 진행하고 팔 보유 외 근거(적재·후퇴·정지)를 넣는다
+def _flow_before_source_release():
+    flow = Flow()
+    run_until(flow, 'confirm')
+    flow.send_all()
+    flow.wait(0.05)
+    flow.evidence('stowed', 'retracted', 'stopped')
+
+    return flow
+
+
+# 어댑터 RELEASED 관측(모의 출처로 주입)이 group_machine 판정 경로를 거친다. 정상 관측만 해제로 이어진다
+@pytest.mark.parametrize('case', ['ok', 'invalid', 'stale', 'other_object', 'before_anchor',
+                                  'unknown'])
+def test_hold_adapter_through_group_machine(case):
+    flow = _flow_before_source_release()
+    meta = {'stamp_s': flow.t, 'valid': case != 'invalid'}
+    if case == 'stale':
+        meta['stamp_s'] = flow.t - 1.0
+    changes = {'state': gm.HOLD_UNKNOWN if case == 'unknown' else gm.HOLD_RELEASED,
+               'meta': meta}
+    if case == 'other_object':
+        changes['object_id'] = 'box_other'
+    received = flow.t - 0.01 if case == 'before_anchor' else flow.t
+
+    obs, reason = hold_observation(_hold_fields(**changes), received, provenance=MOCK)
+    assert reason is None
+    decision = flow.apply(ObservationReceived(obs))
+    if case == 'other_object':
+        assert 'OBSERVATION_OBJECT_MISMATCH' in decision.reasons
+    flow.finish('load_retract')
+
+    assert flow.intended('src_unlock_manipulator') is (case == 'ok')
+
+
+# 개발 모드에서 LIVE 출처 보유 관측은 판정 근거가 아니다(PROVENANCE_REJECTED, 해제 의도 없음)
+def test_hold_adapter_live_provenance_not_used_in_development():
+    flow = _flow_before_source_release()
+    obs, _ = hold_observation(_hold_fields(state=gm.HOLD_RELEASED,
+                                           meta={'stamp_s': flow.t}), flow.t)
+
+    decision = flow.apply(ObservationReceived(obs))
+    flow.finish('load_retract')
+
+    assert 'PROVENANCE_REJECTED' in decision.reasons
+    assert ('HOLD', 'robot_m7') not in flow.state.observations
+    assert not flow.intended('src_unlock_manipulator')
 
 
 # 카탈로그 검증

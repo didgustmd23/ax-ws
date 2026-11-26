@@ -129,6 +129,8 @@ Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 go
 - `D1NavigationPort`: D1 `NavigationClient`(같은 프로세스 객체)의 `submit`·`cancel`을 감싼다. 등록 지점 revision·지도 revision을 대조하고 카탈로그의 역할별 정차 자세(x, y, yaw)를 보낸다. D2 UUID를 넘기면 거부한다. D1 예외는 예약 전 거절과 전송 실패를 밖에서 구분할 수 없어 모두 미확정으로 본다. `enabled=False`가 기본이며 runtime에 연결하지 않는다. 실제 D1 실행 원장(`src/ax_navigation/scripts/navigation_execution.py`, 수정 없이 시험에서 읽기만)으로 같은 execution_id 재호출 시 같은 UUID·전송 1회를 확인했다.
 - `d1_result_event`: D1 원장 행 상태(ARRIVED·CANCELED·ABORTED·REJECTED·UNKNOWN) → `StepResult`(execution_id 결합). ARRIVED는 도착일 뿐이며 정지 근거는 A4 관측으로 따로 본다.
 - `actuation_observation`: A4 `ActuationState` 필드 → D2 관측. 정지 근거는 `state`만, 허가 필드는 `permits`.
+- `hold_observation`: C4 `ToolHoldState` 필드 → D2 관측(`HOLD`), `(관측, None)` 또는 `(None, 사유)`를 돌려준다(입고 `observation_rejection`과 같은 사유 문자열 관례). `hold_rejection`이 형식만 거절한다: state가 0·1·2 밖(`HOLD_STATE_UNKNOWN_VALUE`), `robot_id`(`HOLD_ROBOT_ID_EMPTY`)·`object_id`(`HOLD_OBJECT_ID_EMPTY`)·`source_id`/`source_session_id`(`HOLD_SOURCE_EMPTY`) 빈 문자열, revision 0(`HOLD_REVISION_UNSET`), evidence가 `MOCK`으로 시작(`HOLD_MOCK_EVIDENCE`). `valid=false`·만료·물체 불일치·앵커 이전 수신은 어댑터가 보지 않고 `group_machine._fresh`가 거른다. `UNKNOWN`(0)은 관측으로 넘기되 미보유로 해석하지 않는다. `hold_fields`는 메시지 속성만 읽어(rclpy 불필요) 필드 사전을 만든다. 구독·노드는 만들지 않는다.
+  - **모의 근거 거절은 임시 규칙이다.** 현재 C4 `mock_execution`은 `evidence='MOCK_ATTACH_STATE'`, `valid=true`로 HELD·RELEASED를 낸다. C4가 meta·출처로 모의 판정을 구분하기 전까지 evidence 접두어로 거른다.
 - live 출처(`LIVE`)는 개발 모드 판정 근거로 받지 않으므로, 실제 연결 전에 출처 정책을 정해야 한다.
 
 ## 개발 입고 노드(W5)
@@ -157,8 +159,34 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 | (a) 순수 엔진 + 모의 포트 전 흐름 | 완료(시험) | 없음 |
 | (b1) D1 주행 | 어댑터 초안·실제 D1 원장 시험 | 위 2번(조회 API·import), 지점 pose 원천(1번), live 출처 정책 |
 | (b2) A3 로컬 작업 | 미연결 | A3 서버는 `CONFIRM_LOAD`만 수락하고 나머지는 거절(mock_executor). 기본 `RuntimeAuthority`는 dispatcher 등록이 없으면 거절 |
-| (b3) 관측 | `ActuationState` 변환만 | C4 `hold_state` 생산자 미완, 배치·팔 후퇴 생산자 없음(3번), A3 LoadState는 모의값 |
+| (b3) 관측 | `ActuationState`·`ToolHoldState` 변환 함수(구독 없음) | C4 `hold_state`는 조작 단계에서만 발행(주기 재발행 없음), revision이 1씩 증가하지 않음, 모의 판정을 출처로 구분하지 않음(아래 운영 발행 전환 조건). 배치·팔 후퇴 생산자 없음(3번), A3 LoadState는 모의값 |
 | (c) 격리 Gazebo 종단 | 미실행 | (b1)~(b3). 혼합(live 주행 + 모의)도 실제 집기·배치가 아니므로 종단 완료가 아님 |
+
+## 운영 발행 전환 조건(`/ax/fleet/tasks`)
+
+현재 상태와, 실제 운영으로 발행하기 전에 필요한 결정·전제를 적는다. 상대 기능 부족은 [종단 연결 막힘 목록](#종단-연결-막힘-목록w5-시점)·[미지원 상대 기능](#미지원-상대-기능운영-실행-차단), 미결 소유권은 [상대 확인 필요](#상대-확인-필요)를 본다. 아래 항목은 모두 미정이며 이 문서가 정하지 않는다.
+
+**현재 상태**
+
+- `check_mode`가 `OPERATIONAL`을 `OPERATIONAL_MODE_UNSUPPORTED`로 거부한다. 개발 노드(`group_dev_publisher`·`d2_dev_intake`)는 운영 모드, `/ax/dev/` 밖 이름, `/ax/fleet`·`/ax/robot_` 포함 이름(remap 결과 포함)을 시작 거부한다(종료 코드 2). 출력은 `/ax/dev/` 아래뿐이다.
+- live 입력을 받는 runtime 노드가 없다. live 어댑터(`D1NavigationPort`·`d1_result_event`·`actuation_observation`·`hold_observation`)는 함수·객체만 있고 연결하지 않는다.
+
+**D2 쪽 결정**
+
+1. live 출처 정책: `provenance_acceptable`은 개발 모드에서 `MOCK`만, 운영 모드에서 `LIVE`만 받는다. 개발 모드에서 `LIVE`를 받을지(혼합 시험), 받는다면 어느 관측 종류부터인지 정해야 한다. 현재 정책은 바꾸지 않았다.
+2. 운영 모드 허용 조건: `check_mode` 거부를 풀 조건(어느 상대 포트가 live여야 하는지, 위 미지원 상대 기능 중 어디까지)을 정해야 한다.
+3. 원장 경로·쓰기 주체: 개발 노드는 `store_path` 파라미터로 원장을 받고, 입고 노드는 쓰기, 출력 노드는 읽기 전용으로 연다. 운영에서 원장 위치와 쓰기 프로세스(단일 writer 여부)는 미정이다.
+4. 세션·revision 규칙(D-05): 출력 노드는 시작마다 새 `source_session_id`, 내용 변경 시 revision +1, 1 Hz 재발행·3.0 s 만료를 쓴다. 운영 이름에서 같은 규칙을 쓸지, 재시작 뒤 소비자 재대조 방법은 정해야 한다.
+
+**소비자 측 전제**
+
+- A4: 계약 4.3절 인계 잠금(`HANDOFF_LOCK`·`PEER_STATE_STALE`)을 `/ax/fleet/tasks`로 판정해야 한다. 현재 A4 감독기는 `/ax/fleet/tasks`를 진단(`A4_STOP_DIAG`의 `d2_tasks`)으로만 구독하고, 게이트는 D2/D3 허가 정책 확정 전까지 parameter 기본값 차단(`HANDOFF_LOCK:PARAMETER_OR_D2_D3_POLICY_NOT_VERIFIED`)을 유지한다([ax_safety 안내](../ax_safety/README.md)).
+- C4: Goal의 `peer_robot_id`를 D2 작업 상태와 대조하지 않는다. 현재 `mock_execution`이 아니면 상대 로봇이 있는 Goal을 `PRECONDITION_FAILED`로 거절한다.
+
+**`hold_state` 입력 상태**
+
+- D2: `hold_observation` 변환 함수만 추가했다(구독·runtime 연결 없음, LIVE는 개발 모드 근거 아님).
+- C4 쪽 필요 사항(계약 STATE 10 Hz·0.5 s 기준): 현재 C4는 PICK·PLACE 처리 중에만 발행하고 주기 재발행이 없다. revision은 `time.monotonic_ns()` 값이라 같은 세션에서 1씩 증가하지 않는다. 모의 판정은 `evidence='MOCK_ATTACH_STATE'`·`valid=true`로만 드러나 출처 구분이 필요하다.
 
 ## 원장과 실행 ID
 

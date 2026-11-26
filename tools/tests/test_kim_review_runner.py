@@ -28,6 +28,7 @@ class KimReviewRunnerTests(unittest.TestCase):
         gate = self.prefix / 'ax_safety/lib/ax_safety/a4_safety_gate'
         gate.parent.mkdir(parents=True)
         gate.write_text('fixture, never executed', encoding='utf-8')
+        (gate.parent / 'a4_protected_arm_server').write_text('fixture, never executed', encoding='utf-8')
         self.output = root / 'results'
         self.arguments = [str(runner.__file__), '--install-prefix', str(self.prefix),
                           '--c2-prefix', str(self.c2), '--output', str(self.output)]
@@ -42,6 +43,9 @@ class KimReviewRunnerTests(unittest.TestCase):
         self.assertFalse(summary['all_stages_passed'])
         self.assertEqual([row['returncode'] for row in summary['stages']], [0, 1, 0])
         self.assertEqual(execute.call_count, 3)
+        environment = execute.call_args_list[0].kwargs['env']
+        self.assertEqual(environment['AX_PROTECTED_ARM_BIN'],
+                         str(self.prefix / 'ax_safety/lib/ax_safety/a4_protected_arm_server'))
 
     def test_existing_evidence_is_preserved_without_running_any_stage(self):
         """진행 중이거나 이전 실행의 로그가 있으면 시작 전에 거절합니다."""

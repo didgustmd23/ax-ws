@@ -111,6 +111,8 @@ def state_to_dict(state):
         'object_assignment_generation': state.object_assignment_generation,
         'object_isolated': state.object_isolated,
         'physical_started': state.physical_started,
+        'live_kinds': list(state.live_kinds),
+        'evidence_used': [list(pair) for pair in state.evidence_used],
     }
 
 
@@ -127,6 +129,12 @@ def state_from_dict(data):
     assignment = gm.Assignment(**data['assignment']) if data['assignment'] else None
     if assignment is not None:
         gm.validate_assignment(assignment)
+
+    # live_kinds·evidence_used는 혼합 모드 추가 필드다. 없는 이전 상태 JSON은 빈 값(=전부 MOCK)으로 읽는다
+    gm.check_mode(data['mode'])
+    live_kinds = gm.parse_live_kinds(data['mode'], data.get('live_kinds', []))
+    evidence_used = tuple(sorted((kind, provenance)
+                                 for kind, provenance in data.get('evidence_used', [])))
 
     steps = {k: gm.StepRun(**v) for k, v in data['steps'].items()}
     if set(steps) != {s.step_key for s in spec.steps}:
@@ -145,7 +153,8 @@ def state_from_dict(data):
         object_carrier_robot_id=data.get('object_carrier_robot_id', ''),
         object_assignment_generation=data.get('object_assignment_generation', 0),
         object_isolated=data.get('object_isolated', False),
-        physical_started=data.get('physical_started', False))
+        physical_started=data.get('physical_started', False),
+        live_kinds=live_kinds, evidence_used=evidence_used)
 
 
 class TaskStore:
@@ -315,10 +324,12 @@ class TaskStore:
         state = decision.next_state
 
         with self._tx():
-            row = self.db.execute('SELECT revision FROM tasks WHERE task_id=?',
+            row = self.db.execute('SELECT revision, state_json FROM tasks WHERE task_id=?',
                                   (task_id,)).fetchone()
             if row is None or row[0] != expected_revision:
-                raise StoreConflict(f'revision 불일치: {row} != {expected_revision}')
+                raise StoreConflict(f'revision 불일치: {row and row[0]} != {expected_revision}')
+
+            was_completed = json.loads(row[1])['task_state'] == gm.TASK_COMPLETED
 
             self.db.execute('UPDATE tasks SET revision=?, state_json=? WHERE task_id=?',
                             (state.revision, json.dumps(state_to_dict(state), sort_keys=True),
@@ -335,6 +346,12 @@ class TaskStore:
                 'payload': payload, 'reasons': list(decision.reasons),
                 'effects': [(e.kind, e.step_key, e.execution['execution_id'])
                             for e in decision.effects]})
+
+            # 완료로 바뀐 판정: 모드와 판정에 쓴 근거 (종류, 출처) 요약을 따로 남긴다(혼합 모드 표기)
+            if state.task_state == gm.TASK_COMPLETED and not was_completed:
+                self._append_event(task_id, 'Completed', {
+                    'mode': state.mode, 'live_kinds': list(state.live_kinds),
+                    'evidence_used': [list(pair) for pair in state.evidence_used]})
 
     # 의도 기록. 같은 실행 ID가 이미 있으면 인자가 같아야 한다(다르면 충돌)
     def _insert_intent(self, task_id, intent):

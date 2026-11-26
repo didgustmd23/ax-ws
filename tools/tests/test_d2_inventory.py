@@ -644,7 +644,11 @@ def test_d1_adapter_with_real_d1_ledger(tmp_path):
     client = FakeD1Client(module, str(tmp_path / 'd1.sqlite'), 'robot_1')
     port = D1NavigationPort({'robot_1': client}, CATALOG)
     assert not port.supported(gm.MODE_DEVELOPMENT_MOCK)
-    assert D1NavigationPort({}, CATALOG, enabled=True).supported(gm.MODE_DEVELOPMENT_MOCK)
+    enabled = D1NavigationPort({}, CATALOG, enabled=True)
+    assert not enabled.supported(gm.MODE_DEVELOPMENT_MOCK)
+    assert not enabled.supported(gm.MODE_DEVELOPMENT_MIXED, ())
+    assert enabled.supported(gm.MODE_DEVELOPMENT_MIXED, ('NAVIGATION',))
+    assert not port.supported(gm.MODE_DEVELOPMENT_MIXED, ('NAVIGATION',))
 
     intent = nav_intent()
     with pytest.raises(PortError) as error:

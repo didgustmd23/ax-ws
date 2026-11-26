@@ -23,6 +23,7 @@ from ax_interfaces.msg import (
 )
 from ax_interfaces.srv import RegisterTask
 from geometry_msgs.msg import PoseStamped
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -31,7 +32,7 @@ from . import group_model as gm
 from . import receipt as rc
 from .intake import ReceiptIntake
 from .inventory import inventory_snapshot_fields, parse_catalog
-from .node_config import ConfigError, validate_output_topic
+from .node_config import ConfigError, node_mode, validate_output_topic
 from .runtime import GroupRuntime
 from .task_store import StoreError, TaskStore
 
@@ -121,6 +122,8 @@ class ReceiptIntakeDevNode(Node):
     def __init__(self):
         super().__init__('d2_dev_intake')
         mode = self.declare_parameter('mode', gm.MODE_DEVELOPMENT_MOCK).value
+        live_kinds = self.declare_parameter(
+            'live_kinds', [], ParameterDescriptor(dynamic_typing=True)).value
         store_path = self.declare_parameter('store_path', '').value
         default_file = str(Path(get_package_share_directory('ax_fleet_manager'))
                            / 'config' / 'dev_intake.json')
@@ -128,7 +131,7 @@ class ReceiptIntakeDevNode(Node):
         period = self.declare_parameter('publish_period_s', 1.0).value
         names = {k: self.declare_parameter(k, v).value for k, v in DEFAULT_NAMES.items()}
 
-        gm.check_mode(mode)
+        live_kinds = node_mode(mode, live_kinds)
         for name in names.values():
             validate_output_topic(name)
         if not store_path:
@@ -140,7 +143,8 @@ class ReceiptIntakeDevNode(Node):
         self.store = TaskStore(store_path)
         self.runtime = GroupRuntime(self.store, {}, self._intake_clock,
                                     map_revision=self.catalog.map_revision,
-                                    locations=self.catalog.revisions(), mode=mode)
+                                    locations=self.catalog.revisions(), mode=mode,
+                                    live_kinds=live_kinds)
         self.intake = ReceiptIntake(self.runtime, config, self.catalog)
         self.session_id = uuid.uuid4().hex
 

@@ -265,7 +265,7 @@ class ReceiptIntake:
                                 entry['revision'] + 1 if entry else 1)
         try:
             self.registry.check_admission(spec)
-            state = gm.new_group_state(spec, self.registry.mode)
+            state = gm.new_group_state(spec, self.registry.mode, self.registry.live_kinds)
         except gm.SpecError as error:
             code = rc.OBJECT_BUSY if error.code == 'OBJECT_IN_ACTIVE_TASK' else error.code
             return _response(False, '', code)

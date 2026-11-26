@@ -83,6 +83,26 @@ def object_view(state):
             state.object_assignment_generation, state.object_isolated, state.physical_started)
 
 
+# 근거 출처 수용 판정(모드·종류·live 허용 종류). 혼합 모드는 종류마다 출처 하나만 받는다
+def _accepts(s, kind, provenance):
+    return gm.provenance_acceptable(s.mode, provenance, kind, s.live_kinds)
+
+
+# 단계 결과·응답·상태 사건의 근거 종류: 주행 단계는 NAVIGATION, 그 밖(A3 로컬 작업)은 LOCAL_TASK
+def _step_kind(s, step_key):
+    if gm.step_by_key(s.spec, step_key).operation == 'NAVIGATE_TO':
+        return gm.LIVE_KIND_NAVIGATION
+
+    return gm.EVIDENCE_LOCAL_TASK
+
+
+# 판정에 쓴 근거의 (종류, 출처)를 작업 요약에 누적한다(중복 없이 정렬)
+def _note_evidence(s, kind, provenance):
+    pair = (kind, provenance)
+    if pair not in s.evidence_used:
+        s.evidence_used = tuple(sorted(s.evidence_used + (pair,)))
+
+
 # 단계 기록을 goal UUID로 찾는다
 def _step_by_uuid(s, goal_uuid):
     if not goal_uuid:
@@ -126,7 +146,7 @@ def _fresh(ctx, kind, robot_id, anchor, object_id=None, strict=False):
     if obs is None or not obs.valid:
         return None
 
-    if not gm.provenance_acceptable(ctx.s.mode, obs.provenance):
+    if not _accepts(ctx.s, kind, obs.provenance):
         return None
 
     expiry = gm.OBSERVATION_EXPIRY_S[kind]
@@ -147,7 +167,12 @@ def _fresh(ctx, kind, robot_id, anchor, object_id=None, strict=False):
 # 관측 값이 기대값인지(최신·유효 관측이 있을 때만 True)
 def _fresh_is(ctx, kind, robot_id, value, anchor, object_id=None, strict=False):
     obs = _fresh(ctx, kind, robot_id, anchor, object_id, strict)
-    return obs is not None and obs.value == value
+    if obs is None or obs.value != value:
+        return False
+
+    _note_evidence(ctx.s, kind, obs.provenance)
+
+    return True
 
 
 # 두 로봇 실제 정지(ActuationState.STOPPED). 허가 필드는 보지 않는다
@@ -407,7 +432,7 @@ def _on_observation(ctx, obs):
         ctx.reason('OBSERVATION_KIND_UNKNOWN')
         return
 
-    if not gm.provenance_acceptable(s.mode, obs.provenance):
+    if not _accepts(s, obs.kind, obs.provenance):
         ctx.reason('PROVENANCE_REJECTED')
         return
 
@@ -458,7 +483,11 @@ def _check_confirm_result(ctx, run, plan_step):
         return
 
     obs = _fresh(ctx, 'LOAD', t, -1.0, ctx.s.spec.object_id)
-    if obs is not None and obs.value != expected:
+    if obs is None:
+        return
+
+    _note_evidence(ctx.s, 'LOAD', obs.provenance)
+    if obs.value != expected:
         ctx.inhibit('EVIDENCE_CONFLICT')
 
 
@@ -480,7 +509,7 @@ def _on_result(ctx, event):
         ctx.reason('RESULT_ROBOT_MISMATCH')
         return
 
-    if not gm.provenance_acceptable(s.mode, event.provenance):
+    if not _accepts(s, _step_kind(s, run.step_key), event.provenance):
         ctx.reason('PROVENANCE_REJECTED')
         return
 
@@ -507,6 +536,7 @@ def _on_result(ctx, event):
         return
 
     run.outcome = event.outcome
+    _note_evidence(s, _step_kind(s, run.step_key), event.provenance)
     run.error_code = event.error_code
     run.object_hold_state = event.object_hold_state
     run.load_state = event.load_state
@@ -540,7 +570,10 @@ def _on_task_status(ctx, event):
         ctx.reason('STATUS_ROBOT_NOT_ASSIGNED')
         return
 
-    if not gm.provenance_acceptable(s.mode, event.provenance):
+    # 출처 판정에 쓸 근거 종류만 미리 찾는다(결합 검사 순서는 아래에서 그대로 한다)
+    target = _step_by_execution(s, event.execution.get('execution_id', ''))
+    kind = _step_kind(s, target.step_key) if target is not None else gm.EVIDENCE_LOCAL_TASK
+    if not _accepts(s, kind, event.provenance):
         ctx.reason('PROVENANCE_REJECTED')
         return
 
@@ -668,7 +701,7 @@ def _dispatch_event(ctx, event):
         run = _step_by_uuid(s, event.goal_uuid)
         if run is None:
             ctx.reason('UNBOUND_GOAL_RESPONSE')
-        elif not gm.provenance_acceptable(s.mode, event.provenance):
+        elif not _accepts(s, _step_kind(s, run.step_key), event.provenance):
             ctx.reason('PROVENANCE_REJECTED')
         elif run.status not in ('RESERVED', 'SENT'):
             ctx.reason('LATE_GOAL_RESPONSE')

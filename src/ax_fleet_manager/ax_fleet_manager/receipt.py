@@ -171,9 +171,9 @@ def observation_rejection(obs, now, config, mode=gm.MODE_DEVELOPMENT_MOCK):
     if obs.source not in PROVENANCE_BY_SOURCE:
         return 'SOURCE_UNKNOWN'
 
-    # 정답 기반 관측은 개발 모드에서만 받는다(운영 모드는 현재 생성 단계에서 거부됨)
+    # 정답 기반 관측은 두 개발 모드(모의·혼합)에서만 받는다(운영 모드는 현재 생성 단계에서 거부됨)
     if obs.source == SOURCE_GROUND_TRUTH and (
-            mode != gm.MODE_DEVELOPMENT_MOCK or not config.allow_ground_truth):
+            mode not in gm.DEVELOPMENT_MODES or not config.allow_ground_truth):
         return 'PROVENANCE_REJECTED'
 
     if obs.zone_id not in config.receipt_zones:

@@ -13,7 +13,8 @@ W4에서 입고 관측 → 입고 사건 대조 → 작업 자동 등록(QUEUED)
 | `group_machine.py` | 순수 엔진 `apply_event(state, event, now) -> Decision(next_state, effects, reasons)`, 복원 규칙 `restore_state` |
 | `registry.py` | 작업 간 충돌 검사(작업·물체·로봇·배정·인계·root 실행 ID 중복, 지도·지점 revision 불일치) |
 | `execution_ids.py` | D-03 `derive-v1` 실행 ID 최소 구현 |
-| `task_store.py` | D2 전용 SQLite 원장(schema 2: 입고 표 포함) |
+| `task_store.py` | D2 전용 SQLite 원장(schema 4: 입고·재고·ETA 주행 표본 표 포함) |
+| `reassignment.py` | 예비 재배정 사전 검사(9.10, 순수 함수, 실행 없음) |
 | `receipt.py` | 입고 규칙(순수): 관측 검증·식별·반복/재입고/구역 충돌 판정, 등록 요청 형식·목적지 규칙 |
 | `intake.py` | 입고 접수(`ReceiptIntake`): 관측·사건·등록 요청·재고 항목·목적지 예약·작업 생성을 원장 한 트랜잭션으로 기록 |
 | `inventory.py` | 등록 지점 카탈로그(개발 설정) 검증, 지점 파생 상태, `InventorySnapshot` 필드 |
@@ -153,6 +154,71 @@ Action 결과에는 `ExecutionRef`가 없으므로 원장에 먼저 기록한 go
 
 내부 사유 코드(계약 D-13 미반영): `LIVE_KIND_NOT_OPENABLE`, `LIVE_KINDS_REQUIRE_MIXED_MODE`, `DUPLICATE_LIVE_KIND`, `INVALID_LIVE_KINDS`, `STORE_MODE_MISMATCH`.
 
+## ETA 주행 표본과 예비 재배정 사전 검사(W6 선행)
+
+ETA 학습·모델·관제는 하지 않는다(W7 ETA XGBoost 몫, 설계 4.4·10절). 이번에는 표본 기록과 사전 검사만 한다.
+
+### ETA 주행 표본(`eta_samples`, schema 4)
+
+- **기록 조건:** `NAVIGATE_TO` 단계 상태가 `SUCCEEDED`·`FAILED`·`CANCELED`·`TIMED_OUT`·`UNCERTAIN` 중 하나로 처음 바뀐 판정에서, 그 판정을 원장에 쓰는 트랜잭션(`record_decision`) 안에서 실행당 1행을 남긴다(`execution_id` 기본 키). 표본 쓰기가 실패하면 그 판정 전체가 기록되지 않는다.
+- **제외:** `REJECTED`·`NOT_SENT`·`WITHDRAWN`은 주행하지 않아 제외한다. 중복 결과는 엔진이 상태를 바꾸지 않으므로(`DUPLICATE_RESULT`) 행이 늘지 않는다. 재시작 복원으로 진행 중 주행이 `UNCERTAIN`이 되면 종료 시각 없는 행을 남긴다.
+- **이주:** v1·v2·v3 → v4는 한 트랜잭션이며 실패하면 원장이 바뀌지 않는다. 과거 단계는 백필하지 않는다.
+- **시각:** 단계 기록(`StepRun`)에 `sent_sim_s`·`accepted_boottime_s`·`accepted_sim_s`·`finished_sim_s`·`result_provenance`를 더했다. 상태 JSON에 없으면 기본값(-1·빈 값)으로 읽는다.
+
+| 열 | 단위·값 | 설명 |
+|---|---|---|
+| `execution_id`·`task_id`·`step_key`·`robot_id`·`role`·`attempt_index` | 문자열·정수 | 실행 식별. `role`은 `MANIPULATOR`·`TRANSPORTER` |
+| `mode`·`live_kinds` | 문자열·JSON 목록 | 작업 모드와 live 허용 종류 |
+| `provenance` | `MOCK`·`LIVE`·NULL | 결과 사건 출처. 결과 없이 미확정이면 NULL |
+| `status`·`outcome`·`error_code` | 문자열·정수·문자열 | 단계 종료 상태, `ResultStatus.outcome`(없으면 NULL), 오류 코드 |
+| `from_location_id`·`to_location_id` | 등록 지점 ID | 목적지 주행만 출발 지점이 있다. 출발지 주행은 출발 위치 원천이 없어 NULL |
+| `to_location_revision`·`map_revision` | 정수 | 작업 정의의 지점·지도 revision |
+| `object_state` | `INV_*` 정수 | 결과 판정 시점의 D2 그룹 물체 상태 |
+| `carrying_object` | 1·0·NULL | 그 로봇이 물체를 들거나 싣고 있으면 1. 물체 상태 `UNKNOWN`·`LOST`면 NULL |
+| `sent_*`·`accepted_*`·`finished_*` | s | `_boottime_s`는 D2 프로세스 CLOCK_BOOTTIME, `_sim_s`는 ROS sim time. 모르면 NULL |
+| `duration_s`·`duration_sim_s` | s | 전송 예약 → 결과(boottime 차·sim 차). 한쪽 시각이 없으면 NULL |
+| `path_length_m`·`turn_count`·`corridor_wait_s`·`obstacle_density` | m·회·s·(미정) | 원천(D1·D3·B3)이 없어 **항상 NULL**. 값을 지어내지 않는다 |
+
+내보내기(원장 읽기 전용, ROS 불필요):
+
+```bash
+python3 tools/export_d2_eta_samples.py /tmp/<폴더>/d2.sqlite -o /tmp/<폴더>/eta.csv
+```
+
+- 기본은 `mode=DEVELOPMENT_MIXED`·`provenance=LIVE`·`status=SUCCEEDED` 표본만 낸다(학습 표본). MOCK 표본은 학습에 쓰지 않는다.
+- `--include-failed`를 주면 그 밖의 종료 상태도 넣고, `--include-mock`을 주면 모드·출처 필터를 끈다(개발 확인용).
+- `finished_boottime_s`가 NULL이거나 `duration_s`·`duration_sim_s`가 음수·비유한인 행은 항상 제외한다.
+- CSV 첫 줄은 위 열 이름이고 NULL은 빈 칸이다. schema 4 미만 원장은 종료 코드 2로 거부한다.
+
+### 예비 재배정 사전 검사(`reassignment.check_spare_reassignment`)
+
+- **입력:** 대상 작업 상태, 교체할 역할, 후보 `RobotSummary` 필드 사전, 기존 로봇의 `ActuationState` 필드 사전(없으면 `None`), 필요 capabilities(호출자 입력), 시각, 다른 작업 상태 목록.
+- **결과:** `(허용 여부, 사유 코드 tuple)`. 재배정을 실행하거나 원장·상태를 바꾸지 않는다. 사유는 모두 모으고, 하나라도 있으면 거절이다. 허용은 사전 조건 충족일 뿐 재배정 승인이 아니다.
+- **D2에는 로봇 풀이 없다.** 후보는 D4 `FleetSnapshot`의 `RobotSummary`다.
+
+| 사유 코드 | 조건 |
+|---|---|
+| `INVALID_ROLE`·`TASK_NOT_ASSIGNED`·`CANDIDATE_INVALID` | 역할 이름 오류, 배정 없음, 후보 형식·robot_id 오류 |
+| `TASK_TERMINAL` | 종료 작업(실패 작업을 되살리지 않음, 후속 작업 승인 절차 몫) |
+| `CANDIDATE_IS_DEPARTING_ROBOT`·`CANDIDATE_IS_PARTNER` | 후보가 기존 로봇이거나 상대 역할 로봇 |
+| `CANDIDATE_ROLE_MISMATCH` | 다른 역할 대체 금지 |
+| `CANDIDATE_CAPABILITY_MISSING` | 필요 capabilities 미포함 |
+| `CANDIDATE_NOT_AVAILABLE` | `availability`가 `AVAILABLE`·`STANDBY_SPARE`가 아님(빈 문자열·`BUSY`·`FAULT`) |
+| `CANDIDATE_ALREADY_ASSIGNED` | 후보 `assignment_id`가 비어 있지 않음 |
+| `CANDIDATE_META_STALE:<영역>` | `actuation`·`safety`·`localization`(운송 역할은 `load`도) meta가 무효·revision 0·만료(D-05: 0.3·0.5·1.0·0.5 s, sim 나이)·미래 |
+| `CANDIDATE_IN_ACTIVE_TASK` | 다른 진행 중·잠금 잔존 작업이 후보를 씀 |
+| `DEPARTING_STEP_ACTIVE`·`DEPARTING_STEP_UNCERTAIN` | 기존 로봇 단계가 의도·예약·전송·수락 중이거나 미확정. 상대 로봇 단계는 보지 않는다 |
+| `DEPARTING_ACTUATION_UNCONFIRMED` | 기존 로봇의 최신·유효 `ActuationState`가 `STOPPED`이고 `drive_allowed`·`arm_allowed`가 모두 거짓인 것을 확인할 수 없음 |
+| `TRANSFER_NOT_RELEASED` | `transfer_state`가 `NONE`·`UNLOCKED`가 아님(물품 보유·인계 중일 수 있음) |
+| `OBJECT_HELD_NO_RECOVERY_PROCEDURE` | 재고 상태 `HELD_BY_MANIPULATOR`·`STOWED_ON_TRANSPORTER`(검증된 회수·인계 절차 없음) |
+| `OBJECT_STATE_UNKNOWN` | 재고 상태 `UNKNOWN`·`LOST`(보유 여부를 배제할 수 없음) |
+
+`TASK_TERMINAL`·`CANDIDATE_ALREADY_ASSIGNED`·`CANDIDATE_IN_ACTIVE_TASK`·`OBJECT_STATE_UNKNOWN`과 정지 판정의 허가 필드 확인은 9.10 "확인할 수 없으면 재배정하지 않는다"에 따른 보수적 추가다.
+
+판정하지 않는 미정 항목: (1) 실행·예산 이력 승계 방식(DEC-24), (2) 기존 권한 철회와 새 배정 세대 부여 절차, (3) 재시작한 고장 로봇의 과거 명령 재실행 방지(A·D 검증), (4) 역할별 필요 capabilities 목록(호출자가 넘긴다).
+
+내부 사유 코드(계약 D-13 미반영): 위 표의 코드 전부.
+
 ## 개발 입고 노드(W5)
 
 ```bash
@@ -210,7 +276,7 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 
 ## 원장과 실행 ID
 
-- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`, schema 2에서 `receipt_events`·`receipt_observations`·`register_requests`, schema 3에서 `inventory`·`locations`·`reservations`와 `receipt_events.object_class` 추가)이다. schema 1·2 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고(종료 전 작업의 물체는 근거가 없어 `UNKNOWN` 항목으로 백필, 종료 작업은 생략), 실패하면 원장을 바꾸지 않고 거부한다. 개발 노드의 읽기 전용 열기는 이주하지 않는다. 원장은 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
+- D2 전용 SQLite 파일(`tasks`·`dispatches`·`events`·`meta`, schema 2에서 `receipt_events`·`receipt_observations`·`register_requests`, schema 3에서 `inventory`·`locations`·`reservations`와 `receipt_events.object_class`, schema 4에서 `eta_samples` 추가)이다. schema 1·2·3 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고(1·2는 종료 전 작업의 물체를 근거가 없어 `UNKNOWN` 항목으로 백필, 종료 작업은 생략. ETA 표본은 백필하지 않음), 실패하면 원장을 바꾸지 않고 거부한다. 개발 노드의 읽기 전용 열기는 이주하지 않는다. 원장은 D4 원장 DB를 열거나 바꾸지 않는다. 상태와 의도는 한 트랜잭션에 기록하고, `expected_revision` 불일치·같은 실행 ID의 다른 인자는 거부한다.
 - 전송 순서는 의도 기록 → `reserve_dispatch`(goal UUID 기록) → 포트 전송이다. 이미 예약된 실행은 다시 예약하지 않으며 재전송하지 않는다. 같은 판정의 앞 의도가 실패하면 남은 의도도 보내지 않는다.
 - 재시작하면 관측을 버리고, 진행 중이거나 예약된 단계는 `UNCERTAIN`, 작업은 `RESTORED_UNRECONCILED`로 원장에 남긴다. 과거 세션·lease는 복원하지 않는다. 실제 상대 재대조 절차가 없어 차단은 풀리지 않는다.
 - 원장 손상(무결성·schema·JSON·단계 불일치)은 열기를 거부하고, 쓰기 실패는 runtime을 고장 상태로 두어 이후 전송을 막는다. 사건 기록은 작업별 500건(기본)·4 KiB로 제한한다.
@@ -240,7 +306,8 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 .venv/bin/python -m pytest -q -p no:launch_testing -p no:launch_ros tools/tests/test_d2_group_machine.py \
   tools/tests/test_d2_execution_ids.py tools/tests/test_d2_task_store.py tools/tests/test_d2_ports.py \
   tools/tests/test_d2_workflow_scenarios.py tools/tests/test_d2_group_node.py tools/tests/test_d2_receipt.py \
-  tools/tests/test_d2_inventory.py tools/tests/test_d2_mixed_mode.py
+  tools/tests/test_d2_inventory.py tools/tests/test_d2_mixed_mode.py \
+  tools/tests/test_d2_eta_samples.py tools/tests/test_d2_reassignment.py
 # 격리 install을 source한 셸, 빈 domain 80~89 자동 예약
 python3 -m pytest -q -p no:cacheprovider tools/tests/test_d2_group_node_ros.py \
   tools/tests/test_d2_intake_node_ros.py

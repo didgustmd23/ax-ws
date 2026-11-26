@@ -523,6 +523,12 @@ class StepRun:
     status_phase: str = ''
     transfer_id: str = ''
     assignment_generation: int = 0
+    # W6 ETA 표본용 시각·출처(-1·빈 값 = 모름). 상태 전이와 같은 사건에서만 바뀐다
+    sent_sim_s: float = -1.0
+    accepted_boottime_s: float = -1.0
+    accepted_sim_s: float = -1.0
+    finished_sim_s: float = -1.0
+    result_provenance: str = ''
 
 
 @dataclass

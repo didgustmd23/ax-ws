@@ -541,6 +541,8 @@ def _on_result(ctx, event):
     run.object_hold_state = event.object_hold_state
     run.load_state = event.load_state
     run.finished_boottime_s = ctx.now.boottime_s
+    run.finished_sim_s = ctx.now.sim_time_s
+    run.result_provenance = event.provenance
 
     # 시간초과·상태 보고로 이미 미확정인 단계: 늦은 결과는 기록만 하고 진행하지 않는다
     if run.status == 'UNCERTAIN':
@@ -667,6 +669,7 @@ def _dispatch_event(ctx, event):
             run.status = 'RESERVED'
             run.goal_uuid = event.goal_uuid
             run.sent_boottime_s = ctx.now.boottime_s
+            run.sent_sim_s = ctx.now.sim_time_s
             mark_lock_reserved(s, run.step_key)
 
     elif isinstance(event, DispatchSent):
@@ -707,6 +710,8 @@ def _dispatch_event(ctx, event):
             ctx.reason('LATE_GOAL_RESPONSE')
         elif event.accepted:
             run.status = 'ACCEPTED'
+            run.accepted_boottime_s = ctx.now.boottime_s
+            run.accepted_sim_s = ctx.now.sim_time_s
         else:
             run.status = 'REJECTED'
             ctx.inhibit('GOAL_REJECTED')

@@ -6,8 +6,9 @@
   호출자는 그 실행을 재전송하지 않는다(ROS Action exactly-once를 가정하지 않음).
 - 열 때 무결성·schema 버전·JSON 형식을 확인하고, 이상이 있으면 StoreCorrupt로 거부한다.
 - schema 2(W4)는 입고 사건·입고 관측·작업 등록 요청 표를, schema 3(W5)은 재고 항목·등록 지점·목적지
-  예약 표를 더한다. schema 1·2 원장은 쓰기 가능하게 열 때 한 트랜잭션으로 이주하고, 이주가 실패하면
-  원장을 바꾸지 않은 채 거부한다. 읽기 전용 열기는 이주하지 않는다.
+  예약 표를, schema 4(W6)는 ETA 주행 표본 표를 더한다. schema 1·2·3 원장은 쓰기 가능하게 열 때 한
+  트랜잭션으로 이주하고, 이주가 실패하면 원장을 바꾸지 않은 채 거부한다. 읽기 전용 열기는 이주하지 않는다.
+- 주행 단계가 종료 상태에 처음 도달한 판정과 같은 트랜잭션에서 ETA 표본 1행을 남긴다(학습·모델 없음).
 - 작업 판정 기록(record_decision)과 같은 트랜잭션에서 그 작업 물체의 재고 항목·예약을 맞춘다.
 - 주행 단계는 goal UUID를 D1이 만든다: begin_submit(SUBMITTING) → D1 submit → record_submitted.
 """
@@ -18,10 +19,11 @@ from dataclasses import asdict
 
 from . import group_model as gm
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 V1_TABLES = frozenset({'meta', 'tasks', 'dispatches', 'events'})
 RECEIPT_TABLES = frozenset({'receipt_events', 'receipt_observations', 'register_requests'})
 V3_TABLES = frozenset({'inventory', 'locations', 'reservations'})
+V4_TABLES = frozenset({'eta_samples'})
 
 # schema 1 표(W3)
 V1_DDL = (
@@ -67,6 +69,46 @@ V3_DDL = (
     'CREATE TABLE reservations (reservation_id TEXT PRIMARY KEY, location_id TEXT NOT NULL,'
     ' task_id TEXT NOT NULL UNIQUE, object_id TEXT NOT NULL, state TEXT NOT NULL)',
 )
+# schema 4(W6): ETA 주행 표본. 주행 단계가 종료 상태에 처음 도달한 판정에서 실행당 1행.
+# 경로 길이·회전 수·통로 대기·장애물 밀도는 원천(D1·D3·B3)이 없어 항상 NULL로 둔다
+ETA_SAMPLE_COLUMNS = (
+    ('execution_id', 'TEXT PRIMARY KEY'),
+    ('task_id', 'TEXT NOT NULL'),
+    ('step_key', 'TEXT NOT NULL'),
+    ('robot_id', 'TEXT NOT NULL'),
+    ('role', 'TEXT NOT NULL'),
+    ('attempt_index', 'INTEGER NOT NULL'),
+    ('mode', 'TEXT NOT NULL'),
+    ('live_kinds', 'TEXT NOT NULL'),
+    ('provenance', 'TEXT'),
+    ('status', 'TEXT NOT NULL'),
+    ('outcome', 'INTEGER'),
+    ('error_code', 'TEXT NOT NULL'),
+    ('from_location_id', 'TEXT'),
+    ('to_location_id', 'TEXT NOT NULL'),
+    ('to_location_revision', 'INTEGER NOT NULL'),
+    ('map_revision', 'INTEGER NOT NULL'),
+    ('object_state', 'INTEGER NOT NULL'),
+    ('carrying_object', 'INTEGER'),
+    ('sent_boottime_s', 'REAL'),
+    ('sent_sim_s', 'REAL'),
+    ('accepted_boottime_s', 'REAL'),
+    ('accepted_sim_s', 'REAL'),
+    ('finished_boottime_s', 'REAL'),
+    ('finished_sim_s', 'REAL'),
+    ('duration_s', 'REAL'),
+    ('duration_sim_s', 'REAL'),
+    ('path_length_m', 'REAL'),
+    ('turn_count', 'INTEGER'),
+    ('corridor_wait_s', 'REAL'),
+    ('obstacle_density', 'REAL'),
+)
+ETA_SAMPLE_FIELDS = tuple(name for name, _ in ETA_SAMPLE_COLUMNS)
+V4_DDL = (
+    'CREATE TABLE eta_samples (' + ', '.join(f'{n} {t}' for n, t in ETA_SAMPLE_COLUMNS) + ')',
+)
+# 표본을 남기는 주행 단계 종료 상태. REJECTED·NOT_SENT·WITHDRAWN은 주행하지 않아 제외한다
+ETA_TERMINAL_STATUSES = ('SUCCEEDED', 'FAILED', 'CANCELED', 'TIMED_OUT', 'UNCERTAIN')
 INVENTORY_FIELDS = ('object_id', 'revision', 'receipt_event_id', 'object_class', 'location_id',
                     'carrier_robot_id', 'assignment_generation', 'state', 'isolated', 'task_id')
 MAX_EVENT_PAYLOAD_BYTES = 4096
@@ -157,6 +199,73 @@ def state_from_dict(data):
         live_kinds=live_kinds, evidence_used=evidence_used)
 
 
+# 음수(-1 = 모름)는 NULL로 바꾼다
+def _known(value):
+    return value if value >= 0.0 else None
+
+
+# 두 시각의 차(둘 다 알 때만)
+def _span(start, end):
+    if start is None or end is None:
+        return None
+
+    return end - start
+
+
+# 주행 단계 하나의 ETA 표본 행. 원천이 없는 열은 지어내지 않고 NULL로 둔다
+def eta_sample(state, plan_step, run):
+    spec = state.spec
+    robot_id = state.assignment.robot_for(plan_step.robot_role)
+    at_destination = plan_step.location == gm.DESTINATION
+
+    # 적재 상태: 이 로봇이 물체를 들거나 싣고 있으면 1, 물체 상태 불명이면 NULL, 그 밖은 0
+    if state.object_state in (gm.INV_UNKNOWN, gm.INV_LOST):
+        carrying = None
+    elif (state.object_state in (gm.INV_HELD_BY_MANIPULATOR, gm.INV_STOWED_ON_TRANSPORTER)
+          and state.object_carrier_robot_id == robot_id):
+        carrying = 1
+    else:
+        carrying = 0
+
+    sent_b, sent_s = _known(run.sent_boottime_s), _known(run.sent_sim_s)
+    done_b, done_s = _known(run.finished_boottime_s), _known(run.finished_sim_s)
+
+    return {
+        'execution_id': run.execution_id,
+        'task_id': spec.task_id,
+        'step_key': plan_step.step_key,
+        'robot_id': robot_id,
+        'role': plan_step.robot_role,
+        'attempt_index': run.attempt_index,
+        'mode': state.mode,
+        'live_kinds': json.dumps(list(state.live_kinds)),
+        'provenance': run.result_provenance or None,
+        'status': run.status,
+        'outcome': run.outcome if run.outcome != -1 else None,
+        'error_code': run.error_code,
+        'from_location_id': spec.source_location_id if at_destination else None,
+        'to_location_id': (spec.destination_location_id if at_destination
+                           else spec.source_location_id),
+        'to_location_revision': (spec.destination_location_revision if at_destination
+                                 else spec.source_location_revision),
+        'map_revision': spec.map_revision,
+        'object_state': state.object_state,
+        'carrying_object': carrying,
+        'sent_boottime_s': sent_b,
+        'sent_sim_s': sent_s,
+        'accepted_boottime_s': _known(run.accepted_boottime_s),
+        'accepted_sim_s': _known(run.accepted_sim_s),
+        'finished_boottime_s': done_b,
+        'finished_sim_s': done_s,
+        'duration_s': _span(sent_b, done_b),
+        'duration_sim_s': _span(sent_s, done_s),
+        'path_length_m': None,
+        'turn_count': None,
+        'corridor_wait_s': None,
+        'obstacle_density': None,
+    }
+
+
 class TaskStore:
     """D2 원장 파일 하나. connect는 시험에서 실패를 주입할 수 있게 받는다."""
 
@@ -180,7 +289,7 @@ class TaskStore:
 
         self._init_schema()
 
-    # 새 원장이면 표를 만들고, 기존 원장이면 schema 버전을 확인한다(schema 1·2는 한 트랜잭션 이주)
+    # 새 원장이면 표를 만들고, 기존 원장이면 schema 버전을 확인한다(schema 1·2·3은 한 트랜잭션 이주)
     def _init_schema(self):
         tables = {r[0] for r in self.db.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
@@ -190,21 +299,22 @@ class TaskStore:
                 raise StoreCorrupt('읽기 전용으로 빈 원장을 열 수 없다')
 
             with self._tx():
-                for ddl in V1_DDL + RECEIPT_DDL + V3_DDL:
+                for ddl in V1_DDL + RECEIPT_DDL + V3_DDL + V4_DDL:
                     self.db.execute(ddl)
                 self.db.execute("INSERT INTO meta VALUES ('schema_version', ?)",
                                 (str(SCHEMA_VERSION),))
                 self.db.execute("INSERT INTO meta VALUES ('inventory_revision', '0')")
             return
 
-        known = V1_TABLES | RECEIPT_TABLES | V3_TABLES | {'sqlite_sequence'}
+        known = V1_TABLES | RECEIPT_TABLES | V3_TABLES | V4_TABLES | {'sqlite_sequence'}
         if not tables <= known or not V1_TABLES <= tables:
             raise StoreCorrupt(f'예상하지 않은 표 구성: {sorted(tables)}')
 
         row = self.db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         version = row[0] if row is not None else None
         expected = {'1': V1_TABLES, '2': V1_TABLES | RECEIPT_TABLES,
-                    '3': V1_TABLES | RECEIPT_TABLES | V3_TABLES}
+                    '3': V1_TABLES | RECEIPT_TABLES | V3_TABLES,
+                    '4': V1_TABLES | RECEIPT_TABLES | V3_TABLES | V4_TABLES}
 
         if version not in expected or tables - {'sqlite_sequence'} != expected[version]:
             raise StoreCorrupt(f'schema 버전·표 불일치: {row} {sorted(tables)}')
@@ -220,7 +330,8 @@ class TaskStore:
         self._migrate(self.schema_version)
         self.schema_version = SCHEMA_VERSION
 
-    # schema 1·2 → 3 이주: 표 추가·열 추가·재고 백필·버전 갱신을 한 트랜잭션으로. 실패하면 되돌리고 거부
+    # schema 1·2·3 → 4 이주: 표 추가·열 추가·재고 백필(1·2만)·ETA 표본 표·버전 갱신을 한 트랜잭션으로.
+    # 과거 단계의 ETA 표본은 백필하지 않는다. 실패하면 되돌리고 거부
     def _migrate(self, version):
         try:
             with self._tx():
@@ -228,13 +339,18 @@ class TaskStore:
                     for ddl in RECEIPT_DDL:
                         self.db.execute(ddl)
 
-                for ddl in V3_DDL:
+                if version <= 2:
+                    for ddl in V3_DDL:
+                        self.db.execute(ddl)
+
+                    self._backfill_inventory()
+                    self.db.execute("INSERT INTO meta VALUES ('inventory_revision', '0')")
+
+                for ddl in V4_DDL:
                     self.db.execute(ddl)
 
-                self._backfill_inventory()
                 self.db.execute("UPDATE meta SET value=? WHERE key='schema_version'",
                                 (str(SCHEMA_VERSION),))
-                self.db.execute("INSERT INTO meta VALUES ('inventory_revision', '0')")
         except StoreError as error:
             raise StoreCorrupt(f'schema {version}→{SCHEMA_VERSION} 이주 실패(원장 불변): {error}') \
                 from error
@@ -341,6 +457,7 @@ class TaskStore:
                 self._insert_intent(task_id, intent)
 
             self._sync_inventory(state)
+            self._record_eta_samples(json.loads(row[1]), state)
 
             self._append_event(task_id, event_kind, {
                 'payload': payload, 'reasons': list(decision.reasons),
@@ -352,6 +469,37 @@ class TaskStore:
                 self._append_event(task_id, 'Completed', {
                     'mode': state.mode, 'live_kinds': list(state.live_kinds),
                     'evidence_used': [list(pair) for pair in state.evidence_used]})
+
+    # 주행 단계가 이번 판정에서 처음 종료 상태가 되면 ETA 표본 1행(같은 트랜잭션). 실행 ID가 기본 키라
+    # 같은 실행의 두 번째 행은 충돌로 거부된다(상태가 이미 종료면 다시 기록하지 않으므로 생기지 않음)
+    def _record_eta_samples(self, previous, state):
+        if self.schema_version < 4:
+            return
+
+        for plan_step in state.spec.steps:
+            if plan_step.operation != 'NAVIGATE_TO':
+                continue
+
+            run = state.steps[plan_step.step_key]
+            before = previous['steps'][plan_step.step_key]['status']
+            if run.status not in ETA_TERMINAL_STATUSES or before in ETA_TERMINAL_STATUSES:
+                continue
+
+            sample = eta_sample(state, plan_step, run)
+            self.db.execute(
+                f'INSERT INTO eta_samples ({", ".join(ETA_SAMPLE_FIELDS)}) VALUES '
+                f'({", ".join("?" for _ in ETA_SAMPLE_FIELDS)})',
+                tuple(sample[name] for name in ETA_SAMPLE_FIELDS))
+
+    # ETA 표본 전체(실행 순서 없음, 실행 ID 순)
+    def eta_samples(self):
+        if self.schema_version < 4:
+            raise StoreError('schema 4 이전 원장에는 ETA 표본 표가 없다')
+
+        rows = self.db.execute(
+            f'SELECT {", ".join(ETA_SAMPLE_FIELDS)} FROM eta_samples ORDER BY execution_id')
+
+        return [dict(zip(ETA_SAMPLE_FIELDS, row)) for row in rows.fetchall()]
 
     # 의도 기록. 같은 실행 ID가 이미 있으면 인자가 같아야 한다(다르면 충돌)
     def _insert_intent(self, task_id, intent):

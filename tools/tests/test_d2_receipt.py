@@ -494,13 +494,13 @@ def test_v1_migration_preserves_tasks(tmp_path):
 
     store = TaskStore(path)
     # W5: schema 3으로 이주(이전 기대값 2)
-    assert store.schema_version == 3
+    assert store.schema_version == 4  # W6: schema 4
     assert [s.spec.task_id for s in store.load_states()] == ['task_dev_1']
     assert store.receipt_events() == []
     store.close()
 
     tables, version = schema_of(path)
-    assert RECEIPT_TABLES <= tables and version == '3'
+    assert RECEIPT_TABLES <= tables and version == '4'  # W6: schema 4
 
 
 # 이주 실패: 원장 불변(버전 1, 입고 표 없음)으로 거부하고, 읽기 전용 열기는 이주 없이 읽는다

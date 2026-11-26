@@ -30,6 +30,10 @@ from std_msgs.msg import String
 # 모의 서버를 띄울 수 있는 로봇 ID(시험 구성 robot_1~robot_4)
 ROBOT_IDS = ('robot_1', 'robot_2', 'robot_3', 'robot_4')
 
+# Q9: 현재 수락 가능한 작업은 모의 적재 확인뿐이다. lease·관절 판정기가 있다는 이유로
+# 실제 하위 Action·영속 기록·취소·상태 확인이 미연결인 작업을 이 목록에 추가하지 않는다.
+SUPPORTED_MOCK_TASK_KINDS = frozenset((ExecuteLocalTask.Goal.CONFIRM_LOAD,))
+
 
 # 로봇별 모의 결과 표시 Topic. robot_2는 이전 경로를 유지한다.
 def result_display_topic(robot_id):
@@ -124,7 +128,7 @@ class MockExecutor(Node):
         # 접수 전에 작업 종류·필수 값·실행 자리를 검사합니다. 실제 구현 범위는 모의 적재 확인뿐입니다.
         # 역할: 작업 형식과 처리 중 상태를 확인해 요청 접수 여부를 정합니다.
         execution_id = request.execution.execution_id
-        if request.task_kind != ExecuteLocalTask.Goal.CONFIRM_LOAD:
+        if request.task_kind not in SUPPORTED_MOCK_TASK_KINDS:
             self.get_logger().warning('CONFIRM_LOAD만 지원합니다.')
             return GoalResponse.REJECT
         if not execution_id or not request.object_id:
@@ -394,6 +398,9 @@ class MockExecutor(Node):
     @staticmethod
     def make_result(value):
         # 센서 판정이 아닌 시험 입력입니다. UNKNOWN을 EMPTY나 성공으로 바꾸면 안 됩니다.
+        # Q10: Action Result.load_state에는 source가 없다. SUCCEEDED·STOWED만으로
+        # 실측으로 승격하지 않는다. 실제 판정은 별도 LoadState의 source·meta와 함께 전달해야 한다.
+        # 아직 /load/state의 실제 관측 생산자는 없으며 시험 값을 그 토픽으로 옮겨 발행하지 않는다.
         # 역할: 시험 입력을 실제 센서 결과와 구분한 모의 결과를 만듭니다.
         result = ExecuteLocalTask.Result()
 

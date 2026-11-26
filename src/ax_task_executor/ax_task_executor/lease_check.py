@@ -1,9 +1,9 @@
 """
-A3 CheckCommandLease 서버(개발 정책).
+A3 CheckCommandLease 서비스와 명령 수락 원장.
 
 계약(INTERFACE_CONTRACT 4.3·5.2절)의 요청 형식·권한별 필드·멱등·수락 기록 규칙은 그대로 검사한다.
-실제 lease 표·세대·활성 Goal 대조·배정 유효성·재동기화는 구현하지 않았다.
-그 판정 자리는 파라미터 `policy`(dev_allow | dev_deny)가 대신하며 기본값은 dev_deny다.
+통합 LocalTaskExecutor의 operational 정책은 RuntimeAuthority와 C4 lease 토픽의 LeaseProtocol을 공유한다.
+단독 LeaseCheckServer만 `policy`(dev_allow | dev_deny) 개발 판정을 사용하며 기본값은 dev_deny다.
 허용 응답의 reason_code는 DEV_POLICY_ALLOW, 수락 기록 ID는 `devpolicy-` 접두어라 개발 정책 결과임을 구분할 수 있다.
 """
 from contextlib import nullcontext

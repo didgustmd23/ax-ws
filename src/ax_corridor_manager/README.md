@@ -149,3 +149,49 @@ run_2에서는 controller_manager 조회의 일시적 DDS timeout 경고가 있�
 수정했다. SIGINT 종료 뒤의 exit -2·KeyboardInterrupt 로그는 의도한 시험 종료와 구분한다.
 실제 결과·명령·임시 설정·원본 로그는 로컬 docs/reports/gazebo_schema2_battery_20261123/
 run_1~3와 schema2_real_ros_consumers_20261123.*, schema2_battery_boundary_regression_20261123.*에 있다.
+
+### 2026-11-27 D2 개발 입력 선택과 상대 호출 호환
+
+`fleet_tasks_topic` 파라미터로 내 D3가 읽을 작업 목록을 고른다. 기본값은 기존 운영 경로
+`/ax/fleet/tasks`이며, 명시하면 D2가 사용하는 `/ax/dev/d2_mock/fleet_tasks` 같은 개발 경로도
+읽을 수 있다. 상대 D2의 발행 코드·토픽을 바꾸거나 운영 경로로 remap하지 않는다.
+경로 선택은 배정 승인·통로 정책 승인이 아니며 기본 발급 보류와 영역 미승인은 유지한다.
+상대 구동 토픽·상대 경로·상위 디렉터리 표기 등은 시작 전에 거절한다.
+
+기존 Gazebo/ROS 시계와 D2 발행자가 별도로 준비된 환경에서 내 실행 설정만 선택한다.
+
+```bash
+ros2 launch ax_task_executor team_handoff.launch.py with_w3:=true \
+  fleet_tasks_topic:=/ax/dev/d2_mock/fleet_tasks
+```
+
+이 명령은 상대 D2·D1·C4 노드를 시작하지 않는다. 양쪽 시계 설정은 같아야 한다.
+`test_d3_d2_selected_topic_ros.py`는 원본 D2 개발 발행자에서 실제 DDS로 두 로봇의 작업
+목록을 수신하고, 발행 중단 후 만료와 통로 발급 보류·운영 토픽 미발행을 확인한다.
+실제 주행·조작이나 운영 배정 승인 시험은 아니다.
+
+`test_a3_c4_tool_handoff.py`는 원본 C4의 ToolCommand 생성 → 원본 A2의 CheckCommandLease
+생성 → 내 A3 판정·SQLite 기록을 직접 연결한다. 부모 Goal·실행 ID·세대 보존과 배정 미확인,
+철회·만료·다른 Goal 거절을 검사한다. 전송·C4 내부 runtime 준비·배정 응답·lease 등록은 시험
+대역이므로 실제 dispatcher·D4·lease 발급기·C4 조작 종단 완료를 의미하지 않는다.
+C3 후보·IK·궤적 공급자는 아직 별도 연결 대상이며 새 C4가 생겼다고 자동 허가하지 않는다.
+
+### B3/D3 실제 ROS2 발행 확인 — 2026-11-27
+
+격리 Gazebo와 원본 미승인 영역 설정으로 내 B3(robot_2/AX_2)·D3를 실행했다.
+`/ax/robot_2/perception/corridor_observation` 101개와 `/ax/fleet/corridor/state` 20개를
+실제 DDS로 수신했다. 세 통로 모두 B3 UNKNOWN·position_valid=false이며 사유는
+REGIONS_NOT_APPROVED다. D3는 meta.valid=false, BLOCKED_UNKNOWN, owner·active_grant_id가
+빈 상태였다. robot_2의 실제 request_entry 서비스 응답은 granted=false·grant_id 빈 값·
+REGIONS_NOT_APPROVED였다. 빈 owner가 물리 비점유를 확정하는 것은 아니다.
+
+이는 현재 승인 상태의 정상 차단 결과다. 운영 OUTSIDE·position_valid=true를 확인한 것은 아니다.
+별도 `test_b3_outside_evidence_ros.py`에서는 원본을 수정하지 않은 임시 승인 사본과 합성 B2
+원점 pose·health로 세 통로 OUTSIDE·position_valid=true가 실제 ROS로 발행되는 것을 확인한다.
+이 사본 시험을 실제 지도·TF·로봇 외곽·경계 공동 승인 근거로 사용하지 않는다.
+
+새 grant는 영역 승인, 합의된 허가 정책, 현재 배정, 신선한 실제 STOPPED, 신선한 통로 관측과
+빈 통로·대기 순서 조건이 모두 필요하다. 현재 영역 승인과 정책 승인은 둘 다 보류 상태다.
+현장·실제 Gazebo 주행으로 경계를 검증하기 전 승인값을 바꾸지 않았다.
+근거는 로컬 docs/reports/lease_corridor_review_20261127/gazebo_configured/summary.json,
+b3_outside_fixture_20261127.json과 해당 ROS 시험 로그에 보존했다.

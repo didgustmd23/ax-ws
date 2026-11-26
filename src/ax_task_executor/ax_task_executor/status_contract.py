@@ -13,6 +13,8 @@ def make_unassigned_mock_idle(robot_id, session_id):
     status.meta.revision = 1
     # 대기 heartbeat이지 운영 권한이 아닙니다. D4 오류를 피하려고 valid=true로 바꾸지 않습니다.
     status.meta.valid = False
+    # Q11: 무효 상태의 사유도 외부에 보이는 코드다. MOCK_ONLY는 모의 상태 진단이며,
+    # 이 문자열이나 무응답을 운영 승인으로 해석하지 않는다. 운영 코드 합의와는 구분한다.
     status.meta.validity_reason = 'MOCK_ONLY'
     status.local_phase = 'MOCK_IDLE'
     # ExecutionRef와 last_result는 메시지 기본값으로 둡니다. 가짜 task/assignment ID는 만들지 않습니다.

@@ -1,5 +1,8 @@
 # A3 첫 과제: 모의 Action 결과를 Gazebo에서 보기
 
+최신 C4 lease 토픽 구현과 현재 연동 제한은 아래 **2026-11-27 C4 lease 연결** 절을 참고한다.
+초기 단독 개발 서버 설명과 실제 운영 권한 검사는 구분한다.
+
 이 예제는 실제 적재 확인이 아니다. 모의 서버가 반환한 결과를 충돌 없는 정적
 표시등으로 보여준다. EMPTY=빨강, STOWED=초록, UNKNOWN=노랑이다.
 표시등 위치는 월드 좌표 (0, -3, 2) m이며 Entity Tree 이름은
@@ -551,3 +554,230 @@ A3/D4 초기 대기 처리와 검토 문서는 2026-11-14 후속 변경으로 �
 해석하지 않는다. 각 후속 변경의 반영 여부는 해당 커밋과 main 대상 PR 이력으로 확인한다.
 앞으로도 main에 직접 push하지 않고 작업 브랜치의 변경을 PR로 제출한다.
 
+## 2026-11-27 C4 lease 연결
+
+통합 `local_task_executor`의 `policy:=operational`에서 다음 EVENT(depth 50) 경로를 제공한다.
+단독 개발 `lease_check` 서버나 dev_allow는 실제 C4 lease 발급기로 사용하지 않는다.
+
+| 경로 | 내 A3 역할 |
+|---|---|
+| `/ax/<robot_id>/manipulation/lease/request` | C4 ExecutionLeaseRequest 구독 |
+| `/ax/<robot_id>/manipulation/lease/grant` | ExecutionLeaseGrant 발행 |
+| `/ax/<robot_id>/manipulation/lease/revoke` | ExecutionLeaseRevoke 발행 |
+| `/ax/<robot_id>/executor/lease/check_command` | A2/A4 실제 명령 수락 전 확인 |
+
+토픽과 서비스는 같은 RuntimeAuthority와 `lease_checks.sqlite3`를 사용한다.
+`lease_protocol.py`가 세대·응답·철회 이력을 영속 기록하고 `lease_topics.py`가 ROS에 연결한다.
+execution_id·부모 goal_id·lease_generation은 요청→grant→명령 확인→revoke 사이에서 보존한다.
+
+발급에는 확인된 배정, A3 내부에 등록된 활성 ManipulateObject UUID, 해당 실행 ID를 허용하는
+GRASP_ATTEMPT 예산이 필요하다. 외부 lease 요청으로 이 근거를 생성하지 않는다.
+실제 dispatcher는 기록·배정 확인 후 `register_manipulation_goal(execution, goal_id, budgets)`를
+호출하고 하위 Action 종료를 확인하면 `finish_manipulation_goal(execution_id, goal_id)`로 닫아야 한다.
+현재 모의 CONFIRM_LOAD가 실제 조작 dispatcher로 바뀐 것은 아니다. D4 실제 승인 연결도 별도다.
+
+- FIRST는 마지막 세대+1, RENEW는 현재 미만료·미철회 세대만 갱신한다.
+- 수명은 1.5초·배정 남은 시간·예산 남은 시간 중 최솟값 이하이며 CLOCK_BOOTTIME을 쓴다.
+- 같은 request_id는 저장된 응답을 재사용하고, 내용 지문이 다르면 DUPLICATE_REQUEST다.
+  거절도 저장하며 재전송으로 기한·세대를 늘리지 않는다.
+- 재동기화는 이전 세대를 원장에서 차단하고 서비스의 ACCEPT 수락 기록을 검사한다.
+  기록이 있거나 확인할 수 없으면 LEASE_RESYNC_UNCERTAIN이며 새 세대를 주지 않는다.
+  같은 Goal을 유지하는 재동기화와 Action 자체를 끝내는 명시적 철회는 구분한다.
+- 명시적 철회·배정 상실은 서비스 권한을 먼저 막고 revoke와 정확한 부모 UUID의 Action cancel을
+  요청한다. cancel 요청 자체를 실제 정지·CANCELED 완료로 처리하지 않는다.
+- SQLite 장애는 새 발급을 차단한다. 타이머·발행 예외가 spin 밖으로 전파되지 않게 한다.
+
+검증은 실제 SQLite·동시 요청·만료·갱신·철회·재시작과 원본 C4의 `_request_lease` 함수가 실제
+DDS로 보낸 요청을 포함한다. 정상 grant와 동일 권한의 서비스 허용, 미등록·철회·만료 거절을
+확인한다. 배정 응답·활성 Goal·예산은 시험에서 주입한 근거이므로 실제 운영 발급 완료는 아니다.
+
+별도 원본 C4 Action 수락 재현에서는 `manipulate_object_server.py:192`의
+`GoalResponse.ACCEPT_AND_EXECUTE`가 ROS Python에 없어 AttributeError가 발생했다.
+상대 소스는 수정하지 않았다. 이 오류가 해결돼도 현재 live 경로는 궤적 공급자가 없어
+TRAJECTORY_UNAVAILABLE로 lease 요청 전에 끝난다. 토픽 연결 통과와 C4 물리 조작 완료를 혼동하지 않는다.
+
+
+## Q8: ARM_RETRACTED 생산자와 현재 구현 범위 (2026-11-27)
+
+**계약상 완료 판정 담당은 A3다.** D2가 ExecuteLocalTask의 RETRACT_ARM을 A3에 보내고,
+A3가 AUTH_A3_LOCAL_TASK로 A4의 ProtectedArmTrajectory를 호출한다.
+A4는 팔 구동·보호와 실제 정지 관측을 담당한다. A4 Action 성공이나 STOPPED만으로
+후퇴 자세에 도달했다고 판단하지 않는다. 최종 A3 성공은 실제 joint_states의 자세와
+팔 정지를 확인한 다음이어야 한다(계약 5.1·5.2, D-06).
+
+| 구분 | 경로 | 타입 및 현재 상태 |
+|---|---|---|
+| D2 → A3 작업 요청·결과 | `/ax/<robot_id>/executor/execute_local_task` | `ax_interfaces/action/ExecuteLocalTask`. **현재 RETRACT_ARM 수락·실행은 미구현** |
+| A3 → A4 후퇴 명령·결과 | `/ax/<robot_id>/arm/execute_trajectory` | `ax_interfaces/action/ProtectedArmTrajectory`. A3 후퇴 dispatcher 연결은 미구현 |
+| 실제 관절 피드백 → A3 | `/ax/<robot_id>/joint_states` | `sensor_msgs/msg/JointState`, SENSOR QoS. 이번에 A3 구독과 내부 판정기를 추가 |
+| A4 실제 정지 관측 | `/ax/<robot_id>/safety/actuation_state` | `ax_interfaces/msg/ActuationState`, 후퇴 자세 확인을 대신하지 않음 |
+| A3 → D2 독립 ARM_RETRACTED 관측 | **미정·미발행** | 공통 계약에 전용 Topic·메시지 타입이 없음. D2 live ARM_RETRACTED 어댑터도 아직 없음 |
+
+이번 추가 모듈은 `arm_retraction.py`이며 `LocalTaskExecutor.arm_retraction_evidence()`로
+내부 상태 RETRACTED / NOT_RETRACTED / UNKNOWN과 진단 사유를 읽는다.
+이 이름과 사유는 공통 ResultStatus 코드나 외부 메시지 enum을 추가한 것이 아니다.
+이 함수만으로 작업 성공·주행 허가·인계 잠금 해제를 만들지 않는다.
+
+핵심 조건은 승인된 필수 관절 전체의 위치가 허용 오차 이내이고,
+실측 velocity가 모두 0.01 rad/s 이하인 표본이 ROS 시각으로 0.5초 이상 연속되는 것이다.
+누락·중복 관절, 속도 미제공, NaN, 미래·역순 stamp는 UNKNOWN으로 돌리고 연속 구간을 초기화한다.
+표본/수신 간격 0.3초 초과와 피드백 만료도 완료 근거를 무효화한다.
+0.3초 freshness와 위치 오차 기본 0.02rad는 **A3 내부 초기 설정**이며 공통 계약 확정값이 아니다.
+
+기본 `retraction_pose_approved=false`이며 목표 관절값을 임의로 정하지 않았다.
+모델 담당자가 검증한 관절 이름·목표값을 `retraction_joint_names`,
+`retraction_joint_positions`에 설정하고 위치 허용 오차를 검토해야 한다.
+시험에서 쓰는 arm_joint=0.4는 합성 입력이며 실제 로봇 자세 승인값이 아니다.
+
+완료하려면 A1 담당자와 승인 후퇴 자세·관절 목록·오차를, A4 담당자와 보호 궤적·구동 조건을,
+D2 담당자와 Action 결과 이후 독립 관측이 필요한지 및 필요시 Topic·타입·출처·만료 규칙을
+확정해야 한다. A3가 운영 수락·기록·취소·실제 상태 확인을 연결하기 전에는 RETRACT_ARM을
+계속 거절한다. 상대 소스나 공통 인터페이스를 임의 변경하지 않았다.
+
+## Q9·Q10: 지원 작업 순서와 실제 적재 전환 조건 (2026-11-27)
+
+### Q9 지원 일정 — 날짜 미확정, 다음은 A3 측 제안 순서
+
+현재 실행 가능한 작업은 CONFIRM_LOAD의 모의 시험뿐이다. operational lease 정책을 켜도
+로컬 작업 Action이 실제 작업으로 전환되는 것은 아니다. 아래 작업은 아직 수락하지 않는다.
+
+| 제안 단계 | 작업 | 지원을 열기 전에 필요한 조건 |
+|---|---|---|
+| 1 — 병렬 기반 작업 | 실제 적재 판정·확인 | 승인된 cargo_link 영역과 물체 식별, 실제 위치·접촉 입력, 시간·만료·상실 시험. 현재 모의 CONFIRM_LOAD와 분리 |
+| 1 — 병렬 기반 작업 | LOCK_HANDOFF / UNLOCK_HANDOFF | D2와 상대 로봇·실행 배정 대조, 실제 정지와 자기 측 잠금 조건, A4가 소비하는 인계 상태 연결. 해제 시 만료·위험·취소 시험 |
+| 2 | RETRACT_ARM | A1 승인 후퇴 자세, A4 보호 궤적·구동 조건, A3 실행 기록·전송·취소와 실제 관절 판정 연결. Q8 관절 판정기는 기반만 준비됨 |
+| 3 | PICK_AND_STOW | 실제 C4 Action 경로, D4 배정, 부모 Goal·예산·lease 연결, C 후보·궤적 공급. PLACE 결과와 RELEASED 확인, 실패·부분 완료·취소 처리 |
+| 3 이후 | UNLOAD_AND_PLACE | 앞선 조작 경로 + 적재 물체 재관측, cargo_link TF, 등록 목적지 pose·revision, 실제 해제 확인 |
+
+이 표는 담당자가 합의한 완료 날짜나 확정된 주차 일정이 아니다. A3는 준비된 기반부터 병렬로
+개발할 수 있지만, 각 조건이 충족되고 통합 시험이 통과한 작업만 개별적으로 수락을 연다.
+조작 후 팔 후퇴는 위 조작 작업에 포함시키지 않고 D2가 별도의 RETRACT_ARM을 보내야 한다.
+현재 C4 Action 수락 오류 및 live 궤적 공급 부재도 선행 확인 대상이다(앞의 C4 lease 연결 절).
+
+### Q10 실제 LoadState — 아직 전환되지 않음
+
+현재 A3에는 Gazebo 객체 위치·접촉을 받아 실제 적재를 판정하는 생산자가 없다.
+CONFIRM_LOAD의 Result.load_state는 mock_load 시험 입력이며, /a3_mock/... 표시도 실측이 아니다.
+실제 `/ax/<robot_id>/load/state` 발행과 실제 CONFIRM_LOAD 연결을 완료한 날짜는 아직 없다.
+
+외부 메시지 타입은 이미 `ax_interfaces/msg/LoadState`로 정의돼 있다.
+
+| 필드 | 소비자가 구분해야 할 의미 |
+|---|---|
+| source=SOURCE_UNKNOWN(0) | 출처 불명. 모의 전용 enum이 아니며 실제 관측으로 인정하지 않음 |
+| source=SOURCE_SENSOR(1) | 실제 센서 근거 |
+| source=SOURCE_GROUND_TRUTH(2) | 설계가 허용한 적재 영역 판정용 Gazebo 객체 위치 근거. 일반 실물 센서와 구분 |
+| source=SOURCE_COMBINED(3) | 센서와 정답 기반 근거를 실제 결합 |
+| meta.valid | 유효성. false인 값은 STOWED여도 성공 근거가 아님 |
+| meta.source_id / source_session_id / revision | 생산자 식별·재시작·역순 방어. 이름만 실제처럼 바꾸는 것은 전환이 아님 |
+| meta.header.stamp | ROS 시각의 최신 판정 시각. 계약 적재 상태 만료 0.5초 검사 |
+| robot_id / object_id | 현재 운송 로봇·대상 물체와 일치하는지 검사 |
+| state / contact / in_zone | 상태와 접촉·영역 근거를 함께 해석. false 하나로 EMPTY를 추정하지 않음 |
+
+중요: ExecuteLocalTask.Result의 load_state는 정수 상태만 있고 source나 StateMeta가 없다.
+따라서 D2는 모의 Action 성공만으로 실제 적재를 인정하면 안 된다. 실제 전환 시에도 Action 결과와
+현재 작업에 맞는 최신의 유효한 LoadState 관측을 대조해야 한다. LoadState에 execution_id 필드는
+없으므로 임의 필드를 추가하지 않고 D2의 현재 배정·로봇·물체 문맥과 함께 검사한다.
+
+전환 조건은 다음과 같다.
+1. A1의 적재함 frame·허용 영역 치수와 대상 물체 식별/형상을 확정한다.
+2. Gazebo 객체 위치를 같은 시각의 cargo_link 기준으로 변환하고 접촉·지지 근거를 연결한다.
+   객체 중심 위치만으로 STOWED나 적재함 전체 EMPTY를 확정하지 않는다.
+3. D-08을 지킨다. 접촉이 끊겨도 영역 안이면 UNKNOWN, 접촉 끊김 1.0초 이상과 영역 이탈이
+   함께 확인돼야 LOST다. 입력 누락·모순·만료는 UNKNOWN이며 EMPTY로 대체하지 않는다.
+4. 10Hz 판정·발행, 상태 변경 revision·재시작 session·stamp·만료를 시험하고,
+   STOWED/EMPTY/UNKNOWN/LOST를 D2 및 상대 A4와 실제 ROS/Gazebo로 검증한다.
+5. 그 근거가 확보된 생산자에만 해당 source와 meta.valid=true를 적용하고 실제 CONFIRM_LOAD를 연결한다.
+
+Gazebo 정답 위치의 예외는 적재 영역 판정에 한정하며 C의 물체 관측·후보·집기 목표에 재사용하지 않는다.
+D2 live LOAD 수락과 상대 A4 적용은 각 담당자가 연동 결과를 확인한 뒤 열어야 한다.
+이번 변경은 지원 범위를 명시하는 A3 주석·가드·시험·문서 정리이며 실제 적재 생산자 구현 완료가 아니다.
+
+## Q11: D-13 외부 사유 코드 일괄 제안에 대한 A3 의견 (2026-11-27)
+
+**A3 의견: 외부 노출 코드만 추려 한 번에 제안하는 방식에 찬성한다.**
+이것은 김성민 담당 범위의 검토 의견이며, 전원 합의나 D-13 승인 완료를 뜻하지 않는다.
+D2 README 및 구현은 읽기만 했고 공통 계약·상대 코드는 바꾸지 않았다.
+
+### 분류와 반영 시점
+
+- 내부 로그·예외·설정 검사·원장 안에서만 쓰이는 코드는 내부 이름으로 유지할 수 있다.
+  이름이 HOLD_*인지가 아니라 실제로 어느 필드로 누구에게 전달되는지를 기준으로 분류한다.
+- ResultStatus.error_code, StateMeta.validity_reason뿐 아니라 Service 응답의 reason_code,
+  공유 상태·실패 사건에 실리는 기계 판독 사유도 외부 코드 후보에 포함한다.
+  A4 구동 block_reasons는 D-12와의 관계도 함께 검토하며 D-13으로 무조건 옮기지 않는다.
+- 내부 예외 문자열을 외부 error_code로 그대로 보내지 않는다. 외부 이름은 의미·처리 방법을
+  정하고 원래 내부 상세는 로그/detail에 남긴다. 안전 판단용 의미를 자유문장에만 숨기지 않는다.
+- 운영 이름 연결 시 일괄 반영하되, 소비자가 의존하기 시작하기 전에 목록 검토를 끝내야 한다.
+  개발 모드라도 이미 공유 Topic/응답에 코드가 나간다면 지금 후보 목록에 표시한다.
+  valid=false 메시지의 validity_reason도 외부 노출이다. 운영 이름을 붙이는 시점까지 누락하지 않는다.
+- 접두사 전체를 한 줄로 승인하지 말고 정확한 코드별로 정의한다. 기존 코드로 대응 가능하면
+  의미 손실 여부를 검토하며, 다른 실패·보류·설정 오류를 한 코드로 뭉개지 않는다.
+
+### D2 예시 코드에 대한 검토 기준 — 확정 매핑 아님
+
+| 내부 코드 예시 | 현재 문서의 의미 | 외부화할 경우 필요한 검토 |
+|---|---|---|
+| HOLD_SOURCE_EMPTY 등 HOLD_* | C4 hold 입력의 출처 누락 등 형식 검사. HOLD_* 전체가 같은 뜻은 아님 | 코드별 원인·노출 필드. 입력 거절이지 실제 물체 상실·보류 해제라는 뜻이 아님 |
+| PROVENANCE_REJECTED | 현재 모드/관측 종류에서 해당 LIVE·MOCK 또는 정답 기반 출처를 허용하지 않음 | A3 source enum과 D2 provenance는 다름. 출처 정책 위반과 센서 만료·물리 상실을 구분 |
+| LIVE_KIND_NOT_OPENABLE | 아직 live 수락을 열 수 없는 종류를 설정함 | 설정 단계 거절인지 실행 결과인지 명시. 실제 작업 실패로 임의 변환하지 않음 |
+| STORE_MODE_MISMATCH | 원장의 mode/live_kinds와 현재 runtime 설정이 불일치 | 실행 전 거절 및 운영자 확인. 원장 삭제·모드 변경·자동 재시도 지시로 해석하지 않음 |
+
+같은 코드 이름이 여러 발생 조건에서 쓰이면 조건별 외부 의미와 소비자 행동이 동일한지도 확인한다.
+기존 D-13에 비슷한 이름이 있다는 이유만으로 AUTHORITY_INVALID·LOAD_UNKNOWN 등으로 자동 매핑하지 않는다.
+
+### 한 번에 제안할 항목
+
+코드별로 다음을 한 줄씩 제출하면 A3 쪽 연결 검토가 가능하다.
+`내부 코드 / 외부 제안 이름(기존 유지 또는 매핑) / 발생 조건 / 발행자 / Topic·Service·Action와 필드 /
+소비자 / invalid·거절·실패·보류 구분 / 소비자 차단·복구 행동 / 재시도 허용 여부·필요 근거 /
+기존 코드와 차이 / 재현 시험 / 제안·검토·승인 상태`.
+
+권장 절차는 D2 후보 표 작성 → 영향받는 담당자 확인 → D-13 문서 PR → 코드·문서·시험의
+매핑 동시 검토 → 합의된 항목만 병합 → 해당 소비자와 통합 시험 → 운영 연결 순서다.
+안전 관련 코드에서는 코드 추가가 재시도·잠금 해제·주행 허가를 새로 허용하는 근거가 되지 않는다.
+미지의 코드·모순·만료에 대한 처리는 불명/보류와 기존 차단 유지 쪽으로 명시한다.
+
+### 의견 수렴 기한 제안 — 팀 확정 기한 아님
+
+- **1차 의견: 2026-11-30(월) 18:00, 한국 시간까지**를 제안한다.
+- 운영 이름 연결/통합 시험이 그보다 빠르면 그 전에 영향 담당자의 검토를 완료해야 한다.
+- 1차 기한 후 D2가 반영 표를 갱신하고 최종 확인 일정을 잡는다. 검토량이 많으면 일정을 다시 합의한다.
+- 회신이 없다고 동의로 처리하지 않는다. 안전 판단에 영향 있는 미합의 항목은 운영 연결을 보류한다.
+- 이 문서만 작성했으며 팀원에게 메시지를 보내거나 회신·승인을 받지는 않았다.
+
+이번 A3 변경은 내부 후퇴 reason과 외부 lease reason_code·MOCK_ONLY 주석 및 검토 절차 정리뿐이다.
+코드 이름·반환 값·동작은 바꾸지 않았으며, D2 코드가 D-13에 이미 반영됐다는 뜻도 아니다.
+
+## A3 철회·취소 전달 보완 (2026-11-27)
+
+취소 서비스 미준비로 뒤 Goal의 철회 발행이 막히거나, 비동기 취소 실패를 잃던 경로를 수정했다.
+`lease_topics.py`의 대기 항목은 실행 ID·부모 Goal UUID·lease 세대로 구분한다.
+
+- 먼저 모든 항목의 revoke를 각각 발행한다. 한 항목의 발행 실패나 cancel 서비스 미준비 때문에
+  나머지 항목의 철회 발행을 중단하지 않는다. 발행 실패 항목은 다음 타이머에서 다시 시도한다.
+- revoke 발행과 Action cancel 응답을 독립적으로 추적한다. 진행 중 Future가 있으면 중복 취소를
+  보내지 않으며, 전송 예외·Future 예외·취소 거절은 대기 상태를 남긴다.
+- 실패 재시도 간격은 0.5초부터 최대 5초까지 늘린다. 응답이 1초 동안 없으면 이전 Future를
+  분리하고 다시 시도하며, 늦게 온 이전 응답이 새 시도를 제거하지 못하게 한다.
+- 정확한 부모 UUID만 취소한다. 취소 응답 수신은 실제 정지나 상위 작업 CANCELED 확인이 아니다.
+- 노드 종료 시 타이머·대기 Future를 정리하고, 종료 후 늦은 응답으로 재전송하지 않는다.
+
+재현 시험은 `tools/tests/test_a3_lease_cancel_delivery.py`에 11개 추가했다.
+서비스 복구, 비동기 예외·거절·응답 없음, 뒤 Goal 발행, 발행 실패, 늦은 응답, 동시 flush,
+중복 이벤트, 재시도 간격과 종료 정리를 검사한다.
+
+최초 검증은 자동 승인 검토 사용량 한도로 보류됐으나, 이후 취소 전달 11개와 lease 프로토콜 14개가 통과했다.
+GitHub 반영 전 재검증에서도 스타일·회귀 검사 총 122개가 통과했다. 아래 명령으로 재확인할 수 있다.
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source /home/freem/ax_main_install/setup.bash
+python3 -m pytest tools/tests/test_a3_lease_cancel_delivery.py tools/tests/test_a3_lease_protocol.py -q
+python3 -m pytest tools/tests/test_a3_c4_lease_topics_ros.py -q \
+  --deselect=tools/tests/test_a3_c4_lease_topics_ros.py::C4LeaseTopicTests::test_original_c4_accepts_supported_action_goal
+python3 -m pytest tools/tests/test_a3_local_task_executor.py -q
+```
+
+제외한 C4 Action 수락 오류는 상대 코드의 알려진 별도 문제이며 해결됐다는 뜻이 아니다.
+이 수정으로 외부 메시지 필드·코드명·허가 정책을 바꾸지 않았다. 상대 소스는 수정하지 않았다.

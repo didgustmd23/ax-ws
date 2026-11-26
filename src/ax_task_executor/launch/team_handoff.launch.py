@@ -1,4 +1,5 @@
 """김성민 담당 노드를 상대 파트의 공통 경로에 연결해 실행합니다."""
+from ax_corridor_manager.task_inputs import checked_task_topic, OPERATIONAL_TASK_TOPIC
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
@@ -25,6 +26,8 @@ def setup_nodes(context):
     with_w3 = LaunchConfiguration('with_w3', default='false').perform(context).lower()
     if with_w3 not in ('true', 'false'):
         raise ValueError('with_w3 must be true or false')
+    task_topic = checked_task_topic(LaunchConfiguration(
+        'fleet_tasks_topic', default=OPERATIONAL_TASK_TOPIC).perform(context))
     nodes = []
     for robot, model in zip(robot_ids, models):
         # 기본은 로봇별 A3·B3다. 상대 파트 노드나 안전 허용 설정은 변경하지 않는다.
@@ -49,6 +52,8 @@ def setup_nodes(context):
         # D3는 전체 로봇을 받는 단일 원장이다. 두 번 시작하거나 미합의 정책을 켜지 않는다.
         database = LaunchConfiguration('corridor_database', default='').perform(context)
         parameters = {'use_sim_time': True, 'robot_ids': robot_ids, 'regions_file': regions}
+        # D2 개발 발행자를 고치지 않고 내 D3 수신 경로만 선택한다. 허가 정책은 계속 보류다.
+        parameters['fleet_tasks_topic'] = task_topic
         # B3와 D3는 같은 영역 파일을 읽는다. 관측 경계와 허가 대상이 서로 달라지지 않게 한다.
         if database:
             parameters['database'] = database
@@ -66,6 +71,7 @@ def generate_launch_description():
         DeclareLaunchArgument('regions_file', default_value=''),
         DeclareLaunchArgument('with_w3', default_value='false'),
         DeclareLaunchArgument('corridor_database', default_value=''),
+        DeclareLaunchArgument('fleet_tasks_topic', default_value=OPERATIONAL_TASK_TOPIC),
         # B2 채택 지도와 B3 영역의 번호를 맞춘다. 운영 영역 승인이나 배정을 대신 허용하지 않는다.
         DeclareLaunchArgument('map_revision', default_value='2'),
         OpaqueFunction(function=setup_nodes),

@@ -7,6 +7,7 @@ import uuid
 
 from ament_index_python.packages import get_package_share_directory
 from ax_corridor_manager.manager import boottime, CorridorManager
+from ax_corridor_manager.task_inputs import checked_task_topic, OPERATIONAL_TASK_TOPIC
 from ax_environment.regions import load_regions
 from ax_interfaces.msg import ActuationState, CorridorObservationList, CorridorState
 from ax_interfaces.msg import CorridorStateList, GroupTaskList
@@ -47,6 +48,8 @@ class CorridorNode(Node):
         # 역할: 설정과 내부 상태를 준비합니다.
         super().__init__('corridor_manager')
         self.robots = tuple(self.declare_parameter('robot_ids', ['robot_1', 'robot_2']).value)
+        self.fleet_tasks_topic = checked_task_topic(self.declare_parameter(
+            'fleet_tasks_topic', OPERATIONAL_TASK_TOPIC).value)
         default_regions = (Path(get_package_share_directory('ax_environment'))
                            / 'config/ax_warehouse_regions.json')
         region_path = self.declare_parameter('regions_file', '').value or str(default_regions)
@@ -59,6 +62,8 @@ class CorridorNode(Node):
             # 정책 승인값을 넘기지 않아 운영 노드는 기본 보류 상태로 시작합니다.
             database, corridors, self.robots, enabled=regions['approved'])
         self.get_logger().warning('통로 허가 정책 미합의: 새 허가 발급 보류, 기존 원장 보존')
+        if self.fleet_tasks_topic != OPERATIONAL_TASK_TOPIC:
+            self.get_logger().warning('D2 개발 작업 목록 읽기 전용 연결: 운영 배정·통로 승인 아님')
         # 연동 시험 통과와 정책 승인은 별개입니다. 상대가 연결됐다고 보류를 자동 해제하지 않습니다.
         self.session = uuid.uuid4().hex
         self.sources = {}
@@ -80,7 +85,7 @@ class CorridorNode(Node):
                                          self.on_stop(message, key), STATE_QOS),
             ])
         self._input_handles.append(self.create_subscription(
-            GroupTaskList, '/ax/fleet/tasks', self.on_tasks, STATE_QOS))
+            GroupTaskList, self.fleet_tasks_topic, self.on_tasks, STATE_QOS))
         self.create_service(
             RequestCorridorEntry, '/ax/fleet/corridor/request_entry', self.on_request)
         self.create_service(ReleaseCorridor, '/ax/fleet/corridor/release', self.on_release)

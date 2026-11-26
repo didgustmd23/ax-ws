@@ -81,6 +81,17 @@ class StatusTest(unittest.TestCase):
         self.assertEqual((out['status'], out['reason']), ('invalid', 'BAD'))
         self.assertNotIn('value', out)
 
+    # 음수 표본 나이(시계 역행): 표시 나이 0·플래그, 판정은 정상 그대로, 원값 유지
+    def test_negative_stamp_age_display(self):
+        self.state.update_robot('robot_1', 'actuation', sample(100.0), Clocks(100.0, 50.0))
+        out = judge(self.state, 'robot_1', 'actuation', 98.8, 50.1)
+        self.assertEqual(out['status'], 'ok')
+        self.assertEqual((out['stamp_age_s'], out['stamp_age_shown_s']), (-1.2, 0.0))
+        self.assertTrue(out['clock_regressed'])
+
+        normal = judge(self.state, 'robot_1', 'actuation', 100.2, 50.2)
+        self.assertEqual((normal['stamp_age_shown_s'], normal['clock_regressed']), (0.2, False))
+
     # revision 0은 무효
     def test_revision_zero_invalid(self):
         self.state.update_robot('robot_1', 'actuation', sample(100.0, revision=0),
@@ -136,6 +147,34 @@ class OrderingTest(unittest.TestCase):
         self.put(sample(100.0, revision=5))
         self.assertFalse(self.put(sample(99.0, revision=6)))
         self.assertEqual(self.slot.counts['old_stamp'], 1)
+
+    # 같은 revision인데 stamp가 1.2 s 줄어든 재발행(시스템 시계 역행): 받고 수신 시각만 갱신,
+    # stamp는 큰 값 유지, 전용 횟수 1
+    def test_same_revision_stamp_regressed(self):
+        self.put(sample(100.0, revision=5, value={'v': 'first'}), boot=10.0)
+        self.assertTrue(self.put(sample(98.8, revision=5, value={'v': 'changed'}), boot=11.0))
+        self.assertEqual(self.slot.sample.value, {'v': 'first'})
+        self.assertEqual((self.slot.sample.stamp, self.slot.recv_boot), (100.0, 11.0))
+        self.assertEqual(self.slot.counts['stamp_regressed_same_revision'], 1)
+        self.assertEqual(self.slot.counts['old_stamp'], 0)
+
+        clocks = Clocks(100.0, 11.0)
+        out = cs.judge(self.slot, clocks, 3.0, 0.0)
+        self.assertEqual((out['recv_age_s'], out['stamp_age_s'], out['status']), (0.0, 0.0, 'ok'))
+
+    # revision이 오르고 stamp가 줄면 버린다(기존 규칙)
+    def test_new_revision_stamp_decrease_rejected(self):
+        self.put(sample(100.0, revision=5))
+        self.assertFalse(self.put(sample(98.8, revision=6)))
+        self.assertEqual(self.slot.counts['old_stamp'], 1)
+        self.assertEqual(self.slot.sample.revision, 5)
+
+    # revision이 줄면 stamp와 관계없이 버린다(기존 규칙)
+    def test_revision_decrease_rejected_any_stamp(self):
+        self.put(sample(100.0, revision=5))
+        self.assertFalse(self.put(sample(101.0, revision=4)))
+        self.assertFalse(self.put(sample(98.0, revision=4)))
+        self.assertEqual(self.slot.counts['old_revision'], 2)
 
     # 같은 revision 재발행: 내용은 그대로, stamp·수신 시각 갱신
     def test_same_revision_republish(self):

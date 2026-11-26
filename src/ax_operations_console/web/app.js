@@ -32,6 +32,11 @@ const ROLE_ICON = {
 const ROLE_LABEL = {MANIPULATOR: '조작', TRANSPORTER: '운송'};
 const TERMINAL = ['COMPLETED', 'FAILED', 'CANCELED'];
 
+const REGRESSED_LABEL = '시계 역행';
+
+// 시계 역행 라벨(색만 쓰지 않고 글자·아이콘)
+const regressedTag = () => `<span class="badge st-warn">${svgIcon('clock')}${REGRESSED_LABEL}</span>`;
+
 const svgIcon = shape => `<svg viewBox="0 0 12 12">${ICON[shape]}</svg>`;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const shown = item => item.display_status || item.status;
@@ -53,7 +58,9 @@ function notValue(status, reason) {
 function dot(item) {
   const disp = shown(item), grace = item.status && item.status !== disp;
   const age = item.recv_age_s == null ? '' : ` · 수신 ${item.recv_age_s}s / 기준 ${item.limit_s}s`;
-  const title = `${FRESH[disp] || disp}${grace ? ` (판정: ${FRESH[item.status]}, 표시 여유)` : ''}${age}`;
+  const stamp = item.stamp_age_shown_s == null ? '' : ` · 표본 ${item.stamp_age_shown_s}s`;
+  const regressed = item.clock_regressed ? ` · ${REGRESSED_LABEL}(원값 ${item.stamp_age_s}s)` : '';
+  const title = `${FRESH[disp] || disp}${grace ? ` (판정: ${FRESH[item.status]}, 표시 여유)` : ''}${age}${stamp}${regressed}`;
   return `<span class="dot ${disp}${grace ? ' grace' : ''}" title="${esc(title)}"></span>`;
 }
 
@@ -256,13 +263,14 @@ function renderDetail() {
     const m = it.meta;
     const judged = it.status === shown(it) ? FRESH[it.status] : `${FRESH[shown(it)]} (판정 ${FRESH[it.status]})`;
     return `<tr><td>${ITEM[kind] || esc(kind)}</td><td>${dot(it)} ${judged}</td><td>${detailValue(kind, it)}</td>
-      <td class="num">${it.recv_age_s ?? '—'} / ${it.stamp_age_s ?? '—'} / ${it.limit_s}</td>
+      <td class="num">${it.recv_age_s ?? '—'} / ${it.stamp_age_shown_s ?? '—'} / ${it.limit_s}${it.clock_regressed ? ` ${regressedTag()}` : ''}</td>
+      <td class="num">${it.stamp_age_s ?? '—'}</td>
       <td class="small">${m ? esc(m.source_id) : '<span class="muted">meta 없음</span>'}</td>
       <td class="small num">${m ? esc(m.session) : '—'}</td><td class="num">${m ? m.revision : '—'}</td>
       <td>${m ? (m.valid ? '<span class="st-ok">true</span>' : `<span class="st-warn">false ${esc(m.reason)}</span>`) : '—'}</td></tr>`;
   }).join('');
   $('dbody').innerHTML =
-    `<table class="grid"><tr><th>항목</th><th>상태</th><th>값</th><th>수신/표본 나이/기준(s)</th><th>source</th><th>session</th><th>rev</th><th>valid</th></tr>${rows}</table>
+    `<table class="grid"><tr><th>항목</th><th>상태</th><th>값</th><th>수신/표본 나이/기준(s)</th><th>표본 나이 원값(s)</th><th>source</th><th>session</th><th>rev</th><th>valid</th></tr>${rows}</table>
      <div class="small muted" style="margin-top:8px">배정·인계: ${assignText(r.assignment)}</div>
      <details><summary>원본 JSON</summary><pre>${esc(JSON.stringify(r, null, 1))}</pre></details>`;
 }

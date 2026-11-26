@@ -54,6 +54,7 @@ const areas = ['kpi-run', 'kpi-task', 'tasks', 'cards', 'dbody', 'no-source', 's
 const report = {};
 for (const [name, snap] of Object.entries(samples)) {
   const pass = {};
+  let regressedDetail = 0;
   for (const sel of [null, 'robot_1']) {
     if (sel) ctx.select(sel); else ctx.renderAll(snap);
     for (const id of areas) {
@@ -64,13 +65,15 @@ for (const [name, snap] of Object.entries(samples)) {
         svg: count(/<svg/g) - count(/<\/svg>/g),
         table: count(/<table/g) - count(/<\/table>/g)};
     }
+    if (sel) regressedDetail = (els.dbody.innerHTML.match(/시계 역행/g) || []).length;
     if (sel) ctx.select(sel);
   }
   ctx.setConn(false, '연결 끊김');
   const cards = els.cards.innerHTML;
   const count = re => (cards.match(re) || []).length;
   report[name] = {pass, stale: count(/nv stale/g), missing: count(/nv missing/g),
-    invalid: count(/nv invalid/g), grace: count(/dot ok grace/g), robots: view.n};
+    invalid: count(/nv invalid/g), grace: count(/dot ok grace/g), robots: view.n,
+    regressedCards: count(/시계 역행/g), regressedDetail};
 }
 console.log(JSON.stringify(report));
 """
@@ -116,6 +119,8 @@ def make_samples():
         'invalid': filled(valid=False).build_state(Clocks(100.1, 50.1)),
         'grace': filled(grace=0.5).build_state(Clocks(100.4, 50.4)),
         'clock_invalid': filled().build_state(Clocks(0.0, 50.1)),
+        # 시스템 시계 역행: 현재 sim(99.0)이 표본 stamp(100.0)보다 과거
+        'regressed': filled().build_state(Clocks(99.0, 50.1)),
     }
 
     for state in out.values():
@@ -174,6 +179,13 @@ class WebTest(unittest.TestCase):
         # 구동(0.3 s 기준) 2칸 × 4대가 만료 직후 표시 여유
         self.assertGreaterEqual(report['grace']['grace'], 8)
         self.assertEqual(report['clock_invalid']['invalid'], 24)
+
+        # 시계 역행: 판정은 정상 유지, 툴팁(카드)과 상세 표에 '시계 역행' 라벨
+        regressed = report['regressed']
+        self.assertEqual(regressed['stale'] + regressed['missing'] + regressed['invalid'], 0)
+        self.assertGreaterEqual(regressed['regressedCards'], 20)
+        self.assertGreaterEqual(regressed['regressedDetail'], 6)
+        self.assertEqual(normal['regressedCards'] + normal['regressedDetail'], 0)
 
     # 외부 자산 참조 없음
     def test_no_external_assets(self):

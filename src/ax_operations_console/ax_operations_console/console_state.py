@@ -5,7 +5,8 @@
 계약 2.3 소비자 규칙을 그대로 따른다.
 - (source_session_id, revision)으로 비교한다. 같은 세션에서 revision이 줄면 버린다.
 - 같은 revision이 다시 오면 내용은 바꾸지 않고 stamp와 수신 시각만 갱신한다(주기 재발행).
-- 같은 세션에서 stamp가 줄면 버린다. 새 세션의 첫 메시지를 받은 뒤 이전 세션 메시지는 버린다.
+  시스템 시계 역행으로 같은 revision의 stamp가 줄면 받되 수신 시각만 갱신하고 stamp는 큰 값을 유지한다.
+- 새 revision인데 같은 세션에서 stamp가 줄면 버린다. 새 세션의 첫 메시지를 받은 뒤 이전 세션 메시지는 버린다.
 - 미래 stamp(현재 sim time + 허용 오차 초과)와 stamp 0은 받지 않는다.
 - 표본 나이(sim time)와 무수신 시간(CLOCK_BOOTTIME)을 둘 다 검사해, 어느 쪽이든 만료 기준을 넘으면 만료다.
 - valid=false, revision=0이면 무효다.
@@ -73,8 +74,8 @@ class Slot:
     recv_boot: float = None
     retired_sessions: set = field(default_factory=set)
     counts: dict = field(default_factory=lambda: {
-        'accepted': 0, 'republished': 0, 'old_revision': 0, 'old_stamp': 0,
-        'old_session': 0, 'future_stamp': 0, 'zero_stamp': 0})
+        'accepted': 0, 'republished': 0, 'stamp_regressed_same_revision': 0, 'old_revision': 0,
+        'old_stamp': 0, 'old_session': 0, 'future_stamp': 0, 'zero_stamp': 0})
 
     # 새 표본 반영. 반영하면 True, 버리면 False(사유는 counts에 센다)
     def update(self, sample, now_sim, now_boot, future_tolerance_s):
@@ -100,23 +101,33 @@ class Slot:
                 self.retired_sessions.add(previous.session)
                 previous = None
 
-        # 같은 세션(또는 meta 없음) 안에서 stamp·revision 순서 검사
+        # 같은 세션(또는 meta 없음) 안에서 revision·stamp 순서 검사
         if previous is not None:
-            if sample.stamp < previous.stamp:
-                self.counts['old_stamp'] += 1
-                return False
+            same_revision = (sample.revision is not None and previous.revision is not None
+                             and sample.revision == previous.revision)
 
             if sample.revision is not None and previous.revision is not None:
                 if sample.revision < previous.revision:
                     self.counts['old_revision'] += 1
                     return False
 
-                # 같은 revision 재발행: 내용은 그대로, stamp·수신 시각만 갱신
-                if sample.revision == previous.revision:
+            # 같은 revision 재발행: 내용은 그대로 두고 수신 시각을 갱신한다.
+            # stamp는 큰 쪽을 유지한다. 시스템 시계가 역행해 stamp가 줄어든 재발행도 받되,
+            # 표본 나이는 줄이지 않는다(보수적)
+            if same_revision:
+                if sample.stamp < previous.stamp:
+                    self.counts['stamp_regressed_same_revision'] += 1
+                else:
                     previous.stamp = sample.stamp
-                    self.recv_boot = now_boot
                     self.counts['republished'] += 1
-                    return True
+
+                self.recv_boot = now_boot
+                return True
+
+            # 새 revision(또는 meta 없음)인데 stamp가 줄면 버린다
+            if sample.stamp < previous.stamp:
+                self.counts['old_stamp'] += 1
+                return False
 
         self.sample = sample
         self.recv_boot = now_boot
@@ -146,6 +157,12 @@ def judge(slot, clocks, limit_s, display_grace_s):
     out.update(recv_age_s=round(recv_age, 3),
                stamp_age_s=None if stamp_age is None else round(stamp_age, 3),
                meta=meta_view(sample))
+
+    # 표시용 표본 나이: 음수(현재 시각이 stamp보다 과거, 시스템 시계 역행 등)는 0으로 자르고 플래그를 단다.
+    # 판정은 아래에서 원값(stamp_age)으로 한다(음수는 만료로 보지 않음)
+    if stamp_age is not None:
+        out.update(stamp_age_shown_s=round(max(0.0, stamp_age), 3),
+                   clock_regressed=stamp_age < 0.0)
 
     # 판정 순서: 시계 무효 → 만료 → 생산자 무효 → 정상
     if clocks.sim <= 0.0:

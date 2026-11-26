@@ -50,12 +50,14 @@ ros2 launch ax_operations_console console.launch.py
   정상이 아닌 값은 0이나 빈칸으로 표시하지 않는다. 서버도 정상일 때만 `value`를 보낸다.
   위치가 없거나 만료되면 좌표를 보내지 않는다.
 - **만료:** 표본 나이(노드 clock, `use_sim_time`)와 무수신 시간(`CLOCK_BOOTTIME`) 가운데 하나라도 만료 기준(계약값)을 넘으면 만료다.
+  표본 나이가 음수(시스템 시계 역행)이면 판정은 그대로 두고, 화면은 `stamp_age_shown_s`(0으로 자름)와 `clock_regressed` 플래그로 "시계 역행" 라벨을 보인다(원값 `stamp_age_s`는 상세 표에 남긴다).
 - **미래 stamp:** 현재 sim time보다 `future_tolerance_s` = **0.1 s** 넘게 앞선 stamp는 받지 않는다(횟수만 센다).
   0.1 s는 같은 sim clock을 쓰는 발행자와 이 노드 사이의 `/clock` 전달 지연을 넘는 여유로 잡았다.
   stamp 0도 받지 않는다.
 - **세션·순서:**
-  - 같은 세션에서 revision이나 stamp가 줄면 버린다.
+  - 같은 세션에서 revision이 줄거나, 새 revision인데 stamp가 줄면 버린다.
   - 같은 revision이 다시 오면 내용은 두고 stamp·수신 시각만 갱신한다(주기 재발행).
+    시스템 시계가 역행해 같은 revision의 stamp가 줄면 버리지 않고 수신 시각만 갱신한다. stamp는 큰 값을 유지한다(`stamp_regressed_same_revision`).
   - 새 세션을 받은 뒤에는 이전 세션 메시지를 버린다.
   - `valid=false`, `revision=0`, 시계 0은 무효다.
 - **표시 여유:** 판정 `status`는 계약 만료값 그대로 낸다.

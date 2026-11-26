@@ -6,6 +6,8 @@
 // safety_gate.cpp가 ROS 메시지를 GateInput으로 정리하면, 여기서는 ROS 의존성 없이
 // 신선도·허가·정지 상태와 요청 속도를 검사해 A2로 보낼 최종 속도를 계산한다.
 #include <algorithm>
+#include <cstdint>
+#include <unordered_map>
 
 
 #include <cmath>
@@ -21,6 +23,9 @@ struct GateInput {
   bool state_fresh{false};
   bool travel_pose_valid{false};
   bool operational_permits_valid{false};
+  // operational_permits_valid is the existing explicit D2/D3 permit. This is
+  // an additional A4 handoff interlock and must not weaken that permit.
+  bool handoff_gate_valid{false};
   bool stop_required{true};
   bool allow_forward{false};
   bool allow_backward{false};
@@ -28,6 +33,47 @@ struct GateInput {
   double max_linear{0};
   double max_angular{0};
 };
+
+struct HandoffTaskInput {
+  std::string manipulator_robot_id;
+  std::string transporter_robot_id;
+  uint8_t transfer_state{0};
+};
+
+struct HandoffPeerInput {
+  bool actuation_fresh{false};
+  bool load_fresh{false};
+};
+
+constexpr uint8_t kTransferUnknown = 0;
+constexpr uint8_t kTransferLocked = 2;
+constexpr uint8_t kTransferInProgress = 3;
+
+// DEC-19 handoff gate. A fresh list with no assignment for this robot has no
+// handoff rule to apply. A missing/stale list or a session transition remains
+// conservative and blocks, including for an idle/unassigned robot.
+inline bool evaluate_handoff_gate(
+  const std::string &robot_id, bool tasks_fresh, bool session_changed,
+  const std::vector<HandoffTaskInput> &tasks,
+  const std::unordered_map<std::string, HandoffPeerInput> &peers)
+{
+  if (!tasks_fresh || session_changed) return false;
+  for (const auto &task : tasks) {
+    const bool is_manipulator = task.manipulator_robot_id == robot_id;
+    const bool is_transporter = task.transporter_robot_id == robot_id;
+    if (!is_manipulator && !is_transporter) continue;
+    if (task.transfer_state != kTransferUnknown &&
+        task.transfer_state != kTransferLocked &&
+        task.transfer_state != kTransferInProgress) continue;
+
+    const std::string &peer_id = is_manipulator ? task.transporter_robot_id : task.manipulator_robot_id;
+    const auto peer = peers.find(peer_id);
+    if (peer == peers.end() || !peer->second.actuation_fresh ||
+        (is_transporter && !peer->second.load_fresh)) return false;
+    return false;  // Any locked/in-progress task blocks this robot.
+  }
+  return true;
+}
 // A4가 실제로 보낼 속도와 주행 허용 여부이다.
 // drive_allowed가 false이면 호출자는 linear/angular를 사용하지 않고 정지 명령을 보내야 한다.
 
@@ -189,7 +235,8 @@ inline GateOutput evaluate_drive_gate(const GateInput& g, double linear, double 
   GateOutput result;
   // 초기 result는 의도적으로 정지 상태다. 모든 안전 조건을 만족할 때만 아래에서 허용한다.
   if (!g.enabled || !g.safety_fresh || !g.state_fresh ||
-      !g.travel_pose_valid || !g.operational_permits_valid || g.stop_required ||
+      !g.travel_pose_valid || !g.operational_permits_valid || !g.handoff_gate_valid ||
+      g.stop_required ||
       !std::isfinite(linear) || !std::isfinite(angular) ||
       !std::isfinite(g.max_linear) || !std::isfinite(g.max_angular) ||
       g.max_linear < 0 || g.max_angular < 0) return result;

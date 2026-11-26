@@ -51,6 +51,13 @@ install(PROGRAMS ax_safety/b4/b4_risk_node.py DESTINATION lib/${PROJECT_NAME} RE
 install(PROGRAMS ax_safety/a4/a4_supervisor_node.py DESTINATION lib/${PROJECT_NAME} RENAME a4_supervisor_node)
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_a4_handoff_gate
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../tools/tests/test_a4_handoff_gate.cpp)
+  target_include_directories(test_a4_handoff_gate PRIVATE include)
+endif()
+
 
 # package.xml의 build_type과 이 CMake 구성을 ament 패키지로 마무리한다.
 ament_package()

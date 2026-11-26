@@ -7,6 +7,7 @@
 #include <ax_interfaces/msg/corridor_observation_list.hpp>
 #include <ax_interfaces/msg/corridor_state_list.hpp>
 #include <ax_interfaces/msg/group_task_list.hpp>
+#include <ax_interfaces/msg/load_state.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -30,6 +31,7 @@ using ax_interfaces::msg::ActuationState;
 using ax_interfaces::msg::CorridorObservationList;
 using ax_interfaces::msg::CorridorStateList;
 using ax_interfaces::msg::GroupTaskList;
+using ax_interfaces::msg::LoadState;
 using geometry_msgs::msg::TwistStamped;
 using nav_msgs::msg::Odometry;
 using sensor_msgs::msg::JointState;
@@ -149,6 +151,8 @@ private:
   static constexpr double kClockPauseS = 3.0;
   static constexpr double kFleetStateTtlS = 3.0;
   static constexpr double kFleetObservationTtlS = 1.0;
+  static constexpr double kPeerActuationTtlS = 0.3;
+  static constexpr double kPeerLoadTtlS = 0.5;
 
   static double stamp_seconds(const builtin_interfaces::msg::Time &stamp) {
     return static_cast<double>(stamp.sec) + static_cast<double>(stamp.nanosec) * 1e-9;
@@ -292,6 +296,7 @@ private:
     g.state_fresh = state_fresh();
     g.travel_pose_valid = travel_pose_valid();
     g.operational_permits_valid = permits_verified_;
+    g.handoff_gate_valid = handoff_gate_valid();
     g.max_linear = max_linear_;
     g.max_angular = max_angular_;
     if (!got_safety_ || elapsed(received_safety_) > 0.5 ||
@@ -348,6 +353,39 @@ private:
     tasks_received_ = steady();
     tasks_revision_ = message.meta.revision;
     tasks_session_ = message.meta.source_session_id;
+    tasks_ = message;
+    for (const auto &task : tasks_.tasks) {
+      if (task.manipulator_robot_id == robot_ && !task.transporter_robot_id.empty())
+        ensure_peer_subscriptions(task.transporter_robot_id);
+      if (task.transporter_robot_id == robot_ && !task.manipulator_robot_id.empty())
+        ensure_peer_subscriptions(task.manipulator_robot_id);
+    }
+  }
+
+  void ensure_peer_subscriptions(const std::string &peer_id) {
+    if (peer_id.empty() || peer_id == robot_ || peer_actuation_subs_.count(peer_id) != 0) return;
+    auto state_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
+    peer_actuation_subs_[peer_id] = create_subscription<ActuationState>(
+      "/ax/" + peer_id + "/safety/actuation_state", state_qos,
+      [this, peer_id](ActuationState::SharedPtr m) { on_peer_actuation(peer_id, *m); });
+    peer_load_subs_[peer_id] = create_subscription<LoadState>(
+      "/ax/" + peer_id + "/load/state", state_qos,
+      [this, peer_id](LoadState::SharedPtr m) { on_peer_load(peer_id, *m); });
+  }
+
+  void on_peer_actuation(const std::string &peer_id, const ActuationState &message) {
+    auto &peer = peer_states_[peer_id];
+    peer.actuation_fresh = message.robot_id == peer_id &&
+      message.meta.schema_version == 2 &&
+      state_meta_valid(message.meta, now().seconds(), kPeerActuationTtlS);
+    peer.actuation_received = steady();
+  }
+
+  void on_peer_load(const std::string &peer_id, const LoadState &message) {
+    auto &peer = peer_states_[peer_id];
+    peer.load_fresh = message.robot_id == peer_id &&
+      state_meta_valid(message.meta, now().seconds(), kPeerLoadTtlS);
+    peer.load_received = steady();
   }
 
   void on_corridors(const CorridorStateList &message) {
@@ -375,6 +413,45 @@ private:
 
   bool live_tasks_fresh() const {
     return tasks_seen_ && tasks_meta_valid_ && elapsed(tasks_received_) <= kFleetStateTtlS;
+  }
+
+  bool handoff_gate_valid() const {
+    std::vector<ax_safety::HandoffTaskInput> task_inputs;
+    std::unordered_map<std::string, ax_safety::HandoffPeerInput> peers;
+    if (tasks_seen_ && tasks_meta_valid_) {
+      task_inputs.reserve(tasks_.tasks.size());
+      for (const auto &task : tasks_.tasks) {
+        task_inputs.push_back({task.manipulator_robot_id, task.transporter_robot_id,
+                               task.transfer_state});
+      }
+      for (const auto &entry : peer_states_) {
+        peers[entry.first] = {
+          entry.second.actuation_fresh && elapsed(entry.second.actuation_received) <= kPeerActuationTtlS,
+          entry.second.load_fresh && elapsed(entry.second.load_received) <= kPeerLoadTtlS};
+      }
+    }
+    return ax_safety::evaluate_handoff_gate(
+      robot_, live_tasks_fresh(), false, task_inputs, peers);
+  }
+
+  bool handoff_peer_state_stale() const {
+    if (!live_tasks_fresh()) return false;
+    for (const auto &task : tasks_.tasks) {
+      const bool is_manipulator = task.manipulator_robot_id == robot_;
+      const bool is_transporter = task.transporter_robot_id == robot_;
+      if ((!is_manipulator && !is_transporter) ||
+          (task.transfer_state != ax_safety::kTransferUnknown &&
+           task.transfer_state != ax_safety::kTransferLocked &&
+           task.transfer_state != ax_safety::kTransferInProgress)) continue;
+      const std::string &peer_id = is_manipulator ? task.transporter_robot_id : task.manipulator_robot_id;
+      const auto it = peer_states_.find(peer_id);
+      if (it == peer_states_.end() ||
+          !it->second.actuation_fresh ||
+          elapsed(it->second.actuation_received) > kPeerActuationTtlS ||
+          (is_transporter && (!it->second.load_fresh ||
+                              elapsed(it->second.load_received) > kPeerLoadTtlS))) return true;
+    }
+    return false;
   }
 
   bool live_corridors_fresh() const {
@@ -407,6 +484,9 @@ private:
       details.emplace_back(std::string("B3_OBSERVATION=") +
                            (live_corridor_observation_fresh() ? "FRESH" : "MISSING_OR_STALE"));
     }
+    if (!gate.handoff_gate_valid)
+      details.emplace_back("HANDOFF_LOCK:D2_TASK_ASSIGNMENT_OR_TRANSFER_NOT_SAFE");
+    if (handoff_peer_state_stale()) details.emplace_back("PEER_STATE_STALE");
     if (!gate.enabled) details.emplace_back("SIMULATION_DRIVE_DISABLED:PARAMETER_OFF");
     if (details.empty()) return "NONE";
     std::ostringstream out;
@@ -444,7 +524,8 @@ private:
 
     // stop_required와 미검증 조건은 새 명령이 없어도 계속 정지 출력을 유지해야 한다.
     if (!cmd_fresh || !gate.enabled || !gate.safety_fresh || !gate.state_fresh ||
-        !gate.travel_pose_valid || !gate.operational_permits_valid || gate.stop_required) stop();
+        !gate.travel_pose_valid || !gate.operational_permits_valid ||
+        !gate.handoff_gate_valid || gate.stop_required) stop();
 
     // ActuationState는 다른 파트가 현재 주행 가능 여부와 차단 원인을 확인하는 공통 결과다.
     ActuationState m;
@@ -484,7 +565,8 @@ private:
     // 배터리 UNKNOWN이나 B4 STOP_REQUIRED는 gate.safety_fresh/stop_required를
     // 통해 여기서 허가를 차단한다. 실제 정지 판정은 다음 블록에서 독립적으로 한다.
     m.drive_allowed = clock_ok && gate.enabled && gate.safety_fresh && gate.state_fresh &&
-                      gate.travel_pose_valid && gate.operational_permits_valid && !gate.stop_required;
+                      gate.travel_pose_valid && gate.operational_permits_valid &&
+                      gate.handoff_gate_valid && !gate.stop_required;
     m.arm_allowed = arm_approved_ && clock_ok && gate.enabled && gate.state_fresh &&
                     gate.safety_fresh && !gate.stop_required; // 이후 A3 lease 검사는 팔 서버 책임
 
@@ -523,7 +605,8 @@ private:
     if (!gate.safety_fresh) m.block_reasons.push_back("SAFETY_STOP");
     if (!gate.state_fresh) m.block_reasons.push_back("STATE_STALE");
     if (!gate.travel_pose_valid) m.block_reasons.push_back("TRAVEL_POSE_UNVERIFIED");
-    if (!gate.operational_permits_valid) m.block_reasons.push_back("HANDOFF_LOCK");
+    if (!gate.operational_permits_valid || !gate.handoff_gate_valid)
+      m.block_reasons.push_back("HANDOFF_LOCK");
     if (!gate.enabled) m.block_reasons.push_back("SIMULATION_DRIVE_DISABLED");
     pub_state_->publish(m);
 
@@ -594,6 +677,13 @@ private:
   SafetyState safety_;
   Odometry odom_;
   JointState joints_;
+  struct PeerStateCache {
+    bool actuation_fresh{false};
+    bool load_fresh{false};
+    std::chrono::steady_clock::time_point actuation_received{};
+    std::chrono::steady_clock::time_point load_received{};
+  };
+  GroupTaskList tasks_;
   // D-06 표본 기반 정지 근거(채널별 연속 저속 구간), 기준 관절 집합, tick 시계 감시
   ax_safety::LowChannel odom_channel_, joint_channel_;
   // 진단 전용 카운터·상태(판정에 쓰지 않음)
@@ -608,6 +698,7 @@ private:
   uint64_t tasks_revision_{0}, corridors_revision_{0};
   std::string tasks_session_, corridors_session_;
   std::unordered_set<std::string> tasks_retired_sessions_, corridors_retired_sessions_;
+  std::unordered_map<std::string, PeerStateCache> peer_states_;
   bool has_prev_tick_time_{false};
   double prev_tick_time_{0.0};
   std::chrono::steady_clock::time_point last_clock_advance_{steady()};
@@ -623,6 +714,8 @@ private:
   rclcpp::Subscription<JointState>::SharedPtr sub_joints_;
   rclcpp::Subscription<TwistStamped>::SharedPtr sub_cmd_;
   rclcpp::Subscription<GroupTaskList>::SharedPtr sub_tasks_;
+  std::unordered_map<std::string, rclcpp::Subscription<ActuationState>::SharedPtr> peer_actuation_subs_;
+  std::unordered_map<std::string, rclcpp::Subscription<LoadState>::SharedPtr> peer_load_subs_;
   rclcpp::Subscription<CorridorStateList>::SharedPtr sub_corridors_;
   rclcpp::Subscription<CorridorObservationList>::SharedPtr sub_corridor_observation_;
   rclcpp::TimerBase::SharedPtr timer_;

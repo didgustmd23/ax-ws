@@ -3,6 +3,8 @@
 확인: 개발 이름공간 입고 관측 → ReceiptEvent·InventorySnapshot, RegisterTask 서비스 멱등·사건당 작업 1개·
 용량 거절, 재고 STATE QoS·늦은 구독, 재시작 뒤 재고 revision 유지·관측 재판정 없음, 운영 이름·운영 모드
 거부, 그래프상 Action·운영 Topic·cmd_vel 없음, SIGINT 종료와 잔여 프로세스 0.
+시각: 입고 흐름 시험은 노드를 use_sim_time으로 띄우고 시험이 /clock을 time.monotonic 기반으로 낸다(WSL 시스템
+시계 역행이 관측 나이 판정에 섞이지 않게). 실패하면 단언 메시지에 노드 출력 끝부분을 붙인다.
 환경: 검증할 격리 install을 source한 셸. domain은 ros_test_domain으로 80~89에서 빈 곳을 예약한다.
 """
 import os
@@ -11,6 +13,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 
@@ -22,6 +25,7 @@ from ax_interfaces.srv import RegisterTask
 from rclpy.action import get_action_client_names_and_types_by_node
 from rclpy.action import get_action_server_names_and_types_by_node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from rosgraph_msgs.msg import Clock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ros_test_domain  # noqa: E402
@@ -40,7 +44,84 @@ EVENT_QOS = QoSProfile(reliability=ReliabilityPolicy.RELIABLE,
                        durability=DurabilityPolicy.VOLATILE,
                        history=HistoryPolicy.KEEP_LAST, depth=50)
 RUN_TAG = f'd2_w5_intake_ros_{os.getpid()}'
+# 시험 /clock: 200 Hz(눈금 5 ms, 관측 stamp 여유 0.5 s의 1%), 시작 시각 1000 s(0이면 노드가 재고 발행을 건너뜀)
+CLOCK_PERIOD_S = 0.005
+CLOCK_START_S = 1000.0
+# 관측 stamp는 마지막으로 낸 /clock보다 이만큼 과거로 찍는다. 노드가 받은 /clock이 시험보다 늦어도(최대 0.5 s)
+# 미래가 되지 않고, 전달이 1.5 s 넘게 늦지 않으면 나이 한계 2.0 s 안에 든다
+OBS_STAMP_BACK_S = 0.5
+# 관측 발행 전 매칭 대기 상한(s). 기동~매칭 실측(부하 포함)보다 넉넉하고 서비스 대기 10 s와 맞춘다
+MATCH_TIMEOUT_S = 10.0
+# 매칭 뒤 관측 발행 전 대기(s). 매칭은 시험 쪽 endpoint 기준이라 노드 쪽(사건 발행자가 시험 구독을 알고,
+# /clock을 처음 받기까지)이 늦을 수 있다. 빼면 재시작 뒤 사건 유실·기동 직후 시각 판정 거절이 났다(150회 중 4회)
+MATCH_SETTLE_S = 0.3
+# 실패 메시지에 붙일 노드 출력 줄 수
+OUTPUT_TAIL_LINES = 40
+OUTPUT_MARK = '--- 노드 출력 끝'
 _domain_state = None
+
+
+# 시험이 내는 /clock. spin과 무관한 별도 스레드가 time.monotonic 기반으로 단조 증가 값을 계속 낸다
+class MonotonicClockSource:
+    """시스템 시계(time.time) 역행과 무관한 시험 시각."""
+
+    # 발행 노드·시작 기준
+    def __init__(self, node):
+        self.pub = node.create_publisher(Clock, '/clock', 10)
+        self.mono0 = time.monotonic()
+        self.last_ns = 0
+        self.lock = threading.Lock()
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+
+    # 현재 시험 시각(ns), monotonic 기반
+    def now_ns(self):
+        return int((CLOCK_START_S + time.monotonic() - self.mono0) * 1e9)
+
+    # 마지막으로 발행한 /clock 값(ns)
+    def published_ns(self):
+        with self.lock:
+            return self.last_ns
+
+    # 발행 반복(첫 값은 바로 낸다)
+    def _run(self):
+        while not self.stop_event.is_set():
+            ns = self.now_ns()
+            msg = Clock()
+            msg.clock.sec, msg.clock.nanosec = divmod(ns, 1_000_000_000)
+            self.pub.publish(msg)
+
+            with self.lock:
+                self.last_ns = ns
+
+            self.stop_event.wait(CLOCK_PERIOD_S)
+
+    # 시작하고 첫 값이 나갈 때까지 대기
+    def start(self):
+        self.thread.start()
+        while self.published_ns() == 0:
+            time.sleep(0.001)
+
+    # 정지
+    def stop(self):
+        self.stop_event.set()
+        self.thread.join(timeout=5.0)
+
+
+# 시험 메서드 실패(단언·IndexError 등) 시 노드 출력 끝부분을 AssertionError 메시지에 붙인다
+def with_node_output(test):
+    def wrapper(self):
+        try:
+            test(self)
+        except Exception as error:
+            # 이미 노드 출력을 붙인 실패(매칭 대기 초과)는 그대로 올린다
+            if OUTPUT_MARK in str(error):
+                raise
+            raise AssertionError(f'{type(error).__name__}: {error}\n{self.output_tails()}') from error
+
+    wrapper.__name__ = test.__name__
+    wrapper.__doc__ = test.__doc__
+    return wrapper
 
 
 # 모듈 domain 예약과 빈 domain 확인
@@ -69,14 +150,21 @@ class D2IntakeNodeRosTest(unittest.TestCase):
         prefix = get_package_prefix('ax_fleet_manager')
         cls.executable = str(Path(prefix) / 'lib' / 'ax_fleet_manager' / 'd2_dev_intake')
         cls.tmp = Path(tempfile.mkdtemp(prefix='ax_d2_intake_ros_'))
+        cls.log_count = 0
         rclpy.init()
         cls.node = rclpy.create_node('d2_intake_ros_probe')
+        # /clock 전용 노드(spin하지 않고 발행만 한다)
+        cls.clock_node = rclpy.create_node('d2_intake_ros_clock')
+        cls.clock = MonotonicClockSource(cls.clock_node)
+        cls.clock.start()
         cls.obs_pub = cls.node.create_publisher(ReceiptObservation, OBS_TOPIC, EVENT_QOS)
         cls.client = cls.node.create_client(RegisterTask, REGISTER_SERVICE)
 
     # 시험 노드 정리(임시 원장 폴더는 지우지 않고 경로를 남긴다)
     @classmethod
     def tearDownClass(cls):
+        cls.clock.stop()
+        cls.clock_node.destroy_node()
         cls.node.destroy_node()
         rclpy.shutdown()
         print(f'[d2_intake_ros] 임시 원장 폴더: {cls.tmp}', file=sys.stderr)
@@ -103,30 +191,50 @@ class D2IntakeNodeRosTest(unittest.TestCase):
                 proc.wait()
         return proc.returncode
 
-    # 노드 실행
+    # 노드 실행. 출력은 시험 임시 폴더의 파일로 받는다(PIPE 버퍼가 차서 노드가 멈추지 않게)
     def start(self, params, extra=()):
         args = [self.executable, '--ros-args']
         for key, value in params.items():
             args += ['-p', f'{key}:={value}']
         args += list(extra)
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+        log_dir = self.tmp / 'node_logs'
+        log_dir.mkdir(exist_ok=True)
+        type(self).log_count += 1
+        log_path = log_dir / f'{self._testMethodName}_{self.log_count:02d}.log'
+        env = dict(os.environ, RCUTILS_LOGGING_BUFFERED_STREAM='0', PYTHONUNBUFFERED='1')
+
+        with open(log_path, 'w') as log:
+            proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, text=True, env=env)
+        proc.log_path = log_path
         self.procs.append(proc)
         return proc
 
-    # 조건까지 수신
+    # 하위 프로세스 출력 전체
+    def output(self, proc):
+        return proc.log_path.read_text(errors='replace')
+
+    # 이 시험에서 띄운 노드들의 출력 끝부분(실패 메시지용)
+    def output_tails(self):
+        if not self.procs:
+            return f'{OUTPUT_MARK}: 이 시험에서 띄운 노드 없음 ---'
+
+        parts = []
+        for proc in self.procs:
+            lines = self.output(proc).splitlines()[-OUTPUT_TAIL_LINES:]
+            parts.append(f'{OUTPUT_MARK} {OUTPUT_TAIL_LINES}줄: {proc.log_path} ---')
+            parts.extend(lines)
+        return '\n'.join(parts)
+
+    # 조건까지 수신. action이 있으면 사건 구독·관측 발행이 양쪽 다 매칭된 뒤 보낸다(상한 넘으면 보내지 않고 실패)
     def collect(self, msg_type, topic, qos, duration, until=None, action=None):
         got = []
         sub = self.node.create_subscription(msg_type, topic, got.append, qos)
-        end = time.monotonic() + duration
         try:
             if action is not None:
-                deadline = time.monotonic() + 5.0
-                while (self.node.count_subscribers(OBS_TOPIC) == 0
-                       or self.node.count_publishers(topic) == 0) \
-                        and time.monotonic() < deadline:
-                    rclpy.spin_once(self.node, timeout_sec=0.05)
-                time.sleep(0.3)
+                self.wait_matched(sub, topic)
                 action()
+            end = time.monotonic() + duration
             while time.monotonic() < end:
                 rclpy.spin_once(self.node, timeout_sec=0.05)
                 if until and got and until(got):
@@ -135,10 +243,30 @@ class D2IntakeNodeRosTest(unittest.TestCase):
             self.node.destroy_subscription(sub)
         return got
 
+    # 사건 구독이 노드 발행자와, 관측·/clock 발행자가 노드 구독과 매칭될 때까지 대기(endpoint 매칭 기준).
+    # 상한을 넘으면 관측을 보내지 않고 실패한다. 매칭 뒤 MATCH_SETTLE_S만큼 더 기다린다
+    def wait_matched(self, sub, topic):
+        deadline = time.monotonic() + MATCH_TIMEOUT_S
+
+        def counts():
+            return (sub.get_publisher_count(), self.obs_pub.get_subscription_count(),
+                    self.clock.pub.get_subscription_count())
+
+        while not all(count > 0 for count in counts()):
+            if time.monotonic() >= deadline:
+                events, observations, clock = counts()
+                self.fail(f'매칭 대기 초과: {MATCH_TIMEOUT_S} s 동안 {topic} 발행자 {events}, '
+                          f'{OBS_TOPIC} 구독자 {observations}, /clock 구독자 {clock}\n'
+                          f'{self.output_tails()}')
+            rclpy.spin_once(self.node, timeout_sec=0.05)
+
+        time.sleep(MATCH_SETTLE_S)
+
     # 입고 관측 발행
     def observe(self, observation_id, object_id='obj-ros-1', object_class='box_small'):
         msg = ReceiptObservation()
-        msg.meta.header.stamp = self.node.get_clock().now().to_msg()
+        sec, nanosec = divmod(self.clock.published_ns() - int(OBS_STAMP_BACK_S * 1e9), 1_000_000_000)
+        msg.meta.header.stamp.sec, msg.meta.header.stamp.nanosec = sec, nanosec
         msg.meta.source_id = 'c1_ros_test'
         msg.meta.source_session_id = 'test_session'
         msg.meta.revision = 1
@@ -169,11 +297,12 @@ class D2IntakeNodeRosTest(unittest.TestCase):
         self.assertTrue(got, '재고 snapshot 수신 없음')
         return got[-1]
 
-    # 입고 → 사건·재고, 반복 관측, 서비스 멱등·용량, 재시작 뒤 revision 유지, 그래프
+    # 입고 → 사건·재고, 반복 관측, 서비스 멱등·용량, 재시작 뒤 revision 유지, 그래프(시험 /clock 기준)
+    @with_node_output
     def test_receipt_inventory_and_register(self):
         store = self.tmp / 'flow' / 'd2.sqlite'
         store.parent.mkdir()
-        self.start({'store_path': str(store)})
+        self.start({'store_path': str(store), 'use_sim_time': 'true'})
 
         events = self.collect(ReceiptEvent, EVENT_TOPIC, EVENT_QOS, 10.0,
                               until=lambda g: True, action=lambda: self.observe('ob-r1'))
@@ -233,7 +362,7 @@ class D2IntakeNodeRosTest(unittest.TestCase):
 
         # SIGINT 종료 → 재시작: 재고 revision 유지, 같은 관측은 재판정 없이 같은 사건
         self.assertEqual(self.stop(self.procs[0]), 0)
-        self.start({'store_path': str(store)})
+        self.start({'store_path': str(store), 'use_sim_time': 'true'})
         restarted = self.inventory()
         self.assertGreaterEqual(restarted.meta.revision, revision)
         self.assertEqual([i.object_id for i in restarted.items], ['obj-ros-1'])
@@ -257,7 +386,8 @@ class D2IntakeNodeRosTest(unittest.TestCase):
         for params, extra in cases:
             with self.subTest(params=params, extra=extra):
                 proc = self.start(params, extra)
-                output, _ = proc.communicate(timeout=20)
+                proc.wait(timeout=20)
+                output = self.output(proc)
                 self.assertEqual(proc.returncode, 2, output)
                 self.assertIn('시작 거부', output)
         self.assertEqual(self.node.get_publishers_info_by_topic('/ax/fleet/inventory'), [])

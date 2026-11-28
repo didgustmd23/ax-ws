@@ -8,7 +8,8 @@
   STEADY 시계(use_sim_time이어도), stamp는 ROS 시간이다.
 - source_id는 d2_dev_mock:<fixture_id 또는 store>로 출처를 남긴다. 혼합 모드 작업이 하나라도 있으면
   d2_dev_mixed:<label>이며 파라미터 mode가 아니라 작업 상태의 모드로 정한다. source_session_id는 시작마다
-  새로 만든다.
+  새로 만들고, 발행 직전 ROS 시각이 직전까지 낸 가장 큰 stamp보다 CLOCK_REGRESSION_TOLERANCE_NS 넘게
+  작으면(use_sim_time에서 sim 시간 리셋 등) 새로 발급한다(revision은 그대로, 시스템 시계 역행은 대상 아님).
 """
 import os
 import sys
@@ -19,18 +20,22 @@ from ax_interfaces.msg import GroupTaskList, GroupTaskStatus, StateMeta
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
+from rclpy.logging import get_logger
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
 from . import group_model as gm
 from .node_config import (
     DEFAULT_OUTPUT_TOPIC, ConfigError, load_fixture, load_store_states, node_mode,
-    validate_output_topic,
+    shutdown_in_progress, validate_output_topic,
 )
 from .snapshot import source_prefix, task_list_fields
 from .task_store import StoreError
 
 SCHEMA_VERSION = 1
+# ROS 시각 역행 판정 허용 오차(ns). 개발용 잠정값(미정 수치): 관제 미래 stamp 허용 오차 0.1 s와 맞췄다.
+# 같은 값 반복(/clock 정지)은 역행이 아니고, 이보다 작은 sim 역행은 세션을 바꾸지 않는다(sim 시간에만 적용)
+CLOCK_REGRESSION_TOLERANCE_NS = 100_000_000
 STATE_QOS = QoSProfile(reliability=ReliabilityPolicy.RELIABLE,
                        durability=DurabilityPolicy.TRANSIENT_LOCAL,
                        history=HistoryPolicy.KEEP_LAST, depth=1)
@@ -69,6 +74,9 @@ class GroupTaskDevPublisher(Node):
         self.label = '+'.join(labels)
         self.source_id = source_prefix(self.fixture_states) + self.label
         self.session_id = uuid.uuid4().hex
+        # 이 세션에서 낸 가장 큰 stamp(ns)와 ROS 시각 역행으로 세션을 새로 발급한 횟수
+        self.last_stamp_ns = None
+        self.session_renewals = 0
         self.revision = 0
         self.last = None
         # 시계가 유효하지 않아(ROS 시각 0, use_sim_time에서 /clock 수신 전) 건너뛴 발행 횟수
@@ -138,6 +146,8 @@ class GroupTaskDevPublisher(Node):
             self.get_logger().debug('ROS 시각 0(/clock 수신 전): 발행 건너뜀', once=True)
             return
 
+        self._renew_session_on_regression(now.nanoseconds)
+
         states = self.fixture_states + self.store_states
         fields = task_list_fields(states)
         self.source_id = source_prefix(states) + self.label
@@ -157,6 +167,28 @@ class GroupTaskDevPublisher(Node):
         msg.meta.validity_reason = self.reason
         msg.tasks = [GroupTaskStatus(**item) for item in fields]
         self.publisher.publish(msg)
+        self.last_stamp_ns = max(self.last_stamp_ns or 0, now.nanoseconds)
+
+    # sim 시간(/clock)이 쓰이는 중이고, 발행 직전 ROS 시각이 직전 최대 stamp보다 허용 오차 넘게 작으면
+    # source_session_id를 새로 발급한다. 소비자는 같은 세션에서 stamp가 줄어든 새 revision을 버리므로(계약 2.3),
+    # sim 리셋 뒤 새 세션으로 비교를 다시 시작하게 한다. 시스템 시계(WSL 등에서 수 초 역행)는 대상이 아니다:
+    # 역행은 기존 소비자 규칙(같은 revision stamp 감소 허용)으로 처리한다. 판정은 발행마다 시계의 현재 상태로 한다
+    def _renew_session_on_regression(self, now_ns):
+        if self.last_stamp_ns is None or not self.get_clock().ros_time_is_active:
+            return
+
+        if now_ns >= self.last_stamp_ns - CLOCK_REGRESSION_TOLERANCE_NS:
+            return
+
+        previous, previous_stamp_ns = self.session_id, self.last_stamp_ns
+        self.session_id = uuid.uuid4().hex
+        self.session_renewals += 1
+        self.last_stamp_ns = None
+
+        self.get_logger().info(
+            f'ROS 시각 역행({previous_stamp_ns * 1e-9:.3f} s → {now_ns * 1e-9:.3f} s): '
+            f'source_session_id 재발급 {previous} → {self.session_id} '
+            f'(재발급 {self.session_renewals}회, revision {self.revision} 유지)')
 
 
 # 진입점. 설정 거부는 종료 코드 2
@@ -173,6 +205,13 @@ def main(args=None):
         code = 2
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError as error:
+        # 종료 신호 처리 중 spin에서 올라온 RuntimeError만 정상 종료로 본다. 그 밖에는 그대로 올린다
+        if not shutdown_in_progress(rclpy.ok):
+            raise
+
+        get_logger('d2_group_dev_publisher').info(
+            f'종료 신호 처리 중 spin RuntimeError를 정상 종료로 처리: {error}')
     finally:
         if node is not None:
             node.destroy_node()

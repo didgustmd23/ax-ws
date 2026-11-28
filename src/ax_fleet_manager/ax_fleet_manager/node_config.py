@@ -7,6 +7,7 @@
 import json
 import re
 import sqlite3
+import time
 from pathlib import Path
 
 from . import group_model as gm
@@ -24,6 +25,9 @@ TOPIC_PATTERN = re.compile(r'^/[a-z0-9_]+(/[a-z0-9_]+)+$')
 FIXTURE_KEYS = ('fixture_id', 'map_revision', 'locations', 'tasks', 'assignments')
 MAX_FIXTURE_BYTES = 256 * 1024
 MAX_FIXTURE_TASKS = 32
+# spin에서 RuntimeError가 난 뒤 컨텍스트 shutdown(SIGINT 처리)을 기다리는 유예(s). SIGINT 뒤 KeyboardInterrupt
+# 시점에 아직 ok였던 경우도 부하 중 최대 6.75 ms 안에 shutdown됐다(100회 중 8회). 유예는 그 약 70배다
+SHUTDOWN_GRACE_S = 0.5
 
 
 class ConfigError(ValueError):
@@ -43,6 +47,21 @@ def validate_output_topic(topic):
             raise ConfigError(f'운영 이름공간 이름을 포함한 출력 Topic 거부: {topic}')
 
     return topic
+
+
+# 종료 신호 처리 중인지: ok()(rclpy.ok)가 유예 안에 False가 되면 True. rclpy Jazzy는 SIGINT를 받으면 별도 스레드가
+# 컨텍스트를 shutdown하고 Python KeyboardInterrupt도 올린다. 그 사이 실행기가 메시지를 꺼내는(take) 중이면
+# KeyboardInterrupt 대신 RuntimeError가 올라올 수 있다. 컨텍스트가 계속 살아 있으면 다른 결함이므로 False
+def shutdown_in_progress(ok, grace_s=SHUTDOWN_GRACE_S, poll_s=0.001):
+    deadline = time.monotonic() + grace_s
+
+    while ok():
+        if time.monotonic() >= deadline:
+            return False
+
+        time.sleep(poll_s)
+
+    return True
 
 
 # 노드 파라미터 mode·live_kinds 검사. ROS 배열 파라미터는 list로 받는다

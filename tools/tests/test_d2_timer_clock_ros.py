@@ -1,4 +1,5 @@
-"""D2 개발 노드의 재발행·폴링 타이머가 STEADY 시계인지 확인한다(격리 install 필요, spin 없음).
+"""D2 개발 노드의 재발행·폴링 타이머가 STEADY 시계인지, 세션 재발급이 sim 시간 역행에서만 일어나는지
+확인한다(격리 install 필요, spin 없음).
 
 실행(격리 install을 source한 셸, 사용자 세션과 다른 ROS_DOMAIN_ID):
   python3 -m pytest -q -p no:cacheprovider tools/tests/test_d2_timer_clock_ros.py
@@ -62,3 +63,50 @@ def test_intake_node_timer_is_steady(tmp_path, use_sim_time):
 
     assert clocks == [ClockType.STEADY_TIME]
     assert stamp_clock == ClockType.ROS_TIME
+
+
+# 노드를 만들고 시계를 직접 조정하며 발행 함수를 불러 세션 재발급 횟수를 센다(spin 없음).
+# sim이면 set_ros_time_override로 200 s → 100 s 역행을 만들고, 시스템 시계면 직전 stamp를 10 s 미래로
+# 둔다(시험이 시스템 시계 역행을 일으킬 수 없어 같은 판정 조건을 직접 만든다)
+def renewals_after_regression(factory, params, publish_name, use_sim_time):
+    from rclpy.time import Time
+
+    args = ['--ros-args'] + [x for k, v in params.items() for x in ('-p', f'{k}:={v}')]
+    args += ['-p', f'use_sim_time:={str(use_sim_time).lower()}']
+    rclpy.init(args=args)
+
+    try:
+        node = factory()
+        publish = getattr(node, publish_name)
+        before = node.session_id
+
+        if use_sim_time:
+            node.get_clock().set_ros_time_override(Time(seconds=200))
+            publish()
+            node.get_clock().set_ros_time_override(Time(seconds=100))
+        else:
+            publish()
+            node.last_stamp_ns = node.get_clock().now().nanoseconds + 10 * 10**9
+
+        publish()
+        result = (node.session_renewals, node.session_id != before)
+        node.destroy_node()
+    finally:
+        rclpy.shutdown()
+
+    return result
+
+
+# 세션 재발급은 sim 시간 역행에서만: sim 1회, 시스템 시계(같은 크기 이상 역행 조건)에서는 0회
+@pytest.mark.parametrize('use_sim_time,expected', [(True, (1, True)), (False, (0, False))])
+@pytest.mark.parametrize('which', ['group', 'intake'])
+def test_session_renewal_only_on_sim_time(tmp_path, which, use_sim_time, expected):
+    if which == 'group':
+        from ax_fleet_manager.group_node import GroupTaskDevPublisher
+        factory, params, name = GroupTaskDevPublisher, {'fixture_file': FIXTURE}, '_publish'
+    else:
+        from ax_fleet_manager.intake_node import ReceiptIntakeDevNode
+        factory, params = ReceiptIntakeDevNode, {'store_path': tmp_path / 'd2.sqlite'}
+        name = '_publish_inventory'
+
+    assert renewals_after_regression(factory, params, name, use_sim_time) == expected

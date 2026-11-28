@@ -300,7 +300,8 @@ ros2 run ax_fleet_manager group_dev_publisher --ros-args -p store_path:=/tmp/<�
 - 재발행·원장 폴링 타이머(입고 노드의 재고 1 Hz 재발행 포함)는 `use_sim_time`이어도 STEADY 시계로 돈다(소비자의 무수신 판정이 수신 측 CLOCK_BOOTTIME 기준이고, 시스템 시계가 역행하면 ROS 시계 타이머 간격이 2 s 넘게 벌어진 기록이 있다). 메시지 stamp는 지금처럼 `get_clock().now()`(ROS 시간, sim이면 sim)다.
 - sim 정지 중에는 같은 revision을 같은 stamp(정지 시점 sim 시각)로 1 Hz 재발행한다(D-05 '새 stamp'는 sim이 진행할 때만 해당).
 - ROS 시각이 0이면(`use_sim_time`에서 `/clock` 수신 전) 작업 목록·재고를 발행하지 않고 다음 STEADY tick에서 다시 시도한다(stamp 0 메시지를 내지 않음, 건너뛴 횟수는 노드 내부 카운터와 디버그 로그 1회).
-- `source_id`는 `d2_dev_mock:<fixture_id>` 또는 `d2_dev_mock:store`, `source_session_id`는 시작마다 새로 만든다. 단계 진행은 `task_revision`을 올리지 않는다(`task_revision`·`schedule_revision`은 입력값 그대로).
+- sim 시간 역행(`use_sim_time`에서 sim 시간 리셋 등): 작업 목록·재고 모두 sim 시간이 쓰이는 중(`ros_time_is_active`, 발행마다 확인) 발행 직전 ROS 시각이 이 세션에서 낸 가장 큰 stamp보다 0.1 s(개발용 잠정값, `CLOCK_REGRESSION_TOLERANCE_NS`) 넘게 작으면 `source_session_id`를 새로 발급하고 info 로그를 1회 남긴다(노드 내부 카운터 `session_renewals`). revision은 그대로(재고는 원장 값), stamp는 계속 ROS 시간이다. 같은 세션에서 stamp가 줄어든 새 revision을 소비자가 버려 옛 stamp를 넘을 때까지 stale이 되는 것을 막는다(계약 2.3, 세션끼리는 선후 비교 안 함). /clock 정지(같은 값)와 0.1 s 이하 역행은 세션을 바꾸지 않는다. 시스템 시계(`use_sim_time:=false`)의 역행(WSL에서 약 30 s마다 1~2.5 s 측정)에는 세션을 바꾸지 않고, 기존 소비자 규칙(같은 revision의 stamp 감소는 받고 큰 stamp 유지)에 맡긴다.
+- `source_id`는 `d2_dev_mock:<fixture_id>` 또는 `d2_dev_mock:store`, `source_session_id`는 시작마다(그리고 위 sim 시간 역행 때) 새로 만든다. 단계 진행은 `task_revision`을 올리지 않는다(`task_revision`·`schedule_revision`은 입력값 그대로).
 - 원장은 읽기 전용 URI로 열고 복원 규칙은 메모리에서만 적용한다. 원장이 바뀌면(0.2 s 확인) 다시 읽고, 읽지 못하면 `valid=false`·`D2_STORE_UNREADABLE`로 낸다.
 - 목록 유지: 진행 중 작업과, 종료됐어도 `transfer_state`가 `NONE`·`UNLOCKED`가 아닌 작업을 낸다(계약 4.3).
 - 다음 경우 종료 코드 2로 시작을 거부한다: `mode:=OPERATIONAL`, `/ax/dev/` 밖이거나 `/ax/fleet`·`/ax/robot_`를 포함한 출력 Topic, remap 결과가 그런 이름인 경우, 입력이 없는 경우. 구독·Action client·서버를 만들지 않으며 A4 입력 Topic을 remap하지 않는다.

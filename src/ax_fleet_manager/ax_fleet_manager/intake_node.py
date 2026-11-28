@@ -7,6 +7,9 @@
 - 작업은 QUEUED로 등록만 한다. 배정·실행 시작·Action·속도·팔·공구·안전 해제를 호출하지 않는다
   (포트 없음). 작업 목록은 기존 group_dev_publisher가 같은 원장을 읽기 전용으로 읽어 낸다.
 - 지점·입고 규칙은 개발 설정 파일(config/dev_intake.json)이며 실환경 값이 아니다.
+- 재고 source_session_id는 시작마다 새로 만들고, 발행 직전 ROS 시각이 직전까지 낸 가장 큰 stamp보다
+  CLOCK_REGRESSION_TOLERANCE_NS 넘게 작으면(use_sim_time에서 sim 시간 리셋 등) 새로 발급한다(revision은 원장 값
+  그대로, 시스템 시계 역행은 대상 아님).
 """
 import json
 import math
@@ -39,6 +42,9 @@ from .task_store import StoreError, TaskStore
 
 SCHEMA_VERSION = 1
 SOURCE_ID = 'd2_dev_intake'
+# ROS 시각 역행 판정 허용 오차(ns). 개발용 잠정값(미정 수치): 관제 미래 stamp 허용 오차 0.1 s와 맞췄다.
+# 같은 값 반복(/clock 정지)은 역행이 아니고, 이보다 작은 sim 역행은 세션을 바꾸지 않는다(sim 시간에만 적용)
+CLOCK_REGRESSION_TOLERANCE_NS = 100_000_000
 STATE_QOS = QoSProfile(reliability=ReliabilityPolicy.RELIABLE,
                        durability=DurabilityPolicy.TRANSIENT_LOCAL,
                        history=HistoryPolicy.KEEP_LAST, depth=1)
@@ -148,6 +154,9 @@ class ReceiptIntakeDevNode(Node):
                                     live_kinds=live_kinds)
         self.intake = ReceiptIntake(self.runtime, config, self.catalog)
         self.session_id = uuid.uuid4().hex
+        # 이 세션에서 낸 가장 큰 재고 stamp(ns)와 ROS 시각 역행으로 세션을 새로 발급한 횟수
+        self.last_stamp_ns = None
+        self.session_renewals = 0
 
         # remap을 적용한 이름을 endpoint 생성 전에 검사한다
         resolved = {k: (self.resolve_service_name(v) if k == 'register_service'
@@ -218,6 +227,8 @@ class ReceiptIntakeDevNode(Node):
             self.get_logger().debug('ROS 시각 0(/clock 수신 전): 재고 발행 건너뜀', once=True)
             return
 
+        self._renew_session_on_regression(now.nanoseconds)
+
         valid, reason = True, ''
         try:
             fields = inventory_snapshot_fields(self.store, self.catalog)
@@ -245,6 +256,28 @@ class ReceiptIntakeDevNode(Node):
         msg.items = [InventoryEntry(**item) for item in fields['items']]
         self.last_revision = fields['revision']
         self.inventory.publish(msg)
+        self.last_stamp_ns = max(self.last_stamp_ns or 0, now.nanoseconds)
+
+    # sim 시간(/clock)이 쓰이는 중이고, 발행 직전 ROS 시각이 직전 최대 stamp보다 허용 오차 넘게 작으면
+    # source_session_id를 새로 발급한다. 소비자는 같은 세션에서 stamp가 줄어든 새 revision을 버리므로(계약 2.3),
+    # sim 리셋 뒤 새 세션으로 비교를 다시 시작하게 한다. 시스템 시계(WSL 등에서 수 초 역행)는 대상이 아니다:
+    # 역행은 기존 소비자 규칙(같은 revision stamp 감소 허용)으로 처리한다. 판정은 발행마다 시계의 현재 상태로 한다
+    def _renew_session_on_regression(self, now_ns):
+        if self.last_stamp_ns is None or not self.get_clock().ros_time_is_active:
+            return
+
+        if now_ns >= self.last_stamp_ns - CLOCK_REGRESSION_TOLERANCE_NS:
+            return
+
+        previous, previous_stamp_ns = self.session_id, self.last_stamp_ns
+        self.session_id = uuid.uuid4().hex
+        self.session_renewals += 1
+        self.last_stamp_ns = None
+
+        self.get_logger().info(
+            f'ROS 시각 역행({previous_stamp_ns * 1e-9:.3f} s → {now_ns * 1e-9:.3f} s): '
+            f'재고 source_session_id 재발급 {previous} → {self.session_id} '
+            f'(재발급 {self.session_renewals}회, revision은 원장 값 유지)')
 
     # 지점 필드 → RegisteredLocation
     def _location(self, item, stamp):

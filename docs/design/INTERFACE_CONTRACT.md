@@ -53,7 +53,7 @@
 | `header.stamp` | 관측·판정 시각(sim time). 소비자는 표본 나이로 최신성을 검사 |
 | `schema_version` | 메시지 계약 버전 |
 | `source_id` | 발행 노드 식별자 |
-| `source_session_id` | 생산자 프로세스가 시작할 때마다 새로 발급. 세션이 바뀌면 소비자는 revision 비교를 새로 시작 |
+| `source_session_id` | 생산자 프로세스가 시작할 때마다 새로 발급. 생산자가 sim 시간(`use_sim_time`)을 쓰는 중 ROS 시각이 직전 발행 stamp보다 역행하면(sim 시간 리셋 등) 실행 중에도 새로 발급하고 revision은 이어 간다. 시스템 시계 역행에는 발급하지 않는다(현재 D2 개발 출력만 구현, 허용 오차 0.1 s는 개발용 잠정값). 세션이 바뀌면 소비자는 revision 비교를 새로 시작 |
 | `revision` | 같은 세션에서 상태 변경마다 1 증가. 0은 발행 전 |
 | `valid` / `validity_reason` | 생산자의 유효성 판단. `false`는 정상·성공으로 해석하지 않음 |
 

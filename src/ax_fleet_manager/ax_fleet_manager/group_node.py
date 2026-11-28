@@ -20,13 +20,14 @@ from ax_interfaces.msg import GroupTaskList, GroupTaskStatus, StateMeta
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
+from rclpy.logging import get_logger
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
 from . import group_model as gm
 from .node_config import (
     DEFAULT_OUTPUT_TOPIC, ConfigError, load_fixture, load_store_states, node_mode,
-    validate_output_topic,
+    shutdown_in_progress, validate_output_topic,
 )
 from .snapshot import source_prefix, task_list_fields
 from .task_store import StoreError
@@ -204,6 +205,13 @@ def main(args=None):
         code = 2
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError as error:
+        # 종료 신호 처리 중 spin에서 올라온 RuntimeError만 정상 종료로 본다. 그 밖에는 그대로 올린다
+        if not shutdown_in_progress(rclpy.ok):
+            raise
+
+        get_logger('d2_group_dev_publisher').info(
+            f'종료 신호 처리 중 spin RuntimeError를 정상 종료로 처리: {error}')
     finally:
         if node is not None:
             node.destroy_node()

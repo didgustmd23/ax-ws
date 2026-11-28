@@ -29,6 +29,7 @@ from geometry_msgs.msg import PoseStamped
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
+from rclpy.logging import get_logger
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
@@ -36,7 +37,7 @@ from . import group_model as gm
 from . import receipt as rc
 from .intake import ReceiptIntake
 from .inventory import inventory_snapshot_fields, parse_catalog
-from .node_config import ConfigError, node_mode, validate_output_topic
+from .node_config import ConfigError, node_mode, shutdown_in_progress, validate_output_topic
 from .runtime import GroupRuntime
 from .task_store import StoreError, TaskStore
 
@@ -312,6 +313,13 @@ def main(args=None):
         code = 2
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RuntimeError as error:
+        # 종료 신호 처리 중 spin에서 올라온 RuntimeError만 정상 종료로 본다. 그 밖에는 그대로 올린다
+        if not shutdown_in_progress(rclpy.ok):
+            raise
+
+        get_logger('d2_dev_intake').info(
+            f'종료 신호 처리 중 spin RuntimeError를 정상 종료로 처리: {error}')
     finally:
         if node is not None:
             node.close()

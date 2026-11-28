@@ -18,7 +18,7 @@ from ax_fleet_manager import group_model as gm  # noqa: E402
 from ax_fleet_manager.dev_fixtures import spec_dict  # noqa: E402
 from ax_fleet_manager.node_config import (  # noqa: E402
     DEFAULT_OUTPUT_TOPIC, MAX_FIXTURE_BYTES, ConfigError, load_fixture, load_store_states,
-    validate_output_topic,
+    shutdown_in_progress, validate_output_topic,
 )
 from ax_fleet_manager.snapshot import task_list_fields  # noqa: E402
 from ax_fleet_manager.task_store import StoreError  # noqa: E402
@@ -123,3 +123,13 @@ def test_missing_store_rejected(tmp_path):
     with pytest.raises(StoreError):
         load_store_states(path)
     assert not path.exists()
+
+
+# 종료 경합 판별: 유예 안에 컨텍스트가 닫히면(이미 닫혔거나 몇 번 뒤 닫힘) 종료 중, 끝까지 열려 있으면 다른 결함
+def test_shutdown_in_progress():
+    assert shutdown_in_progress(lambda: False, grace_s=0.0)
+
+    states = iter([True, True, False])
+    assert shutdown_in_progress(lambda: next(states), grace_s=1.0, poll_s=0.0)
+
+    assert not shutdown_in_progress(lambda: True, grace_s=0.02, poll_s=0.001)
